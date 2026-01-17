@@ -1,3 +1,3 @@
-module github.com/shibayu36/mcpist/apps/server
+module mcpist/server
 
 go 1.23.0
