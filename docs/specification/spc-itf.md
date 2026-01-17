@@ -5,7 +5,7 @@
 | 項目 | 値 |
 |------|-----|
 | Status | `draft` |
-| Version | v1.0 (DAY8) |
+| Version | v1.1 (DAY9) |
 | Note | Interface Specification |
 
 ---
@@ -377,65 +377,18 @@ Supabase Auth（ソーシャルログイン + セッション）
 
 ### 概要
 
-モジュールが外部APIアクセス用のOAuthトークンを取得する。
+モジュールが外部APIアクセス用のトークン（長期トークン or OAuthトークン）を取得する。
 
-### プロトコル
+| 項目 | 値 |
+|------|-----|
+| プロトコル | HTTPS（Supabase Edge Function） |
+| メソッド | POST |
+| エンドポイント | `/functions/v1/token-vault` |
+| 認証 | `Authorization: Bearer <SUPABASE_ANON_KEY>` |
 
-Supabase Edge Function（HTTPS）
+### 詳細仕様
 
-### エンドポイント
-
-```
-POST https://<project>.supabase.co/functions/v1/token-vault
-```
-
-### リクエスト
-
-```json
-{
-  "user_id": "user-uuid",
-  "service": "notion"
-}
-```
-
-### レスポンス
-
-**成功時:**
-```json
-{
-  "access_token": "secret-token-xxx",
-  "expires_at": "2026-01-17T12:00:00Z"
-}
-```
-
-**未連携時:**
-```json
-{
-  "error": "TOKEN_NOT_FOUND",
-  "message": "サービス連携が必要です",
-  "oauth_url": "https://console.mcpist.app/oauth/notion/connect"
-}
-```
-
-### 認証
-
-内部サービス間通信として、環境変数の共有シークレットで認証。
-
-```
-Authorization: Bearer <INTERNAL_SECRET>
-```
-
-### トークンリフレッシュ
-
-Token Vaultは期限切れトークンを自動リフレッシュする。
-
-```
-1. トークン取得リクエスト
-2. 期限切れチェック（expires_at < now + 5min）
-3. 期限切れの場合、refresh_tokenで外部OAuthサーバーにリフレッシュ
-4. 新トークンをVaultに保存
-5. 新access_tokenを返却
-```
+→ [itf-tvl.md](./dtl-spc/itf-tvl.md)
 
 ---
 
