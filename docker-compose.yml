@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - SUPABASE_URL=http://supabase-kong:8000
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    depends_on:
+      - supabase-db
+    networks:
+      - mcpist-network
+
+  # For local development, use Supabase CLI instead:
+  # supabase start
+  #
+  # This runs all Supabase services locally:
+  # - PostgreSQL (port 54322)
+  # - Auth (port 54321)
+  # - Storage
+  # - Studio (port 54323)
+
+networks:
+  mcpist-network:
+    driver: bridge
