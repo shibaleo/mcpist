@@ -2,6 +2,8 @@
 # Supabase branches
 supabase/.branches
 
+# Documatation
+*.vitepress
 
 # Logs
 logs
