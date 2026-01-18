@@ -2,6 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // Debug: log cookies for /api/auth paths
+  if (request.nextUrl.pathname.startsWith('/api/auth') || request.nextUrl.pathname.startsWith('/my/mcp')) {
+    console.log(`[middleware] ${request.nextUrl.pathname} Cookies:`, request.cookies.getAll().map(c => c.name))
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })

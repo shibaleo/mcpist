@@ -116,22 +116,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        working-directory: worker
+        run: npm install
 
       - name: TypeScript check
-        run: pnpm --filter @mcpist/worker exec tsc --noEmit
+        working-directory: worker
+        run: npx tsc --noEmit
 
   build-worker:
     name: Build Worker (Cloudflare)
@@ -139,19 +135,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        working-directory: worker
+        run: npm install
 
       - name: Build (dry-run)
-        run: pnpm --filter @mcpist/worker build
+        working-directory: worker
+        run: npx wrangler deploy --dry-run

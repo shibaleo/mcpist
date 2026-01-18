@@ -1,30 +1,62 @@
-version: "3.8"
+# MCPist Local Development Environment
+#
+# Usage:
+#   1. Start Supabase first: cd supabase && supabase start
+#   2. Start services: docker compose up -d
+#
+# Ports:
+#   - Console (Next.js): 3000
+#   - Go Server (MCP):   8089
+#   - Supabase API:      54321 (via supabase start)
+#   - Supabase DB:       54322 (via supabase start)
+#   - Supabase Studio:   54323 (via supabase start)
 
 services:
+  console:
+    build:
+      context: .
+      dockerfile: apps/console/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      # NEXT_PUBLIC_* はブラウザから直接アクセスするためlocalhost
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      # サーバーサイドはhost.docker.internal
+      - SUPABASE_URL=http://host.docker.internal:54321
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_MCP_SERVER_URL=http://localhost:8089
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-dev-internal-key}
+    volumes:
+      - ./apps/console/src:/app/apps/console/src:ro
+      - ./apps/console/public:/app/apps/console/public:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - mcpist-network
+    depends_on:
+      - server
+
   server:
     build:
       context: ./apps/server
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8089:8089"
     environment:
-      - PORT=8080
-      - SUPABASE_URL=http://supabase-kong:8000
+      - PORT=8089
+      - SUPABASE_URL=http://host.docker.internal:54321
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-    depends_on:
-      - supabase-db
+      - CONSOLE_URL=http://host.docker.internal:3000
+      - VAULT_URL=http://host.docker.internal:3000/api
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-dev-internal-key}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - mcpist-network
-
-  # For local development, use Supabase CLI instead:
-  # supabase start
-  #
-  # This runs all Supabase services locally:
-  # - PostgreSQL (port 54322)
-  # - Auth (port 54321)
-  # - Storage
-  # - Studio (port 54323)
 
 networks:
   mcpist-network:

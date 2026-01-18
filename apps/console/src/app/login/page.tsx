@@ -8,15 +8,36 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState<string | null>(null)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [returnTo, setReturnTo] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Get returnTo from query params
+    const returnToParam = searchParams.get("returnTo")
+    if (returnToParam) {
+      setReturnTo(returnToParam)
+      // Store in sessionStorage for after OAuth callback
+      sessionStorage.setItem("auth_returnTo", returnToParam)
+    }
+  }, [searchParams])
+
+  const getRedirectUrl = () => {
+    // If there's a returnTo, redirect to callback which will handle the redirect
+    if (returnTo) {
+      return `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
+    }
+    return `${window.location.origin}/auth/callback`
+  }
 
   const handleSocialLogin = async (provider: "google" | "github" | "azure") => {
     setLoading(provider)
@@ -26,7 +47,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getRedirectUrl(),
       },
     })
   }
@@ -43,7 +64,7 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: getRedirectUrl(),
         },
       })
       if (error) {
@@ -59,7 +80,8 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
       } else {
-        window.location.href = "/dashboard"
+        // Redirect to returnTo or dashboard
+        window.location.href = returnTo || "/dashboard"
       }
     }
     setLoading(null)

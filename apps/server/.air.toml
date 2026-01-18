@@ -1,0 +1,21 @@
+# Air - Live reload for Go apps
+# https://github.com/cosmtrek/air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/server ./cmd/server"
+bin = "./tmp/server"
+include_ext = ["go"]
+exclude_dir = ["tmp", "vendor", "test"]
+delay = 1000
+
+[log]
+time = false
+
+[color]
+main = "cyan"
+watcher = "green"
+build = "yellow"
+runner = "magenta"

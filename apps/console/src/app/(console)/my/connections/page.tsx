@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,8 +16,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth-context"
-import { Search, Link2, Unlink, Info, CheckCircle2, Store } from "lucide-react"
+import { useAppearance, accentColors } from "@/lib/appearance-context"
+import { Search, Link2, Unlink, Info, CheckCircle2, Store, Loader2, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import {
+  getMyConnections,
+  upsertTokenWithVerification,
+  deleteToken,
+  type OAuthConnection,
+  type ConnectionProgress,
+  TokenVaultError,
+} from "@/lib/token-vault"
 
 // カテゴリ定義（背景色付き）
 const categories = [
@@ -152,20 +162,40 @@ const purchasedServices = [
   "mailchimp", "hubspot", "intercom", "zendesk", "salesforce",
 ]
 
-interface UserCredential {
-  serviceId: string
-  status: "active" | "expired"
-  connectedAt: string
-  authMethod: string
-}
-
 export default function MyConnectionsPage() {
   const { user } = useAuth()
+  const { accentColor } = useAppearance()
+  const accentPreview = accentColors.find(c => c.id === accentColor)?.preview ?? "#22c55e"
   const [searchQuery, setSearchQuery] = useState("")
-  const [credentials, setCredentials] = useState<UserCredential[]>([])
+  const [connections, setConnections] = useState<OAuthConnection[]>([])
+  const [loading, setLoading] = useState(true)
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
   const [disconnectDialog, setDisconnectDialog] = useState<string | null>(null)
   const [tokenInput, setTokenInput] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [connectionProgress, setConnectionProgress] = useState<ConnectionProgress | null>(null)
+
+  // Supabaseから接続情報を取得
+  const loadConnections = useCallback(async () => {
+    try {
+      const data = await getMyConnections()
+      setConnections(data)
+    } catch (error) {
+      if (error instanceof TokenVaultError) {
+        console.error("Failed to load connections:", error.message)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      loadConnections()
+    } else {
+      setLoading(false)
+    }
+  }, [user, loadConnections])
 
   // 購入済みのサービスのみ表示（拡張サービスを使用）
   const availableServices = extendedServices.filter((service) =>
@@ -186,38 +216,83 @@ export default function MyConnectionsPage() {
   // サービスが存在するカテゴリのみ取得
   const activeCategories = categories.filter((cat) => getServicesByCategory(cat.id).length > 0)
 
-  const getCredentialForService = (serviceId: string) => {
-    return credentials.find((c) => c.serviceId === serviceId)
+  // サービスの接続状態を取得
+  const getConnectionForService = (serviceId: string) => {
+    return connections.find((c) => c.service === serviceId)
   }
 
   const handleConnect = (serviceId: string) => {
     setConnectDialog(serviceId)
     setTokenInput("")
+    setConnectionProgress(null)
   }
 
-  const handleConnectSubmit = () => {
-    if (!connectDialog || !tokenInput || !user) return
-
-    const service = extendedServices.find((s) => s.id === connectDialog)
-
-    const newCredential: UserCredential = {
-      serviceId: connectDialog,
-      status: "active",
-      connectedAt: new Date().toISOString().split("T")[0],
-      authMethod: service?.authMethod || "apikey",
-    }
-    setCredentials((prev) => {
-      const filtered = prev.filter((c) => c.serviceId !== connectDialog)
-      return [...filtered, newCredential]
-    })
+  const handleConnectionConfirm = () => {
     setConnectDialog(null)
     setTokenInput("")
+    setConnectionProgress(null)
+    toast.success("接続が完了しました")
   }
 
-  const handleDisconnect = () => {
+  const handleConnectSubmit = async () => {
+    if (!connectDialog || !tokenInput || !user) return
+
+    setSubmitting(true)
+    // 最初に進捗表示を開始
+    setConnectionProgress({ step: 'validating', message: 'トークンを検証中...' })
+
+    try {
+      await upsertTokenWithVerification(
+        {
+          service: connectDialog,
+          accessToken: tokenInput,
+        },
+        (progress) => {
+          setConnectionProgress({ ...progress })
+        }
+      )
+
+      // 明示的に完了状態を設定
+      setConnectionProgress({ step: 'completed', message: '接続完了' })
+
+      // 接続完了後、接続一覧を更新（エラーでもダイアログは維持）
+      try {
+        await loadConnections()
+      } catch {
+        // loadConnectionsのエラーは無視（完了表示は維持）
+      }
+    } catch (error) {
+      console.log('[page] Caught error:', error)
+      let errorMessage = '接続に失敗しました'
+      if (error instanceof TokenVaultError) {
+        errorMessage = error.message
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
+      setConnectionProgress({ step: 'error', message: errorMessage })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDisconnect = async () => {
     if (!disconnectDialog || !user) return
-    setCredentials((prev) => prev.filter((c) => c.serviceId !== disconnectDialog))
-    setDisconnectDialog(null)
+
+    setSubmitting(true)
+    try {
+      await deleteToken(disconnectDialog)
+      toast.success("接続を解除しました")
+      await loadConnections()
+      setDisconnectDialog(null)
+    } catch (error) {
+      if (error instanceof TokenVaultError) {
+        toast.error(`切断に失敗しました: ${error.message}`)
+      } else {
+        toast.error("切断に失敗しました")
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const selectedService = connectDialog ? extendedServices.find((s) => s.id === connectDialog) : null
@@ -239,7 +314,11 @@ export default function MyConnectionsPage() {
         />
       </div>
 
-      {filteredServices.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : filteredServices.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
             <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -272,18 +351,18 @@ export default function MyConnectionsPage() {
                 {/* サービスカード */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {categoryServices.map((service) => {
-                    const credential = getCredentialForService(service.id)
-                    const isConnected = credential?.status === "active"
-                    const isExpired = credential?.status === "expired"
+                    const connection = getConnectionForService(service.id)
+                    const isConnected = !!connection && !connection.is_expired
+                    const isExpired = connection?.is_expired
 
                     return (
                       <Card
                         key={service.id}
                         className={cn(
-                          "transition-all border-primary/50",
-                          isConnected && "border-green-500/50",
+                          "transition-all",
                           isExpired && "border-warning/50",
                         )}
+                        style={isConnected ? { borderColor: `${accentPreview}80` } : undefined}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-start gap-4">
@@ -294,7 +373,13 @@ export default function MyConnectionsPage() {
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <h3 className="font-medium text-foreground truncate">{service.name}</h3>
                                 {isConnected && (
-                                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                                  <Badge
+                                    style={{
+                                      backgroundColor: `${accentPreview}20`,
+                                      color: accentPreview,
+                                      borderColor: `${accentPreview}30`,
+                                    }}
+                                  >
                                     <CheckCircle2 className="h-3 w-3 mr-1" />
                                     接続済
                                   </Badge>
@@ -302,9 +387,9 @@ export default function MyConnectionsPage() {
                                 {isExpired && <Badge className="bg-warning/20 text-warning border-warning/30">期限切れ</Badge>}
                               </div>
                               <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
-                              {credential && (
+                              {connection && (
                                 <p className="text-xs text-muted-foreground mt-2">
-                                  接続日: {credential.connectedAt}
+                                  接続日: {new Date(connection.created_at).toLocaleDateString("ja-JP")}
                                 </p>
                               )}
                             </div>
@@ -370,84 +455,111 @@ export default function MyConnectionsPage() {
             </div>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* OAuth2.0認可 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">OAuth 2.0で接続</Label>
-              <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
-                <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  外部の認可画面に移動し、アカウントを連携します
-                </p>
-              </div>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  if (!selectedService) return
-                  const newCredential: UserCredential = {
-                    serviceId: selectedService.id,
-                    status: "active",
-                    connectedAt: new Date().toISOString().split("T")[0],
-                    authMethod: "oauth2",
-                  }
-                  setCredentials((prev) => {
-                    const filtered = prev.filter((c) => c.serviceId !== selectedService.id)
-                    return [...filtered, newCredential]
-                  })
-                  setConnectDialog(null)
-                }}
-              >
-                <Link2 className="h-4 w-4 mr-2" />
-                認可を開始
-              </Button>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">または</span>
-              </div>
-            </div>
-
-            {/* 長期トークン入力 */}
-            <div className="space-y-2">
-              <Label htmlFor="token-input" className="text-sm font-medium">
-                {selectedService?.authLabel || "APIトークン"}で接続
-              </Label>
-              <Input
-                id="token-input"
-                type="password"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="トークンを入力..."
-              />
-              {selectedService?.helpText && (
-                <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
-                  <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <p className="text-xs text-muted-foreground">
-                    {selectedService.helpText}
-                  </p>
-                </div>
+          {/* 接続進行中の表示 */}
+          {connectionProgress ? (
+            <div className="py-8 flex flex-col items-center justify-center space-y-4">
+              {connectionProgress.step === 'completed' ? (
+                <CheckCircle2 className="h-12 w-12 text-green-500" />
+              ) : connectionProgress.step === 'error' ? (
+                <XCircle className="h-12 w-12 text-destructive" />
+              ) : (
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
               )}
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={handleConnectSubmit}
-                disabled={!tokenInput}
-              >
-                <Link2 className="h-4 w-4 mr-2" />
-                トークンで接続
-              </Button>
+              <p className={cn(
+                "text-lg font-medium text-center",
+                connectionProgress.step === 'completed' && "text-green-500",
+                connectionProgress.step === 'error' && "text-destructive"
+              )}>
+                {connectionProgress.step === 'error' ? '接続に失敗しました' : connectionProgress.message}
+              </p>
+              {connectionProgress.step === 'error' && (
+                <p className="text-sm text-muted-foreground text-center px-4">
+                  {connectionProgress.message}
+                </p>
+              )}
+              {connectionProgress.step === 'completed' ? (
+                <Button onClick={handleConnectionConfirm} className="mt-4">
+                  確認
+                </Button>
+              ) : connectionProgress.step === 'error' ? (
+                <Button variant="outline" onClick={() => setConnectionProgress(null)} className="mt-4">
+                  再試行
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  しばらくお待ちください...
+                </p>
+              )}
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-4 py-4">
+                {/* OAuth2.0認可 */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">OAuth 2.0で接続</Label>
+                  <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+                    <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      外部の認可画面に移動し、アカウントを連携します
+                    </p>
+                  </div>
+                  <Button
+                    className="w-full"
+                    disabled
+                  >
+                    <Link2 className="h-4 w-4 mr-2" />
+                    認可を開始（準備中）
+                  </Button>
+                </div>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setConnectDialog(null)}>
-              キャンセル
-            </Button>
-          </DialogFooter>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">または</span>
+                  </div>
+                </div>
+
+                {/* トークン入力 */}
+                <div className="space-y-2">
+                  <Label htmlFor="token-input" className="text-sm font-medium">
+                    {selectedService?.authLabel || "APIトークン"}で接続
+                  </Label>
+                  <Input
+                    id="token-input"
+                    type="password"
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    placeholder="トークンを入力..."
+                    disabled={submitting}
+                  />
+                  {selectedService?.helpText && (
+                    <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+                      <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">
+                        {selectedService.helpText}
+                      </p>
+                    </div>
+                  )}
+                  <Button
+                    className="w-full"
+                    onClick={handleConnectSubmit}
+                    disabled={!tokenInput || submitting}
+                  >
+                    <Link2 className="h-4 w-4 mr-2" />
+                    トークンで接続
+                  </Button>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setConnectDialog(null)}>
+                  キャンセル
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -462,11 +574,18 @@ export default function MyConnectionsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDisconnectDialog(null)}>
+            <Button variant="outline" onClick={() => setDisconnectDialog(null)} disabled={submitting}>
               キャンセル
             </Button>
-            <Button variant="destructive" onClick={handleDisconnect}>
-              切断する
+            <Button variant="destructive" onClick={handleDisconnect} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  切断中...
+                </>
+              ) : (
+                "切断する"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
