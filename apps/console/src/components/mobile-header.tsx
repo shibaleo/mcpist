@@ -1,7 +1,8 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { Menu, Zap } from "lucide-react"
 import { Sidebar } from "./sidebar"
 import { useState } from "react"
@@ -18,8 +19,11 @@ export function MobileHeader() {
             <span className="sr-only">メニューを開く</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
-          <Sidebar />
+        <SheetContent side="left" className="p-0 w-64" hideCloseButton>
+          <VisuallyHidden.Root>
+            <SheetTitle>ナビゲーションメニュー</SheetTitle>
+          </VisuallyHidden.Root>
+          <Sidebar onClose={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
       <div className="flex items-center gap-2">
