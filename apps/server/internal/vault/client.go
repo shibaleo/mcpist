@@ -11,18 +11,19 @@ import (
 )
 
 var (
-	baseURL string
-	anonKey string
-	once    sync.Once
+	baseURL            string
+	internalServiceKey string
+	once               sync.Once
 )
 
 func initConfig() {
 	once.Do(func() {
 		baseURL = os.Getenv("VAULT_URL")
 		if baseURL == "" {
-			baseURL = "http://localhost:8089"
+			// Default to Console API endpoint
+			baseURL = "http://localhost:3000/api"
 		}
-		anonKey = os.Getenv("SUPABASE_ANON_KEY")
+		internalServiceKey = os.Getenv("INTERNAL_SERVICE_KEY")
 	})
 }
 
@@ -31,9 +32,9 @@ func getBaseURL() string {
 	return baseURL
 }
 
-func getAnonKey() string {
+func getInternalServiceKey() string {
 	initConfig()
-	return anonKey
+	return internalServiceKey
 }
 
 // TokenRequest is the request body for token retrieval
@@ -72,7 +73,7 @@ func GetTokens(userID, service string) (*TokenResult, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if key := getAnonKey(); key != "" {
+	if key := getInternalServiceKey(); key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
 

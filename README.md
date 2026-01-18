@@ -8,11 +8,10 @@ MCP (Model Context Protocol) gateway service - Connect AI assistants to external
 mcpist/
 ├── apps/
 │   ├── server/         # MCP Server (Go)
-│   ├── console/        # User Console (Next.js)
-│   └── worker/         # API Gateway (Cloudflare Worker)
+│   └── console/        # User Console (Next.js)
+├── worker/             # API Gateway (Cloudflare Worker)
+├── supabase/           # Supabase migrations & config
 ├── packages/           # Shared packages
-├── supabase/           # Supabase migrations
-├── docs/               # Documentation
 └── .github/            # GitHub Actions
 ```
 
@@ -21,86 +20,97 @@ mcpist/
 - Node.js 20+
 - pnpm 9+
 - Go 1.23+
-- Docker (for local Supabase)
+- Docker Desktop
 - Supabase CLI
+- Air (Go Hot Reload)
 
-## Getting Started
+## Initial Setup (First Time Only)
 
-### 1. Install dependencies
+### 1. Install required tools
+
+```bash
+# Install pnpm (if not installed)
+npm install -g pnpm
+
+# Install Supabase CLI
+# Windows (scoop)
+scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+scoop install supabase
+
+# macOS
+brew install supabase/tap/supabase
+
+# Install Air (Go Hot Reload)
+go install github.com/air-verse/air@latest
+
+# Add Go bin to PATH (Windows PowerShell - run once)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$env:USERPROFILE\go\bin", "User")
+# Then restart your terminal
+```
+
+### 2. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Start Supabase locally
-
-```bash
-# Install Supabase CLI if not installed
-# https://supabase.com/docs/guides/cli
-
-# Start local Supabase
-supabase start
-
-# Apply migrations
-supabase db reset
-```
-
 ### 3. Set up environment variables
 
 ```bash
-cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
-```
-
-### 4. Start development servers
-
-```bash
-# Start all apps
-pnpm dev
-
-# Or start individual apps
-pnpm --filter @mcpist/console dev
-cd apps/server && make run
+cp .env.example .env
+# .env will be auto-populated after `supabase start`
 ```
 
 ## Development
+
+### Start development servers
+
+```bash
+# Start everything (Supabase + Console + Server)
+pnpm dev
+
+# Stop everything
+pnpm stop
+```
+
+This starts:
+- **Supabase** → http://localhost:54321 (API), http://localhost:54323 (Studio)
+- **Console (Next.js)** → http://localhost:3000
+- **Server (Go)** → http://localhost:8089
+
+### Docker mode (optional)
+
+For production-like environment testing:
+
+```bash
+pnpm dev:docker   # Start with Docker
+pnpm stop:docker  # Stop Docker containers
+```
 
 ### Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Start all apps in development mode |
+| `pnpm dev` | Start Supabase + Console + Server (local) |
+| `pnpm stop` | Stop Supabase |
+| `pnpm dev:docker` | Start with Docker Compose |
+| `pnpm stop:docker` | Stop Docker containers |
 | `pnpm build` | Build all apps |
 | `pnpm lint` | Lint all apps |
-| `pnpm test` | Run tests for all apps |
+| `pnpm test` | Run tests |
 | `pnpm clean` | Clean build artifacts |
 
-### Server (Go)
+### Individual Apps
 
 ```bash
-cd apps/server
-make run      # Start server
-make test     # Run tests
-make lint     # Run linter
-make build    # Build binary
-```
+# Console (Next.js)
+pnpm dev:console
 
-### Console (Next.js)
+# Server (Go)
+pnpm dev:server
 
-```bash
-cd apps/console
-pnpm dev      # Start dev server
-pnpm build    # Build for production
-pnpm lint     # Run ESLint
-```
-
-### Worker (Cloudflare)
-
-```bash
-cd apps/worker
-pnpm dev      # Start local dev server
-pnpm build    # Build (dry-run)
-pnpm deploy   # Deploy to Cloudflare
+# Worker (Cloudflare)
+pnpm dev:worker
 ```
 
 ## Database

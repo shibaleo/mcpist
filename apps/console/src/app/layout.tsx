@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceProvider } from "@/lib/appearance-context";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "MCPist Console",
@@ -23,6 +24,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AppearanceProvider>{children}</AppearanceProvider>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

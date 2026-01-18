@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState, useCallback, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
+import { useAppearance, accentColors } from "@/lib/appearance-context"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -63,6 +64,8 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
   const pathname = usePathname()
   const router = useRouter()
   const { user, isAdmin, signOut } = useAuth()
+  const { accentColor } = useAppearance()
+  const accentPreview = accentColors.find(c => c.id === accentColor)?.preview ?? "#22c55e"
 
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
@@ -147,7 +150,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
       style={{ width: sidebarWidth }}
     >
       {/* Header with Logo and Collapse Button */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
+      <div className="flex items-center justify-between h-16 px-4">
         <div
           className="flex items-center gap-3 cursor-pointer"
           onClick={(e) => {
@@ -183,10 +186,11 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
       >
         <div className="flex items-center gap-3">
           <div
-            className="flex items-center justify-center w-8 h-8 rounded-full text-base font-semibold shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-full text-base font-semibold shrink-0 border"
             style={{
-              color: "white",
-              backgroundColor: "var(--accent-custom)",
+              color: accentPreview,
+              backgroundColor: `${accentPreview}20`,
+              borderColor: `${accentPreview}30`,
             }}
           >
             3

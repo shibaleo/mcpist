@@ -1,3 +1,4 @@
 packages:
-  - "apps/*"
+  - "apps/console"
+  - "apps/server"
   - "packages/*"

@@ -1,16 +1,5 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-
-let client: ReturnType<typeof createSupabaseClient> | null = null
-
-// Workaround for Web Locks API deadlock issue
-// https://github.com/supabase/supabase-js/issues/1594
-const noOpLock = async <T>(
-  _name: string,
-  _acquireTimeout: number,
-  fn: () => Promise<T>
-): Promise<T> => {
-  return await fn()
-}
+import { createBrowserClient } from '@supabase/ssr'
+import type { Database } from './database.types'
 
 export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -22,20 +11,5 @@ export function createClient() {
     )
   }
 
-  // Singleton pattern to avoid multiple instances
-  if (client) {
-    return client
-  }
-
-  client = createSupabaseClient(supabaseUrl, supabaseKey, {
-    auth: {
-      flowType: 'pkce',
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      lock: noOpLock,
-    },
-  })
-
-  return client
+  return createBrowserClient<Database>(supabaseUrl, supabaseKey)
 }

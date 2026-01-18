@@ -4,10 +4,13 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "supabase start && concurrently \"pnpm dev:console\" \"pnpm dev:server\"",
+    "stop": "supabase stop",
     "dev:console": "pnpm --filter @mcpist/console dev",
-    "dev:server": "pnpm --filter @mcpist/server dev",
-    "dev:worker": "pnpm --filter @mcpist/worker dev",
+    "dev:server": "cd apps/server && go run ./cmd/server",
+    "dev:worker": "cd worker && pnpm dev",
+    "dev:docker": "supabase start && docker compose up -d --build",
+    "stop:docker": "docker compose down && supabase stop",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
@@ -15,6 +18,7 @@
   },
   "devDependencies": {
     "@stoplight/prism-cli": "^5.14.2",
+    "concurrently": "^9.2.1",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3"
   }
