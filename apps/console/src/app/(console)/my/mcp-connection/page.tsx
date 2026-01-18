@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/auth-context"
-import { Copy, RefreshCw, Eye, EyeOff, Check, Server, Play, CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { Copy, RefreshCw, Check, Server, Play, CheckCircle2, XCircle, Loader2, Key, ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type VerifyStep = {
@@ -16,29 +17,75 @@ type VerifyStep = {
 }
 
 export default function McpConnectionPage() {
-  const { user, isAdmin } = useAuth()
-  const [showToken, setShowToken] = useState(false)
+  const { isAdmin } = useAuth()
   const [copied, setCopied] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
-  const [tokenStatus, setTokenStatus] = useState<"not_generated" | "active" | "revoked">("not_generated")
+  const [maskedKey, setMaskedKey] = useState<string | null>(null)
+  const [tokenStatus, setTokenStatus] = useState<"loading" | "not_generated" | "active" | "revoked">("loading")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isApiKeyOpen, setIsApiKeyOpen] = useState(false)
 
   // Verification state
   const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8089")
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])
   const [verifyLogs, setVerifyLogs] = useState<string[]>([])
+  const [testApiKey, setTestApiKey] = useState<string>("")
 
-  const endpoint = `https://mcp.mcpist.dev/u/${user?.id?.slice(0, 8) || "..."}`
+  // MCPエンドポイント: サブドメイン + パス方式
+  // mcp.mcpist.app/mcp - 同一サーバーでMCPとRESTを区別
+  const mcpBaseUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8089"
+  const endpoint = `${mcpBaseUrl}/mcp`
 
-  const handleGenerateToken = () => {
-    const newToken = `mcp_usr_${Math.random().toString(36).substring(2, 15)}`
-    setToken(newToken)
-    setTokenStatus("active")
+  // Check existing API Key on mount
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const res = await fetch('/api/apikey')
+        if (res.ok) {
+          const data = await res.json()
+          setTokenStatus(data.exists ? 'active' : 'not_generated')
+          if (data.masked_key) {
+            setMaskedKey(data.masked_key)
+          }
+        } else {
+          setTokenStatus('not_generated')
+        }
+      } catch {
+        setTokenStatus('not_generated')
+      }
+    }
+    checkApiKey()
+  }, [])
+
+  const handleGenerateToken = async () => {
+    setIsGenerating(true)
+    try {
+      const res = await fetch('/api/apikey', { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        setToken(data.api_key)
+        setTokenStatus('active')
+      } else {
+        console.error('Failed to generate API key')
+      }
+    } catch (error) {
+      console.error('Error generating API key:', error)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
-  const handleRevokeToken = () => {
-    setToken(null)
-    setTokenStatus("revoked")
+  const handleRevokeToken = async () => {
+    try {
+      const res = await fetch('/api/apikey', { method: 'DELETE' })
+      if (res.ok) {
+        setToken(null)
+        setTokenStatus('not_generated')
+      }
+    } catch (error) {
+      console.error('Error revoking API key:', error)
+    }
   }
 
   const handleCopy = async (text: string, type: string) => {
@@ -47,86 +94,31 @@ export default function McpConnectionPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const maskedToken = token ? `mcp_usr_${"*".repeat(20)}` : null
+  // Display masked token: from API or generate locally from token
+  const displayMaskedToken = maskedKey || (token ? `${token.slice(0, 6)}****...${token.slice(-2)}` : "mpt_****...**")
 
-// OAuth state
-  const [oauthMetadata, setOauthMetadata] = useState<{
-    authorization_endpoint: string
-    token_endpoint: string
-    issuer: string
-  } | null>(null)
-  const [protectedResource, setProtectedResource] = useState<{
-    resource: string
-    authorization_servers: string[]
-  } | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [codeVerifier, setCodeVerifier] = useState<string | null>(null)
+  // API Key Connection Test
+  const testApiKeyConnection = async () => {
+    const apiKeyToTest = testApiKey || token
+    if (!apiKeyToTest) return
 
-  const addLog = useCallback((message: string) => {
-    const timestamp = new Date().toLocaleTimeString()
-    setVerifyLogs((prev) => [...prev, `[${timestamp}] ${message}`])
-  }, [])
-
-  const updateStep = useCallback((index: number, update: Partial<VerifyStep>) => {
-    setVerifySteps((prev) =>
-      prev.map((step, i) => (i === index ? { ...step, ...update } : step))
-    )
-  }, [])
-
-  const verifyConnection = async () => {
     setIsVerifying(true)
-    setVerifyLogs([])
     setVerifySteps([
-      { name: "ヘルスチェック", status: "pending" },
-      { name: "OAuth メタデータ取得", status: "pending" },
-      { name: "MCP initialize", status: "pending" },
-      { name: "tools/list 取得", status: "pending" },
+      { name: "MCP Server 接続", status: "pending" },
+      { name: "initialize", status: "pending" },
+      { name: "tools/list", status: "pending" },
     ])
 
-    // Step 1: Health check
+    // Step 1: Connect to MCP Server with API Key
     updateStep(0, { status: "running" })
-    addLog(`MCP Server (${mcpServerUrl}) にヘルスチェック...`)
     try {
-      const healthRes = await fetch(`${mcpServerUrl}/health`)
-      if (healthRes.ok) {
-        updateStep(0, { status: "success", message: "OK" })
-        addLog("✓ ヘルスチェック成功")
-      } else {
-        throw new Error(`Status: ${healthRes.status}`)
-      }
-    } catch (error) {
-      updateStep(0, { status: "error", message: String(error) })
-      addLog(`✗ ヘルスチェック失敗: ${error}`)
-      setIsVerifying(false)
-      return
-    }
-
-    // Step 2: OAuth metadata
-    updateStep(1, { status: "running" })
-    addLog("OAuth メタデータを取得...")
-    try {
-      const metadataRes = await fetch("/.well-known/oauth-authorization-server")
-      if (metadataRes.ok) {
-        const metadata = await metadataRes.json()
-        updateStep(1, { status: "success", message: `issuer: ${metadata.issuer}` })
-        addLog(`✓ OAuth メタデータ取得成功: issuer=${metadata.issuer}`)
-      } else {
-        throw new Error(`Status: ${metadataRes.status}`)
-      }
-    } catch (error) {
-      updateStep(1, { status: "error", message: String(error) })
-      addLog(`✗ OAuth メタデータ取得失敗: ${error}`)
-      setIsVerifying(false)
-      return
-    }
-
-    // Step 3: MCP initialize
-    updateStep(2, { status: "running" })
-    addLog("MCP initialize リクエスト...")
-    try {
-      const initRes = await fetch(`${mcpServerUrl}/mcp`, {
+      const mcpEndpoint = `${mcpServerUrl}/mcp`
+      const response = await fetch(mcpEndpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKeyToTest}`,
+        },
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 1,
@@ -138,52 +130,69 @@ export default function McpConnectionPage() {
           },
         }),
       })
-      const initData = await initRes.json()
-      if (initData.result) {
-        updateStep(2, { status: "success", message: `v${initData.result.protocolVersion}` })
-        addLog(`✓ initialize 成功: serverInfo=${initData.result.serverInfo?.name}`)
-      } else if (initData.error) {
-        throw new Error(initData.error.message)
-      }
-    } catch (error) {
-      updateStep(2, { status: "error", message: String(error) })
-      addLog(`✗ initialize 失敗: ${error}`)
-      setIsVerifying(false)
-      return
-    }
 
-    // Step 4: tools/list
-    updateStep(3, { status: "running" })
-    addLog("tools/list リクエスト...")
-    try {
-      const toolsRes = await fetch(`${mcpServerUrl}/mcp`, {
+      if (response.status === 401) {
+        updateStep(0, { status: "error", message: "認証失敗 (401)" })
+        setIsVerifying(false)
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Status: ${response.status}`)
+      }
+
+      updateStep(0, { status: "success", message: "接続成功" })
+
+      // Step 2: Check initialize response
+      updateStep(1, { status: "running" })
+      const initData = await response.json()
+      if (initData.result) {
+        updateStep(1, { status: "success", message: `v${initData.result.protocolVersion}` })
+      } else if (initData.error) {
+        updateStep(1, { status: "error", message: initData.error.message })
+        setIsVerifying(false)
+        return
+      }
+
+      // Step 3: Get tools/list
+      updateStep(2, { status: "running" })
+      const toolsRes = await fetch(mcpEndpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKeyToTest}`,
+        },
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 2,
           method: "tools/list",
         }),
       })
+
       const toolsData = await toolsRes.json()
       if (toolsData.result) {
         const toolCount = toolsData.result.tools?.length || 0
-        updateStep(3, { status: "success", message: `${toolCount} tools` })
-        addLog(`✓ tools/list 成功: ${toolCount} ツール`)
-        toolsData.result.tools?.forEach((tool: { name: string }) => {
-          addLog(`  - ${tool.name}`)
-        })
+        updateStep(2, { status: "success", message: `${toolCount} tools` })
       } else if (toolsData.error) {
-        throw new Error(toolsData.error.message)
+        updateStep(2, { status: "error", message: toolsData.error.message })
       }
     } catch (error) {
-      updateStep(3, { status: "error", message: String(error) })
-      addLog(`✗ tools/list 失敗: ${error}`)
+      updateStep(0, { status: "error", message: String(error) })
     }
 
     setIsVerifying(false)
-    addLog("検証完了")
   }
+
+  const addLog = useCallback((message: string) => {
+    const timestamp = new Date().toLocaleTimeString()
+    setVerifyLogs((prev) => [...prev, `[${timestamp}] ${message}`])
+  }, [])
+
+  const updateStep = useCallback((index: number, update: Partial<VerifyStep>) => {
+    setVerifySteps((prev) =>
+      prev.map((step, i) => (i === index ? { ...step, ...update } : step))
+    )
+  }, [])
 
   // PKCE helpers
   const generateRandomString = (length: number): string => {
@@ -215,9 +224,10 @@ export default function McpConnectionPage() {
 
     // Step 1: Try MCP Server (expect 401 or success)
     updateStep(0, { status: "running" })
-    addLog(`Step 1: MCP Server (${mcpServerUrl}/mcp) に接続試行...`)
+    const oauthMcpEndpoint = `${mcpServerUrl}/mcp`
+    addLog(`Step 1: MCP Server (${oauthMcpEndpoint}) に接続試行...`)
     try {
-      const response = await fetch(`${mcpServerUrl}/mcp`, {
+      const response = await fetch(oauthMcpEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -258,7 +268,6 @@ export default function McpConnectionPage() {
       const response = await fetch("/.well-known/oauth-protected-resource")
       if (response.ok) {
         const metadata = await response.json()
-        setProtectedResource(metadata)
         updateStep(1, { status: "success", message: metadata.resource })
         addLog(`✓ resource: ${metadata.resource}`)
         addLog(`  authorization_servers: ${metadata.authorization_servers.join(", ")}`)
@@ -279,7 +288,6 @@ export default function McpConnectionPage() {
       const response = await fetch("/.well-known/oauth-authorization-server")
       if (response.ok) {
         const metadata = await response.json()
-        setOauthMetadata(metadata)
         updateStep(2, { status: "success", message: metadata.issuer })
         addLog(`✓ issuer: ${metadata.issuer}`)
         addLog(`  authorization_endpoint: ${metadata.authorization_endpoint}`)
@@ -300,7 +308,6 @@ export default function McpConnectionPage() {
 
     const verifier = generateRandomString(32)
     const challenge = await generateCodeChallenge(verifier)
-    setCodeVerifier(verifier)
 
     addLog(`  code_verifier: ${verifier.substring(0, 16)}...`)
     addLog(`  code_challenge: ${challenge.substring(0, 16)}...`)
@@ -366,99 +373,202 @@ export default function McpConnectionPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>APIトークン</span>
-            {tokenStatus === "active" && (
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">有効</Badge>
-            )}
-            {tokenStatus === "revoked" && (
-              <Badge className="bg-destructive/20 text-destructive border-destructive/30">無効</Badge>
-            )}
-            {tokenStatus === "not_generated" && (
-              <Badge variant="secondary">未生成</Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            MCPクライアントからの認証に使用するトークン。セキュリティのため、トークンは一度しか表示されません。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {tokenStatus === "not_generated" ? (
-            <Button onClick={handleGenerateToken}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              トークンを生成
-            </Button>
-          ) : tokenStatus === "active" && token ? (
-            <>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={showToken ? token : maskedToken || ""}
-                  readOnly
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowToken(!showToken)}
-                >
-                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleCopy(token, "token")}
-                >
-                  {copied === "token" ? (
-                    <Check className="h-4 w-4 text-success" />
+      {/* API Key認証と接続方法 */}
+      <Collapsible open={isApiKeyOpen} onOpenChange={setIsApiKeyOpen}>
+        <Card>
+          <CardHeader>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full text-left">
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  API Key と接続方法
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {tokenStatus === "active" && (
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">有効</Badge>
+                  )}
+                  {isApiKeyOpen ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <Copy className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <CardDescription>
+              Claude CodeやCursorなどのMCPクライアントで使用するAPI Keyと設定例
+            </CardDescription>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              {tokenStatus === "loading" ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>API Keyの状態を確認中...</span>
+                </div>
+              ) : tokenStatus === "not_generated" ? (
+                <Button onClick={handleGenerateToken} disabled={isGenerating}>
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="h-4 w-4 mr-2" />
+                      API Keyを生成
+                    </>
                   )}
                 </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleGenerateToken}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  再生成
-                </Button>
-                <Button variant="destructive" onClick={handleRevokeToken}>
-                  トークンを無効化
-                </Button>
-              </div>
-            </>
-          ) : (
-            <Button onClick={handleGenerateToken}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              新しいトークンを生成
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+              ) : tokenStatus === "active" && token ? (
+                <>
+                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-sm text-green-400 mb-2">
+                      API Keyが生成されました。今すぐコピーしてください。このキーは再表示できません。
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={token}
+                        readOnly
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleCopy(token, "token")}
+                      >
+                        {copied === "token" ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleGenerateToken} disabled={isGenerating}>
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      再生成
+                    </Button>
+                    <Button variant="destructive" onClick={handleRevokeToken}>
+                      無効化
+                    </Button>
+                  </div>
+                </>
+              ) : tokenStatus === "active" ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={displayMaskedToken}
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    API Keyは既に生成済みです。キーの値は表示できません。
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleGenerateToken} disabled={isGenerating}>
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      再生成
+                    </Button>
+                    <Button variant="destructive" onClick={handleRevokeToken}>
+                      無効化
+                    </Button>
+                  </div>
+                </>
+              ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>接続方法</CardTitle>
-          <CardDescription>MCPクライアントでの設定例</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-secondary rounded-lg p-4 overflow-x-auto">
-            <pre className="text-sm font-mono text-foreground">
-{`{
+              {/* 接続設定例 */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-medium mb-2">MCPクライアント設定例</h4>
+                <div className="bg-secondary rounded-lg p-4 overflow-x-auto">
+                  <pre className="text-sm font-mono text-foreground whitespace-pre">{`{
   "mcpServers": {
     "mcpist": {
       "url": "${endpoint}",
-      "transport": "sse",
+      "transport": "http",
       "headers": {
-        "Authorization": "Bearer ${token || "<your-token>"}"
+        "Authorization": "Bearer `}<Input
+                    value={testApiKey || token || ""}
+                    onChange={(e) => setTestApiKey(e.target.value)}
+                    placeholder="<your-api-key>"
+                    className="inline-flex w-72 h-6 px-1 py-0 text-xs font-mono bg-white dark:bg-zinc-700 border rounded align-middle"
+                  />{`"
       }
     }
   }
-}`}
-            </pre>
-          </div>
-        </CardContent>
-      </Card>
+}`}</pre>
+                </div>
+
+                <div className="flex justify-end mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={testApiKeyConnection}
+                    disabled={isVerifying || (!testApiKey && !token)}
+                  >
+                    {isVerifying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        テスト中...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        接続テスト
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Test Steps */}
+                {verifySteps.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    {verifySteps.map((step, index) => (
+                      <div
+                        key={index}
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg text-sm",
+                          step.status === "success" && "bg-green-500/10",
+                          step.status === "error" && "bg-destructive/10",
+                          step.status === "running" && "bg-primary/10"
+                        )}
+                      >
+                        {step.status === "pending" && (
+                          <div className="h-4 w-4 rounded-full border-2 border-muted" />
+                        )}
+                        {step.status === "running" && (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        )}
+                        {step.status === "success" && (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        )}
+                        {step.status === "error" && (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                        <span className="flex-1">{step.name}</span>
+                        {step.message && (
+                          <span className="text-xs text-muted-foreground">
+                            {step.message}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* MCP Server Connection Verification - Admin only */}
       {isAdmin && (

@@ -74,7 +74,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 }
 
 // ValidateRequest validates the token from the Authorization header
-// Supports: MCP Token (long-lived, 64 char hex), Supabase Auth JWT (short-lived)
+// Delegates all validation to Supabase RPC
 func (m *Middleware) ValidateRequest(r *http.Request) (string, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -87,78 +87,107 @@ func (m *Middleware) ValidateRequest(r *http.Request) (string, error) {
 
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
-	// 1. MCP Token check (64 char hex, long-lived)
-	if len(token) == 64 && isHexString(token) {
-		userID, err := m.validateMCPToken(token)
-		if err == nil {
-			log.Printf("Auth: MCP token (user: %s)", userID)
-			return userID, nil
-		}
-		// If it looks like MCP token but invalid, return error
-		return "", fmt.Errorf("invalid MCP token: %w", err)
+	// Delegate all token validation to Supabase RPC
+	userID, err := m.validateToken(token)
+	if err != nil {
+		return "", fmt.Errorf("token validation failed: %w", err)
 	}
 
-	// 2. Supabase Auth JWT check (short-lived)
-	return m.ValidateJWT(token)
+	log.Printf("Auth: validated (user: %s)", userID)
+	return userID, nil
 }
 
-// isHexString checks if the string is a valid hex string
-func isHexString(s string) bool {
-	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-			return false
+// validateToken validates any token (API Key or JWT)
+// Token type is determined by format:
+// - API Key: mpt_<32 hex chars> -> validated via Supabase RPC (Vault access required)
+// - JWT: header.payload.signature -> validated locally using JWKS
+func (m *Middleware) validateToken(token string) (string, error) {
+	// Validate API Key format: mpt_<32 hex chars> (total 36 chars)
+	if strings.HasPrefix(token, "mpt_") {
+		if len(token) != 36 {
+			return "", fmt.Errorf("invalid API key format: wrong length")
 		}
+		// Validate hex chars after prefix
+		hexPart := token[4:] // after "mpt_"
+		for _, c := range hexPart {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+				return "", fmt.Errorf("invalid API key format: invalid characters")
+			}
+		}
+		return m.validateAPIKey(token)
 	}
-	return true
+
+	// Validate JWT format: base64url.base64url.base64url
+	parts := strings.Split(token, ".")
+	if len(parts) == 3 {
+		// Basic validation: each part should be non-empty and valid base64url
+		for i, part := range parts {
+			if len(part) == 0 {
+				return "", fmt.Errorf("invalid JWT format: empty part %d", i)
+			}
+			// Check for valid base64url characters
+			for _, c := range part {
+				if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+					(c >= '0' && c <= '9') || c == '-' || c == '_') {
+					return "", fmt.Errorf("invalid JWT format: invalid characters in part %d", i)
+				}
+			}
+		}
+		return m.validateJWT(token)
+	}
+
+	return "", fmt.Errorf("unknown token format")
 }
 
-// validateMCPToken validates a long-lived MCP token via Console API
-func (m *Middleware) validateMCPToken(token string) (string, error) {
-	vaultURL := os.Getenv("VAULT_URL")
-	if vaultURL == "" {
-		vaultURL = "http://localhost:3000/api"
+// validateAPIKey validates an API Key by calling Supabase RPC
+func (m *Middleware) validateAPIKey(apiKey string) (string, error) {
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	if supabaseURL == "" {
+		supabaseURL = "http://localhost:54321"
 	}
-	internalKey := os.Getenv("INTERNAL_SERVICE_KEY")
+	serviceKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	if serviceKey == "" {
+		return "", fmt.Errorf("SUPABASE_SERVICE_ROLE_KEY not configured")
+	}
 
-	// Call Console API to validate token
-	req, err := http.NewRequest("POST", vaultURL+"/mcp-token/validate", strings.NewReader(`{"token":"`+token+`"}`))
+	// Call Supabase RPC to validate API key
+	reqBody := fmt.Sprintf(`{"p_api_key": "%s", "p_service": "mcpist"}`, apiKey)
+	req, err := http.NewRequest("POST", supabaseURL+"/rest/v1/rpc/validate_api_key", strings.NewReader(reqBody))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if internalKey != "" {
-		req.Header.Set("X-Internal-Service-Key", internalKey)
-	}
+	req.Header.Set("apikey", serviceKey)
+	req.Header.Set("Authorization", "Bearer "+serviceKey)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to validate MCP token: %w", err)
+		return "", fmt.Errorf("failed to validate API key: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("MCP token validation failed: status %d", resp.StatusCode)
+		return "", fmt.Errorf("API key validation failed: status %d", resp.StatusCode)
 	}
 
-	var result struct {
+	var result []struct {
 		UserID string `json:"user_id"`
-		Valid  bool   `json:"valid"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	if !result.Valid {
-		return "", fmt.Errorf("MCP token is invalid or expired")
+	if len(result) == 0 || result[0].UserID == "" {
+		return "", fmt.Errorf("invalid API key")
 	}
 
-	return result.UserID, nil
+	log.Printf("Auth: API key validated")
+	return result[0].UserID, nil
 }
 
-// ValidateJWT validates a JWT token and returns the user ID
-func (m *Middleware) ValidateJWT(token string) (string, error) {
-	// Parse JWT (header.payload.signature)
+// validateJWT validates a JWT token locally using JWKS
+func (m *Middleware) validateJWT(token string) (string, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return "", fmt.Errorf("invalid JWT format")
@@ -173,18 +202,16 @@ func (m *Middleware) ValidateJWT(token string) (string, error) {
 	var header struct {
 		Alg string `json:"alg"`
 		Kid string `json:"kid"`
-		Typ string `json:"typ"`
 	}
 	if err := json.Unmarshal(headerJSON, &header); err != nil {
 		return "", fmt.Errorf("failed to parse header: %w", err)
 	}
 
-	// Verify algorithm
 	if header.Alg != "RS256" {
 		return "", fmt.Errorf("unsupported algorithm: %s", header.Alg)
 	}
 
-	// Get public key from JWKS
+	// Get public key from JWKS cache
 	pubKey, err := m.jwksCache.GetKey(header.Kid)
 	if err != nil {
 		return "", fmt.Errorf("failed to get public key: %w", err)
@@ -195,62 +222,44 @@ func (m *Middleware) ValidateJWT(token string) (string, error) {
 		return "", fmt.Errorf("signature verification failed: %w", err)
 	}
 
-	// Decode payload
+	// Decode and validate payload
 	payloadJSON, err := base64URLDecode(parts[1])
 	if err != nil {
 		return "", fmt.Errorf("failed to decode payload: %w", err)
 	}
 
-	var claims Claims
+	var claims struct {
+		Iss string `json:"iss"`
+		Sub string `json:"sub"`
+		Aud string `json:"aud"`
+		Exp int64  `json:"exp"`
+	}
 	if err := json.Unmarshal(payloadJSON, &claims); err != nil {
 		return "", fmt.Errorf("failed to parse claims: %w", err)
 	}
 
-	// Validate claims
-	if err := m.validateClaims(&claims); err != nil {
-		return "", err
+	// Validate expiration
+	if claims.Exp < time.Now().Unix() {
+		return "", fmt.Errorf("token expired")
 	}
 
-	log.Printf("Auth: JWT (user: %s)", claims.Sub)
-	return claims.Sub, nil
-}
-
-// Claims represents JWT claims
-type Claims struct {
-	Iss   string `json:"iss"`
-	Sub   string `json:"sub"`
-	Aud   string `json:"aud"`
-	Exp   int64  `json:"exp"`
-	Iat   int64  `json:"iat"`
-	Email string `json:"email,omitempty"`
-	Role  string `json:"role,omitempty"`
-}
-
-// validateClaims validates JWT claims
-func (m *Middleware) validateClaims(claims *Claims) error {
-	now := time.Now().Unix()
-
-	// Check expiration
-	if claims.Exp < now {
-		return fmt.Errorf("token expired")
-	}
-
-	// Check issuer (if configured)
+	// Validate issuer (if configured)
 	if m.issuer != "" && claims.Iss != m.issuer {
-		return fmt.Errorf("invalid issuer: expected %s, got %s", m.issuer, claims.Iss)
+		return "", fmt.Errorf("invalid issuer")
 	}
 
-	// Check audience (if configured)
+	// Validate audience (if configured)
 	if m.audience != "" && claims.Aud != m.audience {
-		return fmt.Errorf("invalid audience: expected %s, got %s", m.audience, claims.Aud)
+		return "", fmt.Errorf("invalid audience")
 	}
 
-	// Check subject (user ID)
+	// Validate subject
 	if claims.Sub == "" {
-		return fmt.Errorf("missing subject claim")
+		return "", fmt.Errorf("missing subject claim")
 	}
 
-	return nil
+	log.Printf("Auth: JWT validated")
+	return claims.Sub, nil
 }
 
 // verifySignature verifies the JWT signature using RS256
