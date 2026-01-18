@@ -5,6 +5,9 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "turbo dev",
+    "dev:console": "pnpm --filter @mcpist/console dev",
+    "dev:server": "pnpm --filter @mcpist/server dev",
+    "dev:worker": "pnpm --filter @mcpist/worker dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
