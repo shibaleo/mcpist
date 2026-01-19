@@ -74,8 +74,25 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 }
 
 // ValidateRequest validates the token from the Authorization header
-// Delegates all validation to Supabase RPC
+// Also accepts X-User-ID header from trusted gateway (Cloudflare Worker)
 func (m *Middleware) ValidateRequest(r *http.Request) (string, error) {
+	// Check for X-User-ID from trusted gateway (Worker経由のリクエスト)
+	if userID := r.Header.Get("X-User-ID"); userID != "" {
+		// Verify gateway secret in production
+		gatewaySecret := os.Getenv("GATEWAY_SECRET")
+		if gatewaySecret != "" {
+			// Production: require valid gateway secret
+			requestSecret := r.Header.Get("X-Gateway-Secret")
+			if requestSecret != gatewaySecret {
+				log.Printf("Auth: gateway secret mismatch")
+				return "", fmt.Errorf("invalid gateway secret")
+			}
+		}
+		log.Printf("Auth: validated via gateway (user: %s)", userID)
+		return userID, nil
+	}
+
+	// 直接アクセスの場合は Authorization ヘッダーで認証
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return "", fmt.Errorf("missing Authorization header")

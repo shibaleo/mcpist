@@ -36,7 +36,7 @@
 | 項目 | 技術 | 備考 |
 |------|------|------|
 | 言語 | Go 1.21+ | 並行処理、メモリ効率 |
-| フレームワーク | 標準ライブラリ + chi | 軽量ルーター |
+| フレームワーク | 標準ライブラリ (net/http) | シンプル、依存最小化 |
 | コンテナ | Docker (Alpine) | マルチステージビルド |
 | デプロイ先 | Koyeb (Primary) / Fly.io (Standby) | |
 
@@ -53,7 +53,7 @@
 
 | ライブラリ | 用途 |
 |-----------|------|
-| github.com/go-chi/chi/v5 | HTTPルーター |
+| net/http (標準ライブラリ) | HTTPサーバー・ルーター |
 | github.com/golang-jwt/jwt/v5 | JWT検証 |
 | github.com/supabase-community/supabase-go | Supabase SDK |
 | github.com/prometheus/client_golang | メトリクス |
@@ -196,8 +196,8 @@ mcpist/
 │   │   │   ├── modules/      # Module Registry + Modules
 │   │   │   │   ├── registry.go
 │   │   │   │   ├── notion/
-│   │   │   │   ├── github/
-│   │   │   │   └── ...
+│   │   │   │   ├── google_calendar/
+│   │   │   │   └── microsoft_todo/
 │   │   │   ├── auth/         # Auth Middleware
 │   │   │   ├── entitlement/  # ENT アクセス
 │   │   │   └── vault/        # TVL アクセス

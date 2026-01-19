@@ -4,11 +4,11 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "supabase start && concurrently \"pnpm dev:console\" \"pnpm dev:server\"",
+    "dev": "supabase start && concurrently \"pnpm dev:console\" \"pnpm dev:server\" \"pnpm dev:worker\"",
     "stop": "supabase stop",
     "dev:console": "pnpm --filter @mcpist/console dev",
     "dev:server": "cd apps/server && go run ./cmd/server",
-    "dev:worker": "cd worker && pnpm dev",
+    "dev:worker": "pnpm --filter @mcpist/worker dev",
     "dev:docker": "supabase start && docker compose up -d --build",
     "stop:docker": "docker compose down && supabase stop",
     "docs:dev": "pnpm --filter @mcpist/docs dev",

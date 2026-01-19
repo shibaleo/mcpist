@@ -53,7 +53,7 @@ Authorization: Bearer <SUPABASE_ANON_KEY>
 | フィールド | 型 | 必須 | 説明 |
 |-----------|-----|------|------|
 | user_id | string | Yes | ユーザー識別子 |
-| service | string | Yes | サービス名（notion, github, jira, confluence, google_calendar, microsoft_todo） |
+| service | string | Yes | サービス名（notion, google_calendar, microsoft_todo） |
 
 **レスポンス（200 OK）:**
 
@@ -127,9 +127,6 @@ curl -X POST http://localhost:8089/token-vault \
 | Service | long_term_token | oauth_token |
 |---------|-----------------|-------------|
 | notion | Internal Integration Token (`ntn_xxx`) | OAuth Access Token |
-| github | Personal Access Token (`ghp_xxx`) | OAuth Access Token |
-| jira | API Token | OAuth Access Token |
-| confluence | API Token | OAuth Access Token |
 | google_calendar | - | OAuth Access Token |
 | microsoft_todo | - | OAuth Access Token |
 

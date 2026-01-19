@@ -494,8 +494,8 @@ export default function McpConnectionPage() {
                   <pre className="text-sm font-mono text-foreground whitespace-pre">{`{
   "mcpServers": {
     "mcpist": {
+      "type": "sse",
       "url": "${endpoint}",
-      "transport": "http",
       "headers": {
         "Authorization": "Bearer `}<Input
                     value={testApiKey || token || ""}

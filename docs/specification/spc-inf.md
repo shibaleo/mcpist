@@ -163,8 +163,8 @@ Phase 1で必要なコンポーネントを検討し、採用/除外を決定し
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │     Vercel      │    │     Stripe      │    │  External APIs  │
 │                 │    │                 │    │                 │
-│  User Console   │    │  PSP (課金)     │    │ Notion, GitHub  │
-│  (CON)          │    │                 │    │ Jira, etc.      │
+│  User Console   │    │  PSP (課金)     │    │ Notion, Google  │
+│  (CON)          │    │                 │    │ Calendar, etc.  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 

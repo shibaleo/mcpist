@@ -125,9 +125,6 @@ sequenceDiagram
 
 **対応サービス：**
 - Notion
-- GitHub
-- Jira
-- Confluence
 - Google Calendar
 - Microsoft To Do
 
