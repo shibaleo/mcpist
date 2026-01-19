@@ -2,8 +2,11 @@ name = "mcpist-gateway"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
+# Cron trigger for health checks (every minute)
+[triggers]
+crons = ["* * * * *"]
+
 # KV Namespaces
-# ローカル開発時は自動でMiniflareがエミュレート
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
 id = "xxx"  # 本番用ID（後で設定）
@@ -14,35 +17,27 @@ binding = "HEALTH_STATE"
 id = "xxx"  # 本番用ID（後で設定）
 preview_id = "xxx"  # プレビュー用ID（後で設定）
 
-# 環境変数（汎用バックエンド命名）
+# 環境変数（デフォルト = ローカル開発）
 [vars]
-# バックエンド設定（サービス非依存）
-# ローカル開発時は Go Server (:8089) を両方に設定
-BACKEND_PRIMARY_URL = "http://localhost:8089"
-BACKEND_PRIMARY_WEIGHT = "100"
-BACKEND_SECONDARY_URL = "http://localhost:8089"
-BACKEND_SECONDARY_WEIGHT = "0"
+# バックエンド設定
+RENDER_URL = "http://localhost:8089"
+KOYEB_URL = "http://localhost:8089"
 
 # Supabase設定
 SUPABASE_URL = "http://127.0.0.1:54321"
 SUPABASE_JWKS_URL = "http://127.0.0.1:54321/auth/v1/.well-known/jwks.json"
-SUPABASE_SERVICE_ROLE_KEY = "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz"
 
 # Rate Limit設定
 RATE_LIMIT_GLOBAL_MAX = "1000"      # IP単位: req/min
 RATE_LIMIT_BURST_MAX = "5"          # ユーザー単位: req/sec
 
-# ヘルスチェック設定
-HEALTH_CHECK_INTERVAL_SEC = "30"
-HEALTH_CHECK_FAILURE_THRESHOLD = "3"
-
-# 開発環境
+# 開発環境（Devcontainer内）
 [env.dev]
-vars = { BACKEND_PRIMARY_URL = "http://localhost:8081", BACKEND_SECONDARY_URL = "http://localhost:8082", SUPABASE_URL = "http://127.0.0.1:54321" }
+vars = { RENDER_URL = "http://localhost:8081", KOYEB_URL = "http://localhost:8082", SUPABASE_URL = "http://127.0.0.1:54321" }
 
 # 本番環境
 [env.production]
-vars = { BACKEND_PRIMARY_URL = "REDACTED_URL", BACKEND_SECONDARY_URL = "REDACTED_URL", SUPABASE_URL = "https://xxx.supabase.co" }
+vars = { RENDER_URL = "REDACTED_URL", KOYEB_URL = "REDACTED_URL", SUPABASE_URL = "https://xxx.supabase.co", SUPABASE_JWKS_URL = "https://xxx.supabase.co/auth/v1/.well-known/jwks.json" }
 
 # シークレット（wrangler secret で設定）
 # - GATEWAY_SECRET: オリジン直接アクセス防止用

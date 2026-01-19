@@ -28,23 +28,26 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-  # Deploy Server to Koyeb
-  deploy-server:
-    name: Deploy Server (Koyeb)
+  # Deploy Server to Render (Primary)
+  deploy-server-render:
+    name: Deploy Server (Render - Primary)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Koyeb CLI
+      - name: Deploy to Render
         run: |
-          curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | bash
-          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json"
 
+  # Deploy Server to Koyeb (Failover)
+  deploy-server-koyeb:
+    name: Deploy Server (Koyeb - Failover)
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to Koyeb
         run: |
-          koyeb service redeploy mcpist-server/mcpist-server
-        env:
-          KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
+          curl -X POST "https://app.koyeb.com/v1/services/${{ secrets.KOYEB_SERVICE_ID }}/redeploy" \
+            -H "Authorization: Bearer ${{ secrets.KOYEB_API_KEY }}"
 
   # Deploy Worker to Cloudflare
   deploy-worker:
