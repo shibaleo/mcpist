@@ -1,4 +1,11 @@
 
+# AI assistant files
+.claude
+.mcp.json
+
+# wrangler
+*.wrangler
+
 # Supabase branches
 supabase/.branches
 

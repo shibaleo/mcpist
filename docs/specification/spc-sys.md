@@ -81,7 +81,7 @@
 │ • OAuth連携      │                          ┌────────────────────────────────┐
 └─────────────────┘                          │    External API Server         │
                                              │                                │
-                                             │  Notion │ GitHub │ Jira │ ...  │
+                                             │  Notion │ Google Calendar │ Microsoft Todo  │
                                              └────────────────────────────────┘
 ```
 
@@ -107,7 +107,7 @@
 	- **Auth Middleware**: JWTを検証し、user_idをcontextに抽出する
 	- **MCP Handler**: `tools/list`、`tools/call`等のMCPリクエストを処理する
 	- **Module Registry**: モジュールを管理し、メタツール（`get_module_schema`、`call`、`batch`）を提供する
-	- **Modules**: 各外部サービス（Notion, GitHub等）へのアクセスを実装する
+	- **Modules**: 各外部サービス（Notion, Google Calendar, Microsoft Todo）へのアクセスを実装する
 
 ### User Console（ユーザー管理画面）
 
@@ -132,7 +132,7 @@
 
 ### External API Server（外部APIサーバー）
 
-- 各モジュールがアクセスする外部サービスのAPIサーバー（Notion API, GitHub API, Jira API等）。
+- 各モジュールがアクセスする外部サービスのAPIサーバー（Notion API, Google Calendar API, Microsoft Graph API等）。
 - ModulesがToken Vaultから取得したトークンを使ってHTTPSでアクセスする。
 - **実装範囲外**。
 

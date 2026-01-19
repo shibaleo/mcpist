@@ -15,7 +15,7 @@ hero:
 
 features:
   - title: Multi-Module Support
-    details: Notion, Google Calendar, Microsoft Todo, Jira, Confluence, GitHub, RAG, Supabase
+    details: Notion, Google Calendar, Microsoft Todo
   - title: Secure Token Management
     details: OAuth 2.1 + PKCE, API Key authentication with Supabase Vault
   - title: Subscription Management

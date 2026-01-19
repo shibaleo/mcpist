@@ -15,8 +15,11 @@ import (
 )
 
 func init() {
-	// Load .env from project root (for local development)
-	_ = godotenv.Load("../../.env")
+	// Load .env for local development
+	// Try multiple paths for flexibility
+	_ = godotenv.Load(".env")           // Current directory
+	_ = godotenv.Load("../../.env")     // From cmd/server/
+	_ = godotenv.Load("../../../.env")  // From apps/server/ to monorepo root
 
 	// Register modules
 	modules.RegisterModule(notion.New())
