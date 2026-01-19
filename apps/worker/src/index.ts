@@ -7,23 +7,33 @@
  * 3. グローバルRate Limit（IP単位）
  * 4. Burst制限（ユーザー単位）
  * 5. X-User-ID付与
- * 6. ヘルスチェック + ロードバランシング
+ * 6. 負荷ベースLB（Render Primary / Koyeb Failover）
  * 7. MCP Serverへのプロキシ
+ *
+ * LB戦略:
+ * - 主指標: p95レイテンシ（直近50req rolling window）
+ * - NORMAL:   p95 < 300ms  → Render 100%
+ * - WARMUP:   p95 ≥ 300ms  → Render 100% + Koyeb起動
+ * - BALANCE:  p95 ≥ 600ms  → Render 50% / Koyeb 50%
+ * - FAILOVER: 致命指標発生  → Koyeb 100%
+ *
+ * ヒステリシス:
+ * - BALANCE → WARMUP: p95 < 500ms
+ * - WARMUP → NORMAL:  p95 < 300ms
  */
 
 import * as jose from "jose";
 
-// 型定義
+// === 型定義 ===
+
 interface Env {
   // KV Namespaces
   RATE_LIMIT: KVNamespace;
   HEALTH_STATE: KVNamespace;
 
-  // バックエンド設定（汎用命名）
-  BACKEND_PRIMARY_URL: string;
-  BACKEND_PRIMARY_WEIGHT: string;
-  BACKEND_SECONDARY_URL: string;
-  BACKEND_SECONDARY_WEIGHT: string;
+  // バックエンド設定
+  RENDER_URL: string;   // Primary
+  KOYEB_URL: string;    // Failover
 
   // Supabase設定
   SUPABASE_URL: string;
@@ -38,16 +48,18 @@ interface Env {
   GATEWAY_SECRET: string;
 }
 
-interface Backend {
-  url: string;
-  weight: number;
-  healthy: boolean;
-}
+type LBState = "NORMAL" | "WARMUP" | "BALANCE" | "FAILOVER";
+type KoyebState = "sleeping" | "waking" | "ready";
 
-interface HealthState {
-  healthy: boolean;
-  failureCount: number;
-  lastCheck: number;
+interface Metrics {
+  latencies: number[];        // 直近50件のレイテンシ配列
+  state: LBState;
+  koyebState: KoyebState;
+  error5xxCount: number;      // 直近20req中の5xx数
+  requestCount: number;       // 直近20req用カウンタ
+  lastUpdated: number;
+  renderHealthy: boolean;
+  koyebHealthy: boolean;
 }
 
 interface AuthResult {
@@ -55,7 +67,28 @@ interface AuthResult {
   type: "jwt" | "api_key";
 }
 
-// メインハンドラー
+interface RateLimitResult {
+  allowed: boolean;
+  retryAfter?: number;
+}
+
+// === 定数 ===
+
+const LATENCY_WINDOW_SIZE = 50;
+const ERROR_WINDOW_SIZE = 20;
+const FETCH_TIMEOUT_MS = 3000;
+
+// 閾値
+const THRESHOLDS = {
+  WARMUP: 300,      // p95 ≥ 300ms → WARMUP
+  BALANCE: 600,     // p95 ≥ 600ms → BALANCE
+  // ヒステリシス
+  BALANCE_TO_WARMUP: 500,  // p95 < 500ms → WARMUP
+  WARMUP_TO_NORMAL: 300,   // p95 < 300ms → NORMAL
+};
+
+// === メインハンドラー ===
+
 export default {
   async fetch(
     request: Request,
@@ -71,7 +104,13 @@ export default {
 
     // ヘルスチェックエンドポイント（認証不要）
     if (url.pathname === "/health") {
-      return new Response("ok", { status: 200 });
+      const metrics = await getMetrics(env);
+      return jsonResponse({
+        status: "ok",
+        lbState: metrics.state,
+        koyebState: metrics.koyebState,
+        p95: calculateP95(metrics.latencies),
+      }, 200);
     }
 
     // MCPエンドポイントのみ処理
@@ -88,11 +127,7 @@ export default {
 
       // 2. Rate Limit チェック
       const clientIP = request.headers.get("CF-Connecting-IP") || "unknown";
-      const rateLimitResult = await checkRateLimit(
-        env,
-        clientIP,
-        authResult.userId
-      );
+      const rateLimitResult = await checkRateLimit(env, clientIP, authResult.userId);
       if (!rateLimitResult.allowed) {
         return jsonResponse(
           { error: "Rate limit exceeded", retryAfter: rateLimitResult.retryAfter },
@@ -101,29 +136,330 @@ export default {
         );
       }
 
-      // 3. バックエンド選択（ロードバランシング）
-      const backend = await selectBackend(env);
-      if (!backend) {
-        return jsonResponse({ error: "Service unavailable" }, 503);
-      }
-
-      // 4. プロキシ
-      return await proxyRequest(request, backend, authResult, env);
+      // 3. LBロジック + プロキシ
+      return await handleWithLB(request, authResult, env, ctx);
     } catch (error) {
       console.error("Gateway error:", error);
       return jsonResponse({ error: "Internal server error" }, 500);
     }
   },
 
-  // Scheduled handler for health checks
+  // Scheduled handler: Renderヘルスチェック（毎分）
   async scheduled(
     event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    ctx.waitUntil(performHealthChecks(env));
+    ctx.waitUntil(performScheduledHealthCheck(env));
   },
 };
+
+// === LB ロジック ===
+
+async function handleWithLB(
+  request: Request,
+  authResult: AuthResult,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  let metrics = await getMetrics(env);
+
+  // バックエンド選択
+  const backend = selectBackend(metrics, env);
+
+  // Koyeb起動が必要な場合（WARMUP状態でsleeping）
+  if (metrics.state === "WARMUP" && metrics.koyebState === "sleeping") {
+    ctx.waitUntil(wakeKoyeb(env));
+    metrics.koyebState = "waking";
+  }
+
+  // プロキシ実行
+  const start = Date.now();
+  let response: Response;
+  let latency: number;
+  let isFatal = false;
+  let is5xx = false;
+
+  try {
+    response = await fetchWithTimeout(
+      buildProxyRequest(request, backend, authResult, env),
+      FETCH_TIMEOUT_MS
+    );
+    latency = Date.now() - start;
+
+    if (response.status >= 500) {
+      is5xx = true;
+    }
+  } catch (error) {
+    // タイムアウトまたはfetch例外 → 致命指標
+    latency = Date.now() - start;
+    isFatal = true;
+    console.error("Fetch failed:", error);
+
+    // FAILOVERへ
+    if (metrics.koyebState === "ready" && backend.url !== env.KOYEB_URL) {
+      // Koyeb readyならリトライ
+      try {
+        response = await fetchWithTimeout(
+          buildProxyRequest(request, env.KOYEB_URL, authResult, env),
+          FETCH_TIMEOUT_MS
+        );
+      } catch (retryError) {
+        return jsonResponse(
+          { error: "Service unavailable", retryAfter: 30 },
+          503,
+          { "Retry-After": "30" }
+        );
+      }
+    } else if (metrics.koyebState !== "ready") {
+      // Koyeb not ready → 503 + Koyeb起動
+      ctx.waitUntil(wakeKoyeb(env));
+      return jsonResponse(
+        { error: "Service unavailable", retryAfter: 30 },
+        503,
+        { "Retry-After": "30" }
+      );
+    } else {
+      return jsonResponse(
+        { error: "Service unavailable" },
+        503
+      );
+    }
+  }
+
+  // メトリクス更新（非同期）
+  ctx.waitUntil(updateMetrics(env, latency, isFatal, is5xx));
+
+  // レスポンス返却
+  const responseHeaders = new Headers(response!.headers);
+  addCORSHeaders(responseHeaders);
+  responseHeaders.set("X-LB-State", metrics.state);
+  responseHeaders.set("X-Backend", backend.name);
+
+  return new Response(response!.body, {
+    status: response!.status,
+    statusText: response!.statusText,
+    headers: responseHeaders,
+  });
+}
+
+interface Backend {
+  url: string;
+  name: string;
+}
+
+function selectBackend(metrics: Metrics, env: Env): Backend {
+  switch (metrics.state) {
+    case "FAILOVER":
+      return { url: env.KOYEB_URL, name: "koyeb" };
+
+    case "BALANCE":
+      // 50/50
+      if (metrics.koyebState === "ready" && Math.random() < 0.5) {
+        return { url: env.KOYEB_URL, name: "koyeb" };
+      }
+      return { url: env.RENDER_URL, name: "render" };
+
+    case "WARMUP":
+    case "NORMAL":
+    default:
+      return { url: env.RENDER_URL, name: "render" };
+  }
+}
+
+// === メトリクス管理 ===
+
+async function getMetrics(env: Env): Promise<Metrics> {
+  const data = await env.HEALTH_STATE.get<Metrics>("metrics", "json");
+  return data || {
+    latencies: [],
+    state: "NORMAL",
+    koyebState: "sleeping",
+    error5xxCount: 0,
+    requestCount: 0,
+    lastUpdated: Date.now(),
+    renderHealthy: true,
+    koyebHealthy: true,
+  };
+}
+
+async function updateMetrics(
+  env: Env,
+  latency: number,
+  isFatal: boolean,
+  is5xx: boolean
+): Promise<void> {
+  const metrics = await getMetrics(env);
+
+  // レイテンシ追加（rolling window）
+  metrics.latencies.push(latency);
+  if (metrics.latencies.length > LATENCY_WINDOW_SIZE) {
+    metrics.latencies.shift();
+  }
+
+  // 5xxカウント（直近20req）
+  metrics.requestCount++;
+  if (is5xx) {
+    metrics.error5xxCount++;
+  }
+  if (metrics.requestCount > ERROR_WINDOW_SIZE) {
+    // 古いデータをリセット（簡易実装）
+    metrics.requestCount = 1;
+    metrics.error5xxCount = is5xx ? 1 : 0;
+  }
+
+  // 状態遷移
+  const p95 = calculateP95(metrics.latencies);
+  const prevState = metrics.state;
+
+  if (isFatal || !metrics.renderHealthy) {
+    // 致命指標 → FAILOVER
+    metrics.state = "FAILOVER";
+  } else {
+    // p95ベースの状態遷移（ヒステリシス考慮）
+    metrics.state = calculateNextState(prevState, p95);
+  }
+
+  metrics.lastUpdated = Date.now();
+  await env.HEALTH_STATE.put("metrics", JSON.stringify(metrics), {
+    expirationTtl: 3600,
+  });
+
+  // 補助指標ログ（5xx率が高い場合）
+  if (metrics.error5xxCount >= 2 && metrics.requestCount >= 10) {
+    console.warn(`High 5xx rate: ${metrics.error5xxCount}/${metrics.requestCount}`);
+  }
+}
+
+function calculateNextState(currentState: LBState, p95: number): LBState {
+  switch (currentState) {
+    case "NORMAL":
+      if (p95 >= THRESHOLDS.BALANCE) return "BALANCE";
+      if (p95 >= THRESHOLDS.WARMUP) return "WARMUP";
+      return "NORMAL";
+
+    case "WARMUP":
+      if (p95 >= THRESHOLDS.BALANCE) return "BALANCE";
+      if (p95 < THRESHOLDS.WARMUP_TO_NORMAL) return "NORMAL";
+      return "WARMUP";
+
+    case "BALANCE":
+      if (p95 < THRESHOLDS.BALANCE_TO_WARMUP) return "WARMUP";
+      return "BALANCE";
+
+    case "FAILOVER":
+      // FAILOVERからの復旧はヘルスチェックで行う
+      return "FAILOVER";
+
+    default:
+      return "NORMAL";
+  }
+}
+
+function calculateP95(latencies: number[]): number {
+  if (latencies.length === 0) return 0;
+
+  const sorted = [...latencies].sort((a, b) => a - b);
+  const index = Math.floor(sorted.length * 0.95);
+  return sorted[Math.min(index, sorted.length - 1)];
+}
+
+// === Koyeb 起動 ===
+
+async function wakeKoyeb(env: Env): Promise<void> {
+  const metrics = await getMetrics(env);
+
+  if (metrics.koyebState === "ready") {
+    return;
+  }
+
+  console.log("Waking up Koyeb...");
+  metrics.koyebState = "waking";
+  await env.HEALTH_STATE.put("metrics", JSON.stringify(metrics), {
+    expirationTtl: 3600,
+  });
+
+  try {
+    const response = await fetch(`${env.KOYEB_URL}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(60000), // コールドスタート待ち
+    });
+
+    if (response.ok) {
+      metrics.koyebState = "ready";
+      metrics.koyebHealthy = true;
+      console.log("Koyeb is ready");
+    } else {
+      metrics.koyebState = "sleeping";
+      metrics.koyebHealthy = false;
+    }
+  } catch (error) {
+    console.error("Failed to wake Koyeb:", error);
+    metrics.koyebState = "sleeping";
+    metrics.koyebHealthy = false;
+  }
+
+  await env.HEALTH_STATE.put("metrics", JSON.stringify(metrics), {
+    expirationTtl: 3600,
+  });
+}
+
+// === スケジュールヘルスチェック ===
+
+async function performScheduledHealthCheck(env: Env): Promise<void> {
+  const metrics = await getMetrics(env);
+
+  // Renderヘルスチェック（これがウォーム維持にもなる）
+  try {
+    const response = await fetch(`${env.RENDER_URL}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (response.ok) {
+      metrics.renderHealthy = true;
+      // FAILOVERから復旧
+      if (metrics.state === "FAILOVER") {
+        metrics.state = "NORMAL";
+        metrics.latencies = []; // リセット
+      }
+    } else {
+      metrics.renderHealthy = false;
+      metrics.state = "FAILOVER";
+    }
+  } catch (error) {
+    console.error("Render health check failed:", error);
+    metrics.renderHealthy = false;
+    metrics.state = "FAILOVER";
+  }
+
+  // Koyebが起動中なら状態確認
+  if (metrics.koyebState === "waking" || metrics.state === "BALANCE" || metrics.state === "FAILOVER") {
+    try {
+      const response = await fetch(`${env.KOYEB_URL}/health`, {
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (response.ok) {
+        metrics.koyebState = "ready";
+        metrics.koyebHealthy = true;
+      } else {
+        metrics.koyebHealthy = false;
+      }
+    } catch (error) {
+      // Koyebがスリープ中は失敗しても問題ない
+      if (metrics.state === "FAILOVER") {
+        console.log("Koyeb not responding in FAILOVER state, attempting wake...");
+      }
+    }
+  }
+
+  metrics.lastUpdated = Date.now();
+  await env.HEALTH_STATE.put("metrics", JSON.stringify(metrics), {
+    expirationTtl: 3600,
+  });
+}
 
 // === 認証 ===
 
@@ -136,16 +472,13 @@ async function authenticate(
     return null;
   }
 
-  // Bearer token
   if (authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
 
-    // API Key（mpt_*形式）
     if (token.startsWith("mpt_")) {
       return await verifyApiKey(token, env);
     }
 
-    // JWT
     return await verifyJWT(token, env);
   }
 
@@ -154,10 +487,7 @@ async function authenticate(
 
 async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
   try {
-    // JWKSを取得
     const jwks = jose.createRemoteJWKSet(new URL(env.SUPABASE_JWKS_URL));
-
-    // JWT検証
     const { payload } = await jose.jwtVerify(token, jwks, {
       issuer: `${env.SUPABASE_URL}/auth/v1`,
     });
@@ -183,32 +513,24 @@ async function verifyApiKey(
   env: Env
 ): Promise<AuthResult | null> {
   try {
-    const url = `${env.SUPABASE_URL}/rest/v1/rpc/validate_api_key`;
-    console.log("API Key verification URL:", url);
-    console.log("API Key (first 10 chars):", apiKey.substring(0, 10));
-
-    // Supabase RPCでAPI Key検証
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-      body: JSON.stringify({ p_api_key: apiKey, p_service: "mcpist" }),
-    });
-
-    console.log("Supabase RPC response status:", response.status);
+    const response = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/rpc/validate_api_key`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ p_api_key: apiKey, p_service: "mcpist" }),
+      }
+    );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Supabase RPC error:", errorText);
       return null;
     }
 
     const results: ApiKeyValidationResult[] = await response.json();
-    console.log("Supabase RPC result:", JSON.stringify(results));
-
     if (!results || results.length === 0 || !results[0].user_id) {
       return null;
     }
@@ -222,11 +544,6 @@ async function verifyApiKey(
 
 // === Rate Limit ===
 
-interface RateLimitResult {
-  allowed: boolean;
-  retryAfter?: number;
-}
-
 async function checkRateLimit(
   env: Env,
   clientIP: string,
@@ -234,7 +551,6 @@ async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const now = Math.floor(Date.now() / 1000);
 
-  // グローバルRate Limit（IP単位、分単位）
   const globalKey = `global:${clientIP}:${Math.floor(now / 60)}`;
   const globalCount = parseInt((await env.RATE_LIMIT.get(globalKey)) || "0");
   const globalMax = parseInt(env.RATE_LIMIT_GLOBAL_MAX || "1000");
@@ -243,7 +559,6 @@ async function checkRateLimit(
     return { allowed: false, retryAfter: 60 - (now % 60) };
   }
 
-  // Burst制限（ユーザー単位、秒単位）
   const burstKey = `burst:${userId}:${now}`;
   const burstCount = parseInt((await env.RATE_LIMIT.get(burstKey)) || "0");
   const burstMax = parseInt(env.RATE_LIMIT_BURST_MAX || "5");
@@ -252,153 +567,56 @@ async function checkRateLimit(
     return { allowed: false, retryAfter: 1 };
   }
 
-  // カウンター更新
   await Promise.all([
-    env.RATE_LIMIT.put(globalKey, String(globalCount + 1), {
-      expirationTtl: 120,
-    }),
+    env.RATE_LIMIT.put(globalKey, String(globalCount + 1), { expirationTtl: 120 }),
     env.RATE_LIMIT.put(burstKey, String(burstCount + 1), { expirationTtl: 60 }),
   ]);
 
   return { allowed: true };
 }
 
-// === ロードバランシング ===
-
-async function selectBackend(env: Env): Promise<Backend | null> {
-  const backends: Backend[] = [
-    {
-      url: env.BACKEND_PRIMARY_URL,
-      weight: parseInt(env.BACKEND_PRIMARY_WEIGHT || "50"),
-      healthy: true,
-    },
-    {
-      url: env.BACKEND_SECONDARY_URL,
-      weight: parseInt(env.BACKEND_SECONDARY_WEIGHT || "50"),
-      healthy: true,
-    },
-  ];
-
-  // ヘルス状態をKVから取得
-  for (const backend of backends) {
-    const stateKey = `health:${backend.url}`;
-    const state = await env.HEALTH_STATE.get<HealthState>(stateKey, "json");
-    if (state) {
-      backend.healthy = state.healthy;
-    }
-  }
-
-  // healthy なバックエンドのみフィルタ
-  const healthyBackends = backends.filter((b) => b.healthy);
-  if (healthyBackends.length === 0) {
-    // 全て unhealthy の場合、primary を試す
-    return backends[0];
-  }
-
-  // 重み付けランダム選択
-  const totalWeight = healthyBackends.reduce((sum, b) => sum + b.weight, 0);
-  let random = Math.random() * totalWeight;
-
-  for (const backend of healthyBackends) {
-    random -= backend.weight;
-    if (random <= 0) {
-      return backend;
-    }
-  }
-
-  return healthyBackends[0];
-}
-
 // === プロキシ ===
 
-async function proxyRequest(
+function buildProxyRequest(
   request: Request,
-  backend: Backend,
+  backend: string | Backend,
   authResult: AuthResult,
   env: Env
-): Promise<Response> {
+): Request {
+  const backendUrl = typeof backend === "string" ? backend : backend.url;
   const url = new URL(request.url);
-  const targetUrl = `${backend.url}${url.pathname}${url.search}`;
+  const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
 
-  // リクエストヘッダーを複製
   const headers = new Headers(request.headers);
-
-  // X-User-ID 付与
   headers.set("X-User-ID", authResult.userId);
   headers.set("X-Auth-Type", authResult.type);
 
-  // Gateway Secret 付与（オリジン直接アクセス防止）
   if (env.GATEWAY_SECRET) {
     headers.set("X-Gateway-Secret", env.GATEWAY_SECRET);
   }
 
-  // Authorization ヘッダーを削除（オリジンには渡さない）
   headers.delete("Authorization");
 
-  // プロキシリクエスト
-  const proxyRequest = new Request(targetUrl, {
+  return new Request(targetUrl, {
     method: request.method,
     headers,
     body: request.body,
     redirect: "manual",
   });
-
-  const response = await fetch(proxyRequest);
-
-  // レスポンスヘッダーを複製してCORSを付与
-  const responseHeaders = new Headers(response.headers);
-  addCORSHeaders(responseHeaders);
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: responseHeaders,
-  });
 }
 
-// === ヘルスチェック ===
+async function fetchWithTimeout(
+  request: Request,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-async function performHealthChecks(env: Env): Promise<void> {
-  const backends = [
-    { url: env.BACKEND_PRIMARY_URL, name: "primary" },
-    { url: env.BACKEND_SECONDARY_URL, name: "secondary" },
-  ];
-
-  for (const backend of backends) {
-    const stateKey = `health:${backend.url}`;
-    let state: HealthState = (await env.HEALTH_STATE.get(stateKey, "json")) || {
-      healthy: true,
-      failureCount: 0,
-      lastCheck: 0,
-    };
-
-    try {
-      const response = await fetch(`${backend.url}/health`, {
-        method: "GET",
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (response.ok) {
-        state = { healthy: true, failureCount: 0, lastCheck: Date.now() };
-      } else {
-        state.failureCount++;
-        state.lastCheck = Date.now();
-        if (state.failureCount >= 3) {
-          state.healthy = false;
-        }
-      }
-    } catch (error) {
-      state.failureCount++;
-      state.lastCheck = Date.now();
-      if (state.failureCount >= 3) {
-        state.healthy = false;
-      }
-      console.error(`Health check failed for ${backend.name}:`, error);
-    }
-
-    await env.HEALTH_STATE.put(stateKey, JSON.stringify(state), {
-      expirationTtl: 300,
-    });
+  try {
+    const response = await fetch(request, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
