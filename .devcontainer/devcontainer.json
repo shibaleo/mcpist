@@ -44,7 +44,8 @@
         "ms-azuretools.vscode-docker",
         "hashicorp.terraform",
         "redhat.vscode-yaml",
-        "GitHub.copilot"
+        "GitHub.copilot",
+        "anthropic.claude-code"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",

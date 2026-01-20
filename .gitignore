@@ -2,6 +2,7 @@
 # AI assistant files
 .claude
 .mcp.json
+nul
 
 # wrangler
 *.wrangler
