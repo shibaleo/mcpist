@@ -38,7 +38,7 @@ interface Env {
   // Supabase設定
   SUPABASE_URL: string;
   SUPABASE_JWKS_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_ANON_KEY: string;
 
   // Rate Limit設定
   RATE_LIMIT_GLOBAL_MAX: string;
@@ -105,11 +105,19 @@ export default {
     // ヘルスチェックエンドポイント（認証不要）
     if (url.pathname === "/health") {
       const metrics = await getMetrics(env);
+      const weights = getTrafficWeights(metrics.state, metrics.koyebState);
       return jsonResponse({
         status: "ok",
-        lbState: metrics.state,
-        koyebState: metrics.koyebState,
-        p95: calculateP95(metrics.latencies),
+        traffic: {
+          primary: weights.primary,
+          failover: weights.failover,
+        },
+        failoverServerState: metrics.koyebState,
+        p95Latency: calculateP95(metrics.latencies),
+        backends: {
+          primary: { healthy: metrics.renderHealthy },
+          failover: { healthy: metrics.koyebHealthy },
+        },
       }, 200);
     }
 
@@ -122,6 +130,7 @@ export default {
       // 1. 認証（JWT or API Key）
       const authResult = await authenticate(request, env);
       if (!authResult) {
+        console.error("Authentication failed: No valid credentials");
         return jsonResponse({ error: "Unauthorized" }, 401);
       }
 
@@ -364,6 +373,25 @@ function calculateP95(latencies: number[]): number {
   return sorted[Math.min(index, sorted.length - 1)];
 }
 
+function getTrafficWeights(
+  state: LBState,
+  koyebState: KoyebState
+): { primary: number; failover: number } {
+  switch (state) {
+    case "FAILOVER":
+      return { primary: 0, failover: 100 };
+    case "BALANCE":
+      if (koyebState === "ready") {
+        return { primary: 50, failover: 50 };
+      }
+      return { primary: 100, failover: 0 };
+    case "WARMUP":
+    case "NORMAL":
+    default:
+      return { primary: 100, failover: 0 };
+  }
+}
+
 // === Koyeb 起動 ===
 
 async function wakeKoyeb(env: Env): Promise<void> {
@@ -469,6 +497,7 @@ async function authenticate(
 ): Promise<AuthResult | null> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
+    console.log("No Authorization header found");
     return null;
   }
 
@@ -476,12 +505,15 @@ async function authenticate(
     const token = authHeader.slice(7);
 
     if (token.startsWith("mpt_")) {
+      console.log("Attempting API Key authentication");
       return await verifyApiKey(token, env);
     }
 
+    console.log("Attempting JWT authentication");
     return await verifyJWT(token, env);
   }
 
+  console.log("Authorization header does not start with Bearer");
   return null;
 }
 
@@ -513,28 +545,34 @@ async function verifyApiKey(
   env: Env
 ): Promise<AuthResult | null> {
   try {
+    console.log(`Verifying API key with Supabase: ${env.SUPABASE_URL}`);
     const response = await fetch(
       `${env.SUPABASE_URL}/rest/v1/rpc/validate_api_key`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+          apikey: env.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ p_api_key: apiKey, p_service: "mcpist" }),
       }
     );
 
     if (!response.ok) {
+      console.error(`API Key validation failed: ${response.status} ${response.statusText}`);
+      const text = await response.text();
+      console.error(`Response body: ${text}`);
       return null;
     }
 
     const results: ApiKeyValidationResult[] = await response.json();
     if (!results || results.length === 0 || !results[0].user_id) {
+      console.error("API Key validation returned no valid user_id");
       return null;
     }
 
+    console.log(`API Key validated successfully for user: ${results[0].user_id}`);
     return { userId: results[0].user_id, type: "api_key" };
   } catch (error) {
     console.error("API Key verification failed:", error);
