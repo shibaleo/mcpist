@@ -4,14 +4,13 @@
  * GET /api/auth/authorize
  *
  * This endpoint:
- * 1. Validates the authorization request parameters
- * 2. Checks if user is logged in via Supabase Auth
- * 3. If not logged in, redirects to login page
- * 4. If logged in, redirects to consent page
+ * - Production: Redirects to Supabase OAuth Server
+ * - Development: Uses custom implementation (validates params, checks login, redirects to consent)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { useSupabaseOAuthServer } from '@/lib/env'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -27,7 +26,7 @@ export async function GET(request: NextRequest) {
   // Optional parameters
   const scope = searchParams.get('scope') || 'openid profile'
 
-  // Validate required parameters
+  // Validate required parameters (same for both environments)
   if (responseType !== 'code') {
     return errorResponse(redirectUri, 'unsupported_response_type', 'Only response_type=code is supported', state)
   }
@@ -52,10 +51,30 @@ export async function GET(request: NextRequest) {
     return errorResponse(redirectUri, 'invalid_request', 'state is required', state)
   }
 
-  // TODO: Validate client_id and redirect_uri against registered clients
-  // For now, allow any client_id for development
+  // Production: Redirect to Supabase OAuth Server
+  if (useSupabaseOAuthServer) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!supabaseUrl) {
+      return NextResponse.json({ error: 'server_error', error_description: 'SUPABASE_URL not configured' }, { status: 500 })
+    }
 
-  // Check if user is logged in using request cookies (same pattern as middleware)
+    const supabaseAuthUrl = new URL(`${supabaseUrl}/auth/v1/authorize`)
+    supabaseAuthUrl.searchParams.set('response_type', 'code')
+    supabaseAuthUrl.searchParams.set('client_id', clientId)
+    supabaseAuthUrl.searchParams.set('redirect_uri', redirectUri)
+    supabaseAuthUrl.searchParams.set('code_challenge', codeChallenge)
+    supabaseAuthUrl.searchParams.set('code_challenge_method', codeChallengeMethod)
+    supabaseAuthUrl.searchParams.set('scope', scope)
+    supabaseAuthUrl.searchParams.set('state', state)
+
+    console.log('[authorize] Production: Redirecting to Supabase OAuth Server')
+    return NextResponse.redirect(supabaseAuthUrl.toString())
+  }
+
+  // Development: Custom implementation
+  console.log('[authorize] Development: Using custom OAuth implementation')
+
+  // Check if user is logged in using request cookies
   const allCookies = request.cookies.getAll()
   console.log('[authorize] Cookies:', allCookies.map(c => c.name))
 
@@ -96,13 +115,13 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     // Redirect to login page with return URL to consent page
-    const consentUrl = baseUrl + '/auth/consent?request=' + encodedAuthRequest
+    const consentUrl = baseUrl + '/oauth/consent?request=' + encodedAuthRequest
     const loginUrl = baseUrl + '/login?returnTo=' + encodeURIComponent(consentUrl)
     return NextResponse.redirect(loginUrl)
   }
 
   // User is logged in, redirect to consent page
-  const consentUrl = baseUrl + '/auth/consent?request=' + encodedAuthRequest
+  const consentUrl = baseUrl + '/oauth/consent?request=' + encodedAuthRequest
   return NextResponse.redirect(consentUrl)
 }
 

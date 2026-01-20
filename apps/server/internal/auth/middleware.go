@@ -46,9 +46,6 @@ func NewMiddleware(cfg Config) *Middleware {
 // NewMiddlewareFromEnv creates middleware from environment variables
 func NewMiddlewareFromEnv() *Middleware {
 	supabaseURL := os.Getenv("SUPABASE_URL")
-	if supabaseURL == "" {
-		supabaseURL = "http://localhost:54321"
-	}
 
 	return NewMiddleware(Config{
 		JWKSURL:  supabaseURL + "/auth/v1/.well-known/jwks.json",
@@ -159,9 +156,6 @@ func (m *Middleware) validateToken(token string) (string, error) {
 // validateAPIKey validates an API Key by calling Supabase RPC
 func (m *Middleware) validateAPIKey(apiKey string) (string, error) {
 	supabaseURL := os.Getenv("SUPABASE_URL")
-	if supabaseURL == "" {
-		supabaseURL = "http://localhost:54321"
-	}
 	serviceKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
 	if serviceKey == "" {
 		return "", fmt.Errorf("SUPABASE_SERVICE_ROLE_KEY not configured")
@@ -297,9 +291,6 @@ func (m *Middleware) verifySignature(message, signature string, pubKey *rsa.Publ
 // writeUnauthorizedResponse writes a 401 response with WWW-Authenticate header
 func (m *Middleware) writeUnauthorizedResponse(w http.ResponseWriter) {
 	consoleURL := os.Getenv("CONSOLE_URL")
-	if consoleURL == "" {
-		consoleURL = "http://localhost:3000"
-	}
 	resourceMetadataURL := consoleURL + "/.well-known/oauth-protected-resource"
 
 	w.Header().Set("Content-Type", "application/json")

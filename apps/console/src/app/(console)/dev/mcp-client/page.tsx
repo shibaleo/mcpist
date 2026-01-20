@@ -62,7 +62,7 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 export default function McpClientPage() {
-  const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://localhost:8089')
+  const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://localhost:8787')
   const [consoleUrl, setConsoleUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
   const [logs, setLogs] = useState<string[]>([])
   const [protectedResource, setProtectedResource] = useState<ProtectedResourceMetadata | null>(null)

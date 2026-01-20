@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"sync"
 
+	"mcpist/server/internal/entitlement"
 	"mcpist/server/internal/modules"
 )
 
 type Handler struct {
-	sessions map[string]*Session
-	mu       sync.RWMutex
+	sessions         map[string]*Session
+	mu               sync.RWMutex
+	entitlementStore *entitlement.Store
 }
 
 type Session struct {
@@ -25,9 +27,10 @@ type Session struct {
 	messages chan []byte
 }
 
-func NewHandler() *Handler {
+func NewHandler(store *entitlement.Store) *Handler {
 	return &Handler{
-		sessions: make(map[string]*Session),
+		sessions:         make(map[string]*Session),
+		entitlementStore: store,
 	}
 }
 
@@ -126,7 +129,7 @@ func (h *Handler) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received request: method=%s id=%v session=%s", req.Method, req.ID, sessionID)
 
-	result, rpcErr := h.processRequest(&req)
+	result, rpcErr := h.processRequest(r.Context(), &req)
 	if rpcErr != nil {
 		h.sendToSession(session, req.ID, rpcErr)
 	} else if req.ID != nil {
@@ -153,7 +156,7 @@ func (h *Handler) handleInlineMessage(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received inline request: method=%s id=%v", req.Method, req.ID)
 
-	result, rpcErr := h.processRequest(&req)
+	result, rpcErr := h.processRequest(r.Context(), &req)
 
 	w.Header().Set("Content-Type", "application/json")
 	var resp Response
@@ -185,7 +188,7 @@ func (h *Handler) sendResultToSession(session *Session, id interface{}, result i
 	}
 }
 
-func (h *Handler) processRequest(req *Request) (interface{}, *Error) {
+func (h *Handler) processRequest(ctx context.Context, req *Request) (interface{}, *Error) {
 	switch req.Method {
 	case "initialize":
 		return h.handleInitialize(req), nil
@@ -194,7 +197,7 @@ func (h *Handler) processRequest(req *Request) (interface{}, *Error) {
 	case "tools/list":
 		return h.handleToolsList(), nil
 	case "tools/call":
-		return h.handleToolCall(req)
+		return h.handleToolCall(ctx, req)
 	default:
 		return nil, &Error{Code: MethodNotFound, Message: "Method not found"}
 	}
@@ -218,7 +221,7 @@ func (h *Handler) handleToolsList() *ToolsListResult {
 	return &ToolsListResult{Tools: modules.MetaTools()}
 }
 
-func (h *Handler) handleToolCall(req *Request) (*ToolCallResult, *Error) {
+func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallResult, *Error) {
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		return nil, &Error{Code: InvalidParams, Message: "Invalid params"}
@@ -233,9 +236,9 @@ func (h *Handler) handleToolCall(req *Request) (*ToolCallResult, *Error) {
 	case "get_module_schema":
 		return h.handleGetModuleSchema(params.Arguments)
 	case "call":
-		return h.handleCall(params.Arguments)
+		return h.handleCall(ctx, params.Arguments)
 	case "batch":
-		return h.handleBatch(params.Arguments)
+		return h.handleBatch(ctx, params.Arguments)
 	default:
 		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("Unknown tool: %s", params.Name)}
 	}
@@ -255,7 +258,7 @@ func (h *Handler) handleGetModuleSchema(args map[string]interface{}) (*ToolCallR
 	return result, nil
 }
 
-func (h *Handler) handleCall(args map[string]interface{}) (*ToolCallResult, *Error) {
+func (h *Handler) handleCall(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
 	moduleName, ok := args["module"].(string)
 	if !ok {
 		return nil, &Error{Code: InvalidParams, Message: "module must be a string"}
@@ -271,23 +274,57 @@ func (h *Handler) handleCall(args map[string]interface{}) (*ToolCallResult, *Err
 		params = make(map[string]interface{})
 	}
 
-	result, err := modules.Call(context.Background(), moduleName, toolName, params)
+	// Check module access authorization
+	authCtx := entitlement.GetAuthContext(ctx)
+	if authCtx != nil {
+		if err := authCtx.CanAccessTool(moduleName, toolName, h.entitlementStore); err != nil {
+			authErr, ok := err.(*entitlement.AuthError)
+			if ok {
+				return nil, &Error{Code: InvalidRequest, Message: authErr.Message}
+			}
+			return nil, &Error{Code: InvalidRequest, Message: err.Error()}
+		}
+	}
+
+	result, err := modules.Call(ctx, moduleName, toolName, params)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
+	}
+
+	// Track usage after successful call
+	if authCtx != nil {
+		if err := authCtx.ConsumeUsage(h.entitlementStore); err != nil {
+			log.Printf("Failed to track usage: %v", err)
+		}
+		// Consume credits if credit-based
+		if err := authCtx.ConsumeCredits(h.entitlementStore, moduleName, toolName, ""); err != nil {
+			log.Printf("Failed to consume credits: %v", err)
+		}
 	}
 
 	return result, nil
 }
 
-func (h *Handler) handleBatch(args map[string]interface{}) (*ToolCallResult, *Error) {
+func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
 	commands, ok := args["commands"].(string)
 	if !ok {
 		return nil, &Error{Code: InvalidParams, Message: "commands must be a string"}
 	}
 
-	result, err := modules.Batch(context.Background(), commands)
+	// Note: Batch authorization is handled per-command inside modules.Batch
+	// We pass context so individual commands can be checked
+
+	result, err := modules.Batch(ctx, commands)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
+	}
+
+	// Track usage after successful batch
+	authCtx := entitlement.GetAuthContext(ctx)
+	if authCtx != nil {
+		if err := authCtx.ConsumeUsage(h.entitlementStore); err != nil {
+			log.Printf("Failed to track batch usage: %v", err)
+		}
 	}
 
 	return result, nil

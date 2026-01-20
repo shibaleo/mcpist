@@ -7,9 +7,15 @@ echo "=== MCPist Devcontainer Post-Create Setup ==="
 # 0. Fix permissions
 # ----------------------------------------
 echo "[0/5] Fixing permissions..."
-# Fix workspace permissions (exclude node_modules)
-sudo find /workspace -maxdepth 1 ! -name 'node_modules' -exec chown vscode:vscode {} \;
-sudo chown -R vscode:vscode /workspace/apps /workspace/packages /workspace/supabase /workspace/.devcontainer 2>/dev/null || true
+# Remove node_modules created on Windows host (permission issues)
+if [ -d /workspace/node_modules ]; then
+    echo "Removing existing node_modules (fixing permission issues)..."
+    sudo rm -rf /workspace/node_modules
+fi
+# Also clean nested node_modules in apps
+sudo rm -rf /workspace/apps/*/node_modules 2>/dev/null || true
+# Fix workspace permissions
+sudo chown -R vscode:vscode /workspace
 # Fix Go module cache permissions
 sudo mkdir -p /home/vscode/go/pkg/mod/cache
 sudo chown -R vscode:vscode /home/vscode/go

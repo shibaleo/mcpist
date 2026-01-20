@@ -26,15 +26,15 @@ export default function McpConnectionPage() {
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false)
 
   // Verification state
-  const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8089")
+  const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8787")
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])
   const [verifyLogs, setVerifyLogs] = useState<string[]>([])
   const [testApiKey, setTestApiKey] = useState<string>("")
 
-  // MCPエンドポイント: サブドメイン + パス方式
-  // mcp.mcpist.app/mcp - 同一サーバーでMCPとRESTを区別
-  const mcpBaseUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8089"
+  // MCPエンドポイント: Worker経由でアクセス
+  // Worker (8787) が認証・Rate Limit・LBを処理してGo Server (8089)にプロキシ
+  const mcpBaseUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8787"
   const endpoint = `${mcpBaseUrl}/mcp`
 
   // Check existing API Key on mount

@@ -6,9 +6,11 @@ nul
 
 # wrangler
 *.wrangler
+.dev.vars
 
-# Supabase branches
+# Supabase local
 supabase/.branches
+supabase/.snippets
 
 # Documatation
 *.vitepress

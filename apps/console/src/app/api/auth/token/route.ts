@@ -6,6 +6,9 @@
  * Supports:
  * - authorization_code grant (with PKCE verification)
  * - refresh_token grant (TODO)
+ *
+ * Production: Proxies to Supabase OAuth Server
+ * Development: Uses custom implementation
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -13,8 +16,57 @@ import { consumeAuthorizationCode } from '../lib/codes'
 import { verifyPKCE } from '../lib/pkce'
 import { signJWT } from '../lib/jwt'
 import { createClient } from '@supabase/supabase-js'
+import { useSupabaseOAuthServer, getOAuthTokenUrl } from '@/lib/env'
 
 export async function POST(request: NextRequest) {
+  // Production: Proxy to Supabase OAuth Server
+  if (useSupabaseOAuthServer) {
+    return proxyToSupabaseOAuthServer(request)
+  }
+
+  // Development: Custom implementation
+  return handleCustomTokenEndpoint(request)
+}
+
+/**
+ * Proxy token request to Supabase OAuth Server
+ */
+async function proxyToSupabaseOAuthServer(request: NextRequest): Promise<NextResponse> {
+  const tokenUrl = getOAuthTokenUrl()
+
+  console.log('[token] Production: Proxying to Supabase OAuth Server:', tokenUrl)
+
+  try {
+    const body = await request.text()
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': request.headers.get('content-type') || 'application/x-www-form-urlencoded',
+      },
+      body,
+    })
+
+    const data = await response.json()
+
+    return NextResponse.json(data, {
+      status: response.status,
+      headers: {
+        'Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+      },
+    })
+  } catch (error) {
+    console.error('[token] Error proxying to Supabase OAuth Server:', error)
+    return errorResponse('server_error', 'Failed to communicate with OAuth server')
+  }
+}
+
+/**
+ * Custom token endpoint implementation (for development)
+ */
+async function handleCustomTokenEndpoint(request: NextRequest): Promise<NextResponse> {
+  console.log('[token] Development: Using custom token endpoint')
   // Token endpoint accepts application/x-www-form-urlencoded
   const contentType = request.headers.get('content-type')
 
@@ -91,8 +143,8 @@ async function handleAuthorizationCodeGrant(params: URLSearchParams): Promise<Ne
   const { data: userData } = await supabase.auth.admin.getUserById(codeData.user_id)
   const email = userData?.user?.email
 
-  // Generate JWT
-  const mcpServerUrl = process.env.MCP_SERVER_URL || 'http://localhost:8089'
+  // Generate JWT - audience is the Worker URL (API Gateway)
+  const mcpServerUrl = process.env.MCP_SERVER_URL || 'http://localhost:8787'
   const accessToken = await signJWT({
     sub: codeData.user_id,
     aud: mcpServerUrl,
