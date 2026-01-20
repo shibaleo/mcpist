@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/joho/godotenv"
-	"mcpist/server/internal/auth"
+	"mcpist/server/internal/entitlement"
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
@@ -15,13 +14,8 @@ import (
 )
 
 func init() {
-	// Load .env for local development
-	// Try multiple paths for flexibility
-	_ = godotenv.Load(".env")           // Current directory
-	_ = godotenv.Load("../../.env")     // From cmd/server/
-	_ = godotenv.Load("../../../.env")  // From apps/server/ to monorepo root
-
 	// Register modules
+	// Environment variables are loaded via dotenv-cli in package.json scripts
 	modules.RegisterModule(notion.New())
 }
 
@@ -45,8 +39,9 @@ func main() {
 	log.Printf("Registered modules: %v", modules.ListModules())
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
 
-	// Initialize auth middleware
-	authMiddleware := auth.NewMiddlewareFromEnv()
+	// Initialize entitlement store and authorizer
+	entitlementStore := entitlement.NewStore()
+	authorizer := entitlement.NewAuthorizer(entitlementStore)
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -56,9 +51,11 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","instance":"%s","region":"%s"}`, instanceID, instanceRegion)
 	})
 
-	// MCP endpoint with CORS and auth middleware
-	mcpHandler := mcp.NewHandler()
-	http.Handle("/mcp", middleware.CORS(authMiddleware.Authenticate(mcpHandler)))
+	// MCP endpoint with CORS and authorization middleware
+	// Note: Authentication is handled by Cloudflare Worker, not Go Server
+	// Worker sets X-User-ID and X-Gateway-Secret headers
+	mcpHandler := mcp.NewHandler(entitlementStore)
+	http.Handle("/mcp", middleware.CORS(authorizer.Authorize(mcpHandler)))
 
 	log.Printf("Starting MCP server on port %s", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil); err != nil {

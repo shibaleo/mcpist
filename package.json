@@ -4,11 +4,11 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "supabase start && concurrently \"pnpm dev:console\" \"pnpm dev:server\" \"pnpm dev:worker\"",
+    "start": "supabase start && concurrently \"pnpm start:console\" \"pnpm start:server\" \"pnpm start:worker\"",
     "stop": "supabase stop",
-    "dev:console": "pnpm --filter @mcpist/console dev",
-    "dev:server": "cd apps/server && go run ./cmd/server",
-    "dev:worker": "pnpm --filter @mcpist/worker dev",
+    "start:console": "dotenv -v PORT=3000 -e .env.local -- pnpm --filter @mcpist/console dev",
+    "start:server": "dotenv -e .env.local -- go run -C apps/server ./cmd/server",
+    "start:worker": "pnpm --filter @mcpist/worker dev",
     "dev:docker": "supabase start && docker compose up -d --build",
     "stop:docker": "docker compose down && supabase stop",
     "docs:dev": "pnpm --filter @mcpist/docs dev",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@stoplight/prism-cli": "^5.14.2",
     "concurrently": "^9.2.1",
+    "dotenv-cli": "^8.0.0",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3"
   }

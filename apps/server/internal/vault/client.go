@@ -19,10 +19,6 @@ var (
 func initConfig() {
 	once.Do(func() {
 		baseURL = os.Getenv("VAULT_URL")
-		if baseURL == "" {
-			// Default to Console API endpoint
-			baseURL = "http://localhost:3000/api"
-		}
 		internalServiceKey = os.Getenv("INTERNAL_SERVICE_KEY")
 	})
 }

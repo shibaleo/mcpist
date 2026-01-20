@@ -8,7 +8,8 @@
 import { NextResponse } from 'next/server'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-const MCP_SERVER_URL = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://localhost:8089'
+// Worker URL (API Gateway) - クライアントはWorker経由でMCP Serverにアクセス
+const MCP_SERVER_URL = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://localhost:8787'
 
 export async function GET() {
   const metadata = {

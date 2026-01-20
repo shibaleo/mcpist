@@ -130,7 +130,6 @@ export default {
       // 1. 認証（JWT or API Key）
       const authResult = await authenticate(request, env);
       if (!authResult) {
-        console.error("Authentication failed: No valid credentials");
         return jsonResponse({ error: "Unauthorized" }, 401);
       }
 
@@ -497,23 +496,21 @@ async function authenticate(
 ): Promise<AuthResult | null> {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    console.log("No Authorization header found");
     return null;
   }
 
   if (authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
 
+    // API Key (mpt_xxx format)
     if (token.startsWith("mpt_")) {
-      console.log("Attempting API Key authentication");
       return await verifyApiKey(token, env);
     }
 
-    console.log("Attempting JWT authentication");
+    // JWT (Supabase issued)
     return await verifyJWT(token, env);
   }
 
-  console.log("Authorization header does not start with Bearer");
   return null;
 }
 
@@ -545,7 +542,6 @@ async function verifyApiKey(
   env: Env
 ): Promise<AuthResult | null> {
   try {
-    console.log(`Verifying API key with Supabase: ${env.SUPABASE_URL}`);
     const response = await fetch(
       `${env.SUPABASE_URL}/rest/v1/rpc/validate_api_key`,
       {
@@ -560,22 +556,17 @@ async function verifyApiKey(
     );
 
     if (!response.ok) {
-      console.error(`API Key validation failed: ${response.status} ${response.statusText}`);
-      const text = await response.text();
-      console.error(`Response body: ${text}`);
       return null;
     }
 
     const results: ApiKeyValidationResult[] = await response.json();
     if (!results || results.length === 0 || !results[0].user_id) {
-      console.error("API Key validation returned no valid user_id");
       return null;
     }
 
-    console.log(`API Key validated successfully for user: ${results[0].user_id}`);
     return { userId: results[0].user_id, type: "api_key" };
   } catch (error) {
-    console.error("API Key verification failed:", error);
+    console.error("API Key verification error:", error);
     return null;
   }
 }
