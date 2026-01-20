@@ -5,7 +5,7 @@
 | 項目 | 値 |
 |------|-----|
 | Status | `draft` |
-| Version | v1.0 (DAY8) |
+| Version | v1.1 (Sprint-002) |
 | Note | Infrastructure Specification |
 
 ---
@@ -25,11 +25,10 @@
 
 | インフラコンポーネント | サービス | 役割 |
 |----------------------|----------|------|
-| API Gateway | Cloudflare Worker | JWT検証、Burst制限、DDoS対策 |
-| Load Balancer | Cloudflare LB | ヘルスチェック、フェイルオーバー |
-| KVキャッシュ | Cloudflare KV | Rate Limitカウンター |
-| Primary Server | Koyeb | MCPサーバー（Primary） |
-| Standby Server | Fly.io | MCPサーバー（Standby） |
+| API Gateway | Cloudflare Worker | JWT検証、API Key検証、Rate Limit、LB |
+| KVキャッシュ | Cloudflare KV | Rate Limitカウンター、ヘルス状態 |
+| Primary Server | Render | MCPサーバー（Primary） |
+| Failover Server | Koyeb | MCPサーバー（Failover） |
 | Database | Supabase PostgreSQL | ENT, TVLのデータストア |
 | Secret Store | Supabase Vault | OAuthトークン暗号化保存 |
 | Auth Provider | Supabase Auth | OAuth 2.1認証 |
@@ -73,12 +72,12 @@ Phase 1で必要なコンポーネントを検討し、採用/除外を決定し
 |---------------------|------|-------------|
 | MCP Client | CLT | 実装範囲外（Claude Code等） |
 | Auth Server | AUS | Supabase Auth |
-| MCP Server | SRV | Koyeb (Primary) / Fly.io (Standby) |
+| MCP Server | SRV | Render (Primary) / Koyeb (Failover) |
 | Auth Middleware | AMW | SRV内部 |
 | MCP Handler | HDL | SRV内部 |
 | Module Registry | REG | SRV内部 |
 | Modules | MOD | SRV内部 |
-| Entitlement Store | ENT | Supabase PostgreSQL (public スキーマ) |
+| Entitlement Store | ENT | Supabase PostgreSQL (mcpist スキーマ) |
 | Token Vault | TVL | Supabase PostgreSQL + Vault |
 | User Console | CON | Vercel |
 | External API Server | EXT | 実装範囲外（Notion API等） |
@@ -124,23 +123,25 @@ Phase 1で必要なコンポーネントを検討し、採用/除外を決定し
 │                           Cloudflare                                         │
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │                    Worker (API Gateway)                                 │ │
+│  │                    Worker (API Gateway + LB)                            │ │
 │  │                                                                         │ │
-│  │  1. JWT署名検証（未登録ユーザー遮断）                                  │ │
-│  │  2. グローバルRate Limit（IP単位、DDoS対策）                           │ │
-│  │  3. Burst制限（ユーザー単位）                                          │ │
-│  │  4. X-User-ID付与 → オリジンに転送                                     │ │
+│  │  1. JWT署名検証 / API Key検証（Supabase RPC経由）                      │ │
+│  │  2. グローバルRate Limit（IP単位: 1000 req/min）                       │ │
+│  │  3. Burst制限（ユーザー単位: 5 req/sec）                               │ │
+│  │  4. X-User-ID, X-Auth-Type, X-Gateway-Secret付与                       │ │
+│  │  5. p95レイテンシベースLB（NORMAL/WARMUP/BALANCE/FAILOVER）            │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                                    │                                         │
 │                    ┌───────────────┴───────────────┐                        │
-│                    │      Load Balancer            │                        │
-│                    │   (ヘルスチェック + フェイルオーバー)                   │
+│                    │         KV Store              │                        │
+│                    │   - Rate Limitカウンター      │                        │
+│                    │   - ヘルス状態・メトリクス    │                        │
 │                    └───────────────┬───────────────┘                        │
 │                          ┌─────────┴─────────┐                              │
 │                          ▼                   ▼                              │
 │                    ┌──────────┐        ┌──────────┐                         │
-│                    │  Koyeb   │        │  Fly.io  │                         │
-│                    │ (Primary)│        │(Standby) │                         │
+│                    │  Render  │        │  Koyeb   │                         │
+│                    │ (Primary)│        │(Failover)│                         │
 │                    └────┬─────┘        └────┬─────┘                         │
 │                         └─────────┬─────────┘                               │
 └───────────────────────────────────┼─────────────────────────────────────────┘
@@ -154,7 +155,7 @@ Phase 1で必要なコンポーネントを検討し、採用/除外を決定し
 │  │                 │  │                 │  │                 │             │
 │  │  • OAuth 2.1    │  │  • ENT tables   │  │ • oauth_tokens  │             │
 │  │  • JWT発行      │  │  • TVL tables   │  │ • vault.secrets │             │
-│  │  • JWKS公開     │  │                 │  │ (暗号化保存)     │             │
+│  │  • JWKS公開     │  │  • API Key検証  │  │ (暗号化保存)     │             │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -198,23 +199,55 @@ Phase 1で必要なコンポーネントを検討し、採用/除外を決定し
 
 ---
 
-## フェイルオーバー
+## フェイルオーバー（p95レイテンシベースLB）
 
-### ヘルスチェック
+### LB状態遷移
 
-| 対象 | 間隔 | 判定 |
+Worker内でp95レイテンシ（直近50req rolling window）に基づいて状態遷移する。
+
+```
+                        p95 レイテンシ
+                             │
+    ┌────────────────────────┼────────────────────────┐
+    │                        │                        │
+  p95 < 300ms           300ms ≤ p95 < 600ms       p95 ≥ 600ms
+    │                        │                        │
+    ▼                        ▼                        ▼
+┌─────────┐            ┌──────────┐            ┌──────────┐
+│ NORMAL  │            │ WARMUP   │            │ BALANCE  │
+│         │            │          │            │          │
+│ Render  │            │ Render   │            │ Render   │
+│  100%   │            │  100%    │            │  50%     │
+│         │            │          │            │          │
+│ Koyeb   │            │ Koyeb    │            │ Koyeb    │
+│ (sleep) │            │ (起動中)  │            │  50%     │
+└─────────┘            └──────────┘            └──────────┘
+```
+
+### 状態遷移ルール
+
+| 現状態 | 条件 | 次状態 |
+|--------|------|--------|
+| NORMAL | p95 ≥ 600ms | BALANCE |
+| NORMAL | p95 ≥ 300ms | WARMUP |
+| WARMUP | p95 ≥ 600ms | BALANCE |
+| WARMUP | p95 < 300ms | NORMAL |
+| BALANCE | p95 < 500ms | WARMUP |
+
+### 致命指標（即座にFAILOVER）
+
+| 指標 | 条件 |
+|------|------|
+| タイムアウト | 3秒超過 |
+| ヘルスチェック | /health 失敗 |
+| fetch例外 | ネットワークエラー |
+
+### ヘルスチェック（Scheduled）
+
+| 対象 | 間隔 | 目的 |
 |------|------|------|
-| Koyeb /health | 30秒 | 3回連続失敗 → unhealthy |
-| Fly.io /health | 30秒 | 3回連続失敗 → unhealthy |
-
-### 切替ロジック
-
-```
-Koyeb: healthy,  Fly.io: healthy  → Primary (Koyeb) にルーティング
-Koyeb: unhealthy, Fly.io: healthy  → 自動フェイルオーバー (Fly.io)
-Koyeb: healthy,  Fly.io: unhealthy → Koyeb にルーティング（問題なし）
-Koyeb: unhealthy, Fly.io: unhealthy → エラーページ + アラート
-```
+| Render /health | 毎分 | ウォーム維持 + 状態確認 |
+| Koyeb /health | 毎分 | BALANCE/FAILOVER時のみ確認 |
 
 ---
 
@@ -265,8 +298,8 @@ Worker経由でない直接アクセスを防止する。
 ```
 GitHub Push (main)
     │
+    ├─→ Render: 自動デプロイ（GitHub連携）
     ├─→ Koyeb: 自動デプロイ（GitHub連携）
-    ├─→ Fly.io: GitHub Actions経由
     └─→ Cloudflare Worker: wrangler deploy
 ```
 
@@ -274,8 +307,8 @@ GitHub Push (main)
 
 | テスト | 期待結果 |
 |--------|----------|
+| Render + SECRET | 200 |
 | Koyeb + SECRET | 200 |
-| Fly.io + SECRET | 200 |
 | Worker経由 | 200 |
 | 直接（SECRETなし） | 403 |
 
@@ -285,8 +318,8 @@ GitHub Push (main)
 
 | サービス | プラン | コスト |
 |----------|--------|--------|
+| Render | 無料枠（Starter） | $0 |
 | Koyeb | nano（永年無料） | $0 |
-| Fly.io | 無料枠 | $0 |
 | Supabase | 無料枠 | $0 |
 | Cloudflare | 無料枠 | $0 |
 | Grafana Cloud | 無料枠 | $0 |
