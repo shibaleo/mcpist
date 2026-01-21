@@ -87,6 +87,57 @@ pnpm dev:docker   # Start with Docker
 pnpm stop:docker  # Stop Docker containers
 ```
 
+### Traefik mode (Domain-based routing)
+
+Production-like local development with `*.localhost` domains via Traefik reverse proxy.
+
+#### Default mode (Console / Server development)
+
+For standard application development:
+
+```bash
+pnpm dev:traefik      # Start with single API server
+pnpm stop:traefik     # Stop containers
+pnpm logs:traefik     # View logs
+```
+
+**Endpoints:**
+| URL | Service |
+|-----|---------|
+| http://console.localhost | Console (Next.js) |
+| http://mcp.localhost | MCP Gateway (Worker) |
+| http://api.localhost | API Server (Go) |
+| http://localhost:8080 | Traefik Dashboard |
+
+#### Infra mode (Cloudflare Worker / Multi-server development)
+
+For infrastructure development with multi-server configuration (simulates Render + Koyeb):
+
+```bash
+pnpm dev:traefik:infra   # Start with primary + secondary API servers
+pnpm stop:traefik        # Stop containers
+```
+
+**Endpoints:**
+| URL | Service |
+|-----|---------|
+| http://console.localhost | Console (Next.js) |
+| http://mcp.localhost | MCP Gateway (Worker) |
+| http://api.localhost/primary/* | Primary API Server (Render equivalent) |
+| http://api.localhost/secondary/* | Secondary API Server (Koyeb equivalent) |
+| http://localhost:8080 | Traefik Dashboard |
+
+**Health check examples:**
+```bash
+# Default mode
+curl http://api.localhost/health
+
+# Infra mode
+curl http://api.localhost/primary/health
+curl http://api.localhost/secondary/health
+curl http://mcp.localhost/health  # Shows backend status
+```
+
 ### Available Scripts
 
 | Command | Description |
@@ -95,6 +146,10 @@ pnpm stop:docker  # Stop Docker containers
 | `pnpm stop` | Stop Supabase |
 | `pnpm dev:docker` | Start with Docker Compose |
 | `pnpm stop:docker` | Stop Docker containers |
+| `pnpm dev:traefik` | Start with Traefik (default mode) |
+| `pnpm dev:traefik:infra` | Start with Traefik (infra mode, multi-server) |
+| `pnpm stop:traefik` | Stop Traefik containers |
+| `pnpm logs:traefik` | View Traefik container logs |
 | `pnpm build` | Build all apps |
 | `pnpm lint` | Lint all apps |
 | `pnpm test` | Run tests |

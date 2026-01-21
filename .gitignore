@@ -170,6 +170,9 @@ go.work
 go.work.sum
 vendor/
 
+# Air (Go hot reload)
+apps/server/tmp/
+
 # Supabase
 supabase/.temp/
 

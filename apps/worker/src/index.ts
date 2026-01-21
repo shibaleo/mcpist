@@ -105,18 +105,47 @@ export default {
     // ヘルスチェックエンドポイント（認証不要）
     if (url.pathname === "/health") {
       const metrics = await getMetrics(env);
+
+      // リアルタイムでバックエンドの状態をチェック（順次実行で相互影響を防ぐ）
+      const primaryResult = await checkBackendHealth(env.RENDER_URL);
+      const secondaryResult = await checkBackendHealth(env.KOYEB_URL);
+
+      // メトリクスを更新
+      metrics.renderHealthy = primaryResult.healthy;
+      metrics.koyebHealthy = secondaryResult.healthy;
+      if (secondaryResult.healthy) {
+        metrics.koyebState = "ready";
+      } else {
+        metrics.koyebState = "sleeping";
+      }
+
       const weights = getTrafficWeights(metrics.state, metrics.koyebState);
+
+      // バックエンド情報を構築（エラー詳細を含む）
+      const buildBackendInfo = (result: HealthCheckResult) => {
+        const info: {
+          healthy: boolean;
+          error?: HealthCheckError;
+          statusCode?: number;
+          latencyMs?: number;
+        } = { healthy: result.healthy };
+        if (result.error) info.error = result.error;
+        if (result.statusCode) info.statusCode = result.statusCode;
+        if (result.latencyMs !== undefined) info.latencyMs = result.latencyMs;
+        return info;
+      };
+
       return jsonResponse({
         status: "ok",
         traffic: {
           primary: weights.primary,
-          failover: weights.failover,
+          secondary: weights.failover,
         },
-        failoverServerState: metrics.koyebState,
+        secondaryServerState: metrics.koyebState,
         p95Latency: calculateP95(metrics.latencies),
         backends: {
-          primary: { healthy: metrics.renderHealthy },
-          failover: { healthy: metrics.koyebHealthy },
+          primary: buildBackendInfo(primaryResult),
+          secondary: buildBackendInfo(secondaryResult),
         },
       }, 200);
     }
@@ -389,6 +418,100 @@ function getTrafficWeights(
     default:
       return { primary: 100, failover: 0 };
   }
+}
+
+// === バックエンドヘルスチェック（リアルタイム） ===
+
+type HealthCheckError =
+  | "timeout"
+  | "dns_failure"
+  | "connection_refused"
+  | "ssl_error"
+  | "http_error"
+  | "unknown";
+
+interface HealthCheckResult {
+  healthy: boolean;
+  error?: HealthCheckError;
+  statusCode?: number;
+  latencyMs?: number;
+}
+
+async function checkBackendHealth(url: string): Promise<HealthCheckResult> {
+  const healthUrl = `${url}/health`;
+  const startTime = Date.now();
+  console.log(`[HealthCheck] Checking: ${healthUrl}`);
+
+  try {
+    const response = await fetch(healthUrl, {
+      method: "GET",
+      signal: AbortSignal.timeout(3000),
+    });
+    const latencyMs = Date.now() - startTime;
+    console.log(`[HealthCheck] ${healthUrl} -> ${response.status} (${latencyMs}ms)`);
+
+    if (response.ok) {
+      return { healthy: true, statusCode: response.status, latencyMs };
+    }
+    return {
+      healthy: false,
+      error: "http_error",
+      statusCode: response.status,
+      latencyMs,
+    };
+  } catch (error) {
+    const latencyMs = Date.now() - startTime;
+    const errorType = classifyError(error);
+    console.error(`[HealthCheck] ${healthUrl} -> Error (${errorType}):`, error);
+    return { healthy: false, error: errorType, latencyMs };
+  }
+}
+
+function classifyError(error: unknown): HealthCheckError {
+  if (!(error instanceof Error)) {
+    return "unknown";
+  }
+
+  const message = error.message.toLowerCase();
+  const name = error.name;
+
+  // タイムアウト
+  if (name === "TimeoutError" || message.includes("timeout") || message.includes("aborted")) {
+    return "timeout";
+  }
+
+  // DNS解決失敗（workerdの内部エラーも含む）
+  if (
+    message.includes("dns") ||
+    message.includes("enotfound") ||
+    message.includes("getaddrinfo") ||
+    message.includes("name resolution") ||
+    message.includes("internal error")  // workerd内部エラー（DNS解決失敗時に発生）
+  ) {
+    return "dns_failure";
+  }
+
+  // 接続拒否
+  if (
+    message.includes("econnrefused") ||
+    message.includes("connection refused") ||
+    message.includes("network connection lost")
+  ) {
+    return "connection_refused";
+  }
+
+  // SSL/TLSエラー（具体的なSSLエラーのみ）
+  if (
+    message.includes("ssl handshake") ||
+    message.includes("tls handshake") ||
+    message.includes("certificate expired") ||
+    message.includes("self signed certificate") ||
+    message.includes("unable to verify")
+  ) {
+    return "ssl_error";
+  }
+
+  return "unknown";
 }
 
 // === Koyeb 起動 ===

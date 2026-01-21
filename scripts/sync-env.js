@@ -17,6 +17,10 @@ const MODULE_ENV_MAP = {
   'apps/worker/.dev.vars': [
     'GATEWAY_SECRET',
     'SUPABASE_ANON_KEY',
+    'RENDER_URL',
+    'KOYEB_URL',
+    'SUPABASE_URL',
+    'SUPABASE_JWKS_URL',
   ],
 };
 
