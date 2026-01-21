@@ -1,30 +1,37 @@
 /**
- * JWKS (JSON Web Key Set) Endpoint
+ * JWKS (JSON Web Key Set) Endpoint (Proxy)
  *
  * GET /api/auth/jwks
  *
- * Returns the public keys used to verify JWTs issued by MCPist Auth Server.
- * MCP Server uses this to verify access tokens.
+ * This endpoint proxies to the appropriate OAuth server:
+ * - Production: Supabase JWKS
+ * - Development: OAuth Mock Server
  */
 
 import { NextResponse } from 'next/server'
-import { getJWKS } from '../lib/jwt'
+import { getOAuthServerInternalUrl } from '@/lib/env'
 
 export async function GET() {
-  try {
-    const jwks = await getJWKS()
+  const oauthServerUrl = getOAuthServerInternalUrl()
+  const jwksUrl = `${oauthServerUrl}/jwks`
 
-    return NextResponse.json(jwks, {
+  console.log(`[jwks] Proxying to OAuth server: ${jwksUrl}`)
+
+  try {
+    const response = await fetch(jwksUrl)
+    const data = await response.json()
+
+    return NextResponse.json(data, {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'public, max-age=3600',
         'Access-Control-Allow-Origin': '*',
       },
     })
   } catch (error) {
-    console.error('Failed to generate JWKS:', error)
+    console.error('[jwks] Error proxying to OAuth server:', error)
     return NextResponse.json(
-      { error: 'Failed to generate JWKS' },
+      { error: 'Failed to fetch JWKS' },
       { status: 500 }
     )
   }

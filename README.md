@@ -80,11 +80,7 @@ This starts:
 
 ### Docker mode (Domain-based routing)
 
-Production-like local development with `*.localhost` domains via Traefik reverse proxy.
-
-#### Default mode (Console / Server development)
-
-For standard application development with single API server:
+Production-like local development with `*.localhost` domains via nginx reverse proxy.
 
 ```bash
 pnpm dev:docker       # Start containers
@@ -96,37 +92,18 @@ pnpm logs:docker      # View logs
 | URL | Service |
 |-----|---------|
 | http://console.localhost | Console (Next.js) |
+| http://oauth.localhost | OAuth Server |
 | http://mcp.localhost | MCP Gateway (Worker) |
-| http://api.localhost | API Server (Go) |
-| http://localhost:8080 | Traefik Dashboard |
-
-#### Infra mode (Multi-server development)
-
-For infrastructure development with primary + secondary API servers:
-
-```bash
-pnpm dev:docker:infra   # Start with primary + secondary API servers
-pnpm stop:docker        # Stop containers
-```
-
-**Endpoints:**
-| URL | Service |
-|-----|---------|
-| http://console.localhost | Console (Next.js) |
-| http://mcp.localhost | MCP Gateway (Worker) |
+| http://api.localhost | API Server (Go) - default to primary |
 | http://api.localhost/primary/* | Primary API Server |
 | http://api.localhost/secondary/* | Secondary API Server |
-| http://localhost:8080 | Traefik Dashboard |
 
 **Health check examples:**
 ```bash
-# Default mode
 curl http://api.localhost/health
-
-# Infra mode
 curl http://api.localhost/primary/health
 curl http://api.localhost/secondary/health
-curl http://mcp.localhost/health  # Shows backend status
+curl http://mcp.localhost/health
 ```
 
 ### Available Scripts
@@ -135,8 +112,7 @@ curl http://mcp.localhost/health  # Shows backend status
 |---------|-------------|
 | `pnpm dev` | Start Supabase + Console + Server (local) |
 | `pnpm stop` | Stop Supabase |
-| `pnpm dev:docker` | Start with Docker (default mode) |
-| `pnpm dev:docker:infra` | Start with Docker (infra mode, multi-server) |
+| `pnpm dev:docker` | Start with Docker (domain-based routing) |
 | `pnpm stop:docker` | Stop Docker containers |
 | `pnpm logs:docker` | View Docker container logs |
 | `pnpm build` | Build all apps |

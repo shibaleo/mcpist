@@ -7,19 +7,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { createClient } from "@/lib/supabase/client"
 import { CheckCircle2, Shield, AlertCircle, Loader2 } from "lucide-react"
 
-interface AuthRequest {
+interface AuthorizationDetails {
+  id: string
   client_id: string
   redirect_uri: string
-  code_challenge: string
-  code_challenge_method: string
   scope: string
-  state: string
+  state: string | null
 }
 
 export default function ConsentPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [authRequest, setAuthRequest] = useState<AuthRequest | null>(null)
+  const [authDetails, setAuthDetails] = useState<AuthorizationDetails | null>(null)
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -27,35 +26,55 @@ export default function ConsentPage() {
 
   useEffect(() => {
     const init = async () => {
-      // Parse auth request from query params
-      const requestParam = searchParams.get("request")
-      if (!requestParam) {
+      // Get authorization_id from query params (Supabase OAuth Server compatible)
+      const authorizationId = searchParams.get("authorization_id")
+
+      if (!authorizationId) {
         setError("認可リクエストが見つかりません")
         setLoading(false)
         return
       }
 
-      try {
-        const decoded = JSON.parse(atob(requestParam))
-        setAuthRequest(decoded)
-      } catch {
-        setError("認可リクエストの解析に失敗しました")
-        setLoading(false)
-        return
-      }
-
-      // Check user session
+      // Check user session first
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        // Redirect to login
+        // Redirect to login with return URL
         const currentUrl = window.location.href
         router.push(`/login?returnTo=${encodeURIComponent(currentUrl)}`)
         return
       }
 
       setUser({ id: user.id, email: user.email ?? null })
+
+      // Fetch authorization details from OAuth server
+      try {
+        const oauthServerUrl = process.env.NEXT_PUBLIC_OAUTH_SERVER_URL || 'http://oauth.localhost'
+        const response = await fetch(`${oauthServerUrl}/authorization/${authorizationId}`)
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          setError(errorData.error_description || "認可リクエストの取得に失敗しました")
+          setLoading(false)
+          return
+        }
+
+        const details = await response.json()
+        setAuthDetails({
+          id: details.id,
+          client_id: details.client_id,
+          redirect_uri: details.redirect_uri,
+          scope: details.scope,
+          state: details.state,
+        })
+      } catch (err) {
+        console.error("Failed to fetch authorization details:", err)
+        setError("認可サーバーとの通信に失敗しました")
+        setLoading(false)
+        return
+      }
+
       setLoading(false)
     }
 
@@ -63,33 +82,35 @@ export default function ConsentPage() {
   }, [searchParams, router])
 
   const handleApprove = async () => {
-    if (!authRequest || !user) return
+    if (!authDetails || !user) return
 
     setSubmitting(true)
     setError(null)
 
     try {
-      // Call API to generate authorization code
-      const response = await fetch("/api/auth/consent", {
+      const authorizationId = searchParams.get("authorization_id")
+      const oauthServerUrl = process.env.NEXT_PUBLIC_OAUTH_SERVER_URL || 'http://oauth.localhost'
+
+      // Call OAuth server to approve
+      const response = await fetch(`${oauthServerUrl}/authorization/${authorizationId}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...authRequest,
-          user_id: user.id,
-        }),
+        body: JSON.stringify({ user_id: user.id }),
       })
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || "Failed to generate authorization code")
+        throw new Error(data.error_description || "認可の承認に失敗しました")
       }
 
-      const { code } = await response.json()
+      const { code, redirect_uri, state } = await response.json()
 
       // Redirect back to client with authorization code
-      const redirectUrl = new URL(authRequest.redirect_uri)
+      const redirectUrl = new URL(redirect_uri)
       redirectUrl.searchParams.set("code", code)
-      redirectUrl.searchParams.set("state", authRequest.state)
+      if (state) {
+        redirectUrl.searchParams.set("state", state)
+      }
 
       window.location.href = redirectUrl.toString()
     } catch (err) {
@@ -98,14 +119,39 @@ export default function ConsentPage() {
     }
   }
 
-  const handleDeny = () => {
-    if (!authRequest) return
+  const handleDeny = async () => {
+    if (!authDetails) return
 
-    // Redirect back with error
-    const redirectUrl = new URL(authRequest.redirect_uri)
+    const authorizationId = searchParams.get("authorization_id")
+
+    try {
+      const oauthServerUrl = process.env.NEXT_PUBLIC_OAUTH_SERVER_URL || 'http://oauth.localhost'
+      const response = await fetch(`${oauthServerUrl}/authorization/${authorizationId}/deny`, {
+        method: "POST",
+      })
+
+      if (response.ok) {
+        const { redirect_uri, state } = await response.json()
+        const redirectUrl = new URL(redirect_uri)
+        redirectUrl.searchParams.set("error", "access_denied")
+        redirectUrl.searchParams.set("error_description", "User denied the request")
+        if (state) {
+          redirectUrl.searchParams.set("state", state)
+        }
+        window.location.href = redirectUrl.toString()
+        return
+      }
+    } catch (err) {
+      console.error("Failed to deny authorization:", err)
+    }
+
+    // Fallback: redirect with error using local data
+    const redirectUrl = new URL(authDetails.redirect_uri)
     redirectUrl.searchParams.set("error", "access_denied")
     redirectUrl.searchParams.set("error_description", "User denied the request")
-    redirectUrl.searchParams.set("state", authRequest.state)
+    if (authDetails.state) {
+      redirectUrl.searchParams.set("state", authDetails.state)
+    }
 
     window.location.href = redirectUrl.toString()
   }
@@ -118,7 +164,7 @@ export default function ConsentPage() {
     )
   }
 
-  if (error && !authRequest) {
+  if (error && !authDetails) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -132,7 +178,7 @@ export default function ConsentPage() {
     )
   }
 
-  const scopes = authRequest?.scope.split(" ") || []
+  const scopes = authDetails?.scope.split(" ") || []
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -146,7 +192,7 @@ export default function ConsentPage() {
           <div>
             <CardTitle className="text-xl">アクセス許可の確認</CardTitle>
             <CardDescription className="mt-2">
-              <span className="font-medium text-foreground">{authRequest?.client_id === "mcpist-console" ? "MCPist" : authRequest?.client_id}</span>
+              <span className="font-medium text-foreground">{authDetails?.client_id === "mcpist-console" ? "MCPist" : authDetails?.client_id}</span>
               {" "}があなたのアカウントへのアクセスを要求しています
             </CardDescription>
           </div>

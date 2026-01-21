@@ -1,55 +1,33 @@
 services:
   # =============================================================================
-  # Traefik Reverse Proxy
+  # nginx Reverse Proxy
   # =============================================================================
-  # default プロファイル用 Traefik
-  traefik:
-    image: traefik:v3.3
-    container_name: mcpist-traefik
-    profiles: ["default"]
-    command:
-      - "--api.insecure=true"
-      - "--api.dashboard=true"
-      - "--providers.file.directory=/etc/traefik/dynamic"
-      - "--providers.file.watch=true"
-      - "--entrypoints.web.address=:80"
-      - "--log.level=INFO"
+  nginx:
+    image: nginx:alpine
+    container_name: mcpist-nginx
     ports:
       - "80:80"
-      - "8080:8080"
     volumes:
-      - ./traefik/default:/etc/traefik/dynamic:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
-      - mcpist
+      mcpist:
+        aliases:
+          - console.localhost
+          - oauth.localhost
+          - mcp.localhost
+          - api.localhost
 
-  # infra プロファイル用 Traefik
-  traefik-infra:
-    image: traefik:v3.3
-    container_name: mcpist-traefik-infra
-    profiles: ["infra"]
-    command:
-      - "--api.insecure=true"
-      - "--api.dashboard=true"
-      - "--providers.file.directory=/etc/traefik/dynamic"
-      - "--providers.file.watch=true"
-      - "--entrypoints.web.address=:80"
-      - "--log.level=INFO"
-    ports:
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - ./traefik/infra:/etc/traefik/dynamic:ro
-    networks:
-      - mcpist
-
+  # =============================================================================
+  # Console (Next.js)
+  # =============================================================================
   console:
     build:
       context: ./apps/console
       dockerfile: Dockerfile.dev
     container_name: mcpist-console
-    profiles: ["default", "infra"]
     environment:
       - PORT=3000
+      - ENVIRONMENT=development
       - NEXT_PUBLIC_APP_URL=http://console.localhost
       - NEXT_PUBLIC_MCP_SERVER_URL=http://mcp.localhost
       - NEXT_PUBLIC_SUPABASE_URL=http://host.docker.internal:54321
@@ -58,6 +36,7 @@ services:
       - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY}
       - MCP_SERVER_URL=http://mcp.localhost
       - CONSOLE_URL=http://console.localhost
+      - OAUTH_SERVER_URL=http://oauth.localhost
     volumes:
       - ./apps/console:/app
       - /app/node_modules
@@ -66,92 +45,69 @@ services:
       - mcpist
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - nginx
+
+  # =============================================================================
+  # OAuth Mock Server (開発環境用)
+  # =============================================================================
+  oauth:
+    build:
+      context: ./apps/oauth
+      dockerfile: Dockerfile.dev
+    container_name: mcpist-oauth
+    environment:
+      - PORT=4000
+      - OAUTH_SERVER_URL=http://oauth.localhost
+      - SUPABASE_URL=http://host.docker.internal:54321
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - CONSOLE_URL=http://console.localhost
+      - MCP_SERVER_URL=http://mcp.localhost
+    volumes:
+      - ./apps/oauth:/app
+      - /app/node_modules
+    networks:
+      - mcpist
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # =============================================================================
   # Worker (Cloudflare Workers エミュレーション)
   # =============================================================================
-  # 通常開発: server を参照
-  # infra 開発: server-primary, server-secondary を参照
   worker:
     build:
       context: ./apps/worker
       dockerfile: Dockerfile.dev
     container_name: mcpist-worker
-    profiles: ["default"]
     environment:
       - GATEWAY_SECRET=${GATEWAY_SECRET}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - PRIMARY_API_URL=http://server:8089
-      - SECONDARY_API_URL=http://server:8089
+      - PRIMARY_API_URL=http://api.localhost/primary
+      - SECONDARY_API_URL=http://api.localhost/secondary
       - SUPABASE_URL=http://host.docker.internal:54321
       - SUPABASE_JWKS_URL=http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
-    networks:
-      - mcpist
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  # infra 開発用 Worker（マルチサーバー構成）
-  worker-infra:
-    build:
-      context: ./apps/worker
-      dockerfile: Dockerfile.dev
-    container_name: mcpist-worker-infra
-    profiles: ["infra"]
-    environment:
-      - GATEWAY_SECRET=${GATEWAY_SECRET}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - PRIMARY_API_URL=http://server-primary:8089
-      - SECONDARY_API_URL=http://server-secondary:8089
-      - SUPABASE_URL=http://host.docker.internal:54321
-      - SUPABASE_JWKS_URL=http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
+      - OAUTH_JWKS_URL=http://oauth.localhost/jwks
     networks:
       - mcpist
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
   # =============================================================================
-  # API Server (通常開発用 - シングルサーバー)
-  # =============================================================================
-  server:
-    build:
-      context: ./apps/server
-      dockerfile: Dockerfile.dev
-    container_name: mcpist-server
-    profiles: ["default"]
-    environment:
-      - PORT=8089
-      - SUPABASE_URL=http://host.docker.internal:54321
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - CONSOLE_URL=http://console.localhost
-      - GATEWAY_SECRET=${GATEWAY_SECRET}
-      - VAULT_URL=http://console:3000/api
-      - INSTANCE_ID=local-docker
-      - INSTANCE_REGION=local
-    volumes:
-      - ./apps/server:/app
-    networks:
-      - mcpist
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  # =============================================================================
-  # API Server (infra 開発用 - マルチサーバー)
+  # API Server (マルチサーバー構成)
   # =============================================================================
   # Primary (Render 相当)
-  # api.localhost/primary/* → server-primary
   server-primary:
     build:
       context: ./apps/server
       dockerfile: Dockerfile.dev
     container_name: mcpist-server-primary
-    profiles: ["infra"]
     environment:
       - PORT=8089
       - SUPABASE_URL=http://host.docker.internal:54321
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - CONSOLE_URL=http://console.localhost
       - GATEWAY_SECRET=${GATEWAY_SECRET}
-      - VAULT_URL=http://console:3000/api
+      - VAULT_URL=http://console.localhost/api
       - INSTANCE_ID=local-primary
       - INSTANCE_REGION=render
     volumes:
@@ -162,20 +118,18 @@ services:
       - "host.docker.internal:host-gateway"
 
   # Secondary (Koyeb 相当)
-  # api.localhost/secondary/* → server-secondary
   server-secondary:
     build:
       context: ./apps/server
       dockerfile: Dockerfile.dev
     container_name: mcpist-server-secondary
-    profiles: ["infra"]
     environment:
       - PORT=8089
       - SUPABASE_URL=http://host.docker.internal:54321
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - CONSOLE_URL=http://console.localhost
       - GATEWAY_SECRET=${GATEWAY_SECRET}
-      - VAULT_URL=http://console:3000/api
+      - VAULT_URL=http://console.localhost/api
       - INSTANCE_ID=local-secondary
       - INSTANCE_REGION=koyeb
     volumes:

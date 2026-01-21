@@ -40,6 +40,9 @@ interface Env {
   SUPABASE_JWKS_URL: string;
   SUPABASE_ANON_KEY: string;
 
+  // OAuth Mock Server (開発環境用)
+  OAUTH_JWKS_URL?: string;
+
   // Rate Limit設定
   RATE_LIMIT_GLOBAL_MAX: string;
   RATE_LIMIT_BURST_MAX: string;
@@ -638,6 +641,7 @@ async function authenticate(
 }
 
 async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
+  // 1. Try Supabase JWKS first
   try {
     const jwks = jose.createRemoteJWKSet(new URL(env.SUPABASE_JWKS_URL));
     const { payload } = await jose.jwtVerify(token, jwks, {
@@ -650,10 +654,30 @@ async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
     }
 
     return { userId, type: "jwt" };
-  } catch (error) {
-    console.error("JWT verification failed:", error);
-    return null;
+  } catch (supabaseError) {
+    console.log("Supabase JWT verification failed, trying OAuth Mock Server...");
   }
+
+  // 2. Try OAuth Mock Server JWKS (development)
+  if (env.OAUTH_JWKS_URL) {
+    try {
+      const oauthJwks = jose.createRemoteJWKSet(new URL(env.OAUTH_JWKS_URL));
+      // OAuth Mock Server doesn't set issuer claim, so skip issuer verification
+      const { payload } = await jose.jwtVerify(token, oauthJwks);
+
+      const userId = payload.sub;
+      if (!userId) {
+        return null;
+      }
+
+      console.log("JWT verified via OAuth Mock Server");
+      return { userId, type: "jwt" };
+    } catch (oauthError) {
+      console.error("OAuth Mock Server JWT verification also failed:", oauthError);
+    }
+  }
+
+  return null;
 }
 
 interface ApiKeyValidationResult {
