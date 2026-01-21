@@ -4,6 +4,7 @@
  *
  * ルートの .env.local から各モジュールに必要な環境変数を配布する
  * - apps/worker/.dev.vars: Wranglerのシークレット
+ * - apps/console/.env.local: Next.jsの環境変数
  */
 
 const fs = require('fs');
@@ -17,10 +18,20 @@ const MODULE_ENV_MAP = {
   'apps/worker/.dev.vars': [
     'GATEWAY_SECRET',
     'SUPABASE_ANON_KEY',
-    'RENDER_URL',
-    'KOYEB_URL',
     'SUPABASE_URL',
-    'SUPABASE_JWKS_URL',
+  ],
+  'apps/console/.env.local': [
+    'ENVIRONMENT',
+    'NEXT_PUBLIC_APP_URL',
+    'NEXT_PUBLIC_MCP_SERVER_URL',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'INTERNAL_SERVICE_KEY',
+    'MCP_SERVER_URL',
+    'CONSOLE_URL',
+    'VAULT_URL',
   ],
 };
 

@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Play } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+type TestStep = {
+  name: string
+  status: 'pending' | 'running' | 'success' | 'error'
+  message?: string
+}
 
 /**
  * OAuth 2.1 Callback Page
@@ -17,6 +24,12 @@ export default function CallbackPage() {
   const router = useRouter()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('認可コードを処理中...')
+  const isProcessingRef = useRef(false)
+
+  // MCP Connection Test state
+  const [isTesting, setIsTesting] = useState(false)
+  const [testSteps, setTestSteps] = useState<TestStep[]>([])
+  const [testComplete, setTestComplete] = useState(false)
 
   const code = searchParams.get('code')
   const state = searchParams.get('state')
@@ -24,10 +37,38 @@ export default function CallbackPage() {
   const errorDescription = searchParams.get('error_description')
 
   useEffect(() => {
+    // Prevent double execution in React Strict Mode
+    // Check both ref (for same render cycle) and sessionStorage (for re-mounts)
+    if (isProcessingRef.current) {
+      console.log('[OAuth Callback] Already processing (ref check)')
+      return
+    }
+
+    // Check if this specific code was already processed - do this SYNCHRONOUSLY before setting ref
+    if (code) {
+      const processedCode = sessionStorage.getItem('oauth_processed_code')
+      if (processedCode === code) {
+        console.log('[OAuth Callback] Code already processed:', code.substring(0, 8) + '...')
+        // Already processed this code, check if we have a token
+        const existingToken = sessionStorage.getItem('mcp_access_token')
+        if (existingToken) {
+          setStatus('success')
+          setMessage('')
+        }
+        return
+      }
+      // Mark this code as being processed IMMEDIATELY (synchronous)
+      sessionStorage.setItem('oauth_processed_code', code)
+      console.log('[OAuth Callback] Marked code as processing:', code.substring(0, 8) + '...')
+    }
+
+    isProcessingRef.current = true
+
     const processCallback = async () => {
       if (error) {
         setStatus('error')
         setMessage(`${error}: ${errorDescription || '認可に失敗しました'}`)
+        sessionStorage.removeItem('oauth_processed_code')
         return
       }
 
@@ -42,6 +83,7 @@ export default function CallbackPage() {
       if (state !== storedState) {
         setStatus('error')
         setMessage('state が一致しません（CSRF攻撃の可能性）')
+        sessionStorage.removeItem('oauth_processed_code')
         return
       }
 
@@ -50,6 +92,7 @@ export default function CallbackPage() {
       if (!verifier) {
         setStatus('error')
         setMessage('code_verifier が見つかりません')
+        sessionStorage.removeItem('oauth_processed_code')
         return
       }
 
@@ -88,20 +131,128 @@ export default function CallbackPage() {
         setStatus('success')
         setMessage('')
 
-        // Clean up sessionStorage
+        // Clean up sessionStorage (keep oauth_processed_code to prevent re-processing)
         sessionStorage.removeItem('oauth_state')
         sessionStorage.removeItem('oauth_verifier')
 
-        // Store token for MCP connection page
+        // Store token data for MCP connection page
+        // Calculate expiration time (current time + expires_in seconds)
+        const expiresAt = Date.now() + (tokenData.expires_in || 3600) * 1000
         sessionStorage.setItem('mcp_access_token', tokenData.access_token)
+        sessionStorage.setItem('mcp_refresh_token', tokenData.refresh_token || '')
+        sessionStorage.setItem('mcp_token_expires_at', String(expiresAt))
+        sessionStorage.setItem('mcp_token_scope', tokenData.scope || '')
       } catch (err) {
         setStatus('error')
         setMessage(String(err))
+        // Remove processed code marker on error so user can retry with new code
+        sessionStorage.removeItem('oauth_processed_code')
       }
     }
 
     processCallback()
-  }, [code, state, error, errorDescription])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const updateTestStep = useCallback((index: number, update: Partial<TestStep>) => {
+    setTestSteps((prev) =>
+      prev.map((step, i) => (i === index ? { ...step, ...update } : step))
+    )
+  }, [])
+
+  // MCP Connection Test using the obtained OAuth token
+  const testMcpConnection = async () => {
+    const accessToken = sessionStorage.getItem('mcp_access_token')
+    if (!accessToken) {
+      return
+    }
+
+    setIsTesting(true)
+    setTestComplete(false)
+    setTestSteps([
+      { name: 'MCP Server 接続', status: 'pending' },
+      { name: 'initialize', status: 'pending' },
+      { name: 'tools/list', status: 'pending' },
+    ])
+
+    const mcpServerUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://mcp.localhost'
+    const mcpEndpoint = `${mcpServerUrl}/mcp`
+
+    // Step 1: Connect to MCP Server
+    updateTestStep(0, { status: 'running' })
+    try {
+      const response = await fetch(mcpEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2025-03-26',
+            capabilities: {},
+            clientInfo: { name: 'MCPist Console', version: '1.0.0' },
+          },
+        }),
+      })
+
+      if (response.status === 401) {
+        updateTestStep(0, { status: 'error', message: '認証失敗 (401)' })
+        setIsTesting(false)
+        setTestComplete(true)
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Status: ${response.status}`)
+      }
+
+      updateTestStep(0, { status: 'success', message: '接続成功' })
+
+      // Step 2: Check initialize response
+      updateTestStep(1, { status: 'running' })
+      const initData = await response.json()
+      if (initData.result) {
+        updateTestStep(1, { status: 'success', message: `v${initData.result.protocolVersion}` })
+      } else if (initData.error) {
+        updateTestStep(1, { status: 'error', message: initData.error.message })
+        setIsTesting(false)
+        setTestComplete(true)
+        return
+      }
+
+      // Step 3: Get tools/list
+      updateTestStep(2, { status: 'running' })
+      const toolsRes = await fetch(mcpEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/list',
+        }),
+      })
+
+      const toolsData = await toolsRes.json()
+      if (toolsData.result) {
+        const toolCount = toolsData.result.tools?.length || 0
+        updateTestStep(2, { status: 'success', message: `${toolCount} tools` })
+      } else if (toolsData.error) {
+        updateTestStep(2, { status: 'error', message: toolsData.error.message })
+      }
+    } catch (err) {
+      updateTestStep(0, { status: 'error', message: String(err) })
+    }
+
+    setIsTesting(false)
+    setTestComplete(true)
+  }
 
   return (
     <div className="p-6 flex items-center justify-center min-h-[60vh]">
@@ -129,6 +280,65 @@ export default function CallbackPage() {
               <p className="text-sm text-center text-muted-foreground">
                 安全にMCPクライアントと接続できます
               </p>
+
+              {/* MCP Connection Test */}
+              {!testComplete && (
+                <Button
+                  onClick={testMcpConnection}
+                  disabled={isTesting}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isTesting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      テスト中...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      MCP接続テスト
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {/* Test Steps */}
+              {testSteps.length > 0 && (
+                <div className="space-y-2">
+                  {testSteps.map((step, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        'flex items-center gap-2 p-2 rounded-lg text-sm',
+                        step.status === 'success' && 'bg-green-500/10',
+                        step.status === 'error' && 'bg-destructive/10',
+                        step.status === 'running' && 'bg-primary/10'
+                      )}
+                    >
+                      {step.status === 'pending' && (
+                        <div className="h-4 w-4 rounded-full border-2 border-muted" />
+                      )}
+                      {step.status === 'running' && (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      )}
+                      {step.status === 'success' && (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      )}
+                      {step.status === 'error' && (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )}
+                      <span className="flex-1">{step.name}</span>
+                      {step.message && (
+                        <span className="text-xs text-muted-foreground">
+                          {step.message}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Button
                 onClick={() => router.push('/my/mcp-connection')}
                 className="w-full"
