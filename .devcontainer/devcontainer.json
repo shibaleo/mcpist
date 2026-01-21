@@ -13,7 +13,9 @@
   },
 
   "forwardPorts": [
+    80,
     3000,
+    8080,
     8787,
     8081,
     8082,
@@ -24,7 +26,9 @@
   ],
 
   "portsAttributes": {
+    "80": { "label": "Traefik HTTP", "onAutoForward": "silent" },
     "3000": { "label": "Next.js Console", "onAutoForward": "notify" },
+    "8080": { "label": "Traefik Dashboard", "onAutoForward": "notify" },
     "8787": { "label": "Cloudflare Worker", "onAutoForward": "notify" },
     "8081": { "label": "API Render (Primary)", "onAutoForward": "silent" },
     "8082": { "label": "API Koyeb (Failover)", "onAutoForward": "silent" },
@@ -60,7 +64,6 @@
   },
 
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-  "postStartCommand": "docker compose -f compose/api.yml up -d",
 
   "remoteUser": "vscode",
 
