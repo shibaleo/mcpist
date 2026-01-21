@@ -1,0 +1,38 @@
+# Traefik Dynamic Configuration
+# File-based provider for local development
+
+http:
+  routers:
+    console:
+      rule: "Host(`console.localhost`)"
+      entryPoints:
+        - web
+      service: console
+
+    mcp:
+      rule: "Host(`mcp.localhost`)"
+      entryPoints:
+        - web
+      service: worker
+
+    server:
+      rule: "Host(`api.localhost`)"
+      entryPoints:
+        - web
+      service: server
+
+  services:
+    console:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-console:3000"
+
+    worker:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-worker:8787"
+
+    server:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-server:8089"

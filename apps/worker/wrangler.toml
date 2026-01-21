@@ -30,7 +30,7 @@ RATE_LIMIT_BURST_MAX = "5"          # ユーザー単位: req/sec
 
 # 本番環境
 [env.production]
-vars = { RENDER_URL = "REDACTED_URL", KOYEB_URL = "REDACTED_URL", SUPABASE_URL = "https://xxx.supabase.co", SUPABASE_JWKS_URL = "https://xxx.supabase.co/auth/v1/.well-known/jwks.json" }
+vars = { PRIMARY_API_URL = "REDACTED_URL", SECONDARY_API_URL = "REDACTED_URL", SUPABASE_URL = "https://xxx.supabase.co", SUPABASE_JWKS_URL = "https://xxx.supabase.co/auth/v1/.well-known/jwks.json" }
 
 # シークレット（wrangler secret で設定）
 # - GATEWAY_SECRET: オリジン直接アクセス防止用

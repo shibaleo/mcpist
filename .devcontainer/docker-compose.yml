@@ -22,9 +22,9 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
 
-      # API endpoints (for Worker LB - Render Primary / Koyeb Failover)
-      - RENDER_URL=http://localhost:8081
-      - KOYEB_URL=http://localhost:8082
+      # API endpoints (for Worker LB - Primary / Secondary Failover)
+      - PRIMARY_API_URL=http://localhost:8081
+      - SECONDARY_API_URL=http://localhost:8082
 
       # Next.js
       - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
