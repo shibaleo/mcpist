@@ -1,251 +1,220 @@
 # MCPist インタラクション仕様書（spc-itr）
 
-## ドキュメント管理情報
-
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 (DAY8) |
-| Note | Interaction Specification |
-
----
-
 ## 概要
 
 本ドキュメントは、spc-sys.mdで定義されたコンポーネント間のインタラクションを規定する。
 
 MCP Serverは内部コンポーネント（Auth Middleware, MCP Handler, Module Registry, Modules）の集合である。外部コンポーネント（CLT, CON等）に対してはMCP Serverとして抽象化し、内部コンポーネント間は詳細に定義する。
 
-### コンポーネント一覧
+---
 
-| #   | コンポーネント             | 略称   | 備考           |
-| --- | ------------------- | ---- | ------------ |
-| 1   | MCP Client          | CLT  | 実装範囲外        |
-| 2   | Auth Server         | AUS  |              |
-| 3   | MCP Server          | SRV  | 外部向け抽象化      |
-| 4   | Auth Middleware     | AMW  | MCP Server内部 |
-| 5   | MCP Handler         | HDL  | MCP Server内部 |
-| 6   | Module Registry     | REG  | MCP Server内部 |
-| 7   | Modules             | MOD  | MCP Server内部 |
-| 8   | Entitlement Store   | ENT  |              |
-| 9   | Token Vault         | TVL  |              |
-| 10  | User Console        | CON  |              |
-| 11  | External API Server | EXT  | 実装範囲外        |
-| 12  | Payment Service Provider | PSP  | 実装範囲外        |
+## コンポーネント略称一覧
+
+| #   | コンポーネント               | 略称 | 備考           |
+| --- | ---------------------------- | ---- | -------------- |
+| 1   | MCP Client (OAuth2.0)        | CLO  | 実装範囲外     |
+| 2   | MCP Client (API KEY)         | CLK  | 実装範囲外     |
+| 3   | API Gateway                  | GWY  |                |
+| 4   | Auth Server                  | AUS  |                |
+| 5   | Session Manager              | SSM  |                |
+| 6   | Data Store                   | DST  |                |
+| 7   | Token Vault                  | TVL  |                |
+| 8   | MCP Server                   | SRV  | 外部向け抽象化 |
+| 9   | Auth Middleware              | AMW  | MCP Server内部 |
+| 10  | MCP Handler                  | HDL  | MCP Server内部 |
+| 11  | Module Registry              | REG  | MCP Server内部 |
+| 12  | Modules                      | MOD  | MCP Server内部 |
+| 13  | User Console                 | CON  |                |
+| 14  | Identity Provider            | IDP  | 実装範囲外     |
+| 15  | External Auth Server         | EAS  | 実装範囲外     |
+| 16  | External Service API         | EXT  | 実装範囲外     |
+| 17  | Payment Service Provider     | PSP  | 実装範囲外     |
 
 ---
 
-## 1. MCP Client（CLT）
+## 1. MCP Client (OAuth2.0)（CLO）
 
-| 相手                  | 方向        | やり取り                                                            |
-| ------------------- | --------- | --------------------------------------------------------------- |
-| Auth Server         | CLT → AUS | OAuth 2.1認証フロー（認可コード取得、トークン交換）                                  |
-| MCP Server          | CLT → SRV | MCP Protocol（JSON-RPC over SSE）<br>初回認可フロー開始（401 → .well-known） |
-| Auth Middleware     | -         | 直接やり取りなし（MCP Server経由）                                          |
-| MCP Handler         | -         | 直接やり取りなし（MCP Server経由）                                          |
-| Module Registry     | -         | 直接やり取りなし（MCP Server経由）                                          |
-| Modules             | -         | 直接やり取りなし（MCP Server経由）                                          |
-| Entitlement Store   | -         | 直接やり取りなし                                                        |
-| Token Vault         | -         | 直接やり取りなし                                                        |
-| User Console        | -         | 直接やり取りなし                                                        |
-| External API Server | -         | 直接やり取りなし                                                        |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| API Gateway              | CLO → GWY   | MCP通信（JSON-RPC over SSE）             |
+| Auth Server              | CLO → AUS   | OAuth 2.1認証フロー（認可コード、トークン交換） |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 2. Auth Server（AUS）
+## 2. MCP Client (API KEY)（CLK）
 
-| 相手                  | 方向         | やり取り                     |
-| ------------------- | ---------- | ------------------------ |
-| MCP Client          | AUS ← CLT | OAuth 2.1認証リクエスト受付       |
-| MCP Server          | AUS ← SRV | JWKS公開鍵の提供（JWT検証用）       |
-| Auth Middleware     | AUS ← AMW  | JWKS取得（公開鍵キャッシュ）         |
-| MCP Handler         | -          | 直接やり取りなし                 |
-| Module Registry     | -          | 直接やり取りなし                 |
-| Modules             | -          | 直接やり取りなし                 |
-| Entitlement Store   | AUS → ENT | ユーザー情報の参照・作成（OAuth登録時）   |
-| Token Vault         | -          | 直接やり取りなし                 |
-| User Console        | AUS ← CON | OAuth 2.1認証フロー（ユーザーログイン） |
-| External API Server | -          | 直接やり取りなし                 |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Token Vault              | CLK → TVL   | API KEY認証                              |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 3. MCP Server（SRV）
+## 3. API Gateway（GWY）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | SRV ← CLT | MCP Protocolリクエスト受付 |
-| Auth Server | SRV → AUS | JWKS取得（JWT検証用公開鍵） |
-| Auth Middleware | SRV ↔ AMW | 内部コンポーネント（リクエスト処理委譲） |
-| MCP Handler | SRV ↔ HDL | 内部コンポーネント（リクエスト処理委譲） |
-| Module Registry | SRV ↔ REG | 内部コンポーネント（リクエスト処理委譲） |
-| Modules | SRV ↔ MOD | 内部コンポーネント（リクエスト処理委譲） |
-| Entitlement Store | SRV → ENT | 権限情報の参照 |
-| Token Vault | SRV → TVL | トークンの取得 |
-| User Console | - | 直接やり取りなし |
-| External API Server | - | 直接やり取りなし（Modules経由） |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| MCP Client (OAuth2.0)    | GWY ← CLO   | MCP通信リクエスト受付                    |
+| Auth Server              | GWY ← AUS   | JWT受信・検証                            |
+| Token Vault              | GWY ← TVL   | API KEY受信・検証                        |
+| Auth Middleware          | GWY → AMW   | リクエスト転送                           |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 4. Auth Middleware（AMW）
+## 4. Auth Server（AUS）
 
-| 相手                  | 方向        | やり取り                                  |
-| ------------------- | --------- | ------------------------------------- |
-| MCP Client          | -         | 直接やり取りなし（MCP Server経由）                |
-| Auth Server         | AMW → AUS | JWKS取得（公開鍵キャッシュ、定期更新）                 |
-| MCP Server          | AMW ↔ SRV  | 内部コンポーネント（親コンポーネント）                   |
-| MCP Handler         | AMW → HDL  | 認証済みリクエストの転送（user_id付きcontext）        |
-| Module Registry     | -         | 直接やり取りなし                              |
-| Modules             | -         | 直接やり取りなし                              |
-| Entitlement Store   | AMW → ENT  | アカウント状態の確認（active/suspended/disabled） |
-| Token Vault         | -         | 直接やり取りなし                              |
-| User Console        | -         | 直接やり取りなし                              |
-| External API Server | -         | 直接やり取りなし                              |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| MCP Client (OAuth2.0)    | AUS ← CLO   | OAuth 2.1認証リクエスト受付              |
+| API Gateway              | AUS → GWY   | JWT提供                                  |
+| Data Store               | AUS ↔ DST   | ユーザーID共有                           |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 5. MCP Handler（HDL）
+## 5. Session Manager（SSM）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし（MCP Server経由） |
-| Auth Server | - | 直接やり取りなし |
-| MCP Server | HDL ↔ SRV | 内部コンポーネント（親コンポーネント） |
-| Auth Middleware | HDL ← AMW | 認証済みリクエストの受信 |
-| Module Registry | HDL → REG | メタツール呼び出し（get_module_schema, call, batch） |
-| Modules | - | 直接やり取りなし（Module Registry経由） |
-| Entitlement Store | HDL → ENT | 権限チェック（Permission Gate/Filter） |
-| Token Vault | - | 直接やり取りなし |
-| User Console | - | 直接やり取りなし |
-| External API Server | - | 直接やり取りなし |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Identity Provider        | SSM ← IDP   | ID連携（ソーシャルログイン）             |
+| Data Store               | SSM → DST   | ユーザーID共有                           |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 6. Module Registry（REG）
+## 6. Data Store（DST）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし |
-| Auth Server | - | 直接やり取りなし |
-| MCP Server | REG ↔ SRV | 内部コンポーネント（親コンポーネント） |
-| Auth Middleware | - | 直接やり取りなし |
-| MCP Handler | REG ← HDL | メタツールリクエスト受信 |
-| Modules | REG → MOD | ツール実行委譲、スキーマ取得 |
-| Entitlement Store | REG → ENT | Permission Filter（許可ツールのフィルタリング） |
-| Token Vault | - | 直接やり取りなし（Modules経由） |
-| User Console | - | 直接やり取りなし |
-| External API Server | - | 直接やり取りなし |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Session Manager          | DST ← SSM   | ユーザーID共有                           |
+| Auth Server              | DST ↔ AUS   | ユーザーID共有                           |
+| Token Vault              | DST → TVL   | ユーザーID共有                           |
+| Module Registry          | DST → REG   | ツール設定提供                           |
+| MCP Handler              | DST → HDL   | カスタムプロンプト提供                   |
+| Payment Service Provider | DST ← PSP   | プラン情報受信                           |
+| User Console             | DST ← CON   | ツール設定登録                           |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 7. Modules（MOD）
+## 7. Token Vault（TVL）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし |
-| Auth Server | - | 直接やり取りなし |
-| MCP Server | MOD ↔ SRV | 内部コンポーネント（親コンポーネント） |
-| Auth Middleware | - | 直接やり取りなし |
-| MCP Handler | - | 直接やり取りなし（Module Registry経由） |
-| Module Registry | MOD ← REG | ツール実行リクエスト受信 |
-| Entitlement Store | - | 直接やり取りなし |
-| Token Vault | MOD → TVL | OAuthトークン取得（user_id + service） |
-| User Console | - | 直接やり取りなし |
-| External API Server | MOD → EXT | 外部API呼び出し（HTTPS + Bearer Token） |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| MCP Client (API KEY)     | TVL ← CLK   | API KEY認証受付                          |
+| API Gateway              | TVL → GWY   | API KEY提供                              |
+| Data Store               | TVL ← DST   | ユーザーID共有                           |
+| User Console             | TVL ← CON   | トークン登録                             |
+| External Auth Server     | TVL ← EAS   | 認証（トークン受信）                     |
+| Modules                  | TVL → MOD   | トークン提供                             |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 8. Entitlement Store（ENT）
+## 8. MCP Server（SRV）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし |
-| Auth Server | ENT ← AUS | ユーザー情報の参照・作成 |
-| MCP Server | ENT ← SRV | 権限情報の参照 |
-| Auth Middleware | ENT ← AMW | アカウント状態の参照 |
-| MCP Handler | ENT ← HDL | 権限情報の参照 |
-| Module Registry | ENT ← REG | 権限情報の参照 |
-| Modules | - | 直接やり取りなし |
-| Token Vault | - | 直接やり取りなし |
-| User Console | ENT ← CON | 設定の書き込み（課金、ツール有効/無効） |
-| External API Server | - | 直接やり取りなし |
-| Payment Service Provider | ENT ↔ PSP | 課金情報の同期（Webhook/API） |
+MCP Serverは以下の内部コンポーネントで構成される。外部からはSRVとして抽象化される。
+
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| API Gateway              | SRV ← GWY   | リクエスト受付（Auth Middleware経由）    |
+| その他                   | -           | 内部コンポーネント経由                   |
 
 ---
 
-## 9. Token Vault（TVL）
+## 9. Auth Middleware（AMW）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし |
-| Auth Server | - | 直接やり取りなし |
-| MCP Server | TVL ← SRV | トークン取得リクエスト |
-| Auth Middleware | - | 直接やり取りなし |
-| MCP Handler | - | 直接やり取りなし |
-| Module Registry | - | 直接やり取りなし |
-| Modules | TVL ← MOD | トークン取得リクエスト（user_id + service） |
-| Entitlement Store | - | 直接やり取りなし |
-| User Console | TVL ← CON | OAuthトークン登録（OAuth連携完了時） |
-| External API Server | TVL → EXT | トークンリフレッシュ（OAuth refresh_token使用） |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| API Gateway              | AMW ← GWY   | リクエスト受信                           |
+| MCP Handler              | AMW → HDL   | 認証済みリクエスト転送                   |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 10. User Console（CON）
+## 10. MCP Handler（HDL）
 
-| 相手                  | 方向         | やり取り                |
-| ------------------- | ---------- | ------------------- |
-| MCP Client          | -          | 直接やり取りなし            |
-| Auth Server         | CON → AUS | ユーザー認証（ログイン）        |
-| MCP Server          | -          | 直接やり取りなし            |
-| Auth Middleware     | -          | 直接やり取りなし            |
-| MCP Handler         | -          | 直接やり取りなし            |
-| Module Registry     | -          | 直接やり取りなし            |
-| Modules             | -          | 直接やり取りなし            |
-| Entitlement Store   | CON → ENT  | 設定の読み書き             |
-| Token Vault         | CON → TVL  | OAuthトークン登録         |
-| External API Server | CON → EXT  | OAuth認可フロー（認可コード取得） |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Auth Middleware          | HDL ← AMW   | 認証済みリクエスト受信                   |
+| Data Store               | HDL ← DST   | カスタムプロンプト取得                   |
+| Module Registry          | HDL → REG   | メタツール呼び出し                       |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 11. External API Server（EXT）
+## 11. Module Registry（REG）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし |
-| Auth Server | - | 直接やり取りなし |
-| MCP Server | - | 直接やり取りなし |
-| Auth Middleware | - | 直接やり取りなし |
-| MCP Handler | - | 直接やり取りなし |
-| Module Registry | - | 直接やり取りなし |
-| Modules | EXT ← MOD | API呼び出し受付（HTTPS） |
-| Entitlement Store | - | 直接やり取りなし |
-| Token Vault | EXT ← TVL | トークンリフレッシュリクエスト受付 |
-| User Console | EXT ← CON | OAuth認可フロー受付 |
-| Payment Service Provider | - | 直接やり取りなし |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| MCP Handler              | REG ← HDL   | メタツールリクエスト受信                 |
+| Data Store               | REG ← DST   | ツール設定取得                           |
+| Modules                  | REG → MOD   | ツール実行委譲                           |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 12. Payment Service Provider（PSP）
+## 12. Modules（MOD）
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| MCP Client | - | 直接やり取りなし |
-| Auth Server | - | 直接やり取りなし |
-| MCP Server | - | 直接やり取りなし |
-| Auth Middleware | - | 直接やり取りなし |
-| MCP Handler | - | 直接やり取りなし |
-| Module Registry | - | 直接やり取りなし |
-| Modules | - | 直接やり取りなし |
-| Entitlement Store | PSP ↔ ENT | 課金情報の同期（Webhook/API） |
-| Token Vault | - | 直接やり取りなし |
-| User Console | - | 直接やり取りなし |
-| External API Server | - | 直接やり取りなし |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Module Registry          | MOD ← REG   | ツール実行リクエスト受信                 |
+| Token Vault              | MOD ← TVL   | トークン取得                             |
+| External Service API     | MOD → EXT   | リソースアクセス（HTTPS）                |
+| その他                   | -           | 直接やり取りなし                         |
 
 ---
 
-## 関連ドキュメント
+## 13. User Console（CON）
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [spc-sys.md](./spc-sys.md) | システム仕様書（コンポーネント定義） |
-| [dsn-module-registry.md](../DAY7/dsn-module-registry.md) | Module Registry設計 |
-| [dsn-permission-system.md](../DAY7/dsn-permission-system.md) | 権限システム設計 |
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Payment Service Provider | CON → PSP   | 決済リクエスト                           |
+| Token Vault              | CON → TVL   | トークン登録                             |
+| Data Store               | CON → DST   | ツール設定登録                           |
+| External Auth Server     | CON → EAS   | 認可フロー                               |
+| Identity Provider        | CON → IDP   | ソーシャルログイン                       |
+| その他                   | -           | 直接やり取りなし                         |
+
+---
+
+## 14. Identity Provider（IDP）
+
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Session Manager          | IDP → SSM   | ID連携                                   |
+| User Console             | IDP ← CON   | ソーシャルログイン                       |
+| その他                   | -           | 直接やり取りなし                         |
+
+---
+
+## 15. External Auth Server（EAS）
+
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| User Console             | EAS ← CON   | 認可フロー受付                           |
+| Token Vault              | EAS → TVL   | 認証トークン提供                         |
+| External Service API     | EAS ↔ EXT   | 同一サービス内連携                       |
+| その他                   | -           | 直接やり取りなし                         |
+
+---
+
+## 16. External Service API（EXT）
+
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| Modules                  | EXT ← MOD   | API呼び出し受付（HTTPS）                 |
+| External Auth Server     | EXT ↔ EAS   | 同一サービス内連携                       |
+| その他                   | -           | 直接やり取りなし                         |
+
+---
+
+## 17. Payment Service Provider（PSP）
+
+| 相手                     | 方向        | やり取り                                 |
+| ------------------------ | ----------- | ---------------------------------------- |
+| User Console             | PSP ← CON   | 決済リクエスト受付                       |
+| Data Store               | PSP → DST   | プラン情報提供（Webhook含む）            |
+| その他                   | -           | 直接やり取りなし                         |

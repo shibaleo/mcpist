@@ -1,0 +1,63 @@
+# Traefik Dynamic Configuration - Infra Profile
+# Used for multi-server (primary/secondary) development
+
+http:
+  routers:
+    console:
+      rule: "Host(`console.localhost`)"
+      entryPoints:
+        - web
+      service: console
+
+    mcp:
+      rule: "Host(`mcp.localhost`)"
+      entryPoints:
+        - web
+      service: worker-infra
+
+    server-primary:
+      rule: "Host(`api.localhost`) && PathPrefix(`/primary`)"
+      entryPoints:
+        - web
+      middlewares:
+        - strip-primary
+      service: server-primary
+
+    server-secondary:
+      rule: "Host(`api.localhost`) && PathPrefix(`/secondary`)"
+      entryPoints:
+        - web
+      middlewares:
+        - strip-secondary
+      service: server-secondary
+
+  middlewares:
+    strip-primary:
+      stripPrefix:
+        prefixes:
+          - "/primary"
+    strip-secondary:
+      stripPrefix:
+        prefixes:
+          - "/secondary"
+
+  services:
+    console:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-console:3000"
+
+    worker-infra:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-worker-infra:8787"
+
+    server-primary:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-server-primary:8089"
+
+    server-secondary:
+      loadBalancer:
+        servers:
+          - url: "http://mcpist-server-secondary:8089"

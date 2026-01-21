@@ -30,7 +30,7 @@ RATE_LIMIT_BURST_MAX = "5"          # ユーザー単位: req/sec
 
 # 本番環境
 [env.production]
-vars = { RENDER_URL = "https://mcpist-api.onrender.com", KOYEB_URL = "https://mcpist-api.koyeb.app", SUPABASE_URL = "https://xxx.supabase.co", SUPABASE_JWKS_URL = "https://xxx.supabase.co/auth/v1/.well-known/jwks.json" }
+vars = { PRIMARY_API_URL = "https://mcpist-api.onrender.com", SECONDARY_API_URL = "https://mcpist-api.koyeb.app", SUPABASE_URL = "https://xxx.supabase.co", SUPABASE_JWKS_URL = "https://xxx.supabase.co/auth/v1/.well-known/jwks.json" }
 
 # シークレット（wrangler secret で設定）
 # - GATEWAY_SECRET: オリジン直接アクセス防止用

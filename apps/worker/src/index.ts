@@ -7,15 +7,15 @@
  * 3. グローバルRate Limit（IP単位）
  * 4. Burst制限（ユーザー単位）
  * 5. X-User-ID付与
- * 6. 負荷ベースLB（Render Primary / Koyeb Failover）
+ * 6. 負荷ベースLB（Primary / Secondary Failover）
  * 7. MCP Serverへのプロキシ
  *
  * LB戦略:
  * - 主指標: p95レイテンシ（直近50req rolling window）
- * - NORMAL:   p95 < 300ms  → Render 100%
- * - WARMUP:   p95 ≥ 300ms  → Render 100% + Koyeb起動
- * - BALANCE:  p95 ≥ 600ms  → Render 50% / Koyeb 50%
- * - FAILOVER: 致命指標発生  → Koyeb 100%
+ * - NORMAL:   p95 < 300ms  → Primary 100%
+ * - WARMUP:   p95 ≥ 300ms  → Primary 100% + Secondary起動
+ * - BALANCE:  p95 ≥ 600ms  → Primary 50% / Secondary 50%
+ * - FAILOVER: 致命指標発生  → Secondary 100%
  *
  * ヒステリシス:
  * - BALANCE → WARMUP: p95 < 500ms
@@ -32,8 +32,8 @@ interface Env {
   HEALTH_STATE: KVNamespace;
 
   // バックエンド設定
-  RENDER_URL: string;   // Primary
-  KOYEB_URL: string;    // Failover
+  PRIMARY_API_URL: string;     // Primary API Server
+  SECONDARY_API_URL: string;   // Secondary API Server (Failover)
 
   // Supabase設定
   SUPABASE_URL: string;
@@ -49,17 +49,17 @@ interface Env {
 }
 
 type LBState = "NORMAL" | "WARMUP" | "BALANCE" | "FAILOVER";
-type KoyebState = "sleeping" | "waking" | "ready";
+type SecondaryState = "sleeping" | "waking" | "ready";
 
 interface Metrics {
   latencies: number[];        // 直近50件のレイテンシ配列
   state: LBState;
-  koyebState: KoyebState;
+  secondaryState: SecondaryState;
   error5xxCount: number;      // 直近20req中の5xx数
   requestCount: number;       // 直近20req用カウンタ
   lastUpdated: number;
-  renderHealthy: boolean;
-  koyebHealthy: boolean;
+  primaryHealthy: boolean;
+  secondaryHealthy: boolean;
 }
 
 interface AuthResult {
@@ -107,19 +107,19 @@ export default {
       const metrics = await getMetrics(env);
 
       // リアルタイムでバックエンドの状態をチェック（順次実行で相互影響を防ぐ）
-      const primaryResult = await checkBackendHealth(env.RENDER_URL);
-      const secondaryResult = await checkBackendHealth(env.KOYEB_URL);
+      const primaryResult = await checkBackendHealth(env.PRIMARY_API_URL);
+      const secondaryResult = await checkBackendHealth(env.SECONDARY_API_URL);
 
       // メトリクスを更新
-      metrics.renderHealthy = primaryResult.healthy;
-      metrics.koyebHealthy = secondaryResult.healthy;
+      metrics.primaryHealthy = primaryResult.healthy;
+      metrics.secondaryHealthy = secondaryResult.healthy;
       if (secondaryResult.healthy) {
-        metrics.koyebState = "ready";
+        metrics.secondaryState = "ready";
       } else {
-        metrics.koyebState = "sleeping";
+        metrics.secondaryState = "sleeping";
       }
 
-      const weights = getTrafficWeights(metrics.state, metrics.koyebState);
+      const weights = getTrafficWeights(metrics.state, metrics.secondaryState);
 
       // バックエンド情報を構築（エラー詳細を含む）
       const buildBackendInfo = (result: HealthCheckResult) => {
@@ -141,7 +141,7 @@ export default {
           primary: weights.primary,
           secondary: weights.failover,
         },
-        secondaryServerState: metrics.koyebState,
+        secondaryServerState: metrics.secondaryState,
         p95Latency: calculateP95(metrics.latencies),
         backends: {
           primary: buildBackendInfo(primaryResult),
@@ -204,10 +204,10 @@ async function handleWithLB(
   // バックエンド選択
   const backend = selectBackend(metrics, env);
 
-  // Koyeb起動が必要な場合（WARMUP状態でsleeping）
-  if (metrics.state === "WARMUP" && metrics.koyebState === "sleeping") {
-    ctx.waitUntil(wakeKoyeb(env));
-    metrics.koyebState = "waking";
+  // Secondary起動が必要な場合（WARMUP状態でsleeping）
+  if (metrics.state === "WARMUP" && metrics.secondaryState === "sleeping") {
+    ctx.waitUntil(wakeSecondary(env));
+    metrics.secondaryState = "waking";
   }
 
   // プロキシ実行
@@ -234,11 +234,11 @@ async function handleWithLB(
     console.error("Fetch failed:", error);
 
     // FAILOVERへ
-    if (metrics.koyebState === "ready" && backend.url !== env.KOYEB_URL) {
-      // Koyeb readyならリトライ
+    if (metrics.secondaryState === "ready" && backend.url !== env.SECONDARY_API_URL) {
+      // Secondary readyならリトライ
       try {
         response = await fetchWithTimeout(
-          buildProxyRequest(request, env.KOYEB_URL, authResult, env),
+          buildProxyRequest(request, env.SECONDARY_API_URL, authResult, env),
           FETCH_TIMEOUT_MS
         );
       } catch (retryError) {
@@ -248,9 +248,9 @@ async function handleWithLB(
           { "Retry-After": "30" }
         );
       }
-    } else if (metrics.koyebState !== "ready") {
-      // Koyeb not ready → 503 + Koyeb起動
-      ctx.waitUntil(wakeKoyeb(env));
+    } else if (metrics.secondaryState !== "ready") {
+      // Secondary not ready → 503 + Secondary起動
+      ctx.waitUntil(wakeSecondary(env));
       return jsonResponse(
         { error: "Service unavailable", retryAfter: 30 },
         503,
@@ -288,19 +288,19 @@ interface Backend {
 function selectBackend(metrics: Metrics, env: Env): Backend {
   switch (metrics.state) {
     case "FAILOVER":
-      return { url: env.KOYEB_URL, name: "koyeb" };
+      return { url: env.SECONDARY_API_URL, name: "secondary" };
 
     case "BALANCE":
       // 50/50
-      if (metrics.koyebState === "ready" && Math.random() < 0.5) {
-        return { url: env.KOYEB_URL, name: "koyeb" };
+      if (metrics.secondaryState === "ready" && Math.random() < 0.5) {
+        return { url: env.SECONDARY_API_URL, name: "secondary" };
       }
-      return { url: env.RENDER_URL, name: "render" };
+      return { url: env.PRIMARY_API_URL, name: "primary" };
 
     case "WARMUP":
     case "NORMAL":
     default:
-      return { url: env.RENDER_URL, name: "render" };
+      return { url: env.PRIMARY_API_URL, name: "primary" };
   }
 }
 
@@ -311,12 +311,12 @@ async function getMetrics(env: Env): Promise<Metrics> {
   return data || {
     latencies: [],
     state: "NORMAL",
-    koyebState: "sleeping",
+    secondaryState: "sleeping",
     error5xxCount: 0,
     requestCount: 0,
     lastUpdated: Date.now(),
-    renderHealthy: true,
-    koyebHealthy: true,
+    primaryHealthy: true,
+    secondaryHealthy: true,
   };
 }
 
@@ -349,7 +349,7 @@ async function updateMetrics(
   const p95 = calculateP95(metrics.latencies);
   const prevState = metrics.state;
 
-  if (isFatal || !metrics.renderHealthy) {
+  if (isFatal || !metrics.primaryHealthy) {
     // 致命指標 → FAILOVER
     metrics.state = "FAILOVER";
   } else {
@@ -403,13 +403,13 @@ function calculateP95(latencies: number[]): number {
 
 function getTrafficWeights(
   state: LBState,
-  koyebState: KoyebState
+  secondaryState: SecondaryState
 ): { primary: number; failover: number } {
   switch (state) {
     case "FAILOVER":
       return { primary: 0, failover: 100 };
     case "BALANCE":
-      if (koyebState === "ready") {
+      if (secondaryState === "ready") {
         return { primary: 50, failover: 50 };
       }
       return { primary: 100, failover: 0 };
@@ -514,39 +514,39 @@ function classifyError(error: unknown): HealthCheckError {
   return "unknown";
 }
 
-// === Koyeb 起動 ===
+// === Secondary Server 起動 ===
 
-async function wakeKoyeb(env: Env): Promise<void> {
+async function wakeSecondary(env: Env): Promise<void> {
   const metrics = await getMetrics(env);
 
-  if (metrics.koyebState === "ready") {
+  if (metrics.secondaryState === "ready") {
     return;
   }
 
-  console.log("Waking up Koyeb...");
-  metrics.koyebState = "waking";
+  console.log("Waking up Secondary...");
+  metrics.secondaryState = "waking";
   await env.HEALTH_STATE.put("metrics", JSON.stringify(metrics), {
     expirationTtl: 3600,
   });
 
   try {
-    const response = await fetch(`${env.KOYEB_URL}/health`, {
+    const response = await fetch(`${env.SECONDARY_API_URL}/health`, {
       method: "GET",
       signal: AbortSignal.timeout(60000), // コールドスタート待ち
     });
 
     if (response.ok) {
-      metrics.koyebState = "ready";
-      metrics.koyebHealthy = true;
-      console.log("Koyeb is ready");
+      metrics.secondaryState = "ready";
+      metrics.secondaryHealthy = true;
+      console.log("Secondary is ready");
     } else {
-      metrics.koyebState = "sleeping";
-      metrics.koyebHealthy = false;
+      metrics.secondaryState = "sleeping";
+      metrics.secondaryHealthy = false;
     }
   } catch (error) {
-    console.error("Failed to wake Koyeb:", error);
-    metrics.koyebState = "sleeping";
-    metrics.koyebHealthy = false;
+    console.error("Failed to wake Secondary:", error);
+    metrics.secondaryState = "sleeping";
+    metrics.secondaryHealthy = false;
   }
 
   await env.HEALTH_STATE.put("metrics", JSON.stringify(metrics), {
@@ -559,48 +559,48 @@ async function wakeKoyeb(env: Env): Promise<void> {
 async function performScheduledHealthCheck(env: Env): Promise<void> {
   const metrics = await getMetrics(env);
 
-  // Renderヘルスチェック（これがウォーム維持にもなる）
+  // Primaryヘルスチェック（これがウォーム維持にもなる）
   try {
-    const response = await fetch(`${env.RENDER_URL}/health`, {
+    const response = await fetch(`${env.PRIMARY_API_URL}/health`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
 
     if (response.ok) {
-      metrics.renderHealthy = true;
+      metrics.primaryHealthy = true;
       // FAILOVERから復旧
       if (metrics.state === "FAILOVER") {
         metrics.state = "NORMAL";
         metrics.latencies = []; // リセット
       }
     } else {
-      metrics.renderHealthy = false;
+      metrics.primaryHealthy = false;
       metrics.state = "FAILOVER";
     }
   } catch (error) {
-    console.error("Render health check failed:", error);
-    metrics.renderHealthy = false;
+    console.error("Primary health check failed:", error);
+    metrics.primaryHealthy = false;
     metrics.state = "FAILOVER";
   }
 
-  // Koyebが起動中なら状態確認
-  if (metrics.koyebState === "waking" || metrics.state === "BALANCE" || metrics.state === "FAILOVER") {
+  // Secondaryが起動中なら状態確認
+  if (metrics.secondaryState === "waking" || metrics.state === "BALANCE" || metrics.state === "FAILOVER") {
     try {
-      const response = await fetch(`${env.KOYEB_URL}/health`, {
+      const response = await fetch(`${env.SECONDARY_API_URL}/health`, {
         method: "GET",
         signal: AbortSignal.timeout(5000),
       });
 
       if (response.ok) {
-        metrics.koyebState = "ready";
-        metrics.koyebHealthy = true;
+        metrics.secondaryState = "ready";
+        metrics.secondaryHealthy = true;
       } else {
-        metrics.koyebHealthy = false;
+        metrics.secondaryHealthy = false;
       }
     } catch (error) {
-      // Koyebがスリープ中は失敗しても問題ない
+      // Secondaryがスリープ中は失敗しても問題ない
       if (metrics.state === "FAILOVER") {
-        console.log("Koyeb not responding in FAILOVER state, attempting wake...");
+        console.log("Secondary not responding in FAILOVER state, attempting wake...");
       }
     }
   }

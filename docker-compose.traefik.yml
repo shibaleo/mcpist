@@ -1,19 +1,44 @@
 services:
+  # =============================================================================
+  # Traefik Reverse Proxy
+  # =============================================================================
+  # default プロファイル用 Traefik
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.3
     container_name: mcpist-traefik
+    profiles: ["default"]
     command:
       - "--api.insecure=true"
       - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
       - "--log.level=INFO"
     ports:
       - "80:80"
       - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/default:/etc/traefik/dynamic:ro
+    networks:
+      - mcpist
+
+  # infra プロファイル用 Traefik
+  traefik-infra:
+    image: traefik:v3.3
+    container_name: mcpist-traefik-infra
+    profiles: ["infra"]
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./traefik/infra:/etc/traefik/dynamic:ro
     networks:
       - mcpist
 
@@ -22,11 +47,7 @@ services:
       context: ./apps/console
       dockerfile: Dockerfile.dev
     container_name: mcpist-console
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.console.rule=Host(`console.localhost`)"
-      - "traefik.http.routers.console.entrypoints=web"
-      - "traefik.http.services.console.loadbalancer.server.port=3000"
+    profiles: ["default", "infra"]
     environment:
       - PORT=3000
       - NEXT_PUBLIC_APP_URL=http://console.localhost
@@ -57,16 +78,11 @@ services:
       dockerfile: Dockerfile.dev
     container_name: mcpist-worker
     profiles: ["default"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.mcp.rule=Host(`mcp.localhost`)"
-      - "traefik.http.routers.mcp.entrypoints=web"
-      - "traefik.http.services.mcp.loadbalancer.server.port=8787"
     environment:
       - GATEWAY_SECRET=${GATEWAY_SECRET}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - RENDER_URL=http://server:8089
-      - KOYEB_URL=http://server:8089
+      - PRIMARY_API_URL=http://server:8089
+      - SECONDARY_API_URL=http://server:8089
       - SUPABASE_URL=http://host.docker.internal:54321
       - SUPABASE_JWKS_URL=http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
     networks:
@@ -81,16 +97,11 @@ services:
       dockerfile: Dockerfile.dev
     container_name: mcpist-worker-infra
     profiles: ["infra"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.mcp-infra.rule=Host(`mcp.localhost`)"
-      - "traefik.http.routers.mcp-infra.entrypoints=web"
-      - "traefik.http.services.mcp-infra.loadbalancer.server.port=8787"
     environment:
       - GATEWAY_SECRET=${GATEWAY_SECRET}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - RENDER_URL=http://server-primary:8089
-      - KOYEB_URL=http://server-secondary:8089
+      - PRIMARY_API_URL=http://server-primary:8089
+      - SECONDARY_API_URL=http://server-secondary:8089
       - SUPABASE_URL=http://host.docker.internal:54321
       - SUPABASE_JWKS_URL=http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
     networks:
@@ -107,11 +118,6 @@ services:
       dockerfile: Dockerfile.dev
     container_name: mcpist-server
     profiles: ["default"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.server.rule=Host(`api.localhost`)"
-      - "traefik.http.routers.server.entrypoints=web"
-      - "traefik.http.services.server.loadbalancer.server.port=8089"
     environment:
       - PORT=8089
       - SUPABASE_URL=http://host.docker.internal:54321
@@ -139,13 +145,6 @@ services:
       dockerfile: Dockerfile.dev
     container_name: mcpist-server-primary
     profiles: ["infra"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.server-primary.rule=Host(`api.localhost`) && PathPrefix(`/primary`)"
-      - "traefik.http.routers.server-primary.entrypoints=web"
-      - "traefik.http.routers.server-primary.middlewares=strip-primary"
-      - "traefik.http.middlewares.strip-primary.stripprefix.prefixes=/primary"
-      - "traefik.http.services.server-primary.loadbalancer.server.port=8089"
     environment:
       - PORT=8089
       - SUPABASE_URL=http://host.docker.internal:54321
@@ -170,13 +169,6 @@ services:
       dockerfile: Dockerfile.dev
     container_name: mcpist-server-secondary
     profiles: ["infra"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.server-secondary.rule=Host(`api.localhost`) && PathPrefix(`/secondary`)"
-      - "traefik.http.routers.server-secondary.entrypoints=web"
-      - "traefik.http.routers.server-secondary.middlewares=strip-secondary"
-      - "traefik.http.middlewares.strip-secondary.stripprefix.prefixes=/secondary"
-      - "traefik.http.services.server-secondary.loadbalancer.server.port=8089"
     environment:
       - PORT=8089
       - SUPABASE_URL=http://host.docker.internal:54321
