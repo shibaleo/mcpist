@@ -1,0 +1,19 @@
+FROM golang:1.24-alpine
+
+WORKDIR /app
+
+# Air インストール（ホットリロード）
+# v1.64.2 requires Go 1.25, use v1.61.7 for Go 1.24 compatibility
+RUN go install github.com/air-verse/air@v1.61.7
+
+# 依存関係インストール
+COPY go.mod go.sum ./
+RUN go mod download
+
+# ソースコード
+COPY . .
+
+EXPOSE 8089
+
+# Air設定がない場合は直接実行
+CMD ["sh", "-c", "if [ -f .air.toml ]; then air -c .air.toml; else go run ./cmd/server; fi"]
