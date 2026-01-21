@@ -4,11 +4,12 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "start": "supabase start && concurrently \"pnpm start:console\" \"pnpm start:server\" \"pnpm start:worker\"",
+    "start": "pnpm env:sync && supabase start && concurrently \"pnpm start:console\" \"pnpm start:server\" \"pnpm start:worker\"",
     "stop": "supabase stop",
     "start:console": "dotenv -v PORT=3000 -e .env.local -- pnpm --filter @mcpist/console dev",
     "start:server": "dotenv -e .env.local -- go run -C apps/server ./cmd/server",
     "start:worker": "pnpm --filter @mcpist/worker dev",
+    "dev": "pnpm env:sync && concurrently -n console,server,worker -c blue,green,yellow \"pnpm start:console\" \"pnpm start:server\" \"pnpm start:worker\"",
     "dev:docker": "supabase start && docker compose up -d --build",
     "stop:docker": "docker compose down && supabase stop",
     "docs:dev": "pnpm --filter @mcpist/docs dev",
@@ -17,7 +18,8 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "env:sync": "node scripts/sync-env.js"
   },
   "devDependencies": {
     "@stoplight/prism-cli": "^5.14.2",
