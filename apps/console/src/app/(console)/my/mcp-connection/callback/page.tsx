@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -59,13 +60,7 @@ function JsonResponseViewer({ data, label }: { data: unknown; label: string }) {
   )
 }
 
-/**
- * OAuth 2.1 Callback Page
- *
- * 認可コードを受け取り、トークン交換を行う
- */
-
-export default function CallbackPage() {
+function CallbackContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
@@ -415,5 +410,17 @@ export default function CallbackPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function CallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <CallbackContent />
+    </Suspense>
   )
 }

@@ -32,25 +32,26 @@ export async function revokeApiKeyAction(
     }
 
     // Call Supabase RPC to revoke the key
-    const { data, error } = (await supabase.rpc("revoke_api_key", {
+    const { data, error } = await supabase.rpc("revoke_api_key", {
       p_key_id: keyId,
-    })) as { data: RevokeApiKeyResult | null; error: typeof error }
+    })
+    const result = data as RevokeApiKeyResult | null
 
     if (error) {
       console.error("[RevokeApiKey] Supabase error:", error.message)
       return { success: false, error: error.message }
     }
 
-    if (!data?.revoked) {
+    if (!result?.revoked) {
       return { success: false, error: "API key not found or already revoked" }
     }
 
     // Invalidate Worker cache if we have the key hash
-    if (data.key_hash) {
+    if (result.key_hash) {
       try {
-        await invalidateWorkerCache(data.key_hash)
+        await invalidateWorkerCache(result.key_hash)
         console.log(
-          `[RevokeApiKey] Cache invalidated for hash: ${data.key_hash.substring(0, 8)}...`
+          `[RevokeApiKey] Cache invalidated for hash: ${result.key_hash.substring(0, 8)}...`
         )
       } catch (cacheError) {
         // Log but don't fail - the key is already revoked in DB

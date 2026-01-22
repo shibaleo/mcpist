@@ -45,14 +45,18 @@ export async function generateApiKey(
 
   const { data, error } = await supabase.rpc('generate_api_key', {
     p_name: name,
-    p_expires_in_days: expiresInDays,
+    p_expires_in_days: expiresInDays ?? undefined,
   })
 
   if (error) {
     throw new ApiKeyError(error.message, error.code)
   }
 
-  return data
+  if (!data) {
+    throw new ApiKeyError('Failed to generate API key')
+  }
+
+  return data as unknown as GenerateApiKeyResult
 }
 
 // Note: revokeApiKey has been moved to a Server Action
