@@ -1,0 +1,42 @@
+name = "mcpist-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+# Cron trigger for health checks (every minute)
+[triggers]
+crons = ["* * * * *"]
+
+# KV Namespaces
+# ローカル開発時はpreview_idを使用
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "production-rate-limit-id"  # 本番用ID（後で設定）
+preview_id = "dev-rate-limit"
+
+[[kv_namespaces]]
+binding = "HEALTH_STATE"
+id = "production-health-state-id"  # 本番用ID（後で設定）
+preview_id = "dev-health-state"
+
+[[kv_namespaces]]
+binding = "API_KEY_CACHE"
+id = "production-api-key-cache-id"  # 本番用ID（後で設定）
+preview_id = "dev-api-key-cache"
+
+# 環境変数
+# ローカル開発: .dev.vars から読み込み（pnpm env:sync で生成）
+# Docker: docker-compose の environment から注入
+# 本番: wrangler secret で設定
+
+# Rate Limit設定（デフォルト値）
+[vars]
+RATE_LIMIT_GLOBAL_MAX = "1000"      # IP単位: req/min
+RATE_LIMIT_BURST_MAX = "5"          # ユーザー単位: req/sec
+
+# 本番環境
+[env.production]
+vars = { PRIMARY_API_URL = "REDACTED_URL", SECONDARY_API_URL = "REDACTED_URL", SUPABASE_URL = "https://xxx.supabase.co", SUPABASE_JWKS_URL = "https://xxx.supabase.co/auth/v1/.well-known/jwks.json" }
+
+# シークレット（wrangler secret で設定）
+# - GATEWAY_SECRET: オリジン直接アクセス防止用
+# - SUPABASE_ANON_KEY: API Key検証用

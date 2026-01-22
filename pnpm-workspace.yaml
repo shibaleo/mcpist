@@ -1,0 +1,6 @@
+packages:
+  - "apps/console"
+  - "apps/server"
+  - "apps/worker"
+  - "packages/*"
+  - "docs"
