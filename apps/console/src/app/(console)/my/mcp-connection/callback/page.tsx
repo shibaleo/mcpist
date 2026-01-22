@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Loader2, Play, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getOAuthClientId } from '@/lib/oauth-client'
 
 type TestStep = {
   name: string
@@ -158,7 +159,7 @@ function CallbackContent() {
             grant_type: 'authorization_code',
             code: code,
             redirect_uri: redirectUri,
-            client_id: 'mcpist-console',
+            client_id: getOAuthClientId(),
             code_verifier: verifier,
           }),
         })

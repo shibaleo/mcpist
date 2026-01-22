@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getOrRegisterOAuthClient, getOAuthClientId } from '@/lib/oauth-client'
 
 /**
  * MCP Client Mock - OAuth 2.1 + PKCE Authorization Flow
@@ -177,11 +178,16 @@ export default function McpClientPage() {
     // Generate state for CSRF protection
     const state = generateRandomString(16)
 
+    // Get or register OAuth client dynamically
+    addLog('Step 5: OAuth Client を取得/登録中...')
+    const clientId = await getOrRegisterOAuthClient()
+    addLog(`  client_id: ${clientId}`)
+
     // Build authorization URL
     const redirectUri = `${consoleUrl}/dev/mcp-client/callback`
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: 'mcp-client-mock',
+      client_id: clientId,
       redirect_uri: redirectUri,
       scope: 'openid profile email',
       code_challenge: challenge,
@@ -224,7 +230,7 @@ export default function McpClientPage() {
           grant_type: 'authorization_code',
           code: code,
           redirect_uri: redirectUri,
-          client_id: 'mcp-client-mock',
+          client_id: getOAuthClientId(),
           code_verifier: codeVerifier,
         }),
       })

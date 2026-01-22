@@ -4,6 +4,8 @@
  * Handles access token storage, expiration tracking, and automatic refresh.
  */
 
+import { getOAuthClientId } from '@/lib/oauth-client'
+
 export interface TokenData {
   accessToken: string
   refreshToken: string | null
@@ -119,7 +121,7 @@ export async function refreshAccessToken(tokens: TokenData): Promise<TokenData |
       body: new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: tokens.refreshToken,
-        client_id: 'mcpist-console',
+        client_id: getOAuthClientId(),
       }),
     })
 
