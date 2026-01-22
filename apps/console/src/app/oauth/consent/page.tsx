@@ -57,7 +57,7 @@ function ConsentContent() {
       try {
         if (isProduction) {
           // Production: Use Supabase SDK
-          // @ts-ignore - Supabase OAuth API is in beta
+          // @ts-expect-error - Supabase OAuth API is in beta
           const { data, error: oauthError } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)
 
           if (oauthError || !data) {
@@ -121,7 +121,7 @@ function ConsentContent() {
       if (isProduction) {
         // Production: Use Supabase SDK
         const supabase = createClient()
-        // @ts-ignore - Supabase OAuth API is in beta
+        // @ts-expect-error - Supabase OAuth API is in beta
         const { data, error: oauthError } = await supabase.auth.oauth.approveAuthorization(authorizationId)
 
         if (oauthError) {
@@ -174,7 +174,7 @@ function ConsentContent() {
       if (isProduction) {
         // Production: Use Supabase SDK
         const supabase = createClient()
-        // @ts-ignore - Supabase OAuth API is in beta
+        // @ts-expect-error - Supabase OAuth API is in beta
         const { data, error: oauthError } = await supabase.auth.oauth.rejectAuthorization(authorizationId)
 
         if (!oauthError && data?.redirect_to) {
