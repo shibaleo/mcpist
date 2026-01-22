@@ -55,16 +55,5 @@ export async function generateApiKey(
   return data
 }
 
-export async function revokeApiKey(keyId: string): Promise<boolean> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('revoke_api_key', {
-    p_key_id: keyId,
-  })
-
-  if (error) {
-    throw new ApiKeyError(error.message, error.code)
-  }
-
-  return data
-}
+// Note: revokeApiKey has been moved to a Server Action
+// See: apps/console/src/app/(console)/my/api-keys/actions.ts

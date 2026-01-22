@@ -48,8 +48,11 @@ interface Env {
   RATE_LIMIT_GLOBAL_MAX: string;
   RATE_LIMIT_BURST_MAX: string;
 
-  // Gateway Secret
+  // Gateway Secret (Worker → Go Server)
   GATEWAY_SECRET: string;
+
+  // Internal Secret (Console → Worker for /internal/* endpoints)
+  INTERNAL_SECRET: string;
 }
 
 type LBState = "NORMAL" | "WARMUP" | "BALANCE" | "FAILOVER";
@@ -152,6 +155,22 @@ export default {
           secondary: buildBackendInfo(secondaryResult),
         },
       }, 200);
+    }
+
+    // 内部サービスエンドポイント（認証必須）
+    if (url.pathname.startsWith("/internal/")) {
+      // INTERNAL_SECRET による認証
+      const internalSecret = request.headers.get("X-Internal-Secret");
+      if (!internalSecret || internalSecret !== env.INTERNAL_SECRET) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+
+      // APIキーキャッシュ無効化
+      if (url.pathname === "/internal/invalidate-api-key" && request.method === "POST") {
+        return await handleInvalidateApiKey(request, env);
+      }
+
+      return jsonResponse({ error: "Not Found" }, 404);
     }
 
     // MCPエンドポイントのみ処理
@@ -807,6 +826,42 @@ async function hashApiKey(apiKey: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * APIキーキャッシュ無効化エンドポイント
+ *
+ * Console からAPIキー削除時に呼び出され、KVキャッシュを即座に削除する。
+ * key_hash を知っている者のみが無効化できる（=正当な削除者）。
+ *
+ * Request body: { key_hash: string }
+ */
+async function handleInvalidateApiKey(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  try {
+    const body = await request.json() as { key_hash?: string };
+    const keyHash = body.key_hash;
+
+    if (!keyHash || typeof keyHash !== "string") {
+      return jsonResponse({ error: "key_hash is required" }, 400);
+    }
+
+    // key_hash の形式検証（64文字の16進数）
+    if (!/^[a-f0-9]{64}$/.test(keyHash)) {
+      return jsonResponse({ error: "Invalid key_hash format" }, 400);
+    }
+
+    // KVキャッシュを削除
+    await env.API_KEY_CACHE.delete(keyHash);
+    console.log(`[InvalidateKey] Cache deleted for hash: ${keyHash.substring(0, 8)}...`);
+
+    return jsonResponse({ success: true, message: "Cache invalidated" }, 200);
+  } catch (error) {
+    console.error("[InvalidateKey] Error:", error);
+    return jsonResponse({ error: "Invalid request body" }, 400);
+  }
 }
 
 // === Rate Limit ===

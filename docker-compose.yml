@@ -34,6 +34,7 @@ services:
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY}
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
       - MCP_SERVER_URL=http://mcp.localhost
       - CONSOLE_URL=http://console.localhost
       - OAUTH_SERVER_URL=http://oauth.localhost
@@ -81,6 +82,7 @@ services:
     container_name: mcpist-worker
     environment:
       - GATEWAY_SECRET=${GATEWAY_SECRET}
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - PRIMARY_API_URL=http://api.localhost/primary
       - SECONDARY_API_URL=http://api.localhost/secondary

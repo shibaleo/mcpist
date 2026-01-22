@@ -32,11 +32,11 @@ import { toast } from "sonner"
 import {
   listApiKeys,
   generateApiKey,
-  revokeApiKey,
   ApiKeyError,
   type ApiKey,
   type GenerateApiKeyResult,
 } from "@/lib/api-keys"
+import { revokeApiKeyAction } from "./actions"
 
 export default function ApiKeysPage() {
   const { user } = useAuth()
@@ -109,16 +109,16 @@ export default function ApiKeysPage() {
 
     setDeleting(true)
     try {
-      await revokeApiKey(deleteDialogKey.id)
-      toast.success("APIキーを削除しました")
-      await loadApiKeys()
-      setDeleteDialogKey(null)
-    } catch (error) {
-      if (error instanceof ApiKeyError) {
-        toast.error(`削除に失敗しました: ${error.message}`)
+      const result = await revokeApiKeyAction(deleteDialogKey.id)
+      if (result.success) {
+        toast.success("APIキーを削除しました")
+        await loadApiKeys()
+        setDeleteDialogKey(null)
       } else {
-        toast.error("削除に失敗しました")
+        toast.error(`削除に失敗しました: ${result.error}`)
       }
+    } catch (error) {
+      toast.error("削除に失敗しました")
     } finally {
       setDeleting(false)
     }
