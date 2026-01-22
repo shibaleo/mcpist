@@ -39,4 +39,4 @@ vars = { PRIMARY_API_URL = "REDACTED_URL", SECONDARY_API_URL = "REDACTED_URL", S
 
 # シークレット（wrangler secret で設定）
 # - GATEWAY_SECRET: オリジン直接アクセス防止用
-# - SUPABASE_ANON_KEY: API Key検証用
+# - SUPABASE_PUBLISHABLE_KEY: API Key検証用

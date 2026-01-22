@@ -384,7 +384,7 @@ Supabase Auth（ソーシャルログイン + セッション）
 | プロトコル | HTTPS（Supabase Edge Function） |
 | メソッド | POST |
 | エンドポイント | `/functions/v1/token-vault` |
-| 認証 | `Authorization: Bearer <SUPABASE_ANON_KEY>` |
+| 認証 | `Authorization: Bearer <SUPABASE_PUBLISHABLE_KEY>` |
 
 ### 詳細仕様
 

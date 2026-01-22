@@ -37,8 +37,8 @@ variable "supabase_url" {
   type        = string
 }
 
-variable "supabase_anon_key" {
-  description = "Supabase Anon Key"
+variable "supabase_publishable_key" {
+  description = "Supabase Publishable Key"
   type        = string
   sensitive   = true
 }
@@ -71,11 +71,11 @@ resource "vercel_project_environment_variable" "supabase_url" {
   target     = ["production", "preview"]
 }
 
-resource "vercel_project_environment_variable" "supabase_anon_key" {
+resource "vercel_project_environment_variable" "supabase_publishable_key" {
   project_id = vercel_project.console.id
   team_id    = var.team_id
-  key        = "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  value      = var.supabase_anon_key
+  key        = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+  value      = var.supabase_publishable_key
   target     = ["production", "preview"]
 }
 

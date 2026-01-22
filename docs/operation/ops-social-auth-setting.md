@@ -91,7 +91,7 @@ Supabaseダッシュボード > Authentication > URL Configuration で以下を�
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL="https://<project-ref>.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="<anon-key>"
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<publishable-key>"
 ```
 
 ## 6. 動作確認

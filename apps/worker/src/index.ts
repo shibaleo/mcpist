@@ -39,7 +39,7 @@ interface Env {
   // Supabase設定
   SUPABASE_URL: string;
   SUPABASE_JWKS_URL: string;
-  SUPABASE_ANON_KEY: string;
+  SUPABASE_PUBLISHABLE_KEY: string;
 
   // OAuth Mock Server (開発環境用)
   OAUTH_JWKS_URL?: string;
@@ -767,8 +767,8 @@ async function verifyApiKey(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: env.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+          apikey: env.SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ p_key: apiKey }),
       }

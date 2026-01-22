@@ -24,8 +24,7 @@ services:
       - INSTANCE_ID=render
       - INSTANCE_REGION=oregon
       - SUPABASE_URL=http://host.docker.internal:54321
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-}
       - CONSOLE_URL=http://host.docker.internal:3000
       - VAULT_URL=http://host.docker.internal:3000/api
       - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-dev-internal-key}
@@ -54,8 +53,7 @@ services:
       - INSTANCE_ID=koyeb
       - INSTANCE_REGION=fra
       - SUPABASE_URL=http://host.docker.internal:54321
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:-}
       - CONSOLE_URL=http://host.docker.internal:3000
       - VAULT_URL=http://host.docker.internal:3000/api
       - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-dev-internal-key}
