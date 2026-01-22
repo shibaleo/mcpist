@@ -47,7 +47,7 @@ Token Vault API（Prism mock）と MCP Server の統合テスト手順。
 
 ```
 VAULT_URL=http://localhost:8089
-SUPABASE_ANON_KEY=dev_anon_key_for_testing
+SUPABASE_PUBLISHABLE_KEY=dev_anon_key_for_testing
 ```
 
 ---
@@ -102,7 +102,7 @@ cd C:\Users\shiba\HOBBY\mcpist\apps\server
 
 # 環境変数を設定して起動
 set VAULT_URL=http://127.0.0.1:8089
-set SUPABASE_ANON_KEY=dev_anon_key_for_testing
+set SUPABASE_PUBLISHABLE_KEY=dev_anon_key_for_testing
 go run ./cmd/server/main.go
 ```
 
@@ -196,7 +196,7 @@ npx @stoplight/prism-cli --version
 ### MCP Server がトークン取得に失敗
 
 1. `VAULT_URL` 環境変数が正しく設定されているか確認
-2. `SUPABASE_ANON_KEY` 環境変数が設定されているか確認
+2. `SUPABASE_PUBLISHABLE_KEY` 環境変数が設定されているか確認
 3. Prism が起動しているか確認
 4. Prism のログでリクエストが来ているか確認
 

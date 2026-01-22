@@ -12,8 +12,8 @@ servers:
   - url: https://<project>.supabase.co/functions/v1
     description: Production (Supabase Edge Functions)
 
-# Development anon key for mock testing:
-# SUPABASE_ANON_KEY=dev_anon_key_for_testing
+# Development publishable key for mock testing:
+# SUPABASE_PUBLISHABLE_KEY=dev_publishable_key_for_testing
 
 paths:
   /health:
