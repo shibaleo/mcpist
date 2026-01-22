@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ interface AuthorizationDetails {
   state: string | null
 }
 
-export default function ConsentPage() {
+function ConsentContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [authDetails, setAuthDetails] = useState<AuthorizationDetails | null>(null)
@@ -263,5 +264,17 @@ export default function ConsentPage() {
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function ConsentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <ConsentContent />
+    </Suspense>
   )
 }

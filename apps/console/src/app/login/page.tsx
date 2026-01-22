@@ -1,7 +1,6 @@
 "use client"
 
-export const dynamic = "force-dynamic"
-
+import { Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,8 +9,9 @@ import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState<string | null>(null)
   const [email, setEmail] = useState("")
@@ -234,5 +234,17 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
