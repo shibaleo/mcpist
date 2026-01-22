@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Copy, RefreshCw, Check, Server, Play, CheckCircle2, XCircle, Loader2, Key, ChevronDown, ChevronRight } from "lucide-react"
+import { Copy, Check, Server, Play, CheckCircle2, XCircle, Loader2, Key, ChevronDown, ChevronRight, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 type VerifyStep = {
   name: string
@@ -17,14 +17,10 @@ type VerifyStep = {
 
 export default function McpConnectionPage() {
   const [copied, setCopied] = useState<string | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [maskedKey, setMaskedKey] = useState<string | null>(null)
-  const [tokenStatus, setTokenStatus] = useState<"loading" | "not_generated" | "active" | "revoked">("loading")
-  const [isGenerating, setIsGenerating] = useState(false)
   const [isApiKeyOpen, setIsApiKeyOpen] = useState(false)
 
   // API Key test state
-  const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://mcp.localhost")
+  const [mcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://mcp.localhost")
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])
   const [testApiKey, setTestApiKey] = useState<string>("")
@@ -34,70 +30,15 @@ export default function McpConnectionPage() {
   const mcpBaseUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8787"
   const endpoint = `${mcpBaseUrl}/mcp`
 
-  // Check existing API Key on mount
-  useEffect(() => {
-    const checkApiKey = async () => {
-      try {
-        const res = await fetch('/api/apikey')
-        if (res.ok) {
-          const data = await res.json()
-          setTokenStatus(data.exists ? 'active' : 'not_generated')
-          if (data.masked_key) {
-            setMaskedKey(data.masked_key)
-          }
-        } else {
-          setTokenStatus('not_generated')
-        }
-      } catch {
-        setTokenStatus('not_generated')
-      }
-    }
-    checkApiKey()
-  }, [])
-
-  const handleGenerateToken = async () => {
-    setIsGenerating(true)
-    try {
-      const res = await fetch('/api/apikey', { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        setToken(data.api_key)
-        setTokenStatus('active')
-      } else {
-        console.error('Failed to generate API key')
-      }
-    } catch (error) {
-      console.error('Error generating API key:', error)
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const handleRevokeToken = async () => {
-    try {
-      const res = await fetch('/api/apikey', { method: 'DELETE' })
-      if (res.ok) {
-        setToken(null)
-        setTokenStatus('not_generated')
-      }
-    } catch (error) {
-      console.error('Error revoking API key:', error)
-    }
-  }
-
   const handleCopy = async (text: string, type: string) => {
     await navigator.clipboard.writeText(text)
     setCopied(type)
     setTimeout(() => setCopied(null), 2000)
   }
 
-  // Display masked token: from API or generate locally from token
-  const displayMaskedToken = maskedKey || (token ? `${token.slice(0, 6)}****...${token.slice(-2)}` : "mpt_****...**")
-
   // API Key Connection Test
   const testApiKeyConnection = async () => {
-    const apiKeyToTest = testApiKey || token
-    if (!apiKeyToTest) return
+    if (!testApiKey) return
 
     setIsVerifying(true)
     setVerifySteps([
@@ -114,7 +55,7 @@ export default function McpConnectionPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKeyToTest}`,
+          "Authorization": `Bearer ${testApiKey}`,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -157,7 +98,7 @@ export default function McpConnectionPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKeyToTest}`,
+          "Authorization": `Bearer ${testApiKey}`,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -230,9 +171,6 @@ export default function McpConnectionPage() {
                   API Key と接続方法
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  {tokenStatus === "active" && (
-                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30">有効</Badge>
-                  )}
                   {isApiKeyOpen ? (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   ) : (
@@ -247,91 +185,19 @@ export default function McpConnectionPage() {
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-4">
-              {tokenStatus === "loading" ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>API Keyの状態を確認中...</span>
-                </div>
-              ) : tokenStatus === "not_generated" ? (
-                <Button onClick={handleGenerateToken} disabled={isGenerating}>
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      生成中...
-                    </>
-                  ) : (
-                    <>
-                      <Key className="h-4 w-4 mr-2" />
-                      API Keyを生成
-                    </>
-                  )}
+              {/* Link to API Keys page */}
+              <div className="p-4 bg-secondary/50 rounded-lg border">
+                <p className="text-sm text-muted-foreground mb-3">
+                  API Keyは「API Keys」ページで管理できます。新しいキーの生成や既存キーの無効化が可能です。
+                </p>
+                <Button asChild variant="outline">
+                  <Link href="/my/api-keys">
+                    <Key className="h-4 w-4 mr-2" />
+                    API Keys管理
+                    <ExternalLink className="h-3 w-3 ml-2" />
+                  </Link>
                 </Button>
-              ) : tokenStatus === "active" && token ? (
-                <>
-                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p className="text-sm text-green-400 mb-2">
-                      API Keyが生成されました。今すぐコピーしてください。このキーは再表示できません。
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={token}
-                        readOnly
-                        className="font-mono text-sm"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleCopy(token, "token")}
-                      >
-                        {copied === "token" ? (
-                          <Check className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleGenerateToken} disabled={isGenerating}>
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                      )}
-                      再生成
-                    </Button>
-                    <Button variant="destructive" onClick={handleRevokeToken}>
-                      無効化
-                    </Button>
-                  </div>
-                </>
-              ) : tokenStatus === "active" ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={displayMaskedToken}
-                      readOnly
-                      className="font-mono text-sm"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    API Keyは既に生成済みです。キーの値は表示できません。
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleGenerateToken} disabled={isGenerating}>
-                      {isGenerating ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                      )}
-                      再生成
-                    </Button>
-                    <Button variant="destructive" onClick={handleRevokeToken}>
-                      無効化
-                    </Button>
-                  </div>
-                </>
-              ) : null}
+              </div>
 
               {/* 接続設定例 */}
               <div className="border-t pt-4 mt-4">
@@ -344,7 +210,7 @@ export default function McpConnectionPage() {
       "url": "${endpoint}",
       "headers": {
         "Authorization": "Bearer `}<Input
-                    value={testApiKey || token || ""}
+                    value={testApiKey}
                     onChange={(e) => setTestApiKey(e.target.value)}
                     placeholder="<your-api-key>"
                     className="inline-flex w-72 h-6 px-1 py-0 text-xs font-mono bg-white dark:bg-zinc-700 border rounded align-middle"
@@ -359,7 +225,7 @@ export default function McpConnectionPage() {
                   <Button
                     variant="outline"
                     onClick={testApiKeyConnection}
-                    disabled={isVerifying || (!testApiKey && !token)}
+                    disabled={isVerifying || !testApiKey}
                   >
                     {isVerifying ? (
                       <>

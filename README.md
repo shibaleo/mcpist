@@ -75,18 +75,12 @@ pnpm stop
 
 This starts:
 - **Supabase** → http://localhost:54321 (API), http://localhost:54323 (Studio)
-- **Console (Next.js)** → http://localhost:3000
-- **Server (Go)** → http://localhost:8089
+- **Console (Next.js)** → http://console.localhost
+- **OAuth Server** → http://oauth.localhost
+- **MCP Gateway (Worker)** → http://mcp.localhost
+- **API Server (Go)** → http://api.localhost
 
-### Docker mode (Domain-based routing)
-
-Production-like local development with `*.localhost` domains via nginx reverse proxy.
-
-```bash
-pnpm dev:docker       # Start containers
-pnpm stop:docker      # Stop containers
-pnpm logs:docker      # View logs
-```
+> Note: `pnpm dev` uses Docker with nginx reverse proxy for `*.localhost` domains.
 
 **Endpoints:**
 | URL | Service |
@@ -106,15 +100,38 @@ curl http://api.localhost/secondary/health
 curl http://mcp.localhost/health
 ```
 
+**Accessing from host machine (without editing hosts file):**
+
+Use `Host` header to route requests through nginx:
+```bash
+curl -H "Host: mcp.localhost" http://localhost/health
+curl -H "Host: api.localhost" http://localhost/health
+```
+
+For `.mcp.json` configuration (Claude Code, etc.):
+```json
+{
+  "mcpServers": {
+    "mcpist-dev": {
+      "url": "http://localhost/mcp",
+      "type": "sse",
+      "headers": {
+        "Authorization": "Bearer <your-token>",
+        "Host": "mcp.localhost"
+      }
+    }
+  }
+}
+```
+
 ### Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Start Supabase + Console + Server (local) |
-| `pnpm stop` | Stop Supabase |
-| `pnpm dev:docker` | Start with Docker (domain-based routing) |
-| `pnpm stop:docker` | Stop Docker containers |
-| `pnpm logs:docker` | View Docker container logs |
+| `pnpm dev` | Start Supabase + Docker containers (domain-based routing) |
+| `pnpm dev:local` | Start without Docker (localhost ports) |
+| `pnpm stop` | Stop Docker containers and Supabase |
+| `pnpm logs` | View Docker container logs |
 | `pnpm build` | Build all apps |
 | `pnpm lint` | Lint all apps |
 | `pnpm test` | Run tests |
