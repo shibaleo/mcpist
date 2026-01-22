@@ -1,23 +1,23 @@
 /**
  * OAuth 2.1 Authorization Server Metadata (RFC 8414)
  *
- * MCPist 独自の Authorization Server メタデータを提供。
+ * Supabase OAuth Server のエンドポイントを返す。
  * MCP Client は OAuth 2.1 + PKCE フローでアクセストークンを取得する。
  */
 import { NextResponse } from 'next/server'
 
-// MCPist のベース URL (issuer)
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+// Supabase URL
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 export async function GET() {
   const metadata = {
-    // issuer は MCPist のドメイン
-    issuer: BASE_URL,
-    // MCPist 独自の認可・トークンエンドポイント
-    authorization_endpoint: `${BASE_URL}/api/auth/authorize`,
-    token_endpoint: `${BASE_URL}/api/auth/token`,
-    // MCPist 独自の JWKS エンドポイント
-    jwks_uri: `${BASE_URL}/api/auth/jwks`,
+    // issuer は Supabase のドメイン
+    issuer: SUPABASE_URL,
+    // Supabase OAuth Server エンドポイント
+    authorization_endpoint: `${SUPABASE_URL}/auth/v1/oauth/authorize`,
+    token_endpoint: `${SUPABASE_URL}/auth/v1/oauth/token`,
+    // Supabase JWKS エンドポイント
+    jwks_uri: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
     // サポートするフロー
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
@@ -29,7 +29,7 @@ export async function GET() {
   return NextResponse.json(metadata, {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache', // Development: disable cache
+      'Cache-Control': 'no-cache',
       'Access-Control-Allow-Origin': '*',
     },
   })
