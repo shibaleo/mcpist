@@ -17,6 +17,7 @@ const ENV_LOCAL = path.join(ROOT_DIR, '.env.local');
 const MODULE_ENV_MAP = {
   'apps/worker/.dev.vars': [
     'GATEWAY_SECRET',
+    'INTERNAL_SECRET',
     'SUPABASE_ANON_KEY',
     'SUPABASE_URL',
   ],
@@ -28,7 +29,7 @@ const MODULE_ENV_MAP = {
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
-    'INTERNAL_SERVICE_KEY',
+    'INTERNAL_SECRET',
     'MCP_SERVER_URL',
     'CONSOLE_URL',
     'VAULT_URL',

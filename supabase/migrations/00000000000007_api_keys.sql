@@ -156,14 +156,16 @@ END;
 $$;
 
 -- APIキー削除（論理削除）
+-- 返り値: { revoked: boolean, key_hash: string | null }
 CREATE OR REPLACE FUNCTION public.revoke_api_key(p_key_id UUID)
-RETURNS BOOLEAN
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
   v_user_id UUID;
+  v_key_hash TEXT;
   v_affected INTEGER;
 BEGIN
   v_user_id := auth.uid();
@@ -171,6 +173,18 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
+  -- 先にkey_hashを取得
+  SELECT key_hash INTO v_key_hash
+  FROM mcpist.api_keys
+  WHERE id = p_key_id
+    AND user_id = v_user_id
+    AND revoked_at IS NULL;
+
+  IF v_key_hash IS NULL THEN
+    RETURN jsonb_build_object('revoked', false, 'key_hash', NULL);
+  END IF;
+
+  -- 論理削除
   UPDATE mcpist.api_keys
   SET revoked_at = NOW()
   WHERE id = p_key_id
@@ -178,7 +192,7 @@ BEGIN
     AND revoked_at IS NULL;
 
   GET DIAGNOSTICS v_affected = ROW_COUNT;
-  RETURN v_affected > 0;
+  RETURN jsonb_build_object('revoked', v_affected > 0, 'key_hash', v_key_hash);
 END;
 $$;
 
