@@ -1,0 +1,35 @@
+# Devcontainer Docker Compose
+# This file is used by VS Code to start the development container
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - devcontainer-docker:/var/lib/docker
+
+    # Required for Docker-in-Docker
+    privileged: true
+
+    # Keep container running
+    command: sleep infinity
+
+    environment:
+      # Supabase local development
+      - SUPABASE_URL=http://localhost:54321
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+
+      # API endpoints (for Worker LB - Primary / Secondary Failover)
+      - PRIMARY_API_URL=http://localhost:8081
+      - SECONDARY_API_URL=http://localhost:8082
+
+      # Next.js
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_MCP_SERVER_URL=http://localhost:8787
+
+volumes:
+  devcontainer-docker:
