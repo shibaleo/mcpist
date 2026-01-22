@@ -384,7 +384,88 @@ supabase db dump -f backup.sql
 
 ## デプロイ
 
-### デプロイフロー
+### 環境構成
+
+| 環境       | Supabase/Render/Koyeb/Vercel | Cloudflare            | ドメイン           |
+|------------|------------------------------|----------------------|-------------------|
+| dev        | shiba.dog.leo.private        | shiba.dog.leo.private | dev.mcpist.app    |
+| stage      | fukudamakoto.private         | shiba.dog.leo.private | stg.mcpist.app    |
+| production | fukudamakoto.work            | shiba.dog.leo.private | cloud.mcpist.app  |
+
+### DevOps フロー
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           DevOps Flow                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  local ──────────► dev ──────────► stg ──────────► prd                 │
+│         自動CI/CD        手動            DNS切り替え                     │
+│         (main push)    ディスパッチ       (Blue-Green)                   │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  local:  破壊的な開発、機能実装                                           │
+│                                                                         │
+│  dev:    自動デプロイ、ユーザーテスト、E2E検証                             │
+│                                                                         │
+│  stg:    prdデータをマイグレーション、本番相当の検証                        │
+│          ※ stg = 次期prd環境として準備                                   │
+│                                                                         │
+│  prd:    DNS切り替えでstgをprdに昇格                                     │
+│          ※ 旧prdは次のstgとして再利用 or 削除                            │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### stg → prd 切り替え（Blue-Green Deployment）
+
+**リリース時の操作:**
+
+1. OpenTofuでDNSレコード切り替え（Cloudflare API）
+2. 各サービスの環境変数更新（Supabase接続先等）
+3. ヘルスチェック確認
+
+**メリット:**
+- 即時ロールバック可能（DNS切り戻し）
+- stgで検証済みの環境がそのまま本番化
+- コードマージ不要、デプロイ待ち時間なし
+
+**自動化:**
+- OpenTofuでDNS・環境変数を一括管理
+- GitHub Actions手動ディスパッチで `tofu apply` 実行
+- Cloudflare API / Supabase CLI で切り替え
+
+### デプロイ対象
+
+| サービス     | プラットフォーム     | デプロイ方法        |
+|-------------|---------------------|-------------------|
+| Console     | Vercel              | OpenTofu          |
+| Worker      | Cloudflare Workers  | Wrangler + OpenTofu |
+| Server      | Render (Primary)    | OpenTofu          |
+| Server      | Koyeb (Secondary)   | OpenTofu          |
+| OAuth Server| Supabase            | Supabase CLI      |
+| DB Migration| Supabase            | Supabase CLI      |
+
+### GitHub Actions ワークフロー構成
+
+| ワークフロー | トリガー | 処理内容 |
+|-------------|---------|---------|
+| `deploy-dev.yml` | main push | OpenTofu apply (dev) |
+| `promote-to-stg.yml` | 手動ディスパッチ | OpenTofu apply (stg) + prdデータマイグレーション |
+| `promote-to-prd.yml` | 手動ディスパッチ | DNS切り替え + 環境変数更新 |
+| `rollback-prd.yml` | 手動ディスパッチ | DNS切り戻し（緊急時） |
+
+### DNS設定（Cloudflare管理）
+
+| ドメイン | 環境 | 切り替え対象 |
+|---------|------|-------------|
+| dev.mcpist.app | dev | 固定 |
+| stg.mcpist.app | stg | 固定 |
+| cloud.mcpist.app | prd | **Blue-Green切り替え** |
+| console.mcpist.app | prd | **Blue-Green切り替え** |
+
+### デプロイフロー（従来）
 
 ```
 GitHub Push (main)

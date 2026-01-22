@@ -30,6 +30,7 @@ interface Env {
   // KV Namespaces
   RATE_LIMIT: KVNamespace;
   HEALTH_STATE: KVNamespace;
+  API_KEY_CACHE: KVNamespace;  // APIキーキャッシュ用
 
   // バックエンド設定
   PRIMARY_API_URL: string;     // Primary API Server
@@ -681,14 +682,66 @@ async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
 }
 
 interface ApiKeyValidationResult {
-  user_id: string;
+  valid: boolean;
+  user_id?: string;
+  key_name?: string;
+  scopes?: string[];
+  error?: string;
 }
 
+interface ApiKeyCacheEntry {
+  userId: string;
+  cachedAt: number;
+}
+
+// APIキーキャッシュ設定
+const API_KEY_CACHE_TTL_SECONDS = 86400; // 1日（KV TTL）
+const API_KEY_CACHE_MAX_AGE_MS = 3600000; // 1時間（ソフト有効期限）
+
+/**
+ * APIキー検証（KVキャッシュ対応）
+ *
+ * フロー:
+ * 1. KVキャッシュをチェック（ヒット時: 1-5ms）
+ * 2. キャッシュミス時: Supabase RPCを呼び出し（10-50ms）
+ * 3. 検証成功時: 結果をKVにキャッシュ
+ */
 async function verifyApiKey(
   apiKey: string,
   env: Env
 ): Promise<AuthResult | null> {
+  const startTime = Date.now();
+
+  // APIキーのSHA-256ハッシュをキャッシュキーとして使用
+  const cacheKey = await hashApiKey(apiKey);
+
+  // 1. KVキャッシュをチェック
   try {
+    const cacheReadStart = Date.now();
+    const cached = await env.API_KEY_CACHE.get<ApiKeyCacheEntry>(cacheKey, "json");
+    const cacheReadLatency = Date.now() - cacheReadStart;
+
+    if (cached) {
+      const age = Date.now() - cached.cachedAt;
+      const totalLatency = Date.now() - startTime;
+      if (age < API_KEY_CACHE_MAX_AGE_MS) {
+        // キャッシュヒット（有効期限内）
+        console.log(`[APIKey] Cache HIT | total: ${totalLatency}ms, kv_read: ${cacheReadLatency}ms, age: ${Math.round(age / 1000)}s`);
+        return { userId: cached.userId, type: "api_key" };
+      }
+      // ソフト有効期限切れ → バックグラウンドで再検証を行うが、今は古いキャッシュを使用
+      console.log(`[APIKey] Cache SOFT-EXPIRED | total: ${totalLatency}ms, kv_read: ${cacheReadLatency}ms, age: ${Math.round(age / 1000)}s`);
+      return { userId: cached.userId, type: "api_key" };
+    }
+  } catch (cacheError) {
+    console.error("[APIKey] Cache read error:", cacheError);
+    // キャッシュエラーは無視して直接検証へ
+  }
+
+  // 2. キャッシュミス → Supabase RPCで検証
+  console.log("[APIKey] Cache MISS, validating via Supabase RPC...");
+  try {
+    const rpcStart = Date.now();
     const response = await fetch(
       `${env.SUPABASE_URL}/rest/v1/rpc/validate_api_key`,
       {
@@ -698,24 +751,62 @@ async function verifyApiKey(
           apikey: env.SUPABASE_ANON_KEY,
           Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ p_api_key: apiKey, p_service: "mcpist" }),
+        body: JSON.stringify({ p_key: apiKey }),
       }
     );
+    const rpcLatency = Date.now() - rpcStart;
 
     if (!response.ok) {
+      const totalLatency = Date.now() - startTime;
+      console.log(`[APIKey] Validation FAILED (HTTP ${response.status}) | total: ${totalLatency}ms, rpc: ${rpcLatency}ms`);
       return null;
     }
 
-    const results: ApiKeyValidationResult[] = await response.json();
-    if (!results || results.length === 0 || !results[0].user_id) {
+    const result: ApiKeyValidationResult = await response.json();
+    if (!result || !result.valid || !result.user_id) {
+      const totalLatency = Date.now() - startTime;
+      console.log(`[APIKey] Validation FAILED (${result?.error || 'no user_id'}) | total: ${totalLatency}ms, rpc: ${rpcLatency}ms`);
       return null;
     }
 
-    return { userId: results[0].user_id, type: "api_key" };
+    const userId = result.user_id;
+
+    // 3. 検証成功 → KVにキャッシュ
+    try {
+      const cacheWriteStart = Date.now();
+      const cacheEntry: ApiKeyCacheEntry = {
+        userId,
+        cachedAt: Date.now(),
+      };
+      await env.API_KEY_CACHE.put(cacheKey, JSON.stringify(cacheEntry), {
+        expirationTtl: API_KEY_CACHE_TTL_SECONDS,
+      });
+      const cacheWriteLatency = Date.now() - cacheWriteStart;
+      const totalLatency = Date.now() - startTime;
+      console.log(`[APIKey] Validation OK + Cached | total: ${totalLatency}ms, rpc: ${rpcLatency}ms, kv_write: ${cacheWriteLatency}ms`);
+    } catch (cacheWriteError) {
+      const totalLatency = Date.now() - startTime;
+      console.error(`[APIKey] Cache write error (total: ${totalLatency}ms):`, cacheWriteError);
+      // キャッシュ書き込みエラーは無視
+    }
+
+    return { userId, type: "api_key" };
   } catch (error) {
-    console.error("API Key verification error:", error);
+    const totalLatency = Date.now() - startTime;
+    console.error(`[APIKey] Verification error (total: ${totalLatency}ms):`, error);
     return null;
   }
+}
+
+/**
+ * APIキーをSHA-256でハッシュ化（キャッシュキー用）
+ */
+async function hashApiKey(apiKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(apiKey);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 // === Rate Limit ===

@@ -27,6 +27,7 @@ import {
   Zap,
   Shield,
   HelpCircle,
+  Key,
 } from "lucide-react"
 
 const MIN_WIDTH = 150
@@ -39,6 +40,7 @@ const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
     { href: "/my/mcp-connection", label: "サーバー接続", icon: Server },
+    { href: "/my/api-keys", label: "APIキー", icon: Key },
     { href: "/my/connections", label: "サービス連携", icon: Link2 },
     { href: "/my/preferences", label: "ツール設定", icon: Settings2 },
   ],

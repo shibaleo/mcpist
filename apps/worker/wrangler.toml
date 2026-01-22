@@ -18,6 +18,11 @@ binding = "HEALTH_STATE"
 id = "production-health-state-id"  # 本番用ID（後で設定）
 preview_id = "dev-health-state"
 
+[[kv_namespaces]]
+binding = "API_KEY_CACHE"
+id = "production-api-key-cache-id"  # 本番用ID（後で設定）
+preview_id = "dev-api-key-cache"
+
 # 環境変数
 # ローカル開発: .dev.vars から読み込み（pnpm env:sync で生成）
 # Docker: docker-compose の environment から注入
