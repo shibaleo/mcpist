@@ -19,5 +19,5 @@ EXPOSE 8787
 # 起動前に環境変数から .dev.vars を生成
 CMD sh -c '\
   echo "# Generated from environment variables" > .dev.vars && \
-  env | grep -E "^(GATEWAY_SECRET|SUPABASE_ANON_KEY|PRIMARY_API_URL|SECONDARY_API_URL|SUPABASE_URL|SUPABASE_JWKS_URL|OAUTH_JWKS_URL)=" >> .dev.vars && \
+  env | grep -E "^(GATEWAY_SECRET|INTERNAL_SECRET|SUPABASE_ANON_KEY|PRIMARY_API_URL|SECONDARY_API_URL|SUPABASE_URL|SUPABASE_JWKS_URL|OAUTH_JWKS_URL)=" >> .dev.vars && \
   npx wrangler dev --local --port 8787 --ip 0.0.0.0'
