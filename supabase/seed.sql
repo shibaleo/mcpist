@@ -9,6 +9,9 @@
 --
 -- After login, go to MCP接続情報 page to generate API Key
 
+-- Enable pgcrypto extension in extensions schema (for gen_salt/crypt functions)
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- =============================================================================
 -- Test User (role: user)
 -- =============================================================================
@@ -33,7 +36,7 @@ INSERT INTO auth.users (
     '11111111-1111-1111-1111-111111111111',
     '00000000-0000-0000-0000-000000000000',
     'test@example.com',
-    crypt('testtest', gen_salt('bf')),
+    extensions.crypt('testtest', extensions.gen_salt('bf')),
     NOW(),
     NOW(),
     NOW(),
@@ -75,7 +78,7 @@ INSERT INTO auth.users (
     '22222222-2222-2222-2222-222222222222',
     '00000000-0000-0000-0000-000000000000',
     'admin@example.com',
-    crypt('adminadmin', gen_salt('bf')),
+    extensions.crypt('adminadmin', extensions.gen_salt('bf')),
     NOW(),
     NOW(),
     NOW(),

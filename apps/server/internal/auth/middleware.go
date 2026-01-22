@@ -156,9 +156,9 @@ func (m *Middleware) validateToken(token string) (string, error) {
 // validateAPIKey validates an API Key by calling Supabase RPC
 func (m *Middleware) validateAPIKey(apiKey string) (string, error) {
 	supabaseURL := os.Getenv("SUPABASE_URL")
-	serviceKey := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	serviceKey := os.Getenv("SUPABASE_SECRET_KEY")
 	if serviceKey == "" {
-		return "", fmt.Errorf("SUPABASE_SERVICE_ROLE_KEY not configured")
+		return "", fmt.Errorf("SUPABASE_SECRET_KEY not configured")
 	}
 
 	// Call Supabase RPC to validate API key

@@ -47,7 +47,7 @@ type cacheItem struct {
 func NewStore() *Store {
 	return &Store{
 		supabaseURL: os.Getenv("SUPABASE_URL"),
-		serviceKey:  os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
+		serviceKey:  os.Getenv("SUPABASE_SECRET_KEY"),
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
