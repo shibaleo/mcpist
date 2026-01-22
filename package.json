@@ -10,7 +10,7 @@
     "start:server": "dotenv -e .env.local -- go run -C apps/server ./cmd/server",
     "start:worker": "pnpm --filter @mcpist/worker dev",
     "dev": "pnpm env:sync && concurrently -n console,server,worker -c blue,green,yellow \"pnpm start:console\" \"pnpm start:server\" \"pnpm start:worker\"",
-    "dev:docker": "supabase start && docker compose --env-file .env.local up -d --build",
+    "dev:docker": "rm -rf apps/console/.next && supabase start && docker compose --env-file .env.local up -d --build",
     "stop:docker": "docker compose down && supabase stop",
     "logs:docker": "docker compose logs -f",
     "docs:dev": "pnpm --filter @mcpist/docs dev",

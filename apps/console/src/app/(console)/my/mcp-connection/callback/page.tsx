@@ -4,13 +4,59 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, Loader2, Play } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Play, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type TestStep = {
   name: string
   status: 'pending' | 'running' | 'success' | 'error'
   message?: string
+  response?: unknown
+}
+
+// JSON Response Viewer Component
+function JsonResponseViewer({ data, label }: { data: unknown; label: string }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const jsonString = JSON.stringify(data, null, 2)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(jsonString)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="mt-2 border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-2 bg-muted/50 hover:bg-muted text-left text-xs"
+      >
+        <span className="flex items-center gap-1 font-medium">
+          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {label}
+        </span>
+        <span className="text-muted-foreground">
+          {jsonString.length} bytes
+        </span>
+      </button>
+      {isExpanded && (
+        <div className="relative">
+          <button
+            onClick={handleCopy}
+            className="absolute top-2 right-2 p-1 rounded bg-background/80 hover:bg-background border text-muted-foreground hover:text-foreground"
+            title="Copy JSON"
+          >
+            {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+          </button>
+          <pre className="p-3 text-xs font-mono overflow-x-auto bg-secondary/50 max-h-64 overflow-y-auto">
+            {jsonString}
+          </pre>
+        </div>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -200,7 +246,10 @@ export default function CallbackPage() {
       })
 
       if (response.status === 401) {
-        updateTestStep(0, { status: 'error', message: '認証失敗 (401)' })
+        const errorText = await response.text()
+        let errorData: unknown = errorText
+        try { errorData = JSON.parse(errorText) } catch { /* keep as text */ }
+        updateTestStep(0, { status: 'error', message: '認証失敗 (401)', response: errorData })
         setIsTesting(false)
         setTestComplete(true)
         return
@@ -216,9 +265,10 @@ export default function CallbackPage() {
       updateTestStep(1, { status: 'running' })
       const initData = await response.json()
       if (initData.result) {
-        updateTestStep(1, { status: 'success', message: `v${initData.result.protocolVersion}` })
+        updateTestStep(0, { status: 'success', message: '接続成功', response: initData })
+        updateTestStep(1, { status: 'success', message: `v${initData.result.protocolVersion}`, response: initData })
       } else if (initData.error) {
-        updateTestStep(1, { status: 'error', message: initData.error.message })
+        updateTestStep(1, { status: 'error', message: initData.error.message, response: initData })
         setIsTesting(false)
         setTestComplete(true)
         return
@@ -242,9 +292,9 @@ export default function CallbackPage() {
       const toolsData = await toolsRes.json()
       if (toolsData.result) {
         const toolCount = toolsData.result.tools?.length || 0
-        updateTestStep(2, { status: 'success', message: `${toolCount} tools` })
+        updateTestStep(2, { status: 'success', message: `${toolCount} tools`, response: toolsData })
       } else if (toolsData.error) {
-        updateTestStep(2, { status: 'error', message: toolsData.error.message })
+        updateTestStep(2, { status: 'error', message: toolsData.error.message, response: toolsData })
       }
     } catch (err) {
       updateTestStep(0, { status: 'error', message: String(err) })
@@ -307,32 +357,38 @@ export default function CallbackPage() {
               {testSteps.length > 0 && (
                 <div className="space-y-2">
                   {testSteps.map((step, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        'flex items-center gap-2 p-2 rounded-lg text-sm',
-                        step.status === 'success' && 'bg-green-500/10',
-                        step.status === 'error' && 'bg-destructive/10',
-                        step.status === 'running' && 'bg-primary/10'
-                      )}
-                    >
-                      {step.status === 'pending' && (
-                        <div className="h-4 w-4 rounded-full border-2 border-muted" />
-                      )}
-                      {step.status === 'running' && (
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      )}
-                      {step.status === 'success' && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      )}
-                      {step.status === 'error' && (
-                        <XCircle className="h-4 w-4 text-destructive" />
-                      )}
-                      <span className="flex-1">{step.name}</span>
-                      {step.message && (
-                        <span className="text-xs text-muted-foreground">
-                          {step.message}
-                        </span>
+                    <div key={index}>
+                      <div
+                        className={cn(
+                          'flex items-center gap-2 p-2 rounded-lg text-sm',
+                          step.status === 'success' && 'bg-green-500/10',
+                          step.status === 'error' && 'bg-destructive/10',
+                          step.status === 'running' && 'bg-primary/10'
+                        )}
+                      >
+                        {step.status === 'pending' && (
+                          <div className="h-4 w-4 rounded-full border-2 border-muted" />
+                        )}
+                        {step.status === 'running' && (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        )}
+                        {step.status === 'success' && (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        )}
+                        {step.status === 'error' && (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                        <span className="flex-1">{step.name}</span>
+                        {step.message && (
+                          <span className="text-xs text-muted-foreground">
+                            {step.message}
+                          </span>
+                        )}
+                      </div>
+                      {step.response !== undefined && (
+                        <div className="ml-6">
+                          <JsonResponseViewer data={step.response} label="Response JSON" />
+                        </div>
                       )}
                     </div>
                   ))}
