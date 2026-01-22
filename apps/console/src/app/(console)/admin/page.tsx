@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Users, Activity, Server, CreditCard, Play, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getOrRegisterOAuthClient } from "@/lib/oauth-client"
 
 type VerifyStep = {
   name: string
@@ -328,11 +329,15 @@ function OAuthVerificationCard() {
     sessionStorage.setItem("oauth_state", state)
     sessionStorage.setItem("oauth_verifier", verifier)
 
+    // Get or register OAuth client dynamically
+    const clientId = await getOrRegisterOAuthClient()
+    addLog(`  client_id: ${clientId}`)
+
     // Use the metadata variable directly since setState is async
     const authServerMetadata = await fetch("/.well-known/oauth-authorization-server").then(r => r.json())
     const authUrl = new URL(authServerMetadata.authorization_endpoint)
     authUrl.searchParams.set("response_type", "code")
-    authUrl.searchParams.set("client_id", "mcpist-console")
+    authUrl.searchParams.set("client_id", clientId)
     authUrl.searchParams.set("redirect_uri", redirectUri)
     authUrl.searchParams.set("scope", "openid profile email")
     authUrl.searchParams.set("code_challenge", challenge)

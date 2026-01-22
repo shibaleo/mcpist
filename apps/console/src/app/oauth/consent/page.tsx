@@ -193,7 +193,7 @@ function ConsentContent() {
           <div>
             <CardTitle className="text-xl">アクセス許可の確認</CardTitle>
             <CardDescription className="mt-2">
-              <span className="font-medium text-foreground">{authDetails?.client_id === "mcpist-console" ? "MCPist" : authDetails?.client_id}</span>
+              <span className="font-medium text-foreground">{authDetails?.client_id?.toLowerCase().includes("mcpist") ? "MCPist Console" : authDetails?.client_id}</span>
               {" "}があなたのアカウントへのアクセスを要求しています
             </CardDescription>
           </div>
