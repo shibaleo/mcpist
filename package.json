@@ -2,7 +2,7 @@
   "name": "mcpist",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@10.0.0",
   "scripts": {
     "dev": "supabase start && pnpm env:sync && rm -rf apps/console/.next && docker compose --env-file .env.local up -d --build",
     "dev:local": "supabase start && pnpm env:sync && concurrently -n console,server,worker -c blue,green,yellow \"pnpm start:console\" \"pnpm start:server\" \"pnpm start:worker\"",
