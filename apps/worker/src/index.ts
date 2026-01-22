@@ -606,26 +606,22 @@ async function performScheduledHealthCheck(env: Env): Promise<void> {
     metrics.state = "FAILOVER";
   }
 
-  // Secondaryが起動中なら状態確認
-  if (metrics.secondaryState === "waking" || metrics.state === "BALANCE" || metrics.state === "FAILOVER") {
-    try {
-      const response = await fetch(`${env.SECONDARY_API_URL}/health`, {
-        method: "GET",
-        signal: AbortSignal.timeout(5000),
-      });
+  // Secondaryも常にヘルスチェック（両方をウォーム維持）
+  try {
+    const response = await fetch(`${env.SECONDARY_API_URL}/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(5000),
+    });
 
-      if (response.ok) {
-        metrics.secondaryState = "ready";
-        metrics.secondaryHealthy = true;
-      } else {
-        metrics.secondaryHealthy = false;
-      }
-    } catch (error) {
-      // Secondaryがスリープ中は失敗しても問題ない
-      if (metrics.state === "FAILOVER") {
-        console.log("Secondary not responding in FAILOVER state, attempting wake...");
-      }
+    if (response.ok) {
+      metrics.secondaryState = "ready";
+      metrics.secondaryHealthy = true;
+    } else {
+      metrics.secondaryHealthy = false;
     }
+  } catch (error) {
+    console.error("Secondary health check failed:", error);
+    metrics.secondaryHealthy = false;
   }
 
   metrics.lastUpdated = Date.now();
