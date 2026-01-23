@@ -52,13 +52,9 @@ function ConsentContent() {
 
       setUser({ id: user.id, email: user.email ?? null })
 
-      // Check if user is admin from mcpist.users table
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      setIsAdmin(userData?.role === 'admin')
+      // Check if user is admin using RPC
+      const { data: role } = await supabase.rpc('get_my_role')
+      setIsAdmin(role === 'admin')
 
       // Fetch authorization details from Supabase OAuth Server
       try {
