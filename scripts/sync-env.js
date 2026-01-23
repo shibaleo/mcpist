@@ -20,6 +20,9 @@ const MODULE_ENV_MAP = {
     'INTERNAL_SECRET',
     'SUPABASE_PUBLISHABLE_KEY',
     'SUPABASE_URL',
+    'SUPABASE_JWKS_URL',
+    'PRIMARY_API_URL',
+    'SECONDARY_API_URL',
   ],
   'apps/console/.env.local': [
     'ENVIRONMENT',
@@ -33,6 +36,7 @@ const MODULE_ENV_MAP = {
     'MCP_SERVER_URL',
     'CONSOLE_URL',
     'VAULT_URL',
+    'WORKER_URL',
   ],
 };
 
