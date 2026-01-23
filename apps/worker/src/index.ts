@@ -94,12 +94,15 @@ export default {
 
     // OAuth Protected Resource Metadata (RFC 9728)
     // MCPクライアント（Claude.ai等）が認可サーバーを発見するために使用
-    if (url.pathname === "/mcp/.well-known/oauth-protected-resource") {
+    // ルートパスと/mcpパスの両方に対応
+    if (url.pathname === "/.well-known/oauth-protected-resource" ||
+        url.pathname === "/mcp/.well-known/oauth-protected-resource") {
       return handleOAuthProtectedResourceMetadata(request, env);
     }
 
     // OAuth Authorization Server Metadata (RFC 8414)
-    if (url.pathname === "/mcp/.well-known/oauth-authorization-server") {
+    if (url.pathname === "/.well-known/oauth-authorization-server" ||
+        url.pathname === "/mcp/.well-known/oauth-authorization-server") {
       return handleOAuthAuthorizationServerMetadata(env);
     }
 
@@ -439,8 +442,26 @@ async function authenticate(
 }
 
 async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
-  // 1. まずSupabase auth.getUser相当のAPI呼び出しで検証
-  // OAuth Serverが発行するトークンはオペークトークンの場合がある
+  // 1. OAuth Server発行トークン: /auth/v1/oauth/userinfo で検証
+  try {
+    const response = await fetch(`${env.SUPABASE_URL}/auth/v1/oauth/userinfo`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      const userInfo = await response.json() as { sub?: string };
+      if (userInfo.sub) {
+        console.log("[Auth] Token verified via OAuth userinfo");
+        return { userId: userInfo.sub, type: "jwt" };
+      }
+    }
+  } catch (error) {
+    console.error("[Auth] OAuth userinfo verification failed:", error);
+  }
+
+  // 2. 従来のSupabase Auth トークン: /auth/v1/user で検証
   try {
     const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
       headers: {
@@ -460,7 +481,7 @@ async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
     console.error("[Auth] Supabase API verification failed:", error);
   }
 
-  // 2. フォールバック: JWT署名検証（従来のSupabase Authトークン用）
+  // 3. フォールバック: JWT署名検証
   try {
     const jwks = jose.createRemoteJWKSet(new URL(env.SUPABASE_JWKS_URL));
     const { payload } = await jose.jwtVerify(token, jwks, {
