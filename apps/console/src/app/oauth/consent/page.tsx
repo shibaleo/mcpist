@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { CheckCircle2, Shield, AlertCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, Shield, AlertCircle, Loader2, RotateCcw } from "lucide-react"
 
 interface AuthorizationDetails {
   id: string
@@ -26,6 +26,7 @@ function ConsentContent() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isAlreadyAuthorized, setIsAlreadyAuthorized] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -50,6 +51,14 @@ function ConsentContent() {
       }
 
       setUser({ id: user.id, email: user.email ?? null })
+
+      // Check if user is admin from mcpist.users table
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      setIsAdmin(userData?.role === 'admin')
 
       // Fetch authorization details from Supabase OAuth Server
       try {
@@ -245,6 +254,22 @@ function ConsentContent() {
                 "続行"
               )}
             </Button>
+
+            {/* Admin only: Force re-authorization */}
+            {isAdmin && (
+              <Button
+                variant="outline"
+                className="w-full text-muted-foreground"
+                onClick={() => {
+                  // Clear the authorized state and show consent screen
+                  setIsAlreadyAuthorized(false)
+                }}
+                disabled={submitting}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                セッションを破棄して再認可（管理者）
+              </Button>
+            )}
           </CardFooter>
         </Card>
       </div>
