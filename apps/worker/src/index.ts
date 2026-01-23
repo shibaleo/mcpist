@@ -438,6 +438,28 @@ async function authenticate(
 }
 
 async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
+  // 1. まずSupabase auth.getUser相当のAPI呼び出しで検証
+  // OAuth Serverが発行するトークンはオペークトークンの場合がある
+  try {
+    const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: env.SUPABASE_PUBLISHABLE_KEY,
+      },
+    });
+
+    if (response.ok) {
+      const user = await response.json() as { id?: string };
+      if (user.id) {
+        console.log("[Auth] Token verified via Supabase API");
+        return { userId: user.id, type: "jwt" };
+      }
+    }
+  } catch (error) {
+    console.error("[Auth] Supabase API verification failed:", error);
+  }
+
+  // 2. フォールバック: JWT署名検証（従来のSupabase Authトークン用）
   try {
     const jwks = jose.createRemoteJWKSet(new URL(env.SUPABASE_JWKS_URL));
     const { payload } = await jose.jwtVerify(token, jwks, {
@@ -449,9 +471,10 @@ async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
       return null;
     }
 
+    console.log("[Auth] Token verified via JWT signature");
     return { userId, type: "jwt" };
   } catch (error) {
-    console.error("JWT verification failed:", error);
+    console.error("[Auth] JWT verification failed:", error);
     return null;
   }
 }
