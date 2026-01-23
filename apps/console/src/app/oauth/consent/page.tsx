@@ -25,6 +25,7 @@ function ConsentContent() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isAlreadyAuthorized, setIsAlreadyAuthorized] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -71,12 +72,16 @@ function ConsentContent() {
           return
         }
 
+        // Check if already authorized (redirect_url present but no client info requiring consent)
+        const alreadyAuthorized = !!(data.redirect_url && !data.client)
+        setIsAlreadyAuthorized(alreadyAuthorized)
+
         // Parse scope string into array
         const scopeArray = data.scope ? data.scope.split(' ') : []
 
         setAuthDetails({
           id: authorizationId,
-          client_id: data.client?.name || 'Unknown App',
+          client_id: data.client?.name || 'MCPist',
           redirect_uri: data.redirect_url || '',
           scope: data.scope || '',
           scopes: scopeArray,
@@ -102,15 +107,25 @@ function ConsentContent() {
     setError(null)
 
     try {
+      // If we already have a redirect_url from getAuthorizationDetails, use it directly
+      // This happens when authorization was auto-approved by Supabase
+      if (authDetails.redirect_uri) {
+        console.log("[OAuth Consent] Using existing redirect_url:", authDetails.redirect_uri)
+        window.location.href = authDetails.redirect_uri
+        return
+      }
+
       const authorizationId = searchParams.get("authorization_id")
       const supabase = createClient()
 
       const { data, error: oauthError } = await supabase.auth.oauth.approveAuthorization(authorizationId!)
 
       if (oauthError) {
-        // 既に処理済みの場合のエラーハンドリング
-        if (oauthError.message?.includes("cannot be processed")) {
-          throw new Error("この認可リクエストは既に処理済みです。接続元のアプリに戻って再度お試しください。")
+        // 既に処理済みの場合、redirect_uriがあればそれを使用
+        if (oauthError.message?.includes("cannot be processed") && authDetails.redirect_uri) {
+          console.log("[OAuth Consent] Authorization already processed, using stored redirect_uri")
+          window.location.href = authDetails.redirect_uri
+          return
         }
         throw new Error(oauthError.message || "認可の承認に失敗しました")
       }
@@ -118,6 +133,9 @@ function ConsentContent() {
       // Supabase handles the redirect automatically via data.redirect_url
       if (data?.redirect_url) {
         window.location.href = data.redirect_url
+      } else if (authDetails.redirect_uri) {
+        // Fallback to stored redirect_uri
+        window.location.href = authDetails.redirect_uri
       } else {
         throw new Error("リダイレクト先が取得できませんでした")
       }
@@ -179,6 +197,61 @@ function ConsentContent() {
 
   const scopes = authDetails?.scopes || authDetails?.scope.split(" ") || []
 
+  // Already authorized - show confirmation screen
+  if (isAlreadyAuthorized && authDetails) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-xl bg-green-500 flex items-center justify-center">
+                <CheckCircle2 className="h-8 w-8 text-white" />
+              </div>
+            </div>
+            <div>
+              <CardTitle className="text-xl">認可済み</CardTitle>
+              <CardDescription className="mt-2">
+                このアプリケーションは既に認可されています。
+                続行してアプリに戻ります。
+              </CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="bg-muted/50 rounded-lg p-3 text-sm">
+              <div className="text-muted-foreground">ログイン中のアカウント</div>
+              <div className="font-medium">{user?.email}</div>
+            </div>
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
+                {error}
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-3">
+            <Button
+              className="w-full"
+              onClick={handleApprove}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  リダイレクト中...
+                </>
+              ) : (
+                "続行"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
+  // First time authorization - show consent screen
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
