@@ -92,6 +92,17 @@ export default {
       return jsonResponse({ error: "Not Found" }, 404);
     }
 
+    // OAuth Protected Resource Metadata (RFC 9728)
+    // MCPクライアント（Claude.ai等）が認可サーバーを発見するために使用
+    if (url.pathname === "/mcp/.well-known/oauth-protected-resource") {
+      return handleOAuthProtectedResourceMetadata(request, env);
+    }
+
+    // OAuth Authorization Server Metadata (RFC 8414)
+    if (url.pathname === "/mcp/.well-known/oauth-authorization-server") {
+      return handleOAuthAuthorizationServerMetadata(env);
+    }
+
     // MCPエンドポイントのみ処理
     if (!url.pathname.startsWith("/mcp")) {
       return new Response("Not Found", { status: 404 });
@@ -101,7 +112,16 @@ export default {
       // 1. 認証（JWT or API Key）
       const authResult = await authenticate(request, env);
       if (!authResult) {
-        return jsonResponse({ error: "Unauthorized" }, 401);
+        // WWW-Authenticate ヘッダーでOAuthフローを開始させる (RFC 9728)
+        const resourceMetadataUrl = `${url.protocol}//${url.host}/mcp/.well-known/oauth-protected-resource`;
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+            "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadataUrl}"`,
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
       }
 
       // 2. プロキシ（Primary優先、失敗時Secondary）
@@ -121,6 +141,81 @@ export default {
     ctx.waitUntil(performScheduledHealthCheck(env));
   },
 };
+
+// === OAuth Metadata Handlers ===
+
+/**
+ * OAuth Protected Resource Metadata (RFC 9728)
+ * MCPクライアントが認可サーバーを発見するために使用
+ */
+function handleOAuthProtectedResourceMetadata(request: Request, env: Env): Response {
+  const url = new URL(request.url);
+  const baseUrl = `${url.protocol}//${url.host}`;
+
+  const metadata = {
+    resource: `${baseUrl}/mcp`,
+    authorization_servers: [`${env.SUPABASE_URL}/auth/v1`],
+    scopes_supported: ["openid", "profile", "email"],
+    bearer_methods_supported: ["header"],
+  };
+
+  return new Response(JSON.stringify(metadata), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
+
+/**
+ * OAuth Authorization Server Metadata (RFC 8414)
+ * Supabase Auth のメタデータをプロキシ
+ */
+async function handleOAuthAuthorizationServerMetadata(env: Env): Promise<Response> {
+  try {
+    const response = await fetch(
+      `${env.SUPABASE_URL}/auth/v1/.well-known/openid-configuration`
+    );
+
+    if (response.ok) {
+      const metadata = await response.json();
+      return new Response(JSON.stringify(metadata), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=3600",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
+  } catch {
+    // Fall through to manual metadata
+  }
+
+  // Fallback: 手動構築
+  const metadata = {
+    issuer: `${env.SUPABASE_URL}/auth/v1`,
+    authorization_endpoint: `${env.SUPABASE_URL}/auth/v1/authorize`,
+    token_endpoint: `${env.SUPABASE_URL}/auth/v1/token`,
+    registration_endpoint: `${env.SUPABASE_URL}/auth/v1/oauth/register`,
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    code_challenge_methods_supported: ["S256"],
+    token_endpoint_auth_methods_supported: ["none"],
+    scopes_supported: ["openid", "profile", "email"],
+  };
+
+  return new Response(JSON.stringify(metadata), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600",
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
+}
 
 // === プロキシ ===
 
