@@ -32,6 +32,7 @@ async function buildUser(client: SupabaseClient, sbUser: SupabaseUser): Promise<
   const role = await fetchUserRole(client)
   return {
     id: sbUser.id,
+    // #FIX: 'full_name' -> 'display_name' に統一する（プロバイダにより 'name', 'full_name' 等が使われる）
     name: sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User",
     email: sbUser.email || "",
     avatar: sbUser.user_metadata?.avatar_url,
