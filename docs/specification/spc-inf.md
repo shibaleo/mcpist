@@ -1,112 +1,117 @@
-# MCPist インフラストラクチャ仕様書（spc-infra）
+# MCPist インフラストラクチャ仕様書（spc-inf）
 
 ## ドキュメント管理情報
 
 | 項目 | 値 |
 |------|-----|
-| Status | `draft` |
-| Version | v1.1 (Sprint-002) |
+| Status | `approved` |
+| Version | v2.0 (Sprint-003) |
 | Note | Infrastructure Specification |
 
 ---
 
 ## 概要
 
-本ドキュメントは、MCPistのインフラストラクチャ構成を定義する。アプリケーションコンポーネント（spc-sys）とインフラコンポーネントの対応関係を明確化する。
+本ドキュメントは、MCPistのコンポーネントとインフラストラクチャの対応関係を定義する。
+各コンポーネントがどのインフラサービスに配置されるかを明確化する。
 
 **設計原則:**
 - 放置運用（平日昼間に対応不可）
 - ベンダー分散（単一障害点の排除）
 - 自動フェイルオーバー
+- 無料枠活用
 
 ---
 
-## インフラコンポーネント
+## コンポーネントとインフラのマッピング
 
-| インフラコンポーネント | サービス | 役割 |
-|----------------------|----------|------|
-| API Gateway | Cloudflare Worker | JWT検証、API Key検証、Rate Limit、LB |
-| KVキャッシュ | Cloudflare KV | Rate Limitカウンター、ヘルス状態 |
-| Primary Server | Render | MCPサーバー（Primary） |
-| Failover Server | Koyeb | MCPサーバー（Failover） |
-| Database | Supabase PostgreSQL | ENT, TVLのデータストア |
-| Secret Store | Supabase Vault | OAuthトークン暗号化保存 |
-| Auth Provider | Supabase Auth | OAuth 2.1認証 |
-| Monitoring | Grafana Cloud | Prometheus + Loki |
-| Frontend | Vercel | User Console（CON） |
-| CDN | Vercel Edge Network | 静的アセット配信 |
-| メール配信 | Supabase Auth | パスワードリセット、認証メール |
+### クライアント層（実装範囲外）
+
+| コンポーネント | 説明 | インフラ配置 |
+|--------------|------|-------------|
+| MCPクライアント (OAuth) | Claude.ai, ChatGPT等 | 実装範囲外 |
+| MCPクライアント (APIキー) | Claude Code, Cursor等 | 実装範囲外 |
+
+### ゲートウェイ層
+
+| コンポーネント | 説明 | インフラ配置 |
+|--------------|------|-------------|
+| APIゲートウェイ | 認証検証、プロキシ | **Cloudflare Worker** |
+| APIキーキャッシュ | APIキー検証結果キャッシュ | **Cloudflare KV** |
+
+### MCPサーバー層
+
+| コンポーネント | 説明 | インフラ配置 |
+|--------------|------|-------------|
+| Authミドルウェア | Gateway Secret検証 | **Render** (Primary) / **Koyeb** (Secondary) |
+| MCPハンドラ | tools/list, tools/call | **Render** (Primary) / **Koyeb** (Secondary) |
+| モジュールレジストリ | get_module_schema, call, batch | **Render** (Primary) / **Koyeb** (Secondary) |
+| モジュール | Notion, GitHub, Jira等 | **Render** (Primary) / **Koyeb** (Secondary) |
+
+### Auth + DB Backend層
+
+| コンポーネント | 説明 | インフラ配置 |
+|--------------|------|-------------|
+| Authサーバー | OAuth 2.1, JWT発行 | **Supabase Auth** |
+| Sessionマネージャー | ユーザーID発行、ソーシャルログイン | **Supabase Auth** |
+| Data Store | ユーザー情報、課金情報、設定 | **Supabase PostgreSQL** (mcpistスキーマ) |
+| Token Vault | 外部サービストークン保存 | **Supabase PostgreSQL + Vault** |
+
+### フロントエンド層
+
+| コンポーネント | 説明 | インフラ配置 |
+|--------------|------|-------------|
+| ユーザーコンソール | 管理画面、OAuth連携、設定 | **Vercel** |
+| 静的アセット | CSS, JS, 画像 | **Vercel Edge Network** |
+
+### 外部サービス（実装範囲外）
+
+| コンポーネント | 説明 | インフラ配置 |
+|--------------|------|-------------|
+| 認証プロバイダ | ソーシャルログイン | Google, GitHub等 |
+| 決済代行サービス | クレジットカード決済 | Stripe |
+| 外部Authサーバー | 外部サービス認可 | Notion, Google等 |
+| 外部サービスAPI | リソースアクセス | Notion API, Google Calendar API等 |
 
 ---
 
-## コンポーネント検討（採用/除外）
+## インフラサービス一覧
 
-Phase 1で必要なコンポーネントを検討し、採用/除外を決定した。
-
-### 採用
-
-| カテゴリ | 採用サービス | 理由 |
-|---------|-------------|------|
-| メール配信 | Supabase Auth | 認証関連メール（パスワードリセット等）はSupabase Auth標準機能で対応。課金通知等が必要になった段階で別途検討 |
-| CDN | Vercel Edge Network | User Console（CON）の静的アセット配信。Vercel標準機能 |
-| キャッシュ | Cloudflare KV | Rate Limitカウンター用。既存構成で対応済み |
-| バックアップ | Supabase標準 | PostgreSQLの自動バックアップ。Supabase標準機能 |
-
-### 除外
-
-| カテゴリ | 除外理由 |
-|---------|----------|
-| Redis/Memcached | セッションはJWT方式で不要。Rate LimitカウンターはCloudflare KVで対応済み |
-| メッセージキュー | 現状は同期処理で十分。非同期バッチ処理の需要が発生した段階で再検討 |
-| ファイルストレージ（S3/R2） | ユーザーファイルアップロード機能なし。将来ファイル添付等が必要になれば検討 |
-| Sentry（エラートラッキング） | Grafana Cloud（Loki）でログ収集・分析可能。専用ツールの利便性より運用シンプル化を優先 |
-| ステージング環境 | Phase 1は本番のみ。ユーザー数増加に応じて検討 |
+| インフラサービス              | 用途                      | プラン            |
+| --------------------- | ----------------------- | -------------- |
+| **Cloudflare Worker** | APIゲートウェイ               | Free           |
+| **Cloudflare KV**     | APIキーキャッシュ              | Free           |
+| **Cloudflare DNS**    | ドメイン管理                  | Free           |
+| **Render**            | MCPサーバー (Primary)       | Free (Starter) |
+| **Koyeb**             | MCPサーバー (Secondary)     | Free (nano)    |
+| **Supabase**          | Auth, PostgreSQL, Vault | Free           |
+| **Vercel**            | Console, Edge Network   | Free (Hobby)   |
+| **DockerHub**         | Dockerイメージホスト           | Free (Public)  |
+| **GitHub**            | ソースコード、Actions          | Free           |
+| **Grafana Cloud**     | ログ収集 (Loki)             | Free           |
 
 ---
 
-## アプリケーションとインフラの対応
+## データストア配置
 
-### コンポーネントマッピング
-
-| アプリコンポーネント | 略称 | インフラ配置 |
-|---------------------|------|-------------|
-| MCP Client | CLT | 実装範囲外（Claude Code等） |
-| Auth Server | AUS | Supabase Auth |
-| MCP Server | SRV | Render (Primary) / Koyeb (Failover) |
-| Auth Middleware | AMW | SRV内部 |
-| MCP Handler | HDL | SRV内部 |
-| Module Registry | REG | SRV内部 |
-| Modules | MOD | SRV内部 |
-| Entitlement Store | ENT | Supabase PostgreSQL (mcpist スキーマ) |
-| Token Vault | TVL | Supabase PostgreSQL + Vault |
-| User Console | CON | Vercel |
-| External API Server | EXT | 実装範囲外（Notion API等） |
-| Payment Service Provider | PSP | 実装範囲外（Stripe） |
-
-### データストア配置
-
-| データ種別 | テーブル群 | Supabaseスキーマ |
-|-----------|-----------|-----------------|
-| ENT | users, subscriptions, plans, etc. | mcpist |
-| TVL | oauth_tokens | mcpist |
-| TVL（暗号化） | vault.secrets | vault |
-| AUS | auth.users | auth |
+| データ種別 | テーブル/スキーマ | インフラ配置 |
+|-----------|-----------------|-------------|
+| ユーザー情報 | mcpist.users | Supabase PostgreSQL |
+| サブスクリプション | mcpist.subscriptions | Supabase PostgreSQL |
+| プラン | mcpist.plans | Supabase PostgreSQL |
+| APIキー | mcpist.api_keys | Supabase PostgreSQL |
+| OAuthトークン | mcpist.oauth_tokens | Supabase PostgreSQL |
+| 暗号化シークレット | vault.secrets | Supabase Vault |
+| 認証ユーザー | auth.users | Supabase Auth |
 
 **スキーマ設計方針:**
-
-同一Supabaseプロジェクトで複数サービスを運用可能な設計とする。
 
 | スキーマ | 用途 | 管理 |
 |---------|------|------|
 | auth | 共通認証基盤 | Supabase管理 |
 | vault | 暗号化ストア | Supabase管理 |
-| mcpist | MCPist関連テーブル（ENT + TVL） | MCPist |
-| （将来）pkmist等 | 他サービス関連テーブル | 各サービス |
-
-**メリット:**
-- auth.usersを共通ユーザー基盤として共有（シングルサインオン）
-- スキーマ分離で責務が明確、RLSポリシーも分離可能
-- 将来的にスキーマ単位でのexport/分割が容易
+| mcpist | MCPist関連テーブル | MCPist |
+| public | RPCラッパー関数 | MCPist |
 
 ---
 
@@ -115,218 +120,71 @@ Phase 1で必要なコンポーネントを検討し、採用/除外を決定し
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              MCP Client                                      │
-│                        (Claude Code, Cursor等)                               │
+│                        (Claude.ai, ChatGPT, Claude Code, Cursor)             │
 └───────────────────────────────────┬─────────────────────────────────────────┘
-                                    │ MCP Protocol (JSON-RPC over SSE)
+                                    │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           Cloudflare                                         │
-│                                                                              │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │                    Worker (API Gateway + LB)                            │ │
-│  │                                                                         │ │
-│  │  1. JWT署名検証 / API Key検証（Supabase RPC経由）                      │ │
-│  │  2. グローバルRate Limit（IP単位: 1000 req/min）                       │ │
-│  │  3. Burst制限（ユーザー単位: 5 req/sec）                               │ │
-│  │  4. X-User-ID, X-Auth-Type, X-Gateway-Secret付与                       │ │
-│  │  5. p95レイテンシベースLB（NORMAL/WARMUP/BALANCE/FAILOVER）            │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                    ┌───────────────┴───────────────┐                        │
-│                    │         KV Store              │                        │
-│                    │   - Rate Limitカウンター      │                        │
-│                    │   - ヘルス状態・メトリクス    │                        │
-│                    └───────────────┬───────────────┘                        │
-│                          ┌─────────┴─────────┐                              │
-│                          ▼                   ▼                              │
-│                    ┌──────────┐        ┌──────────┐                         │
-│                    │  Render  │        │  Koyeb   │                         │
-│                    │ (Primary)│        │(Failover)│                         │
-│                    └────┬─────┘        └────┬─────┘                         │
-│                         └─────────┬─────────┘                               │
-└───────────────────────────────────┼─────────────────────────────────────────┘
-                                    │
-                                    ▼
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                         Worker (APIゲートウェイ)                         ││
+│  └───────────────────────────────────┬─────────────────────────────────────┘│
+│                                      │                                       │
+│                      ┌───────────────┴───────────────┐                      │
+│                      │              KV               │                      │
+│                      │     (APIキーキャッシュ)        │                      │
+│                      └───────────────────────────────┘                      │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                       ┌───────────────┴───────────────┐
+                       ▼                               ▼
+              ┌─────────────────┐             ┌─────────────────┐
+              │     Render      │             │     Koyeb       │
+              │   (Primary)     │             │   (Secondary)   │
+              │                 │             │                 │
+              │   MCP Server    │             │   MCP Server    │
+              │   (Docker)      │             │   (Docker)      │
+              └────────┬────────┘             └────────┬────────┘
+                       └───────────────┬───────────────┘
+                                       │
+                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            Supabase                                          │
+│                             Supabase                                         │
 │                                                                              │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
-│  │   Auth Server   │  │   PostgreSQL    │  │     Vault       │             │
+│  │      Auth       │  │   PostgreSQL    │  │     Vault       │             │
 │  │                 │  │                 │  │                 │             │
-│  │  • OAuth 2.1    │  │  • ENT tables   │  │ • oauth_tokens  │             │
-│  │  • JWT発行      │  │  • TVL tables   │  │ • vault.secrets │             │
-│  │  • JWKS公開     │  │  • API Key検証  │  │ (暗号化保存)     │             │
+│  │  Session管理    │  │  mcpistスキーマ  │  │  暗号化保存     │             │
+│  │  OAuth Server   │  │  publicスキーマ  │  │                 │             │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
 └─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              ▼                     ▼                     ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Vercel      │    │     Stripe      │    │  External APIs  │
-│                 │    │                 │    │                 │
-│  User Console   │    │  PSP (課金)     │    │ Notion, Google  │
-│  (CON)          │    │                 │    │ Calendar, etc.  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                       │
+              ┌────────────────────────┼────────────────────────┐
+              ▼                        ▼                        ▼
+┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
+│       Vercel        │   │       Stripe        │   │    External APIs    │
+│                     │   │                     │   │                     │
+│   User Console      │   │   決済代行          │   │  Notion, Google     │
+│   (Next.js)         │   │   (実装範囲外)      │   │  Calendar, etc.     │
+└─────────────────────┘   └─────────────────────┘   └─────────────────────┘
 ```
 
 ---
 
-## 負荷対策（2層構成）
+## コスト
 
-### Worker層（インフラ保護）
+| サービス | プラン | 月額コスト |
+|----------|--------|-----------|
+| Cloudflare | Free | $0 |
+| Render | Free (Starter) | $0 |
+| Koyeb | Free (nano) | $0 |
+| Supabase | Free | $0 |
+| Vercel | Free (Hobby) | $0 |
+| DockerHub | Free | $0 |
+| GitHub | Free | $0 |
+| Grafana Cloud | Free | $0 |
 
-| 制御 | 対象 | 制限値 | 目的 |
-|------|------|--------|------|
-| グローバルRate Limit | IP単位 | 1000 req/min | DDoS対策 |
-| Burst制限 | ユーザー単位 | 5 req/s | 瞬間スパイク防止 |
-
-### オリジン層（ビジネスロジック）
-
-| 制御 | 対象 | 保存場所 | 目的 |
-|------|------|----------|------|
-| Rate Limit | ユーザー×プラン | メモリ | 過負荷防止 |
-| Quota | ユーザー×月 | DB (usage) | 月間使用量制限 |
-| Credit | ユーザー | DB (credits) | 従量課金 |
-
-**プラン別Rate Limit:**
-
-| プラン | 制限 |
-|--------|------|
-| Free | 30 req/min |
-| Starter | 60 req/min |
-| Pro | 120 req/min |
-| Unlimited | 無制限 |
-
----
-
-## フェイルオーバー（p95レイテンシベースLB）
-
-### LB状態遷移
-
-Worker内でp95レイテンシ（直近50req rolling window）に基づいて状態遷移する。
-
-```
-                        p95 レイテンシ
-                             │
-    ┌────────────────────────┼────────────────────────┐
-    │                        │                        │
-  p95 < 300ms           300ms ≤ p95 < 600ms       p95 ≥ 600ms
-    │                        │                        │
-    ▼                        ▼                        ▼
-┌─────────┐            ┌──────────┐            ┌──────────┐
-│ NORMAL  │            │ WARMUP   │            │ BALANCE  │
-│         │            │          │            │          │
-│ Render  │            │ Render   │            │ Render   │
-│  100%   │            │  100%    │            │  50%     │
-│         │            │          │            │          │
-│ Koyeb   │            │ Koyeb    │            │ Koyeb    │
-│ (sleep) │            │ (起動中)  │            │  50%     │
-└─────────┘            └──────────┘            └──────────┘
-```
-
-### 状態遷移ルール
-
-| 現状態 | 条件 | 次状態 |
-|--------|------|--------|
-| NORMAL | p95 ≥ 600ms | BALANCE |
-| NORMAL | p95 ≥ 300ms | WARMUP |
-| WARMUP | p95 ≥ 600ms | BALANCE |
-| WARMUP | p95 < 300ms | NORMAL |
-| BALANCE | p95 < 500ms | WARMUP |
-
-### 致命指標（即座にFAILOVER）
-
-| 指標 | 条件 |
-|------|------|
-| タイムアウト | 3秒超過 |
-| ヘルスチェック | /health 失敗 |
-| fetch例外 | ネットワークエラー |
-
-### ヘルスチェック（Scheduled）
-
-| 対象 | 間隔 | 目的 |
-|------|------|------|
-| Render /health | 毎分 | ウォーム維持 + 状態確認 |
-| Koyeb /health | 毎分 | BALANCE/FAILOVER時のみ確認 |
-
----
-
-## 監視・アラート
-
-### Grafana Cloud
-
-| 機能 | 用途 |
-|------|------|
-| Prometheus | メトリクス（CPU, メモリ, レイテンシ） |
-| Loki | ログ収集 |
-| Alerting | アラート通知 |
-
-### アラート条件
-
-| アラート | 条件 | 重要度 |
-|----------|------|--------|
-| CPU高負荷 | CPU > 80% (5分間) | Warning |
-| メモリ逼迫 | Memory > 200MB | Critical |
-| レイテンシ悪化 | p95 > 2s (5分間) | Warning |
-| エラー率上昇 | 5xx > 5% (5分間) | Critical |
-| オリジン停止 | /health 失敗 (3回連続) | Critical |
-| Rate Limit多発 | Rate Limit > 100/min | Warning |
-
----
-
-## セキュリティ
-
-### オリジン直接アクセス防止
-
-Worker経由でない直接アクセスを防止する。
-
-| 方法 | 実装 |
-|------|------|
-| Gateway Secret | X-Gateway-Secret ヘッダー検証 |
-| IP制限 | CloudflareのIPのみ許可（オプション） |
-
-### ヘルスチェックのバイパス
-
-`/health` エンドポイントは Gateway Secret なしでアクセス可能（LB用）。
-
----
-
-## CI/CD
-
-### デプロイフロー
-
-```
-GitHub Push (main)
-    │
-    ├─→ Render: 自動デプロイ（GitHub連携）
-    ├─→ Koyeb: 自動デプロイ（GitHub連携）
-    └─→ Cloudflare Worker: wrangler deploy
-```
-
-### デプロイ後検証
-
-| テスト | 期待結果 |
-|--------|----------|
-| Render + SECRET | 200 |
-| Koyeb + SECRET | 200 |
-| Worker経由 | 200 |
-| 直接（SECRETなし） | 403 |
-
----
-
-## コスト（Phase 1）
-
-| サービス | プラン | コスト |
-|----------|--------|--------|
-| Render | 無料枠（Starter） | $0 |
-| Koyeb | nano（永年無料） | $0 |
-| Supabase | 無料枠 | $0 |
-| Cloudflare | 無料枠 | $0 |
-| Grafana Cloud | 無料枠 | $0 |
-| Vercel | 無料枠 | $0 |
-| Stripe | 従量課金 | 決済額の3.6% |
-
-**月額固定費: $0**（Stripe手数料のみ）
+**月額固定費: $0**
 
 ---
 
@@ -334,9 +192,6 @@ GitHub Push (main)
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [spc-sys.md](./spc-sys.md) | システム仕様書（アプリコンポーネント） |
-| [spc-itr.md](./spc-itr.md) | インタラクション仕様書 |
+| [spc-sys.md](./spc-sys.md) | システム仕様書（コンポーネント定義） |
+| [spc-dpl.md](./spc-dpl.md) | デプロイ仕様書（環境構成、CI/CD） |
 | [spc-tbl.md](./spc-tbl.md) | テーブル仕様書 |
-| [dsn-infrastructure.md](../DAY7/dsn-infrastructure.md) | インフラ設計（詳細） |
-| [dsn-deployment.md](../DAY7/dsn-deployment.md) | デプロイ戦略（詳細） |
-| [dsn-load-management.md](../DAY7/dsn-load-management.md) | 負荷対策設計（詳細） |
