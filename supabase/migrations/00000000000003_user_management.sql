@@ -17,6 +17,7 @@ BEGIN
     INSERT INTO mcpist.users (id, display_name, status, role)
     VALUES (
         NEW.id,
+        -- #FIX: 'name' -> 'display_name' に統一する（プロバイダにより 'name', 'full_name' 等が使われる）
         COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
         'active',
         'user'

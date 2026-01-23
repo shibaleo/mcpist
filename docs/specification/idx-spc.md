@@ -5,14 +5,14 @@
 | 項目 | 値 |
 |------|-----|
 | Status | `draft` |
-| Version | v1.0 (DAY8) |
+| Version | v2.0 |
 | Note | Specification Index |
 
 ---
 
 ## 概要
 
-MCPist DAY8 仕様書の一覧。
+MCPist 仕様書の一覧。
 
 ---
 
@@ -61,10 +61,43 @@ spc-sys（システム）
 
 ## 詳細仕様（dtl-spc/）
 
+### インタラクション仕様（itr-xxx.md）
+
+各コンポーネントの連携詳細を記載。
+
+| #   | コンポーネント                  | 略称  | ドキュメント                             | 備考           |     |
+| --- | ------------------------ | --- | ---------------------------------- | ------------ | --- |
+| 1   | MCP Client (OAuth2.0)    | CLO | [itr-clo.md](./dtl-spc/itr-clo.md) | 実装範囲外        | ✅   |
+| 2   | MCP Client (API KEY)     | CLK | [itr-clk.md](./dtl-spc/itr-clk.md) | 実装範囲外        | ✅   |
+| 3   | API Gateway              | GWY | [itr-gwy.md](./dtl-spc/itr-gwy.md) |              |     |
+| 4   | Auth Server              | AUS | [itr-aus.md](./dtl-spc/itr-aus.md) |              | ✅   |
+| 5   | Session Manager          | SSM | [itr-ssm.md](./dtl-spc/itr-ssm.md) |              | ✅   |
+| 6   | Data Store               | DST | [itr-dst.md](./dtl-spc/itr-dst.md) |              |     |
+| 7   | Token Vault              | TVL | [itr-tvl.md](./dtl-spc/itr-tvl.md) |              |     |
+| 8   | MCP Server               | SRV | [itr-srv.md](./dtl-spc/itr-srv.md) | 外部向け抽象化      |     |
+| 9   | Auth Middleware          | AMW | [itr-amw.md](./dtl-spc/itr-amw.md) | MCP Server内部 | ✅   |
+| 10  | MCP Handler              | HDL | [itr-hdl.md](./dtl-spc/itr-hdl.md) | MCP Server内部 | ✅   |
+| 11  | Module Registry          | REG | [itr-reg.md](./dtl-spc/itr-reg.md) | MCP Server内部 |     |
+| 12  | Modules                  | MOD | [itr-mod.md](./dtl-spc/itr-mod.md) | MCP Server内部 |     |
+| 13  | User Console             | CON | [itr-con.md](./dtl-spc/itr-con.md) |              |     |
+| 14  | Identity Provider        | IDP | [itr-idp.md](./dtl-spc/itr-idp.md) | 実装範囲外        | ✅   |
+| 15  | External Auth Server     | EAS | [itr-eas.md](./dtl-spc/itr-eas.md) | 実装範囲外        | ✅   |
+| 16  | External Service API     | EXT | [itr-ext.md](./dtl-spc/itr-ext.md) | 実装範囲外        | ✅   |
+| 17  | Payment Service Provider | PSP | [itr-psp.md](./dtl-spc/itr-psp.md) | 実装範囲外        |     |
+
+### インターフェース仕様（itf-xxx.md）
+
+API仕様、エンドポイント詳細を記載。
+
 | ドキュメント | 内容 |
 |-------------|------|
-| [ifr-ent.md](./dtl-spc/ifr-ent.md) | Entitlement Store詳細仕様 |
-| [ifr-tvl.md](./dtl-spc/ifr-tvl.md) | Token Vault詳細仕様 |
+| [itf-tvl.md](./dtl-spc/itf-tvl.md) | Token Vault API仕様 |
+
+### その他
+
+| ドキュメント | 内容 |
+|-------------|------|
+| [idx-ept.md](./dtl-spc/idx-ept.md) | エンドポイント一覧 |
 
 ---
 
