@@ -54,9 +54,19 @@ function ConsentContent() {
       try {
         const { data, error: oauthError } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)
 
+        // Debug: log the response structure
+        console.log("[OAuth Consent] Authorization details:", JSON.stringify(data, null, 2))
+
         if (oauthError || !data) {
           console.error("Supabase OAuth error:", oauthError)
-          setError(oauthError?.message || "認可リクエストの取得に失敗しました")
+          // ユーザーフレンドリーなエラーメッセージ
+          if (oauthError?.message?.includes("cannot be processed") ||
+              oauthError?.message?.includes("not found") ||
+              oauthError?.message?.includes("expired")) {
+            setError("この認可リクエストは無効または期限切れです。接続元のアプリに戻って再度お試しください。")
+          } else {
+            setError(oauthError?.message || "認可リクエストの取得に失敗しました")
+          }
           setLoading(false)
           return
         }
@@ -98,6 +108,10 @@ function ConsentContent() {
       const { data, error: oauthError } = await supabase.auth.oauth.approveAuthorization(authorizationId!)
 
       if (oauthError) {
+        // 既に処理済みの場合のエラーハンドリング
+        if (oauthError.message?.includes("cannot be processed")) {
+          throw new Error("この認可リクエストは既に処理済みです。接続元のアプリに戻って再度お試しください。")
+        }
         throw new Error(oauthError.message || "認可の承認に失敗しました")
       }
 

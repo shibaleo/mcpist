@@ -8,15 +8,13 @@
 import { NextResponse } from 'next/server'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-// Worker URL (API Gateway) - クライアントはWorker経由でMCP Serverにアクセス
-const MCP_SERVER_URL = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://localhost:8787'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 
 export async function GET() {
   const metadata = {
-    // MCP Server (Go) is the protected resource
-    resource: `${MCP_SERVER_URL}/mcp`,
-    // MCPist 独自の Authorization Server を指定
-    authorization_servers: [BASE_URL],
+    resource: `${BASE_URL}/api/mcp`,
+    // Supabase Auth をAuthorization Serverとして指定
+    authorization_servers: [`${SUPABASE_URL}/auth/v1`],
     scopes_supported: ['openid', 'profile', 'email'],
     bearer_methods_supported: ['header'],
   }
@@ -24,7 +22,7 @@ export async function GET() {
   return NextResponse.json(metadata, {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache', // Development: disable cache
+      'Cache-Control': 'public, max-age=3600',
       'Access-Control-Allow-Origin': '*',
     },
   })

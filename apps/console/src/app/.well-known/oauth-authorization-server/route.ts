@@ -1,24 +1,40 @@
 /**
  * OAuth 2.1 Authorization Server Metadata (RFC 8414)
  *
- * Supabase OAuth Server のエンドポイントを返す。
- * MCP Client は OAuth 2.1 + PKCE フローでアクセストークンを取得する。
+ * Supabase OAuth Server のメタデータをプロキシする。
+ * まずSupabaseからfetchし、失敗時はフォールバックを返す。
  */
 import { NextResponse } from 'next/server'
 
-// Supabase URL
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 
 export async function GET() {
+  // Supabaseのメタデータをプロキシ
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/auth/v1/.well-known/openid-configuration`
+    )
+
+    if (response.ok) {
+      const metadata = await response.json()
+      return NextResponse.json(metadata, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+        },
+      })
+    }
+  } catch {
+    // Fall through to manual metadata
+  }
+
+  // Fallback: 手動構築
   const metadata = {
-    // issuer は Supabase のドメイン
-    issuer: SUPABASE_URL,
-    // Supabase OAuth Server エンドポイント
-    authorization_endpoint: `${SUPABASE_URL}/auth/v1/oauth/authorize`,
-    token_endpoint: `${SUPABASE_URL}/auth/v1/oauth/token`,
-    // Supabase JWKS エンドポイント
-    jwks_uri: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
-    // サポートするフロー
+    issuer: `${SUPABASE_URL}/auth/v1`,
+    authorization_endpoint: `${SUPABASE_URL}/auth/v1/authorize`,
+    token_endpoint: `${SUPABASE_URL}/auth/v1/token`,
+    registration_endpoint: `${SUPABASE_URL}/auth/v1/oauth/register`,
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
     code_challenge_methods_supported: ['S256'],
@@ -29,7 +45,7 @@ export async function GET() {
   return NextResponse.json(metadata, {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'public, max-age=3600',
       'Access-Control-Allow-Origin': '*',
     },
   })
