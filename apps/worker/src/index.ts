@@ -20,8 +20,8 @@ interface Env {
   API_KEY_CACHE: KVNamespace;  // APIキーキャッシュ用
 
   // バックエンド設定
-  PRIMARY_API_URL: string;     // Primary API Server
-  SECONDARY_API_URL: string;   // Secondary API Server (Failover)
+  PRIMARY_API_URL: string;     // Primary API Server (Render)
+  SECONDARY_API_URL: string;   // Secondary API Server (Koyeb)
 
   // Supabase設定
   SUPABASE_URL: string;
@@ -103,9 +103,10 @@ export default {
       return handleOAuthAuthorizationServerMetadata(env);
     }
 
-    // MCPエンドポイントのみ処理
-    if (!url.pathname.startsWith("/mcp")) {
-      return new Response("Not Found", { status: 404 });
+    // サブドメイン分離方式: このWorkerはmcp.*ドメインでのみ動作
+    // /mcp 以外のパスは404を返す（Consoleは別ドメインで直接Vercelが応答）
+    if (!url.pathname.startsWith("/mcp") && url.pathname !== "/health" && !url.pathname.startsWith("/internal/")) {
+      return jsonResponse({ error: "Not Found" }, 404);
     }
 
     try {
