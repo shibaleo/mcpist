@@ -45,6 +45,10 @@ export interface Database {
         }
         Returns: void
       }
+      get_my_role: {
+        Args: Record<string, never>
+        Returns: string
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
