@@ -7,8 +7,10 @@ export interface UserCredits {
 }
 
 export interface ServiceConnection {
+  id: string
   service: string
   connected_at: string
+  updated_at: string
 }
 
 /**
@@ -58,5 +60,11 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
     return []
   }
 
-  return data || []
+  // Map RPC response to ServiceConnection interface
+  return (data || []).map((item: { id: string; service: string; created_at: string; updated_at: string }) => ({
+    id: item.id,
+    service: item.service,
+    connected_at: item.created_at,
+    updated_at: item.updated_at
+  }))
 }
