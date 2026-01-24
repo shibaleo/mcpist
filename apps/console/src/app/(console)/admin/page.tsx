@@ -323,7 +323,7 @@ function OAuthVerificationCard() {
     addLog(`  code_challenge: ${challenge.substring(0, 16)}...`)
 
     const state = generateRandomString(16)
-    const redirectUri = `${window.location.origin}/my/mcp-connection/callback`
+    const redirectUri = `${window.location.origin}/oauth/callback`
 
     // Store in sessionStorage
     sessionStorage.setItem("oauth_state", state)
