@@ -283,3 +283,37 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.delete_service_token(TEXT) TO authenticated;
+
+-- -----------------------------------------------------------------------------
+-- get_my_role
+-- 現在ログインしているユーザーのロールを取得
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.get_my_role()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_role TEXT;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    -- auth.usersからraw_app_meta_data.roleを取得
+    SELECT COALESCE(
+        raw_app_meta_data->>'role',
+        'user'
+    ) INTO v_role
+    FROM auth.users
+    WHERE id = v_user_id;
+
+    RETURN v_role;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
