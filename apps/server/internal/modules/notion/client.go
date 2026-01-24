@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"mcpist/server/internal/entitlement"
 	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/token"
 )
@@ -17,16 +18,16 @@ var client = httpclient.New()
 
 // getToken retrieves token from Vault via RPC for the given user
 func getToken(ctx context.Context) string {
-	// Get user_id from context (set by auth middleware via X-User-ID header)
-	userID := ""
-	if uid := ctx.Value("user_id"); uid != nil {
-		if s, ok := uid.(string); ok {
-			userID = s
-		}
+	// Get user_id from AuthContext (set by authorization middleware)
+	authCtx := entitlement.GetAuthContext(ctx)
+	if authCtx == nil {
+		log.Printf("No auth context for notion token retrieval")
+		return ""
 	}
 
+	userID := authCtx.UserID
 	if userID == "" {
-		log.Printf("No user_id in context for notion token retrieval")
+		log.Printf("No user_id in auth context for notion token retrieval")
 		return ""
 	}
 
