@@ -148,7 +148,7 @@ function CallbackContent() {
 
         // Exchange code for token
         setMessage('トークンを交換中...')
-        const redirectUri = `${window.location.origin}/my/mcp-connection/callback`
+        const redirectUri = `${window.location.origin}/oauth/callback`
 
         const tokenRes = await fetch(metadata.token_endpoint, {
           method: 'POST',
@@ -301,7 +301,7 @@ function CallbackContent() {
   }
 
   return (
-    <div className="p-6 flex items-center justify-center min-h-[60vh]">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           {status === 'processing' && (
@@ -392,17 +392,17 @@ function CallbackContent() {
               )}
 
               <Button
-                onClick={() => router.push('/my/mcp-connection')}
+                onClick={() => router.push('/dashboard')}
                 className="w-full"
               >
-                接続ページに戻る
+                ダッシュボードに戻る
               </Button>
             </>
           )}
           {status === 'error' && (
             <Button
               variant="outline"
-              onClick={() => router.push('/my/mcp-connection')}
+              onClick={() => router.push('/dashboard')}
               className="w-full"
             >
               戻る
@@ -417,7 +417,7 @@ function CallbackContent() {
 export default function CallbackPage() {
   return (
     <Suspense fallback={
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     }>
