@@ -7,11 +7,16 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
   mcpist: {
     Tables: {
       api_keys: {
         Row: {
-          created_at: string | null
+          created_at: string
           expires_at: string | null
           id: string
           key_hash: string
@@ -19,12 +24,10 @@ export type Database = {
           last_used_at: string | null
           name: string
           revoked_at: string | null
-          scopes: string[] | null
-          service: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           expires_at?: string | null
           id?: string
           key_hash: string
@@ -32,12 +35,10 @@ export type Database = {
           last_used_at?: string | null
           name: string
           revoked_at?: string | null
-          scopes?: string[] | null
-          service?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           expires_at?: string | null
           id?: string
           key_hash?: string
@@ -45,41 +46,53 @@ export type Database = {
           last_used_at?: string | null
           name?: string
           revoked_at?: string | null
-          scopes?: string[] | null
-          service?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       credit_transactions: {
         Row: {
           amount: number
-          balance_after: number
           created_at: string
-          description: string | null
+          credit_type: string | null
           id: string
-          reference_id: string | null
-          transaction_type: string
+          module: string | null
+          request_id: string | null
+          task_id: string | null
+          tool: string | null
+          type: Database["mcpist"]["Enums"]["credit_transaction_type"]
           user_id: string
         }
         Insert: {
           amount: number
-          balance_after: number
           created_at?: string
-          description?: string | null
+          credit_type?: string | null
           id?: string
-          reference_id?: string | null
-          transaction_type: string
+          module?: string | null
+          request_id?: string | null
+          task_id?: string | null
+          tool?: string | null
+          type: Database["mcpist"]["Enums"]["credit_transaction_type"]
           user_id: string
         }
         Update: {
           amount?: number
-          balance_after?: number
           created_at?: string
-          description?: string | null
+          credit_type?: string | null
           id?: string
-          reference_id?: string | null
-          transaction_type?: string
+          module?: string | null
+          request_id?: string | null
+          task_id?: string | null
+          tool?: string | null
+          type?: Database["mcpist"]["Enums"]["credit_transaction_type"]
           user_id?: string
         }
         Relationships: [
@@ -94,23 +107,20 @@ export type Database = {
       }
       credits: {
         Row: {
-          balance: number
-          created_at: string
-          id: string
+          free_credits: number
+          paid_credits: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          balance?: number
-          created_at?: string
-          id?: string
+          free_credits?: number
+          paid_credits?: number
           updated_at?: string
           user_id: string
         }
         Update: {
-          balance?: number
-          created_at?: string
-          id?: string
+          free_credits?: number
+          paid_credits?: number
           updated_at?: string
           user_id?: string
         }
@@ -124,40 +134,35 @@ export type Database = {
           },
         ]
       }
-      mcp_tokens: {
+      module_settings: {
         Row: {
           created_at: string
-          expires_at: string | null
-          id: string
-          is_revoked: boolean
-          last_used_at: string | null
-          name: string
-          token_hash: string
+          enabled: boolean
+          module_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          expires_at?: string | null
-          id?: string
-          is_revoked?: boolean
-          last_used_at?: string | null
-          name: string
-          token_hash: string
+          enabled?: boolean
+          module_id: string
           user_id: string
         }
         Update: {
           created_at?: string
-          expires_at?: string | null
-          id?: string
-          is_revoked?: boolean
-          last_used_at?: string | null
-          name?: string
-          token_hash?: string
+          enabled?: boolean
+          module_id?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "mcp_tokens_user_id_fkey"
+            foreignKeyName: "module_settings_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_settings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -168,478 +173,162 @@ export type Database = {
       modules: {
         Row: {
           created_at: string
-          description: string | null
-          display_name: string
           id: string
-          is_active: boolean
           name: string
-          oauth_provider: string | null
-          requires_oauth: boolean
-          updated_at: string
+          status: Database["mcpist"]["Enums"]["module_status"]
         }
         Insert: {
           created_at?: string
-          description?: string | null
-          display_name: string
           id?: string
-          is_active?: boolean
           name: string
-          oauth_provider?: string | null
-          requires_oauth?: boolean
-          updated_at?: string
+          status?: Database["mcpist"]["Enums"]["module_status"]
         }
         Update: {
           created_at?: string
-          description?: string | null
-          display_name?: string
           id?: string
-          is_active?: boolean
           name?: string
-          oauth_provider?: string | null
-          requires_oauth?: boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      oauth_authorization_codes: {
-        Row: {
-          client_id: string
-          code: string
-          code_challenge: string
-          code_challenge_method: string
-          created_at: string
-          expires_at: string
-          redirect_uri: string
-          scope: string | null
-          state: string | null
-          used_at: string | null
-          user_id: string
-        }
-        Insert: {
-          client_id: string
-          code: string
-          code_challenge: string
-          code_challenge_method?: string
-          created_at?: string
-          expires_at: string
-          redirect_uri: string
-          scope?: string | null
-          state?: string | null
-          used_at?: string | null
-          user_id: string
-        }
-        Update: {
-          client_id?: string
-          code?: string
-          code_challenge?: string
-          code_challenge_method?: string
-          created_at?: string
-          expires_at?: string
-          redirect_uri?: string
-          scope?: string | null
-          state?: string | null
-          used_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      oauth_authorization_requests: {
-        Row: {
-          client_id: string
-          code_challenge: string
-          code_challenge_method: string
-          created_at: string
-          expires_at: string
-          id: string
-          redirect_uri: string
-          scope: string
-          state: string | null
-          status: string
-          user_id: string | null
-        }
-        Insert: {
-          client_id: string
-          code_challenge: string
-          code_challenge_method?: string
-          created_at?: string
-          expires_at: string
-          id: string
-          redirect_uri: string
-          scope?: string
-          state?: string | null
-          status?: string
-          user_id?: string | null
-        }
-        Update: {
-          client_id?: string
-          code_challenge?: string
-          code_challenge_method?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-          redirect_uri?: string
-          scope?: string
-          state?: string | null
-          status?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      oauth_refresh_tokens: {
-        Row: {
-          client_id: string
-          created_at: string
-          expires_at: string
-          id: string
-          scope: string | null
-          token: string
-          used: boolean
-          user_id: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          expires_at: string
-          id?: string
-          scope?: string | null
-          token: string
-          used?: boolean
-          user_id: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-          scope?: string | null
-          token?: string
-          used?: boolean
-          user_id?: string
-        }
-        Relationships: []
-      }
-      oauth_token_history: {
-        Row: {
-          access_token_secret_id: string | null
-          created_at: string
-          created_by_ip: string | null
-          expired_at: string | null
-          expired_by_ip: string | null
-          expired_reason: string | null
-          id: string
-          refresh_token_secret_id: string | null
-          service: string
-          token_type: string | null
-          user_id: string
-        }
-        Insert: {
-          access_token_secret_id?: string | null
-          created_at?: string
-          created_by_ip?: string | null
-          expired_at?: string | null
-          expired_by_ip?: string | null
-          expired_reason?: string | null
-          id?: string
-          refresh_token_secret_id?: string | null
-          service: string
-          token_type?: string | null
-          user_id: string
-        }
-        Update: {
-          access_token_secret_id?: string | null
-          created_at?: string
-          created_by_ip?: string | null
-          expired_at?: string | null
-          expired_by_ip?: string | null
-          expired_reason?: string | null
-          id?: string
-          refresh_token_secret_id?: string | null
-          service?: string
-          token_type?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "oauth_token_history_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      oauth_tokens: {
-        Row: {
-          access_token_secret_id: string | null
-          created_at: string
-          expires_at: string | null
-          id: string
-          refresh_token_secret_id: string | null
-          scope: string | null
-          service: string
-          token_type: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          access_token_secret_id?: string | null
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          refresh_token_secret_id?: string | null
-          scope?: string | null
-          service: string
-          token_type?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          access_token_secret_id?: string | null
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          refresh_token_secret_id?: string | null
-          scope?: string | null
-          service?: string
-          token_type?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "oauth_tokens_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      plans: {
-        Row: {
-          created_at: string
-          credit_enabled: boolean
-          display_name: string
-          id: string
-          is_active: boolean
-          name: string
-          quota_monthly: number | null
-          rate_limit_burst: number
-          rate_limit_rpm: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          credit_enabled?: boolean
-          display_name: string
-          id?: string
-          is_active?: boolean
-          name: string
-          quota_monthly?: number | null
-          rate_limit_burst?: number
-          rate_limit_rpm?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          credit_enabled?: boolean
-          display_name?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          quota_monthly?: number | null
-          rate_limit_burst?: number
-          rate_limit_rpm?: number
-          updated_at?: string
+          status?: Database["mcpist"]["Enums"]["module_status"]
         }
         Relationships: []
       }
       processed_webhook_events: {
         Row: {
           event_id: string
-          event_type: string
-          id: string
           processed_at: string
+          user_id: string
         }
         Insert: {
           event_id: string
-          event_type: string
-          id?: string
           processed_at?: string
+          user_id: string
         }
         Update: {
           event_id?: string
-          event_type?: string
-          id?: string
           processed_at?: string
-        }
-        Relationships: []
-      }
-      subscriptions: {
-        Row: {
-          canceled_at: string | null
-          created_at: string
-          current_period_end: string | null
-          current_period_start: string | null
-          id: string
-          plan_id: string
-          psp_customer_id: string | null
-          psp_subscription_id: string | null
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          canceled_at?: string | null
-          created_at?: string
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          plan_id: string
-          psp_customer_id?: string | null
-          psp_subscription_id?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          canceled_at?: string | null
-          created_at?: string
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          plan_id?: string
-          psp_customer_id?: string | null
-          psp_subscription_id?: string | null
-          status?: string
-          updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "subscriptions_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
+            foreignKeyName: "processed_webhook_events_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      tool_costs: {
+      prompts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          module_id: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          module_id?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          module_id?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_tokens: {
         Row: {
           created_at: string
-          credit_cost: number
+          credentials_secret_id: string
           id: string
-          module_id: string
-          tool_name: string
+          service: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           created_at?: string
-          credit_cost?: number
+          credentials_secret_id: string
           id?: string
-          module_id: string
-          tool_name: string
+          service: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           created_at?: string
-          credit_cost?: number
+          credentials_secret_id?: string
           id?: string
+          service?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tool_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          module_id: string
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          module_id: string
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
           module_id?: string
           tool_name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tool_costs_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      usage: {
-        Row: {
-          created_at: string
-          id: string
-          period_start: string
-          request_count: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          period_start: string
-          request_count?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          period_start?: string
-          request_count?: number
-          updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "usage_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_module_preferences: {
-        Row: {
-          created_at: string
-          id: string
-          is_enabled: boolean
-          module_id: string
-          settings: Json | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_enabled?: boolean
-          module_id: string
-          settings?: Json | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_enabled?: boolean
-          module_id?: string
-          settings?: Json | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_module_preferences_module_id_fkey"
+            foreignKeyName: "tool_settings_module_id_fkey"
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_module_preferences_user_id_fkey"
+            foreignKeyName: "tool_settings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -649,30 +338,24 @@ export type Database = {
       }
       users: {
         Row: {
-          avatar_url: string | null
+          account_status: Database["mcpist"]["Enums"]["account_status"]
           created_at: string
-          display_name: string | null
           id: string
-          role: string
-          status: string
+          preferences: Json | null
           updated_at: string
         }
         Insert: {
-          avatar_url?: string | null
+          account_status?: Database["mcpist"]["Enums"]["account_status"]
           created_at?: string
-          display_name?: string | null
           id: string
-          role?: string
-          status?: string
+          preferences?: Json | null
           updated_at?: string
         }
         Update: {
-          avatar_url?: string | null
+          account_status?: Database["mcpist"]["Enums"]["account_status"]
           created_at?: string
-          display_name?: string | null
           id?: string
-          role?: string
-          status?: string
+          preferences?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -682,189 +365,48 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_oauth_authorization: {
-        Args: { p_authorization_id: string; p_user_id: string }
-        Returns: {
-          code: string
-          redirect_uri: string
-          state: string
-        }[]
+      add_paid_credits: {
+        Args: { p_amount: number; p_event_id: string; p_user_id: string }
+        Returns: Json
       }
-      cleanup_expired_oauth_authorization_requests: {
-        Args: never
-        Returns: number
-      }
-      cleanup_expired_oauth_codes: { Args: never; Returns: number }
-      cleanup_expired_oauth_refresh_tokens: { Args: never; Returns: number }
-      consume_oauth_code: {
-        Args: { p_code: string }
-        Returns: {
-          client_id: string
-          code: string
-          code_challenge: string
-          code_challenge_method: string
-          expires_at: string
-          redirect_uri: string
-          scope: string
-          state: string
-          user_id: string
-        }[]
-      }
-      consume_oauth_refresh_token: {
-        Args: { p_token: string }
-        Returns: {
-          client_id: string
-          expires_at: string
-          scope: string
-          token: string
-          user_id: string
-        }[]
-      }
-      deduct_credits: {
+      consume_credit: {
         Args: {
           p_amount: number
-          p_description?: string
-          p_reference_id?: string
+          p_module: string
+          p_request_id: string
+          p_task_id?: string
+          p_tool: string
           p_user_id: string
         }
-        Returns: number
+        Returns: Json
       }
-      delete_oauth_token: { Args: { p_service: string }; Returns: boolean }
-      deny_oauth_authorization: {
-        Args: { p_authorization_id: string }
-        Returns: {
-          redirect_uri: string
-          state: string
-        }[]
+      get_module_token: {
+        Args: { p_module: string; p_user_id: string }
+        Returns: Json
       }
-      get_masked_api_key: { Args: { p_service: string }; Returns: string }
-      get_my_oauth_connections: {
-        Args: never
-        Returns: {
-          created_at: string
-          expires_at: string
-          id: string
-          is_expired: boolean
-          scope: string
-          service: string
-          token_type: string
-          updated_at: string
-        }[]
-      }
-      get_my_role: { Args: never; Returns: string }
-      get_my_token_history: {
-        Args: { p_service?: string }
-        Returns: {
-          created_at: string
-          expired_at: string
-          expired_reason: string
-          id: string
-          service: string
-          token_type: string
-        }[]
-      }
-      get_oauth_authorization_request: {
-        Args: { p_id: string }
-        Returns: {
-          client_id: string
-          code_challenge: string
-          code_challenge_method: string
-          created_at: string
-          expires_at: string
-          id: string
-          redirect_uri: string
-          scope: string
-          state: string
-          status: string
-        }[]
-      }
-      get_service_token: {
-        Args: { p_service: string; p_user_id: string }
-        Returns: {
-          long_term_token: string
-          oauth_token: string
-        }[]
-      }
-      get_tool_cost: {
-        Args: { p_module_name: string; p_tool_name: string }
-        Returns: number
-      }
-      get_user_entitlement: {
+      get_user_context: {
         Args: { p_user_id: string }
         Returns: {
-          credit_balance: number
-          credit_enabled: boolean
+          account_status: string
+          disabled_tools: Json
           enabled_modules: string[]
-          plan_name: string
-          quota_monthly: number
-          rate_limit_burst: number
-          rate_limit_rpm: number
-          usage_current_month: number
-          user_status: string
+          free_credits: number
+          paid_credits: number
         }[]
       }
-      increment_usage: { Args: { p_user_id: string }; Returns: number }
-      revoke_oauth_refresh_tokens: {
-        Args: { p_client_id?: string; p_user_id: string }
-        Returns: number
-      }
-      store_oauth_authorization_request: {
-        Args: {
-          p_client_id: string
-          p_code_challenge: string
-          p_code_challenge_method: string
-          p_expires_at: string
-          p_id: string
-          p_redirect_uri: string
-          p_scope: string
-          p_state: string
-        }
-        Returns: undefined
-      }
-      store_oauth_code: {
-        Args: {
-          p_client_id: string
-          p_code: string
-          p_code_challenge: string
-          p_code_challenge_method: string
-          p_expires_at: string
-          p_redirect_uri: string
-          p_scope: string
-          p_state: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      store_oauth_refresh_token: {
-        Args: {
-          p_client_id: string
-          p_expires_at: string
-          p_scope: string
-          p_token: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      upsert_oauth_token: {
-        Args: {
-          p_access_token: string
-          p_expires_at?: string
-          p_refresh_token?: string
-          p_scope?: string
-          p_service: string
-          p_token_type?: string
-        }
-        Returns: string
-      }
-      validate_api_key: {
-        Args: { p_api_key: string; p_service: string }
-        Returns: {
-          user_id: string
-        }[]
-      }
+      lookup_user_by_key_hash: { Args: { p_key_hash: string }; Returns: Json }
+      reset_free_credits: { Args: never; Returns: Json }
     }
     Enums: {
-      [_ in never]: never
+      account_status: "active" | "suspended" | "disabled"
+      credit_transaction_type: "consume" | "purchase" | "monthly_reset"
+      module_status:
+        | "active"
+        | "coming_soon"
+        | "maintenance"
+        | "beta"
+        | "deprecated"
+        | "disabled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -878,126 +420,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_oauth_authorization: {
-        Args: { p_authorization_id: string; p_user_id: string }
-        Returns: {
-          code: string
-          redirect_uri: string
-          state: string
-        }[]
+      add_paid_credits: {
+        Args: { p_amount: number; p_event_id: string; p_user_id: string }
+        Returns: Json
       }
-      consume_oauth_code: {
-        Args: { p_code: string }
-        Returns: {
-          client_id: string
-          code: string
-          code_challenge: string
-          code_challenge_method: string
-          expires_at: string
-          redirect_uri: string
-          scope: string
-          state: string
-          user_id: string
-        }[]
-      }
-      consume_oauth_refresh_token: {
-        Args: { p_token: string }
-        Returns: {
-          client_id: string
-          expires_at: string
-          scope: string
-          token: string
-          user_id: string
-        }[]
-      }
-      deduct_credits: {
+      consume_credit: {
         Args: {
           p_amount: number
-          p_description?: string
-          p_reference_id?: string
+          p_module: string
+          p_request_id: string
+          p_task_id?: string
+          p_tool: string
           p_user_id: string
         }
-        Returns: number
+        Returns: Json
       }
-      delete_oauth_token: { Args: { p_service: string }; Returns: boolean }
-      deny_oauth_authorization: {
-        Args: { p_authorization_id: string }
-        Returns: {
-          redirect_uri: string
-          state: string
-        }[]
-      }
+      delete_service_token: { Args: { p_service: string }; Returns: Json }
       generate_api_key: {
         Args: { p_expires_in_days?: number; p_name: string }
         Returns: Json
       }
-      get_masked_api_key: { Args: { p_service: string }; Returns: string }
-      get_my_oauth_connections: {
-        Args: never
-        Returns: {
-          created_at: string
-          expires_at: string
-          id: string
-          is_expired: boolean
-          scope: string
-          service: string
-          token_type: string
-          updated_at: string
-        }[]
+      get_module_token: {
+        Args: { p_module: string; p_user_id: string }
+        Returns: Json
       }
-      get_my_role: { Args: never; Returns: string }
-      get_my_token_history: {
-        Args: { p_service?: string }
-        Returns: {
-          created_at: string
-          expired_at: string
-          expired_reason: string
-          id: string
-          service: string
-          token_type: string
-        }[]
-      }
-      get_oauth_authorization_request: {
-        Args: { p_id: string }
-        Returns: {
-          client_id: string
-          code_challenge: string
-          code_challenge_method: string
-          created_at: string
-          expires_at: string
-          id: string
-          redirect_uri: string
-          scope: string
-          state: string
-          status: string
-        }[]
-      }
-      get_service_token: {
-        Args: { p_service: string; p_user_id: string }
-        Returns: {
-          long_term_token: string
-          oauth_token: string
-        }[]
-      }
-      get_tool_cost: {
-        Args: { p_module_name: string; p_tool_name: string }
-        Returns: number
-      }
-      get_user_entitlement: {
+      get_user_context: {
         Args: { p_user_id: string }
         Returns: {
-          credit_balance: number
-          credit_enabled: boolean
+          account_status: string
+          disabled_tools: Json
           enabled_modules: string[]
-          plan_name: string
-          quota_monthly: number
-          rate_limit_burst: number
-          rate_limit_rpm: number
-          usage_current_month: number
-          user_status: string
+          free_credits: number
+          paid_credits: number
         }[]
       }
-      increment_usage: { Args: { p_user_id: string }; Returns: number }
       list_api_keys: {
         Args: never
         Returns: {
@@ -1010,67 +466,22 @@ export type Database = {
           name: string
         }[]
       }
+      list_service_connections: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          service: string
+          updated_at: string
+        }[]
+      }
+      lookup_user_by_key_hash: { Args: { p_key_hash: string }; Returns: Json }
+      reset_free_credits: { Args: never; Returns: Json }
       revoke_api_key: { Args: { p_key_id: string }; Returns: Json }
-      revoke_oauth_refresh_tokens: {
-        Args: { p_client_id?: string; p_user_id: string }
-        Returns: number
+      upsert_service_token: {
+        Args: { p_credentials: Json; p_service: string }
+        Returns: Json
       }
-      store_oauth_authorization_request: {
-        Args: {
-          p_client_id: string
-          p_code_challenge: string
-          p_code_challenge_method: string
-          p_expires_at: string
-          p_id: string
-          p_redirect_uri: string
-          p_scope: string
-          p_state: string
-        }
-        Returns: undefined
-      }
-      store_oauth_code: {
-        Args: {
-          p_client_id: string
-          p_code: string
-          p_code_challenge: string
-          p_code_challenge_method: string
-          p_expires_at: string
-          p_redirect_uri: string
-          p_scope: string
-          p_state: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      store_oauth_refresh_token: {
-        Args: {
-          p_client_id: string
-          p_expires_at: string
-          p_scope: string
-          p_token: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      upsert_oauth_token: {
-        Args: {
-          p_access_token: string
-          p_expires_at?: string
-          p_refresh_token?: string
-          p_scope?: string
-          p_service: string
-          p_token_type?: string
-        }
-        Returns: string
-      }
-      validate_api_key:
-        | {
-            Args: { p_api_key: string; p_service: string }
-            Returns: {
-              user_id: string
-            }[]
-          }
-        | { Args: { p_key: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
@@ -1200,10 +611,20 @@ export type CompositeTypes<
 
 export const Constants = {
   mcpist: {
-    Enums: {},
+    Enums: {
+      account_status: ["active", "suspended", "disabled"],
+      credit_transaction_type: ["consume", "purchase", "monthly_reset"],
+      module_status: [
+        "active",
+        "coming_soon",
+        "maintenance",
+        "beta",
+        "deprecated",
+        "disabled",
+      ],
+    },
   },
   public: {
     Enums: {},
   },
 } as const
-

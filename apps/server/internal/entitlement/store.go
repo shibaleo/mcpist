@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Store manages user entitlement queries to Supabase
+// Store manages user context queries to Supabase
 type Store struct {
 	supabaseURL string
 	serviceKey  string
@@ -18,20 +18,61 @@ type Store struct {
 	cache       *cache
 }
 
-// UserEntitlement represents a user's current entitlements
-type UserEntitlement struct {
-	UserStatus        string   `json:"user_status"`
-	PlanName          string   `json:"plan_name"`
-	RateLimitRPM      int      `json:"rate_limit_rpm"`
-	RateLimitBurst    int      `json:"rate_limit_burst"`
-	QuotaMonthly      *int     `json:"quota_monthly"` // nil = unlimited
-	CreditEnabled     bool     `json:"credit_enabled"`
-	CreditBalance     int      `json:"credit_balance"`
-	UsageCurrentMonth int      `json:"usage_current_month"`
-	EnabledModules    []string `json:"enabled_modules"`
+// UserContext represents the user's context from get_user_context RPC
+type UserContext struct {
+	AccountStatus  string            `json:"account_status"`
+	FreeCredits    int               `json:"free_credits"`
+	PaidCredits    int               `json:"paid_credits"`
+	EnabledModules []string          `json:"enabled_modules"`
+	DisabledTools  map[string][]string `json:"disabled_tools"` // module -> []tool
 }
 
-// cache stores entitlements with TTL
+// TotalCredits returns the sum of free and paid credits
+func (uc *UserContext) TotalCredits() int {
+	return uc.FreeCredits + uc.PaidCredits
+}
+
+// IsModuleEnabled checks if a module is enabled for the user
+func (uc *UserContext) IsModuleEnabled(module string) bool {
+	for _, m := range uc.EnabledModules {
+		if m == module {
+			return true
+		}
+	}
+	return false
+}
+
+// IsToolEnabled checks if a tool is enabled for the user
+func (uc *UserContext) IsToolEnabled(module, tool string) bool {
+	disabledTools, ok := uc.DisabledTools[module]
+	if !ok {
+		return true // Module has no disabled tools
+	}
+	for _, t := range disabledTools {
+		if t == tool {
+			return false
+		}
+	}
+	return true
+}
+
+// ConsumeResult represents the result of consume_credit RPC
+type ConsumeResult struct {
+	Success          bool `json:"success"`
+	FreeCredits      int  `json:"free_credits"`
+	PaidCredits      int  `json:"paid_credits"`
+	AlreadyProcessed bool `json:"already_processed,omitempty"`
+	Error            string `json:"error,omitempty"`
+}
+
+// ModuleToken represents the result of get_module_token RPC
+type ModuleToken struct {
+	Found       bool              `json:"found"`
+	Credentials map[string]string `json:"credentials,omitempty"`
+	Error       string            `json:"error,omitempty"`
+}
+
+// cache stores user context with TTL
 type cache struct {
 	mu    sync.RWMutex
 	items map[string]*cacheItem
@@ -39,8 +80,8 @@ type cache struct {
 }
 
 type cacheItem struct {
-	entitlement *UserEntitlement
-	expiresAt   time.Time
+	context   *UserContext
+	expiresAt time.Time
 }
 
 // NewStore creates a new entitlement store
@@ -58,46 +99,42 @@ func NewStore() *Store {
 	}
 }
 
-// GetUserEntitlement retrieves the user's entitlements
-func (s *Store) GetUserEntitlement(userID string) (*UserEntitlement, error) {
+// GetUserContext retrieves the user's context (account status, credits, modules, tools)
+func (s *Store) GetUserContext(userID string) (*UserContext, error) {
 	// Check cache first
 	if cached := s.cache.get(userID); cached != nil {
 		return cached, nil
 	}
 
 	// Query Supabase RPC
-	entitlement, err := s.fetchEntitlement(userID)
+	ctx, err := s.fetchUserContext(userID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Cache the result
-	s.cache.set(userID, entitlement)
+	s.cache.set(userID, ctx)
 
-	return entitlement, nil
+	return ctx, nil
 }
 
-// fetchEntitlement calls the Supabase RPC function
-func (s *Store) fetchEntitlement(userID string) (*UserEntitlement, error) {
+// fetchUserContext calls the Supabase RPC function
+func (s *Store) fetchUserContext(userID string) (*UserContext, error) {
 	if s.serviceKey == "" {
-		// Return default entitlement for development without service key
-		return &UserEntitlement{
-			UserStatus:        "active",
-			PlanName:          "free",
-			RateLimitRPM:      10,
-			RateLimitBurst:    5,
-			QuotaMonthly:      intPtr(1000),
-			CreditEnabled:     false,
-			CreditBalance:     0,
-			UsageCurrentMonth: 0,
-			EnabledModules:    []string{},
+		// Return default context for development without service key
+		return &UserContext{
+			AccountStatus:  "active",
+			FreeCredits:    100,
+			PaidCredits:    0,
+			EnabledModules: []string{"notion", "github", "jira", "confluence", "supabase", "google_calendar", "microsoft_todo", "rag"},
+			DisabledTools:  map[string][]string{},
 		}, nil
 	}
 
 	reqBody := fmt.Sprintf(`{"p_user_id": "%s"}`, userID)
 	req, err := http.NewRequest(
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/get_user_entitlement",
+		s.supabaseURL+"/rest/v1/rpc/get_user_context",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -110,51 +147,83 @@ func (s *Store) fetchEntitlement(userID string) (*UserEntitlement, error) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call get_user_entitlement: %w", err)
+		return nil, fmt.Errorf("failed to call get_user_context: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get_user_entitlement failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("get_user_context failed: status %d", resp.StatusCode)
 	}
 
-	var results []UserEntitlement
+	// RPC returns a table, so we get an array
+	var results []struct {
+		AccountStatus  string   `json:"account_status"`
+		FreeCredits    int      `json:"free_credits"`
+		PaidCredits    int      `json:"paid_credits"`
+		EnabledModules []string `json:"enabled_modules"`
+		DisabledTools  json.RawMessage `json:"disabled_tools"`
+	}
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	if len(results) == 0 {
-		// User not found - return default free plan entitlement
-		return &UserEntitlement{
-			UserStatus:        "active",
-			PlanName:          "free",
-			RateLimitRPM:      10,
-			RateLimitBurst:    5,
-			QuotaMonthly:      intPtr(1000),
-			CreditEnabled:     false,
-			CreditBalance:     0,
-			UsageCurrentMonth: 0,
-			EnabledModules:    []string{},
+		// User not found - return error
+		return nil, fmt.Errorf("user not found: %s", userID)
+	}
+
+	r := results[0]
+
+	// Parse disabled_tools JSONB
+	disabledTools := make(map[string][]string)
+	if len(r.DisabledTools) > 0 && string(r.DisabledTools) != "{}" {
+		if err := json.Unmarshal(r.DisabledTools, &disabledTools); err != nil {
+			// Log but don't fail - just use empty map
+			disabledTools = map[string][]string{}
+		}
+	}
+
+	return &UserContext{
+		AccountStatus:  r.AccountStatus,
+		FreeCredits:    r.FreeCredits,
+		PaidCredits:    r.PaidCredits,
+		EnabledModules: r.EnabledModules,
+		DisabledTools:  disabledTools,
+	}, nil
+}
+
+// ConsumeCredit consumes credits for a tool execution (idempotent)
+func (s *Store) ConsumeCredit(userID, module, tool string, amount int, requestID string, taskID *string) (*ConsumeResult, error) {
+	if s.serviceKey == "" {
+		// Skip in development
+		return &ConsumeResult{
+			Success:     true,
+			FreeCredits: 100,
+			PaidCredits: 0,
 		}, nil
 	}
 
-	return &results[0], nil
-}
-
-// IncrementUsage increments the user's usage count for the current month
-func (s *Store) IncrementUsage(userID string) (int, error) {
-	if s.serviceKey == "" {
-		return 0, nil // Skip in development
+	// Build request body
+	var reqBody string
+	if taskID != nil {
+		reqBody = fmt.Sprintf(
+			`{"p_user_id": "%s", "p_module": "%s", "p_tool": "%s", "p_amount": %d, "p_request_id": "%s", "p_task_id": "%s"}`,
+			userID, module, tool, amount, requestID, *taskID,
+		)
+	} else {
+		reqBody = fmt.Sprintf(
+			`{"p_user_id": "%s", "p_module": "%s", "p_tool": "%s", "p_amount": %d, "p_request_id": "%s"}`,
+			userID, module, tool, amount, requestID,
+		)
 	}
 
-	reqBody := fmt.Sprintf(`{"p_user_id": "%s"}`, userID)
 	req, err := http.NewRequest(
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/increment_usage",
+		s.supabaseURL+"/rest/v1/rpc/consume_credit",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -163,87 +232,43 @@ func (s *Store) IncrementUsage(userID string) (int, error) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to call consume_credit: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("increment_usage failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("consume_credit failed: status %d", resp.StatusCode)
 	}
 
-	var count int
-	if err := json.NewDecoder(resp.Body).Decode(&count); err != nil {
-		return 0, err
-	}
-
-	// Invalidate cache to reflect new usage
-	s.cache.delete(userID)
-
-	return count, nil
-}
-
-// DeductCredits deducts credits from user's balance
-// Returns new balance, or -1 if insufficient credits
-func (s *Store) DeductCredits(userID string, amount int, description, referenceID string) (int, error) {
-	if s.serviceKey == "" {
-		return 0, nil // Skip in development
-	}
-
-	reqBody := fmt.Sprintf(
-		`{"p_user_id": "%s", "p_amount": %d, "p_description": %s, "p_reference_id": %s}`,
-		userID,
-		amount,
-		jsonString(description),
-		jsonString(referenceID),
-	)
-	req, err := http.NewRequest(
-		"POST",
-		s.supabaseURL+"/rest/v1/rpc/deduct_credits",
-		strings.NewReader(reqBody),
-	)
-	if err != nil {
-		return 0, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", s.serviceKey)
-	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("deduct_credits failed: status %d", resp.StatusCode)
-	}
-
-	var balance int
-	if err := json.NewDecoder(resp.Body).Decode(&balance); err != nil {
-		return 0, err
+	var result ConsumeResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	// Invalidate cache to reflect new balance
 	s.cache.delete(userID)
 
-	return balance, nil
+	return &result, nil
 }
 
-// GetToolCost retrieves the credit cost for a tool
-func (s *Store) GetToolCost(moduleName, toolName string) (int, error) {
+// GetModuleToken retrieves the module's credentials from Vault
+func (s *Store) GetModuleToken(userID, module string) (*ModuleToken, error) {
 	if s.serviceKey == "" {
-		return 1, nil // Default cost in development
+		// Return mock token for development
+		return &ModuleToken{
+			Found:       true,
+			Credentials: map[string]string{"access_token": "dev_mock_token"},
+		}, nil
 	}
 
-	reqBody := fmt.Sprintf(`{"p_module_name": "%s", "p_tool_name": "%s"}`, moduleName, toolName)
+	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_module": "%s"}`, userID, module)
 	req, err := http.NewRequest(
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/get_tool_cost",
+		s.supabaseURL+"/rest/v1/rpc/get_module_token",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -252,30 +277,30 @@ func (s *Store) GetToolCost(moduleName, toolName string) (int, error) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return 0, err
+		return nil, fmt.Errorf("failed to call get_module_token: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 1, nil // Default to 1 if RPC fails
+		return nil, fmt.Errorf("get_module_token failed: status %d", resp.StatusCode)
 	}
 
-	var cost int
-	if err := json.NewDecoder(resp.Body).Decode(&cost); err != nil {
-		return 1, nil
+	var result ModuleToken
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return cost, nil
+	return &result, nil
 }
 
-// InvalidateCache removes a user's cached entitlement
+// InvalidateCache removes a user's cached context
 func (s *Store) InvalidateCache(userID string) {
 	s.cache.delete(userID)
 }
 
 // Cache methods
 
-func (c *cache) get(userID string) *UserEntitlement {
+func (c *cache) get(userID string) *UserContext {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -288,16 +313,16 @@ func (c *cache) get(userID string) *UserEntitlement {
 		return nil
 	}
 
-	return item.entitlement
+	return item.context
 }
 
-func (c *cache) set(userID string, entitlement *UserEntitlement) {
+func (c *cache) set(userID string, ctx *UserContext) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.items[userID] = &cacheItem{
-		entitlement: entitlement,
-		expiresAt:   time.Now().Add(c.ttl),
+		context:   ctx,
+		expiresAt: time.Now().Add(c.ttl),
 	}
 }
 
@@ -306,18 +331,4 @@ func (c *cache) delete(userID string) {
 	defer c.mu.Unlock()
 
 	delete(c.items, userID)
-}
-
-// Helper functions
-
-func intPtr(i int) *int {
-	return &i
-}
-
-func jsonString(s string) string {
-	if s == "" {
-		return "null"
-	}
-	b, _ := json.Marshal(s)
-	return string(b)
 }

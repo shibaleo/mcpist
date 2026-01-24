@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"mcpist/server/internal/entitlement"
 	"mcpist/server/internal/modules"
@@ -274,10 +275,13 @@ func (h *Handler) handleCall(ctx context.Context, args map[string]interface{}) (
 		params = make(map[string]interface{})
 	}
 
-	// Check module access authorization
+	// Get tool cost (default: 1 credit per call)
+	creditCost := 1
+
+	// Check module/tool access authorization
 	authCtx := entitlement.GetAuthContext(ctx)
 	if authCtx != nil {
-		if err := authCtx.CanAccessTool(moduleName, toolName, h.entitlementStore); err != nil {
+		if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
 			authErr, ok := err.(*entitlement.AuthError)
 			if ok {
 				return nil, &Error{Code: InvalidRequest, Message: authErr.Message}
@@ -291,14 +295,22 @@ func (h *Handler) handleCall(ctx context.Context, args map[string]interface{}) (
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
-	// Track usage after successful call
+	// Consume credits after successful call
 	if authCtx != nil {
-		if err := authCtx.ConsumeUsage(h.entitlementStore); err != nil {
-			log.Printf("Failed to track usage: %v", err)
-		}
-		// Consume credits if credit-based
-		if err := authCtx.ConsumeCredits(h.entitlementStore, moduleName, toolName, ""); err != nil {
+		// Generate a unique request ID for idempotency
+		requestID := generateRequestID()
+		consumeResult, err := h.entitlementStore.ConsumeCredit(
+			authCtx.UserID,
+			moduleName,
+			toolName,
+			creditCost,
+			requestID,
+			nil, // no task_id for single calls
+		)
+		if err != nil {
 			log.Printf("Failed to consume credits: %v", err)
+		} else if !consumeResult.Success {
+			log.Printf("Credit consumption failed: %s", consumeResult.Error)
 		}
 	}
 
@@ -311,21 +323,18 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 		return nil, &Error{Code: InvalidParams, Message: "commands must be a string"}
 	}
 
-	// Note: Batch authorization is handled per-command inside modules.Batch
-	// We pass context so individual commands can be checked
+	// Note: Batch authorization and credit consumption is handled per-command inside modules.Batch
+	// We pass context so individual commands can be checked and credits consumed
 
 	result, err := modules.Batch(ctx, commands)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
-	// Track usage after successful batch
-	authCtx := entitlement.GetAuthContext(ctx)
-	if authCtx != nil {
-		if err := authCtx.ConsumeUsage(h.entitlementStore); err != nil {
-			log.Printf("Failed to track batch usage: %v", err)
-		}
-	}
-
 	return result, nil
+}
+
+// generateRequestID generates a unique request ID for idempotency
+func generateRequestID() string {
+	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().UnixNano()%1000000)
 }

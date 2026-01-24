@@ -501,11 +501,9 @@ async function verifyJWT(token: string, env: Env): Promise<AuthResult | null> {
   }
 }
 
-interface ApiKeyValidationResult {
+interface LookupUserByKeyHashResult {
   valid: boolean;
   user_id?: string;
-  key_name?: string;
-  scopes?: string[];
   error?: string;
 }
 
@@ -522,9 +520,12 @@ const API_KEY_CACHE_MAX_AGE_MS = 3600000; // 1時間（ソフト有効期限）
  * APIキー検証（KVキャッシュ対応）
  *
  * フロー:
- * 1. KVキャッシュをチェック（ヒット時: 1-5ms）
- * 2. キャッシュミス時: Supabase RPCを呼び出し（10-50ms）
- * 3. 検証成功時: 結果をKVにキャッシュ
+ * 1. Worker側でAPIキーのSHA-256ハッシュを計算
+ * 2. KVキャッシュをチェック（ヒット時: 1-5ms）
+ * 3. キャッシュミス時: Supabase RPC (lookup_user_by_key_hash) を呼び出し
+ * 4. 検証成功時: 結果をKVにキャッシュ
+ *
+ * セキュリティ: 生のAPIキーはDBに到達しない（ハッシュのみ送信）
  */
 async function verifyApiKey(
   apiKey: string,
@@ -532,12 +533,12 @@ async function verifyApiKey(
 ): Promise<AuthResult | null> {
   const startTime = Date.now();
 
-  // APIキーのSHA-256ハッシュをキャッシュキーとして使用
-  const cacheKey = await hashApiKey(apiKey);
+  // APIキーのSHA-256ハッシュを計算（DB検索用およびKVキャッシュキー用）
+  const keyHash = await hashApiKey(apiKey);
 
   // 1. KVキャッシュをチェック
   try {
-    const cached = await env.API_KEY_CACHE.get<ApiKeyCacheEntry>(cacheKey, "json");
+    const cached = await env.API_KEY_CACHE.get<ApiKeyCacheEntry>(keyHash, "json");
 
     if (cached) {
       const age = Date.now() - cached.cachedAt;
@@ -554,11 +555,11 @@ async function verifyApiKey(
     console.error("[APIKey] Cache read error:", cacheError);
   }
 
-  // 2. キャッシュミス → Supabase RPCで検証
+  // 2. キャッシュミス → Supabase RPC (lookup_user_by_key_hash) で検証
   console.log("[APIKey] Cache MISS, validating via Supabase RPC...");
   try {
     const response = await fetch(
-      `${env.SUPABASE_URL}/rest/v1/rpc/validate_api_key`,
+      `${env.SUPABASE_URL}/rest/v1/rpc/lookup_user_by_key_hash`,
       {
         method: "POST",
         headers: {
@@ -566,7 +567,7 @@ async function verifyApiKey(
           apikey: env.SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ p_key: apiKey }),
+        body: JSON.stringify({ p_key_hash: keyHash }),
       }
     );
 
@@ -575,7 +576,7 @@ async function verifyApiKey(
       return null;
     }
 
-    const result: ApiKeyValidationResult = await response.json();
+    const result: LookupUserByKeyHashResult = await response.json();
     if (!result || !result.valid || !result.user_id) {
       console.log(`[APIKey] Validation FAILED (${result?.error || 'no user_id'})`);
       return null;
@@ -589,7 +590,7 @@ async function verifyApiKey(
         userId,
         cachedAt: Date.now(),
       };
-      await env.API_KEY_CACHE.put(cacheKey, JSON.stringify(cacheEntry), {
+      await env.API_KEY_CACHE.put(keyHash, JSON.stringify(cacheEntry), {
         expirationTtl: API_KEY_CACHE_TTL_SECONDS,
       });
       const totalLatency = Date.now() - startTime;
@@ -606,7 +607,9 @@ async function verifyApiKey(
 }
 
 /**
- * APIキーをSHA-256でハッシュ化（キャッシュキー用）
+ * APIキーをSHA-256でハッシュ化
+ * - DB検索用（lookup_user_by_key_hashに送信）
+ * - KVキャッシュキー用
  */
 async function hashApiKey(apiKey: string): Promise<string> {
   const encoder = new TextEncoder();
