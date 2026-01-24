@@ -27,83 +27,17 @@ MCP Handler（HDL）は、MCPプロトコルを解釈し、モジュールを管
 
 **位置づけ:** MCP Server内部コンポーネント
 
-**内部実装詳細:** [dtl-spc-hdl.md](./dtl-spc-hdl.md)
+**内部実装詳細:** [dtl-spc-hdl.md](../dtl-spc/dtl-spc-hdl.md)
 
 ---
 
-## 連携サマリー（spc-itrより）
+## 連携サマリー
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| Auth Middleware | HDL ← AMW | 認証済みリクエスト受信 |
-| Data Store | HDL → DST | ユーザー設定取得 |
-| Modules | HDL → MOD | プリミティブ操作委譲 |
-
----
-
-## 連携詳細
-
-### AMW → HDL（認証済みリクエスト受信）
-
-| 項目 | 内容 |
-|------|------|
-| プロトコル | 内部関数呼び出し |
-| 入力 | JSON-RPC 2.0リクエスト + ユーザーコンテキスト |
-
-**ユーザーコンテキスト（AMWから受け取る情報）:**
-
-| フィールド | 説明 |
-|-----------|------|
-| user_id | 認証済みユーザーID |
-| request_id | リクエスト追跡用ID |
-| client_ip | クライアントIPアドレス |
-
----
-
-### HDL → DST（ユーザー設定取得）
-
-| 項目 | 内容 |
-|------|------|
-| トリガー | MCPメソッドリクエスト時 |
-| 操作 | ユーザー設定・状態の取得 |
-
-**取得する情報:**
-
-| フィールド | 説明 |
-|-----------|------|
-| account_status | アカウント状態（active/suspended/disabled） |
-| credit_balance | クレジット残高 |
-| enabled_modules | 有効なモジュール一覧 |
-| tool_settings | ツール単位の有効/無効設定 |
-| user_prompts | ユーザー定義プロンプト |
-
-**注:** プランによるモジュール制限は行わない。
-
-**チェック項目:**
-- account_statusがactive以外 → エラー
-- credit_balanceが0以下 → エラー
-- モジュールが無効 → エラー
-- ツールが無効 → エラー
-
----
-
-### HDL → MOD（プリミティブ操作委譲）
-
-| 項目 | 内容 |
-|------|------|
-| トリガー | 権限チェック完了後 |
-| 操作 | tools/resources/promptsの取得・実行 |
-
-**実行コンテキスト（MODへ渡す情報）:**
-
-| フィールド | 説明 |
-|-----------|------|
-| user_id | 認証済みユーザーID |
-| module | 対象モジュール名 |
-| primitive_type | プリミティブ種別（tool/resource/prompt） |
-| primitive_name | プリミティブ名 |
-| params | パラメータ |
-| request_id | リクエスト追跡用ID |
+| 相手 | 方向 | やり取り | 詳細 |
+|------|------|----------|------|
+| Auth Middleware | HDL ← AMW | 認証済みリクエスト受信 | [dtl-itr-AMW-HDL.md](./dtl-itr-AMW-HDL.md) |
+| Data Store | HDL → DST | ユーザー設定取得 | [dtl-itr-DST-HDL.md](./dtl-itr-DST-HDL.md) |
+| Modules | HDL → MOD | プリミティブ操作委譲 | [dtl-itr-HDL-MOD.md](./dtl-itr-HDL-MOD.md) |
 
 ---
 
@@ -130,7 +64,7 @@ MCP Handler（HDL）は、MCPプロトコルを解釈し、モジュールを管
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
-| [dtl-spc-hdl.md](./dtl-spc-hdl.md) | MCP Handler詳細仕様 |
+| [dtl-spc-hdl.md](../dtl-spc/dtl-spc-hdl.md) | MCP Handler詳細仕様 |
 | [itr-amw.md](./itr-amw.md) | Auth Middleware詳細仕様 |
 | [itr-dst.md](./itr-dst.md) | Data Store詳細仕様 |
 | [itr-mod.md](./itr-mod.md) | Modules詳細仕様 |

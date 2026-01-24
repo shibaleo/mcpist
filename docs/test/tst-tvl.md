@@ -218,6 +218,6 @@ taskkill /F /IM main.exe
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itf-tvl.md](./itf-tvl.md) | Token Vault API仕様 |
-| [token-vault.yaml](../../../apps/server/api/openapi/token-vault.yaml) | OpenAPI仕様 |
-| [client.go](../../../apps/server/internal/vault/client.go) | Vault クライアント実装 |
+| [itf-tvl.md](../specification/dtl-spc/itf-tvl.md) | Token Vault API仕様 |
+| token-vault.yaml (`apps/server/api/openapi/`) | OpenAPI仕様 |
+| client.go (`apps/server/internal/vault/`) | Vault クライアント実装 |

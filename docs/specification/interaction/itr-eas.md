@@ -20,95 +20,12 @@ External Service API（EXT）と同一サービス内で連携する。
 
 ---
 
-## 連携サマリー（spc-itrより）
+## 連携サマリー
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| User Console | EAS ← CON | 認可フロー受付 |
-| External Service API | EAS ↔ EXT | 同一サービス内連携 |
-
----
-
-## 連携詳細
-
-### CON → EAS（認可フロー受付）
-
-| 項目 | 内容 |
-|------|------|
-| プロトコル | OAuth 2.0 |
-| 用途 | 外部サービスへのアクセス権限取得 |
-
-**フロー:**
-```mermaid
-sequenceDiagram
-    participant User as ユーザー
-    participant CON as User Console
-    participant EAS as External Auth Server
-    participant TVL as Token Vault
-
-    User->>CON: 連携開始（/connect/:service）
-    CON->>EAS: 認可リクエスト（OAuth）
-    EAS->>User: 認証/同意画面
-    User->>EAS: 同意
-    EAS-->>CON: 認可コード（redirect）
-    CON->>EAS: トークン交換
-    EAS-->>CON: access_token, refresh_token
-    CON->>TVL: トークン保存
-    TVL-->>CON: 保存完了
-    CON->>User: 連携完了表示
-```
-
----
-
-### 認可リクエスト例（Notion）
-
-```
-GET https://api.notion.com/v1/oauth/authorize
-  ?client_id={client_id}
-  &redirect_uri={redirect_uri}
-  &response_type=code
-  &owner=user
-  &state={state}
-```
-
-### トークン交換リクエスト例（Notion）
-
-```
-POST https://api.notion.com/v1/oauth/token
-Content-Type: application/json
-
-{
-  "grant_type": "authorization_code",
-  "code": "{code}",
-  "redirect_uri": "{redirect_uri}"
-}
-```
-
-**レスポンス:**
-```json
-{
-  "access_token": "ntn_xxx",
-  "token_type": "Bearer",
-  "bot_id": "xxx",
-  "workspace_id": "xxx",
-  "workspace_name": "My Workspace"
-}
-```
-
----
-
-### EAS ↔ EXT（同一サービス内連携）
-
-| 項目 | 内容 |
-|------|------|
-| 関係 | 同一外部サービス内のコンポーネント |
-| 用途 | 認証とAPIが同一サービスで提供される |
-
-例：
-- Notion Auth Server（EAS） → Notion API（EXT）
-- Google OAuth（EAS） → Google Calendar API（EXT）
-
-トークンはEASで発行され、EXTへのアクセスに使用される。
+| 相手 | 方向 | やり取り | 詳細 |
+|------|------|----------|------|
+| User Console | EAS ← CON | 認可フロー受付 | [dtl-itr-CON-EAS.md](./dtl-itr-CON-EAS.md) |
+| Token Vault | EAS ← TVL | トークンリフレッシュ | [dtl-itr-EAS-TVL.md](./dtl-itr-EAS-TVL.md) |
 
 ---
 

@@ -127,5 +127,5 @@ auth.users (Supabase Auth)
 |-------------|------|
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
 | [spc-itr.md](./spc-itr.md) | インタラクション仕様書 |
-| [ifr-ent.md](./dtl-spc/ifr-ent.md) | Entitlement Store詳細仕様 |
-| [ifr-tvl.md](./dtl-spc/ifr-tvl.md) | Token Vault詳細仕様 |
+| [itr-dst.md](./interaction/itr-dst.md) | Data Store詳細仕様 |
+| [itf-tvl.md](./dtl-spc/itf-tvl.md) | Token Vault API仕様 |

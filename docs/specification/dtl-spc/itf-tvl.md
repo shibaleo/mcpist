@@ -156,7 +156,7 @@ npx @stoplight/prism-cli mock apps/server/api/openapi/token-vault.yaml --port 80
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [ifr-tvl.md](./ifr-tvl.md) | Token Vault インフラ仕様 |
+| [itr-tvl.md](../interaction/itr-tvl.md) | Token Vault インタラクション仕様 |
 | [itr-srv.md](../interaction/itr-srv.md) | MCP Server詳細仕様 |
 | [spc-inf.md](../spc-inf.md) | インフラストラクチャ仕様 |
-| [tst-tvl.md](./tst-tvl.md) | テスト手順書 |
+| [tst-tvl.md](../../test/tst-tvl.md) | テスト手順書 |

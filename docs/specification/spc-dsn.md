@@ -259,6 +259,5 @@ mcpist/
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
-| [spc-infra.md](spc-inf.md) | インフラストラクチャ仕様書 |
+| [spc-inf.md](spc-inf.md) | インフラストラクチャ仕様書 |
 | [spc-tbl.md](./spc-tbl.md) | テーブル仕様書 |
-| [dsn-module-registry.md](../DAY7/dsn-module-registry.md) | Module Registry設計 |

@@ -508,5 +508,3 @@ type Module interface {
 | [spc-sys.md](./spc-sys.md) | システム仕様書（コンポーネント定義） |
 | [spc-itr.md](./spc-itr.md) | インタラクション仕様書 |
 | [spc-sec.md](./spc-sec.md) | セキュリティ仕様書 |
-| [spec-ifc.md](../DAY6/spec-ifc.md) | インターフェース仕様（DAY6詳細版） |
-| [dsn-module-registry.md](../DAY7/dsn-module-registry.md) | Module Registry設計 |

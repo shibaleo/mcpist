@@ -1,0 +1,13 @@
+{
+	"nodes":[
+		{"id":"64a431a282f53282","type":"text","text":"## Worker\non Cloudflare\n- 認証\n- Backend Warm Up","x":40,"y":-80,"width":240,"height":180,"color":"1"},
+		{"id":"10e3927d5c9921aa","type":"text","text":"## APIサーバー\n- healthエンドポイント\n- Lokiにstatus送信","x":340,"y":-80,"width":240,"height":180,"color":"1"},
+		{"id":"364652635bed4167","type":"text","text":"## Loki\n- ログ収集","x":640,"y":-80,"width":240,"height":180,"color":"1"},
+		{"id":"2ab88dfd860d24ff","type":"text","text":"## Clients\n- MCPクライアント\n- Bot","x":-260,"y":-60,"width":240,"height":140,"color":"1"}
+	],
+	"edges":[
+		{"id":"89647d39b27ec80e","fromNode":"2ab88dfd860d24ff","fromSide":"right","toNode":"64a431a282f53282","toSide":"left"},
+		{"id":"498ab6ed0c7b0c0d","fromNode":"64a431a282f53282","fromSide":"right","toNode":"10e3927d5c9921aa","toSide":"left"},
+		{"id":"741b4e244ca3d334","fromNode":"10e3927d5c9921aa","fromSide":"right","toNode":"364652635bed4167","toSide":"left"}
+	]
+}
