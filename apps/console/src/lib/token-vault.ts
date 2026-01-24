@@ -100,7 +100,7 @@ export async function upsertTokenWithVerification(
   const { error } = await withMinDelay(
     supabase.rpc('upsert_service_token', {
       p_service: params.service,
-      p_credentials: credentials,
+      p_credentials: credentials as unknown as Record<string, never>,
     }),
     1000
   )
