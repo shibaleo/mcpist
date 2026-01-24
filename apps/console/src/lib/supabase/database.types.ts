@@ -444,6 +444,7 @@ export type Database = {
         Args: { p_module: string; p_user_id: string }
         Returns: Json
       }
+      get_my_role: { Args: never; Returns: string }
       get_user_context: {
         Args: { p_user_id: string }
         Returns: {
