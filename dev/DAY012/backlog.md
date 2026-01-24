@@ -256,6 +256,39 @@ if (response.ok) {
 
 ---
 
+## 技術的負債・注意事項
+
+### Supabase RPC 型定義の管理
+
+**問題**: Supabase CLIの型生成 (`supabase gen types typescript`) がRPC関数の型を正しく生成しない場合がある。
+
+**現状の対応**: `apps/console/src/lib/supabase/database.types.ts` に手動でRPC型定義を追加している。
+
+**新しいRPCを追加した場合**:
+1. `database.types.ts` の `Functions` セクションに型定義を追加する
+2. `Args`: 引数の型
+3. `Returns`: 戻り値の型
+
+**例**:
+```typescript
+new_rpc_function: {
+  Args: {
+    p_param1: string
+    p_param2?: number | null  // optional
+  }
+  Returns: {
+    id: string
+    name: string
+  }[]  // 配列の場合
+}
+```
+
+**今後の改善案**:
+- Supabase CLIが改善されたら自動生成に切り替え
+- または、独自のスクリプトでDBスキーマから型を生成
+
+---
+
 ## 参考資料
 
 - [DAY011 レビュー](../DAY011/review.md)

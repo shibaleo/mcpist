@@ -49,6 +49,43 @@ export interface Database {
         Args: Record<string, never>
         Returns: string
       }
+      list_api_keys: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          name: string
+          key_prefix: string
+          last_used_at: string | null
+          expires_at: string | null
+          created_at: string
+          is_expired: boolean
+        }[]
+      }
+      generate_api_key: {
+        Args: {
+          p_name: string
+          p_expires_in_days?: number | null
+        }
+        Returns: {
+          id: string
+          name: string
+          key: string
+          key_prefix: string
+          expires_at: string | null
+        }
+      }
+      revoke_api_key: {
+        Args: {
+          p_key_id: string
+        }
+        Returns: void
+      }
+      get_service_token: {
+        Args: {
+          p_service: string
+        }
+        Returns: Json
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
