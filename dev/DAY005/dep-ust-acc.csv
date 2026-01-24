@@ -1,0 +1,27 @@
+from,to,from_type,to_type,description
+PSN-1-US-01,PSN-1-ACC-01,UST,ACC,コンテキスト分離 → 情報混在防止
+PSN-1-US-02,PSN-1-ACC-02,UST,ACC,アカウント分離 → OAuth分離管理
+PSN-1-US-03,PSN-1-ACC-03,UST,ACC,バックグラウンド実行 → 並列処理
+PSN-1-US-04,PSN-1-ACC-04,UST,ACC,複数サービス統合 → 単一エンドポイント
+PSN-1-US-05,PSN-1-ACC-05,UST,ACC,信頼できる情報源 → 検索範囲制限
+PSN-1-US-06,PSN-1-ACC-06,UST,ACC,自動記録 → タスク・思考記録
+PSN-1-US-07,PSN-1-ACC-07,UST,ACC,データ活用 → 分析・助言
+PSN-1-US-08,PSN-1-ACC-08,UST,ACC,即時実行 → 成果物返却
+PSN-1-US-09,PSN-1-ACC-08,UST,ACC,複数タスク並列 → 成果物返却（共有）
+PSN-2-US-01,PSN-2-ACC-01,UST,ACC,定型作業自動化 → 並列バッチ処理
+PSN-2-US-02,PSN-2-ACC-02,UST,ACC,データセキュリティ → ローカル完結
+PSN-2-US-03,PSN-2-ACC-03,UST,ACC,人間判断保持 → 自動実行禁止
+PSN-2-US-04,PSN-2-ACC-04,UST,ACC,タスク構造把握 → DAG可視化
+PSN-2-US-05,PSN-2-ACC-05,UST,ACC,例外通知 → 失敗時通知
+PSN-2-US-06,PSN-2-ACC-06,UST,ACC,個人裁量範囲 → 組織非依存
+PSN-2-US-07,PSN-2-ACC-07,UST,ACC,学習時間確保 → 非侵食UX
+PSN-3-US-01,PSN-3-ACC-01,UST,ACC,高速開発サイクル → 待ち時間最小
+PSN-3-US-02,PSN-3-ACC-02,UST,ACC,最小構成開発 → 動作優先
+PSN-3-US-03,PSN-3-ACC-03,UST,ACC,セキュリティ検証 → 検証分離
+PSN-3-US-04,PSN-3-ACC-04,UST,ACC,障害許容設計 → 破損許容
+PSN-3-US-05,PSN-3-ACC-05,UST,ACC,安全デフォルト → 権限分離
+PSN-3-US-06,PSN-3-ACC-06,UST,ACC,放置運用 → 安定動作
+PSN-3-US-07,PSN-3-ACC-07,UST,ACC,構造化ログ → JSON形式
+PSN-3-US-08,PSN-3-ACC-08,UST,ACC,個人向けスケール → 軽量設計
+PSN-3-US-09,PSN-3-ACC-09,UST,ACC,AI伴走開発 → 選択肢提示
+PSN-3-US-10,PSN-3-ACC-10,UST,ACC,成果実感 → 課題解決

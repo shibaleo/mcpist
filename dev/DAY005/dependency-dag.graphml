@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+         xmlns:y="http://www.yworks.com/xml/graphml"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
+         http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d0" for="node" yfiles.type="nodegraphics"/>
+  <key id="d1" for="edge" yfiles.type="edgegraphics"/>
+  <graph id="G" edgedefault="directed">
+
+    <!-- ==================== PSN (Persona) ==================== -->
+    <node id="PSN-1">
+      <data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFE4B5"/><y:NodeLabel>PSN-1
+個人用ペルソナ</y:NodeLabel><y:Shape type="roundrectangle"/></y:ShapeNode></data>
+    </node>
+    <node id="PSN-2">
+      <data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFE4B5"/><y:NodeLabel>PSN-2
+仕事用ペルソナ</y:NodeLabel><y:Shape type="roundrectangle"/></y:ShapeNode></data>
+    </node>
+    <node id="PSN-3">
+      <data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFE4B5"/><y:NodeLabel>PSN-3
+開発者ペルソナ</y:NodeLabel><y:Shape type="roundrectangle"/></y:ShapeNode></data>
+    </node>
+
+    <!-- ==================== UST (User Story) - PSN-1 ==================== -->
+    <node id="PSN-1-US-01"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-01
+コンテキスト分離</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-02"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-02
+アカウント分離管理</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-03"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-03
+バックグラウンド実行</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-04"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-04
+複数サービス統合</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-05"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-05
+信頼できる情報源</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-06"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-06
+タスク自動記録</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-07"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-07
+データ活用・分析</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-08"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-08
+アイデア即時実行</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-1-US-09"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#FFFACD"/><y:NodeLabel>US-09
+複数タスク並列処理</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+
+    <!-- ==================== UST (User Story) - PSN-2 ==================== -->
+    <node id="PSN-2-US-01"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-01
+定型作業自動化</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-2-US-02"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-02
+データセキュリティ</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-2-US-03"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-03
+人間判断の保持</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-2-US-04"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-04
+タスク構造把握</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-2-US-05"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-05
+例外のみ通知</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-2-US-06"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-06
+個人裁量範囲完結</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-2-US-07"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#E6E6FA"/><y:NodeLabel>US-07
+学習時間確保</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+
+    <!-- ==================== UST (User Story) - PSN-3 ==================== -->
+    <node id="PSN-3-US-01"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-01
+高速開発サイクル</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-02"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-02
+最小構成で開発開始</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-03"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-03
+セキュリティ検証分離</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-04"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-04
+障害許容設計</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-05"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-05
+安全デフォルト設計</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-06"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-06
+放置運用可能</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-07"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-07
+構造化ログ出力</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-08"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-08
+個人向けスケール</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-09"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-09
+AI伴走開発</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+    <node id="PSN-3-US-10"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="160"/><y:Fill color="#98FB98"/><y:NodeLabel>US-10
+成果実感・価値共有</y:NodeLabel><y:Shape type="ellipse"/></y:ShapeNode></data></node>
+
+    <!-- ==================== ACC (Acceptance Criteria) - PSN-1 ==================== -->
+    <node id="PSN-1-ACC-01"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-01
+情報混在防止</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-02"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-02
+OAuth分離管理</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-03"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-03
+並列処理・軽量返却</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-04"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-04
+単一エンドポイント</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-05"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-05
+検索範囲制限</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-06"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-06
+タスク・思考記録</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-07"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-07
+分析・助言提供</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-1-ACC-08"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#FFD700"/><y:NodeLabel>ACC-08
+成果物即時返却</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+
+    <!-- ==================== ACC (Acceptance Criteria) - PSN-2 ==================== -->
+    <node id="PSN-2-ACC-01"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-01
+並列バッチ処理</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-2-ACC-02"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-02
+ローカル完結</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-2-ACC-03"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-03
+自動実行禁止</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-2-ACC-04"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-04
+DAG可視化</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-2-ACC-05"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-05
+失敗時通知</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-2-ACC-06"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-06
+組織非依存</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-2-ACC-07"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#DDA0DD"/><y:NodeLabel>ACC-07
+非侵食UX</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+
+    <!-- ==================== ACC (Acceptance Criteria) - PSN-3 ==================== -->
+    <node id="PSN-3-ACC-01"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-01
+待ち時間最小化</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-02"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-02
+動作優先開発</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-03"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-03
+検証分離</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-04"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-04
+破損許容</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-05"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-05
+権限分離・安全設計</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-06"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-06
+安定動作</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-07"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-07
+JSON形式ログ</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-08"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-08
+軽量設計</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-09"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-09
+選択肢提示</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+    <node id="PSN-3-ACC-10"><data key="d0"><y:ShapeNode><y:Geometry height="45" width="180"/><y:Fill color="#90EE90"/><y:NodeLabel>ACC-10
+課題解決実感</y:NodeLabel><y:Shape type="diamond"/></y:ShapeNode></data></node>
+
+    <!-- ==================== REQ (Requirements) - 自前実装 ==================== -->
+    <node id="REQ-001"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-001
+アカウント物理分離</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-002"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-002
+依存タスク並列実行</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-003"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-003
+軽量タスク結果返却</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-005"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-005
+信頼性低いWeb排除</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-009"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-009
+成果物利用可能状態</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-010"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-010
+並列処理待ち時間最小</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-011"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-011
+大量軽量タスク並列</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-012"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-012
+バックグラウンド実行</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-014"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-014
+UI非ブロック</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-015"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-015
+業務データローカル</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-017"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-017
+保存先制御</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-018"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-018
+ログローカル管理</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-019"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-019
+対外通信手動確認</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-020"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-020
+詳細確認可能</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-021"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-021
+個人裁量完結</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-022"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-022
+調査生成並列実行</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-023"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-023
+データ侵害回避</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-024"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-024
+権限境界明確分離</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-025"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-025
+安全デフォルト</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-026"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-026
+放置運用可能</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-027"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-027
+障害対応低頻度</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-028"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-028
+長期再開可能</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-029"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-029
+ログから状態把握</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-030"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-030
+構造化ログ保存</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-031"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-031
+検索分析可能</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-032"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-032
+ログノイズ抑制</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-033"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-033
+ログ取得非妨害</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-034"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-034
+個人利用前提</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-035"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-035
+OSS公開可能</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-036"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-036
+大規模SaaS非前提</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-037"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-037
+少人数対応設計</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-048"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-048
+体感ストレスなし</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-052"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-052
+失敗時明確通知</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-057"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-057
+思考中断なし</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-058"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-058
+待ち感覚最小</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-059"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-059
+セキュリティリスク明示</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-060"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-060
+データ消失回避</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-061"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-061
+他人被害回避</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-093"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-093
+初回セットアップ</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-094"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-094
+管理UI提供</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-095"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-095
+管理画面ログイン</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-096"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#87CEEB"/><y:NodeLabel>REQ-096
+MCPエンドポイント</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+
+    <!-- ==================== REQ (Requirements) - 外部規格依存 ==================== -->
+    <node id="REQ-004"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-004
+ユーザー指定範囲検索</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-006"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-006
+タスク自動記録</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-007"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-007
+手作業記録不要</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-008"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-008
+データ自動取得整理</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-013"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-013
+ユーザー操作なし継続</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-016"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-016
+外部自動送信禁止</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-038"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-038
+個人用情報分離</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-039"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-039
+最小限コンテキスト</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-044"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-044
+過去知識ベース生成</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-045"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-045
+俯瞰レポート生成</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-046"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-046
+影響考慮助言</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-047"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-047
+アイデア即座タスク化</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-050"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-050
+タスク構造DAG可視化</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+    <node id="REQ-051"><data key="d0"><y:ShapeNode><y:Geometry height="40" width="180"/><y:Fill color="#FFA500"/><y:NodeLabel>REQ-051
+計画実行分離</y:NodeLabel><y:Shape type="rectangle"/></y:ShapeNode></data></node>
+
+    <!-- ==================== SPEC (Specifications) ==================== -->
+    <node id="spec-req"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-req
+要件仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+    <node id="spec-sys"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-sys
+システム仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+    <node id="spec-inf"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-inf
+インフラ仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+    <node id="spec-dsn"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-dsn
+設計仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+    <node id="spec-tst"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-tst
+テスト仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+    <node id="spec-ops"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-ops
+運用仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+    <node id="spec-mnl"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="150"/><y:Fill color="#ADD8E6"/><y:NodeLabel>spec-mnl
+マニュアル仕様書</y:NodeLabel><y:Shape type="hexagon"/></y:ShapeNode></data></node>
+
+    <!-- ==================== COR (Core Features) - Tier 1 ==================== -->
+    <node id="COR-007"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#DC143C"/><y:NodeLabel>COR-007 [Tier1]
+Go採用（5理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+
+    <!-- ==================== COR (Core Features) - Tier 2 ==================== -->
+    <node id="COR-001"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-001 [Tier2]
+メタツール方式（3理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-003"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-003 [Tier2]
+サーバー側認証（3理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-004"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-004 [Tier2]
+決定論的処理（3理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-006"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-006 [Tier2]
+Next.js採用（3理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+
+    <!-- ==================== COR (Core Features) - Tier 3 ==================== -->
+    <node id="COR-005"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-005 [Tier3]
+RLS非依存認可（2理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-008"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-008 [Tier3]
+TOON形式（2理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-009"><data key="d0"><y:ShapeNode><y:Geometry height="55" width="200"/><y:Fill color="#FF6347"/><y:NodeLabel>COR-009 [Tier3]
+モジュールCLI（2理由）</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+
+    <!-- ==================== COR (Core Features) - Tier 4 (暫定) ==================== -->
+    <node id="COR-101"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFC0CB"/><y:NodeLabel>COR-101 [Tier4/暫定]
+$0/月コスト制約</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-102"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFC0CB"/><y:NodeLabel>COR-102 [Tier4/暫定]
+Koyeb選択</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-103"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFC0CB"/><y:NodeLabel>COR-103 [Tier4/暫定]
+Vercel選択</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+    <node id="COR-104"><data key="d0"><y:ShapeNode><y:Geometry height="50" width="180"/><y:Fill color="#FFC0CB"/><y:NodeLabel>COR-104 [Tier4/暫定]
+コールドスタート対策</y:NodeLabel><y:Shape type="octagon"/></y:ShapeNode></data></node>
+
+    <!-- ==================== EDGES: PSN → UST ==================== -->
+    <edge source="PSN-1" target="PSN-1-US-01"/>
+    <edge source="PSN-1" target="PSN-1-US-02"/>
+    <edge source="PSN-1" target="PSN-1-US-03"/>
+    <edge source="PSN-1" target="PSN-1-US-04"/>
+    <edge source="PSN-1" target="PSN-1-US-05"/>
+    <edge source="PSN-1" target="PSN-1-US-06"/>
+    <edge source="PSN-1" target="PSN-1-US-07"/>
+    <edge source="PSN-1" target="PSN-1-US-08"/>
+    <edge source="PSN-1" target="PSN-1-US-09"/>
+    <edge source="PSN-2" target="PSN-2-US-01"/>
+    <edge source="PSN-2" target="PSN-2-US-02"/>
+    <edge source="PSN-2" target="PSN-2-US-03"/>
+    <edge source="PSN-2" target="PSN-2-US-04"/>
+    <edge source="PSN-2" target="PSN-2-US-05"/>
+    <edge source="PSN-2" target="PSN-2-US-06"/>
+    <edge source="PSN-2" target="PSN-2-US-07"/>
+    <edge source="PSN-3" target="PSN-3-US-01"/>
+    <edge source="PSN-3" target="PSN-3-US-02"/>
+    <edge source="PSN-3" target="PSN-3-US-03"/>
+    <edge source="PSN-3" target="PSN-3-US-04"/>
+    <edge source="PSN-3" target="PSN-3-US-05"/>
+    <edge source="PSN-3" target="PSN-3-US-06"/>
+    <edge source="PSN-3" target="PSN-3-US-07"/>
+    <edge source="PSN-3" target="PSN-3-US-08"/>
+    <edge source="PSN-3" target="PSN-3-US-09"/>
+    <edge source="PSN-3" target="PSN-3-US-10"/>
+
+    <!-- ==================== EDGES: UST → ACC ==================== -->
+    <edge source="PSN-1-US-01" target="PSN-1-ACC-01"/>
+    <edge source="PSN-1-US-02" target="PSN-1-ACC-02"/>
+    <edge source="PSN-1-US-03" target="PSN-1-ACC-03"/>
+    <edge source="PSN-1-US-04" target="PSN-1-ACC-04"/>
+    <edge source="PSN-1-US-05" target="PSN-1-ACC-05"/>
+    <edge source="PSN-1-US-06" target="PSN-1-ACC-06"/>
+    <edge source="PSN-1-US-07" target="PSN-1-ACC-07"/>
+    <edge source="PSN-1-US-08" target="PSN-1-ACC-08"/>
+    <edge source="PSN-1-US-09" target="PSN-1-ACC-08"/>
+    <edge source="PSN-2-US-01" target="PSN-2-ACC-01"/>
+    <edge source="PSN-2-US-02" target="PSN-2-ACC-02"/>
+    <edge source="PSN-2-US-03" target="PSN-2-ACC-03"/>
+    <edge source="PSN-2-US-04" target="PSN-2-ACC-04"/>
+    <edge source="PSN-2-US-05" target="PSN-2-ACC-05"/>
+    <edge source="PSN-2-US-06" target="PSN-2-ACC-06"/>
+    <edge source="PSN-2-US-07" target="PSN-2-ACC-07"/>
+    <edge source="PSN-3-US-01" target="PSN-3-ACC-01"/>
+    <edge source="PSN-3-US-02" target="PSN-3-ACC-02"/>
+    <edge source="PSN-3-US-03" target="PSN-3-ACC-03"/>
+    <edge source="PSN-3-US-04" target="PSN-3-ACC-04"/>
+    <edge source="PSN-3-US-05" target="PSN-3-ACC-05"/>
+    <edge source="PSN-3-US-06" target="PSN-3-ACC-06"/>
+    <edge source="PSN-3-US-07" target="PSN-3-ACC-07"/>
+    <edge source="PSN-3-US-08" target="PSN-3-ACC-08"/>
+    <edge source="PSN-3-US-09" target="PSN-3-ACC-09"/>
+    <edge source="PSN-3-US-10" target="PSN-3-ACC-10"/>
+
+    <!-- ==================== EDGES: ACC → REQ ==================== -->
+    <edge source="PSN-1-ACC-01" target="REQ-038"/>
+    <edge source="PSN-1-ACC-01" target="REQ-039"/>
+    <edge source="PSN-1-ACC-02" target="REQ-001"/>
+    <edge source="PSN-1-ACC-02" target="REQ-093"/>
+    <edge source="PSN-1-ACC-03" target="REQ-002"/>
+    <edge source="PSN-1-ACC-03" target="REQ-003"/>
+    <edge source="PSN-1-ACC-04" target="REQ-094"/>
+    <edge source="PSN-1-ACC-04" target="REQ-096"/>
+    <edge source="PSN-1-ACC-05" target="REQ-004"/>
+    <edge source="PSN-1-ACC-05" target="REQ-005"/>
+    <edge source="PSN-1-ACC-05" target="REQ-044"/>
+    <edge source="PSN-1-ACC-06" target="REQ-006"/>
+    <edge source="PSN-1-ACC-06" target="REQ-007"/>
+    <edge source="PSN-1-ACC-06" target="REQ-045"/>
+    <edge source="PSN-1-ACC-07" target="REQ-008"/>
+    <edge source="PSN-1-ACC-07" target="REQ-046"/>
+    <edge source="PSN-1-ACC-08" target="REQ-009"/>
+    <edge source="PSN-1-ACC-08" target="REQ-010"/>
+    <edge source="PSN-1-ACC-08" target="REQ-047"/>
+    <edge source="PSN-2-ACC-01" target="REQ-011"/>
+    <edge source="PSN-2-ACC-01" target="REQ-012"/>
+    <edge source="PSN-2-ACC-01" target="REQ-013"/>
+    <edge source="PSN-2-ACC-01" target="REQ-014"/>
+    <edge source="PSN-2-ACC-01" target="REQ-048"/>
+    <edge source="PSN-2-ACC-01" target="REQ-093"/>
+    <edge source="PSN-2-ACC-01" target="REQ-096"/>
+    <edge source="PSN-2-ACC-02" target="REQ-015"/>
+    <edge source="PSN-2-ACC-02" target="REQ-016"/>
+    <edge source="PSN-2-ACC-02" target="REQ-017"/>
+    <edge source="PSN-2-ACC-02" target="REQ-018"/>
+    <edge source="PSN-2-ACC-02" target="REQ-095"/>
+    <edge source="PSN-2-ACC-03" target="REQ-019"/>
+    <edge source="PSN-2-ACC-04" target="REQ-050"/>
+    <edge source="PSN-2-ACC-04" target="REQ-051"/>
+    <edge source="PSN-2-ACC-05" target="REQ-020"/>
+    <edge source="PSN-2-ACC-05" target="REQ-052"/>
+    <edge source="PSN-2-ACC-06" target="REQ-021"/>
+    <edge source="PSN-3-ACC-01" target="REQ-022"/>
+    <edge source="PSN-3-ACC-01" target="REQ-057"/>
+    <edge source="PSN-3-ACC-01" target="REQ-058"/>
+    <edge source="PSN-3-ACC-03" target="REQ-059"/>
+    <edge source="PSN-3-ACC-04" target="REQ-060"/>
+    <edge source="PSN-3-ACC-04" target="REQ-061"/>
+    <edge source="PSN-3-ACC-05" target="REQ-023"/>
+    <edge source="PSN-3-ACC-05" target="REQ-024"/>
+    <edge source="PSN-3-ACC-05" target="REQ-025"/>
+    <edge source="PSN-3-ACC-05" target="REQ-095"/>
+    <edge source="PSN-3-ACC-06" target="REQ-026"/>
+    <edge source="PSN-3-ACC-06" target="REQ-027"/>
+    <edge source="PSN-3-ACC-06" target="REQ-028"/>
+    <edge source="PSN-3-ACC-06" target="REQ-029"/>
+    <edge source="PSN-3-ACC-07" target="REQ-030"/>
+    <edge source="PSN-3-ACC-07" target="REQ-031"/>
+    <edge source="PSN-3-ACC-07" target="REQ-032"/>
+    <edge source="PSN-3-ACC-07" target="REQ-033"/>
+    <edge source="PSN-3-ACC-08" target="REQ-034"/>
+    <edge source="PSN-3-ACC-08" target="REQ-035"/>
+    <edge source="PSN-3-ACC-08" target="REQ-036"/>
+    <edge source="PSN-3-ACC-08" target="REQ-037"/>
+
+    <!-- ==================== EDGES: REQ → SPEC ==================== -->
+    <edge source="REQ-038" target="spec-req"/>
+    <edge source="REQ-039" target="spec-req"/>
+    <edge source="REQ-001" target="spec-sys"/>
+    <edge source="REQ-002" target="spec-sys"/>
+    <edge source="REQ-003" target="spec-dsn"/>
+    <edge source="REQ-004" target="spec-req"/>
+    <edge source="REQ-005" target="spec-req"/>
+    <edge source="REQ-006" target="spec-req"/>
+    <edge source="REQ-007" target="spec-req"/>
+    <edge source="REQ-008" target="spec-req"/>
+    <edge source="REQ-009" target="spec-dsn"/>
+    <edge source="REQ-010" target="spec-sys"/>
+    <edge source="REQ-011" target="spec-sys"/>
+    <edge source="REQ-012" target="spec-sys"/>
+    <edge source="REQ-013" target="spec-sys"/>
+    <edge source="REQ-014" target="spec-sys"/>
+    <edge source="REQ-015" target="spec-req"/>
+    <edge source="REQ-016" target="spec-req"/>
+    <edge source="REQ-017" target="spec-req"/>
+    <edge source="REQ-018" target="spec-ops"/>
+    <edge source="REQ-019" target="spec-req"/>
+    <edge source="REQ-020" target="spec-ops"/>
+    <edge source="REQ-021" target="spec-req"/>
+    <edge source="REQ-022" target="spec-sys"/>
+    <edge source="REQ-023" target="spec-sys"/>
+    <edge source="REQ-024" target="spec-sys"/>
+    <edge source="REQ-025" target="spec-sys"/>
+    <edge source="REQ-026" target="spec-ops"/>
+    <edge source="REQ-027" target="spec-ops"/>
+    <edge source="REQ-028" target="spec-ops"/>
+    <edge source="REQ-029" target="spec-ops"/>
+    <edge source="REQ-030" target="spec-ops"/>
+    <edge source="REQ-031" target="spec-ops"/>
+    <edge source="REQ-032" target="spec-ops"/>
+    <edge source="REQ-033" target="spec-ops"/>
+    <edge source="REQ-034" target="spec-req"/>
+    <edge source="REQ-035" target="spec-req"/>
+    <edge source="REQ-036" target="spec-inf"/>
+    <edge source="REQ-037" target="spec-inf"/>
+    <edge source="REQ-044" target="spec-req"/>
+    <edge source="REQ-045" target="spec-req"/>
+    <edge source="REQ-046" target="spec-req"/>
+    <edge source="REQ-047" target="spec-req"/>
+    <edge source="REQ-048" target="spec-dsn"/>
+    <edge source="REQ-050" target="spec-dsn"/>
+    <edge source="REQ-051" target="spec-dsn"/>
+    <edge source="REQ-052" target="spec-ops"/>
+    <edge source="REQ-057" target="spec-dsn"/>
+    <edge source="REQ-058" target="spec-dsn"/>
+    <edge source="REQ-059" target="spec-sys"/>
+    <edge source="REQ-060" target="spec-sys"/>
+    <edge source="REQ-061" target="spec-sys"/>
+    <edge source="REQ-093" target="spec-mnl"/>
+    <edge source="REQ-094" target="spec-mnl"/>
+    <edge source="REQ-095" target="spec-sys"/>
+    <edge source="REQ-096" target="spec-inf"/>
+
+    <!-- ==================== EDGES: SPEC → COR ==================== -->
+    <edge source="spec-req" target="COR-001"/>
+    <edge source="spec-req" target="COR-003"/>
+    <edge source="spec-req" target="COR-004"/>
+    <edge source="spec-req" target="COR-008"/>
+    <edge source="spec-req" target="COR-009"/>
+    <edge source="spec-sys" target="COR-001"/>
+    <edge source="spec-sys" target="COR-003"/>
+    <edge source="spec-sys" target="COR-004"/>
+    <edge source="spec-sys" target="COR-005"/>
+    <edge source="spec-sys" target="COR-007"/>
+    <edge source="spec-sys" target="COR-009"/>
+    <edge source="spec-inf" target="COR-003"/>
+    <edge source="spec-inf" target="COR-005"/>
+    <edge source="spec-inf" target="COR-006"/>
+    <edge source="spec-inf" target="COR-007"/>
+    <edge source="spec-inf" target="COR-101"/>
+    <edge source="spec-inf" target="COR-102"/>
+    <edge source="spec-dsn" target="COR-001"/>
+    <edge source="spec-dsn" target="COR-003"/>
+    <edge source="spec-dsn" target="COR-004"/>
+    <edge source="spec-dsn" target="COR-005"/>
+    <edge source="spec-dsn" target="COR-006"/>
+    <edge source="spec-dsn" target="COR-007"/>
+    <edge source="spec-dsn" target="COR-008"/>
+    <edge source="spec-dsn" target="COR-009"/>
+    <edge source="spec-tst" target="COR-001"/>
+    <edge source="spec-tst" target="COR-003"/>
+    <edge source="spec-tst" target="COR-005"/>
+    <edge source="spec-tst" target="COR-006"/>
+    <edge source="spec-tst" target="COR-007"/>
+    <edge source="spec-tst" target="COR-008"/>
+    <edge source="spec-ops" target="COR-003"/>
+    <edge source="spec-ops" target="COR-004"/>
+    <edge source="spec-ops" target="COR-005"/>
+    <edge source="spec-ops" target="COR-101"/>
+    <edge source="spec-mnl" target="COR-003"/>
+    <edge source="spec-mnl" target="COR-007"/>
+    <edge source="spec-mnl" target="COR-009"/>
+    <edge source="spec-mnl" target="COR-101"/>
+
+    <!-- ==================== EDGES: COR internal ==================== -->
+    <edge source="COR-101" target="COR-102"/>
+    <edge source="COR-101" target="COR-103"/>
+    <edge source="COR-102" target="COR-104"/>
+    <edge source="COR-001" target="COR-004"/>
+    <edge source="COR-001" target="COR-008"/>
+    <edge source="COR-003" target="COR-005"/>
+    <edge source="COR-007" target="COR-009"/>
+
+  </graph>
+</graphml>
