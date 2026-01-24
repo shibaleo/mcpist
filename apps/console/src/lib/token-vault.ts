@@ -155,7 +155,7 @@ export async function upsertToken(params: UpsertTokenParams): Promise<void> {
 
   const { error } = await supabase.rpc('upsert_service_token', {
     p_service: params.service,
-    p_credentials: credentials,
+    p_credentials: credentials as unknown as Record<string, never>,
   })
 
   if (error) {

@@ -43,7 +43,9 @@ export interface Database {
         Args: {
           p_service: string
         }
-        Returns: void
+        Returns: {
+          deleted: boolean
+        }
       }
       get_my_role: {
         Args: Record<string, never>
