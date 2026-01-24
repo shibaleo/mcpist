@@ -152,6 +152,11 @@ CREATE INDEX idx_credit_transactions_user_id ON mcpist.credit_transactions(user_
 CREATE INDEX idx_credit_transactions_created_at ON mcpist.credit_transactions(created_at DESC);
 CREATE INDEX idx_credit_transactions_type ON mcpist.credit_transactions(type);
 CREATE INDEX idx_credit_transactions_request_id ON mcpist.credit_transactions(request_id) WHERE request_id IS NOT NULL;
+
+-- 冪等性のためのUNIQUE制約（consume時のみ使用）
+CREATE UNIQUE INDEX idx_credit_transactions_idempotency
+    ON mcpist.credit_transactions(user_id, request_id, COALESCE(task_id, ''))
+    WHERE request_id IS NOT NULL;
 ```
 
 | 列 | 型 | NULL | デフォルト | 説明 |
@@ -299,12 +304,13 @@ CREATE TABLE mcpist.api_keys (
     name TEXT NOT NULL,
     expires_at TIMESTAMPTZ,
     last_used_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- インデックス
 CREATE INDEX idx_api_keys_user_id ON mcpist.api_keys(user_id);
-CREATE INDEX idx_api_keys_key_hash ON mcpist.api_keys(key_hash);
+CREATE INDEX idx_api_keys_key_hash ON mcpist.api_keys(key_hash) WHERE revoked_at IS NULL;
 CREATE INDEX idx_api_keys_expires_at ON mcpist.api_keys(expires_at) WHERE expires_at IS NOT NULL;
 ```
 
@@ -316,7 +322,62 @@ CREATE INDEX idx_api_keys_expires_at ON mcpist.api_keys(expires_at) WHERE expire
 | name | TEXT | NO | - | キー名（ユーザー管理用） |
 | expires_at | TIMESTAMPTZ | YES | - | 有効期限（NULLは無期限） |
 | last_used_at | TIMESTAMPTZ | YES | - | 最終使用日時 |
+| revoked_at | TIMESTAMPTZ | YES | - | 削除日時（論理削除） |
 | created_at | TIMESTAMPTZ | NO | NOW() | 作成日時 |
+
+---
+
+### mcpist.service_tokens
+
+外部サービスのトークン管理。Vaultのsecret IDを参照する。
+
+```sql
+CREATE TABLE mcpist.service_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES mcpist.users(id) ON DELETE CASCADE,
+    service TEXT NOT NULL,
+    credentials_secret_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, service)
+);
+
+-- インデックス
+CREATE INDEX idx_service_tokens_user_id ON mcpist.service_tokens(user_id);
+
+-- 更新トリガー
+CREATE TRIGGER set_service_tokens_updated_at
+    BEFORE UPDATE ON mcpist.service_tokens
+    FOR EACH ROW
+    EXECUTE FUNCTION mcpist.trigger_set_updated_at();
+```
+
+| 列 | 型 | NULL | デフォルト | 説明 |
+|----|-----|------|-----------|------|
+| id | UUID | NO | gen_random_uuid() | PK |
+| user_id | UUID | NO | - | usersへのFK |
+| service | TEXT | NO | - | サービス名（notion, github等） |
+| credentials_secret_id | UUID | NO | - | vault.secretsへの参照 |
+| created_at | TIMESTAMPTZ | NO | NOW() | 作成日時 |
+| updated_at | TIMESTAMPTZ | NO | NOW() | 更新日時 |
+
+**Vault JSON形式:**
+
+```json
+{
+  "access_token": "xxx",
+  "refresh_token": "yyy",
+  "client_id": "...",
+  "client_secret": "...",
+  "_auth_type": "oauth2",
+  "_expires_at": "2024-01-01T00:00:00+00:00"
+}
+```
+
+| _auth_type | 説明 |
+|------------|------|
+| oauth2 | OAuth 2.0トークン（access_token, refresh_token等） |
+| api_key | 長期トークン/APIキー（token） |
 
 ---
 
@@ -387,12 +448,14 @@ $$ LANGUAGE plpgsql;
 | tool_settings            | 自分のみ   | 自分のみ         | 自分のみ         | 自分のみ   |
 | prompts                  | 自分のみ   | 自分のみ         | 自分のみ         | 自分のみ   |
 | api_keys                 | 自分のみ   | 自分のみ         | 自分のみ         | 自分のみ   |
+| service_tokens           | 自分のみ   | 自分のみ         | 自分のみ         | 自分のみ   |
 | processed_webhook_events | -      | service_role | -            | -      |
 
 **service_role操作の実行元:**
 - `credits` UPDATE: MCP Server（クレジット消費）、User Console API Routes（購入処理）
 - `credit_transactions` INSERT: MCP Server（消費記録）、User Console API Routes（購入記録）
 - `processed_webhook_events` INSERT: User Console API Routes（Webhook冪等性）
+- `service_tokens` SELECT/UPDATE: MCP Server（トークン取得・更新）※RPCを経由
 
 ### RLS有効化
 
@@ -406,6 +469,7 @@ ALTER TABLE mcpist.module_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mcpist.tool_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mcpist.prompts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mcpist.api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mcpist.service_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mcpist.processed_webhook_events ENABLE ROW LEVEL SECURITY;
 ```
 
@@ -448,6 +512,12 @@ CREATE POLICY api_keys_select ON mcpist.api_keys FOR SELECT USING (auth.uid() = 
 CREATE POLICY api_keys_insert ON mcpist.api_keys FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY api_keys_update ON mcpist.api_keys FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY api_keys_delete ON mcpist.api_keys FOR DELETE USING (auth.uid() = user_id);
+
+-- service_tokens
+CREATE POLICY service_tokens_select ON mcpist.service_tokens FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY service_tokens_insert ON mcpist.service_tokens FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY service_tokens_update ON mcpist.service_tokens FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY service_tokens_delete ON mcpist.service_tokens FOR DELETE USING (auth.uid() = user_id);
 
 -- processed_webhook_events（service_roleのみINSERT可）
 CREATE POLICY processed_webhook_events_insert ON mcpist.processed_webhook_events

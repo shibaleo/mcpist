@@ -21,15 +21,16 @@ const (
 type AuthContext struct {
 	UserID         string
 	AuthType       string // "jwt" or "api_key"
-	UserStatus     string
-	PlanName       string
-	RateLimitRPM   int
-	RateLimitBurst int
-	QuotaMonthly   *int // nil = unlimited
-	CreditEnabled  bool
-	CreditBalance  int
-	UsageCount     int
+	AccountStatus  string
+	FreeCredits    int
+	PaidCredits    int
 	EnabledModules []string
+	DisabledTools  map[string][]string // module -> []tool
+}
+
+// TotalCredits returns the sum of free and paid credits
+func (ctx *AuthContext) TotalCredits() int {
+	return ctx.FreeCredits + ctx.PaidCredits
 }
 
 // Authorizer handles authorization checks
@@ -92,32 +93,23 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		authType = "unknown"
 	}
 
-	// 4. Get user's entitlements from Entitlement Store
-	entitlement, err := a.store.GetUserEntitlement(userID)
+	// 4. Get user's context from Store
+	userContext, err := a.store.GetUserContext(userID)
 	if err != nil {
-		log.Printf("Failed to get entitlement for user %s: %v", userID, err)
+		log.Printf("Failed to get user context for user %s: %v", userID, err)
 		return nil, &AuthError{
-			Code:    "ENTITLEMENT_ERROR",
-			Message: "Failed to verify user entitlements",
+			Code:    "CONTEXT_ERROR",
+			Message: "Failed to verify user context",
 			Status:  http.StatusInternalServerError,
 		}
 	}
 
 	// 5. Check account status
-	if entitlement.UserStatus != "active" {
+	if userContext.AccountStatus != "active" {
 		return nil, &AuthError{
 			Code:    "ACCOUNT_NOT_ACTIVE",
-			Message: fmt.Sprintf("Account is %s", entitlement.UserStatus),
+			Message: fmt.Sprintf("Account is %s", userContext.AccountStatus),
 			Status:  http.StatusForbidden,
-		}
-	}
-
-	// 6. Check monthly quota (if not unlimited)
-	if entitlement.QuotaMonthly != nil && entitlement.UsageCurrentMonth >= *entitlement.QuotaMonthly {
-		return nil, &AuthError{
-			Code:    "QUOTA_EXCEEDED",
-			Message: "Monthly quota exceeded",
-			Status:  http.StatusTooManyRequests,
 		}
 	}
 
@@ -125,20 +117,15 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 	authCtx := &AuthContext{
 		UserID:         userID,
 		AuthType:       authType,
-		UserStatus:     entitlement.UserStatus,
-		PlanName:       entitlement.PlanName,
-		RateLimitRPM:   entitlement.RateLimitRPM,
-		RateLimitBurst: entitlement.RateLimitBurst,
-		QuotaMonthly:   entitlement.QuotaMonthly,
-		CreditEnabled:  entitlement.CreditEnabled,
-		CreditBalance:  entitlement.CreditBalance,
-		UsageCount:     entitlement.UsageCurrentMonth,
-		EnabledModules: entitlement.EnabledModules,
+		AccountStatus:  userContext.AccountStatus,
+		FreeCredits:    userContext.FreeCredits,
+		PaidCredits:    userContext.PaidCredits,
+		EnabledModules: userContext.EnabledModules,
+		DisabledTools:  userContext.DisabledTools,
 	}
 
-	log.Printf("Authorization: user=%s plan=%s usage=%d/%v",
-		userID, entitlement.PlanName, entitlement.UsageCurrentMonth,
-		quotaString(entitlement.QuotaMonthly))
+	log.Printf("Authorization: user=%s credits=free:%d+paid:%d modules=%d",
+		userID, userContext.FreeCredits, userContext.PaidCredits, len(userContext.EnabledModules))
 
 	return authCtx, nil
 }
@@ -160,60 +147,30 @@ func (ctx *AuthContext) CanAccessModule(moduleName string) error {
 }
 
 // CanAccessTool checks if the user can access a specific tool
-// This includes module access check and credit check if applicable
-func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, store *Store) error {
+func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, creditCost int) error {
 	// 1. Check module access
 	if err := ctx.CanAccessModule(moduleName); err != nil {
 		return err
 	}
 
-	// 2. If credit-based billing, check credits
-	if ctx.CreditEnabled {
-		cost, err := store.GetToolCost(moduleName, toolName)
-		if err != nil {
-			log.Printf("Failed to get tool cost: %v", err)
-			cost = 1 // Default cost
-		}
-
-		if ctx.CreditBalance < cost {
-			return &AuthError{
-				Code:    "INSUFFICIENT_CREDITS",
-				Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d", cost, ctx.CreditBalance),
-				Status:  http.StatusPaymentRequired,
+	// 2. Check if tool is disabled
+	if disabledTools, ok := ctx.DisabledTools[moduleName]; ok {
+		for _, t := range disabledTools {
+			if t == toolName {
+				return &AuthError{
+					Code:    "TOOL_DISABLED",
+					Message: fmt.Sprintf("Tool '%s/%s' is disabled for your account", moduleName, toolName),
+					Status:  http.StatusForbidden,
+				}
 			}
 		}
 	}
 
-	return nil
-}
-
-// ConsumeUsage increments usage after a successful tool call
-func (ctx *AuthContext) ConsumeUsage(store *Store) error {
-	_, err := store.IncrementUsage(ctx.UserID)
-	return err
-}
-
-// ConsumeCredits deducts credits after a successful tool call (if credit-based)
-func (ctx *AuthContext) ConsumeCredits(store *Store, moduleName, toolName, referenceID string) error {
-	if !ctx.CreditEnabled {
-		return nil
-	}
-
-	cost, err := store.GetToolCost(moduleName, toolName)
-	if err != nil {
-		cost = 1 // Default cost
-	}
-
-	description := fmt.Sprintf("Tool call: %s/%s", moduleName, toolName)
-	newBalance, err := store.DeductCredits(ctx.UserID, cost, description, referenceID)
-	if err != nil {
-		return err
-	}
-
-	if newBalance < 0 {
+	// 3. Check credit balance
+	if ctx.TotalCredits() < creditCost {
 		return &AuthError{
-			Code:    "CREDIT_DEDUCTION_FAILED",
-			Message: "Failed to deduct credits",
+			Code:    "INSUFFICIENT_CREDITS",
+			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d", creditCost, ctx.TotalCredits()),
 			Status:  http.StatusPaymentRequired,
 		}
 	}
@@ -246,7 +203,7 @@ func (a *Authorizer) writeErrorResponse(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(authErr.Status)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": authErr.Code,
+		"error":   authErr.Code,
 		"message": authErr.Message,
 	})
 }
@@ -255,13 +212,4 @@ func (a *Authorizer) writeErrorResponse(w http.ResponseWriter, err error) {
 func GetAuthContext(ctx context.Context) *AuthContext {
 	authCtx, _ := ctx.Value(AuthContextKey).(*AuthContext)
 	return authCtx
-}
-
-// Helper functions
-
-func quotaString(quota *int) string {
-	if quota == nil {
-		return "unlimited"
-	}
-	return fmt.Sprintf("%d", *quota)
 }
