@@ -23,45 +23,11 @@ External Service API（EXT）は、各モジュールがアクセスする外部
 
 ---
 
-## 連携サマリー（spc-itrより）
+## 連携サマリー
 
-| 相手 | 方向 | やり取り |
-|------|------|----------|
-| Modules | EXT ← MOD | API呼び出し受付（HTTPS） |
-| External Auth Server | EXT ↔ EAS | 同一サービス内連携 |
-
----
-
-## 連携詳細
-
-### MOD → EXT（API呼び出し受付）
-
-| 項目 | 内容 |
-|------|------|
-| プロトコル | HTTPS |
-| データ形式 | JSON（サービスにより異なる） |
-| 認証 | Bearer Token（TVLから取得） |
-
-**フロー:**
-1. MODがTVLにトークン取得リクエスト
-2. TVLがaccess_tokenを返却（必要に応じてリフレッシュ）
-3. MODがEXTにAPI呼び出し（REST API）
-4. EXTがレスポンスを返却
-
----
-
-### EAS ↔ EXT（同一サービス内連携）
-
-| 項目 | 内容 |
-|------|------|
-| 関係 | 同一外部サービス内のコンポーネント |
-| 用途 | 認証とAPIが同一サービスで提供される |
-
-例：
-- Notion Auth Server（EAS） → Notion API（EXT）
-- Google OAuth（EAS） → Google Calendar API（EXT）
-
-トークンはEASで発行され、EXTへのアクセスに使用される。
+| 相手 | 方向 | やり取り | 詳細 |
+|------|------|----------|------|
+| Modules | EXT ← MOD | API呼び出し受付（HTTPS） | [dtl-itr-EXT-MOD.md](./dtl-itr-EXT-MOD.md) |
 
 ---
 

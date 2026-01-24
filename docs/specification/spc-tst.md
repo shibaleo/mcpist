@@ -366,6 +366,5 @@ jobs:
 |-------------|------|
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
 | [spc-itr.md](./spc-itr.md) | インタラクション仕様書 |
-| [spc-infra.md](spc-inf.md) | インフラストラクチャ仕様書 |
+| [spc-inf.md](spc-inf.md) | インフラストラクチャ仕様書 |
 | [spc-ops.md](./spc-ops.md) | 運用仕様書 |
-| [tst-load-resilience.md](../DAY7/tst-load-resilience.md) | 負荷耐性検証シナリオ |

@@ -108,8 +108,3 @@ API仕様、データ構造のオントロジー定義を記載。
 |-------------|------|
 | [dsn-adt.md](../design/dsn-adt.md) | 監査・請求・分析設計書 |
 | [dsn-err.md](../design/dsn-err.md) | エラーハンドリング設計書 |
-| [dsn-module-registry.md](../DAY7/dsn-module-registry.md) | Module Registry設計 |
-| [dsn-permission-system.md](../DAY7/dsn-permission-system.md) | 権限システム設計 |
-| [dsn-subscription.md](../DAY7/dsn-subscription.md) | サブスクリプション設計 |
-| [dsn-security.md](../DAY7/dsn-security.md) | セキュリティ設計 |
-| [dsn-infrastructure.md](../DAY7/dsn-infrastructure.md) | インフラ設計 |

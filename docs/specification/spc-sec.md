@@ -314,7 +314,5 @@ Supabaseに委譲:
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
-| [spc-infra.md](spc-inf.md) | インフラストラクチャ仕様書 |
+| [spc-inf.md](spc-inf.md) | インフラストラクチャ仕様書 |
 | [spc-tst.md](./spc-tst.md) | テスト仕様書（セキュリティテスト含む） |
-| [dsn-security.md](../DAY7/dsn-security.md) | セキュリティ設計（詳細） |
-| [ARD-008](../DAY6/ARD-008-auth-oauth-server-token-vault-supabase.md) | 認証基盤アーキテクチャ決定 |

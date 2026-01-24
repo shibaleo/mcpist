@@ -17,11 +17,10 @@
 | **Session Manager** | Sessionマネージャー  | ユーザーID発行、ソーシャルログイン連携、セッション管理                                                |
 | **Data Store**      | データストア         | ユーザー情報、課金情報、クレジット残高情報、ツール有効/無効設定                                       |
 | **Token Vault**     | トークン保管庫       | 外部サービスシークレット、OAuthリフレッシュトークン、MCPサーバー認証シークレット/リフレッシュトークン |
-| **MCP Server**      | MCPサーバー          | Auth Middleware, MCP Handler, Module Registry, Modules からなるAPIサーバー                            |
+| **MCP Server**      | MCPサーバー          | Auth Middleware, MCP Handler, Modules からなるAPIサーバー                                             |
 | **Auth Middleware** | 認証ミドルウェア     | X-Gateway-Secret検証、認証済みリクエストをMCP Handlerに転送                                           |
-| **MCP Handler**     | MCPハンドラ          | tools/list, tools/call, resources, prompts のMCPリクエスト処理                                        |
-| **Module Registry** | モジュールレジストリ | モジュール管理、get_module_schema, run/batch メタツール提供                                           |
-| **Modules**         | モジュール群         | MCPリソース、MCPツール、MCPプロンプト、外部サービスアクセス                                           |
+| **MCP Handler**     | MCPハンドラ          | MCPメソッド（tools, resources, prompts）のルーティング、モジュール管理、メタツール（get_module_schema, run, batch）提供 |
+| **Modules**         | モジュール群         | 外部サービスAPI呼び出し、トークン取得、サービス固有のビジネスロジック実装                             |
 | **User Console**    | ユーザーコンソール   | 外部OAuth連携、外部シークレット保存、ツール有効/無効設定、クレジット課金                              |
 
 ### 外部依存（実装範囲外）
@@ -51,8 +50,7 @@
 | Session Manager          | Data Store               | ユーザーID共有     | ユーザー情報の登録・参照                       |
 | Data Store               | Auth Server              | ユーザーID共有     | 認証時のユーザー情報参照                       |
 | Data Store               | Token Vault              | ユーザーID共有     | トークン管理のためのユーザー紐付け             |
-| Data Store               | Module Registry          | ツール設定         | ツール有効/無効設定、利用可否判定              |
-| Data Store               | MCP Handler              | カスタムプロンプト | ユーザー定義プロンプトの取得                   |
+| Data Store               | MCP Handler              | ユーザー設定       | ツール有効/無効設定、利用可否判定、カスタムプロンプト取得 |
 | Payment Service Provider | Data Store               | プラン情報         | 課金情報の同期（Webhook/API）                  |
 | User Console             | Payment Service Provider | 決済               | 決済リクエスト、Checkout処理                   |
 | User Console             | Token Vault              | トークン登録       | OAuth連携完了時のトークン保存                  |
@@ -63,8 +61,7 @@
 | Token Vault              | Modules                  | トークン取得       | 外部サービスアクセス用トークンの復号化・提供   |
 | Modules                  | External Service API     | リソースアクセス   | HTTPS + Bearer Token                           |
 | Auth Middleware          | MCP Handler              | -                  | 認証済みリクエストの転送                       |
-| MCP Handler              | Module Registry          | -                  | メタツール呼び出し（get_module_schema, call, batch） |
-| Module Registry          | Modules                  | -                  | ツール実行委譲、スキーマ取得                   |
+| MCP Handler              | Modules                  | -                  | プリミティブ操作委譲、スキーマ取得             |
 
 ---
 

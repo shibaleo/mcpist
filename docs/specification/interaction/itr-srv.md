@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `draft` |
+| Status | `reviewed` |
 | Version | v3.1 |
 | Note | MCP Server Interaction Specification |
 

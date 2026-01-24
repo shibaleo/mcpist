@@ -63,8 +63,11 @@ spc-sys（システム）
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [ifr-ent.md](./dtl-spc/ifr-ent.md) | Entitlement Store詳細仕様 |
-| [ifr-tvl.md](./dtl-spc/ifr-tvl.md) | Token Vault詳細仕様 |
+| [idx-ept.md](./dtl-spc/idx-ept.md) | エンドポイント一覧 |
+| [dtl-spc-hdl.md](./dtl-spc/dtl-spc-hdl.md) | MCP Handler詳細仕様 |
+| [dtl-spc-credit-model.md](./dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [itf-tvl.md](./dtl-spc/itf-tvl.md) | Token Vault API仕様 |
+| [itf-mod.md](./dtl-spc/itf-mod.md) | モジュールインターフェース仕様 |
 
 ---
 
@@ -72,8 +75,5 @@ spc-sys（システム）
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [dsn-module-registry.md](../DAY7/dsn-module-registry.md) | Module Registry設計 |
-| [dsn-permission-system.md](../DAY7/dsn-permission-system.md) | 権限システム設計 |
-| [dsn-subscription.md](../DAY7/dsn-subscription.md) | サブスクリプション設計 |
-| [dsn-security.md](../DAY7/dsn-security.md) | セキュリティ設計 |
-| [dsn-infrastructure.md](../DAY7/dsn-infrastructure.md) | インフラ設計 |
+| [dsn-adt.md](../design/dsn-adt.md) | 監査・請求・分析設計書 |
+| [dsn-err.md](../design/dsn-err.md) | エラーハンドリング設計書 |

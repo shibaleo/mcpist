@@ -555,7 +555,5 @@ flyctl deploy --image registry.fly.io/mcpist:previous
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
-| [spc-infra.md](spc-inf.md) | インフラストラクチャ仕様書 |
+| [spc-inf.md](spc-inf.md) | インフラストラクチャ仕様書 |
 | [spc-tst.md](./spc-tst.md) | テスト仕様書 |
-| [dsn-infrastructure.md](../DAY7/dsn-infrastructure.md) | インフラ設計（詳細） |
-| [dsn-deployment.md](../DAY7/dsn-deployment.md) | デプロイ戦略（詳細） |
