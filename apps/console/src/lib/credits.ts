@@ -13,6 +13,7 @@ export interface ServiceConnection {
 
 /**
  * Get the current user's credit balance
+ * Uses get_user_context RPC since mcpist schema is not exposed
  */
 export async function getUserCredits(): Promise<UserCredits | null> {
   const supabase = createClient()
@@ -22,18 +23,26 @@ export async function getUserCredits(): Promise<UserCredits | null> {
     return null
   }
 
-  const { data, error } = await supabase
-    .from('credits')
-    .select('free_credits, paid_credits, updated_at')
-    .eq('user_id', user.id)
-    .single()
+  const { data, error } = await supabase.rpc('get_user_context', {
+    p_user_id: user.id
+  })
 
   if (error) {
     console.error('Failed to fetch credits:', error)
     return null
   }
 
-  return data
+  // get_user_context returns an array, take first result
+  const context = Array.isArray(data) ? data[0] : data
+  if (!context) {
+    return null
+  }
+
+  return {
+    free_credits: context.free_credits,
+    paid_credits: context.paid_credits,
+    updated_at: new Date().toISOString() // RPC doesn't return updated_at
+  }
 }
 
 /**
