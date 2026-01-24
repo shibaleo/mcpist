@@ -4,9 +4,9 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
-| Version | v3.0 |
-| Note | MCP Server Interaction Specification - REG統合版 |
+| Status | `draft` |
+| Version | v3.1 |
+| Note | MCP Server Interaction Specification |
 
 ---
 
@@ -50,47 +50,41 @@ MCP Server（SRV）は、MCP Clientからのリクエストを受け付けるサ
 **リクエストフロー:**
 ```mermaid
 sequenceDiagram
-    participant CLO as MCP Client
+    participant CLT as MCP Client
     participant GWY as API Gateway
-    participant AMW as Auth Middleware
-    participant HDL as MCP Handler
+    participant SRV as MCP Server
     participant DST as Data Store
-    participant MOD as Modules
+    participant TVL as Token Vault
     participant EXT as External API
 
-    CLO->>GWY: MCP Request (JWT)
-    GWY->>GWY: JWT検証
-    GWY->>AMW: Request (X-Gateway-Secret)
-    AMW->>AMW: Secret検証
-    AMW->>HDL: 認証済みRequest
-    HDL->>HDL: JSON-RPC解析
-    HDL->>DST: ユーザー設定取得
-    DST-->>HDL: account_status, credit_balance, enabled_modules, tool_settings
-    HDL->>HDL: アカウント状態・クレジット・モジュール・ツール確認
-    HDL->>MOD: プリミティブ操作
-    MOD->>EXT: API呼び出し
-    EXT-->>MOD: Response
-    MOD->>DST: クレジット消費
-    DST-->>MOD: 消費完了
-    MOD-->>HDL: Result
-    HDL-->>AMW: JSON-RPC Response
-    AMW-->>GWY: Response
-    GWY-->>CLO: Response
+    CLT->>GWY: MCP Request (JWT/API KEY)
+    GWY->>GWY: 認証検証
+    GWY->>SRV: Request (X-Gateway-Secret, X-User-Id)
+    SRV->>DST: ユーザー設定取得
+    DST-->>SRV: 権限情報
+    SRV->>TVL: トークン取得
+    TVL-->>SRV: 外部サービストークン
+    SRV->>EXT: API呼び出し
+    EXT-->>SRV: Response
+    SRV->>DST: クレジット消費
+    DST-->>SRV: 消費完了
+    SRV-->>GWY: JSON-RPC Response
+    GWY-->>CLT: Response
 ```
 
 ---
 
 ## Protected Resource Metadata
 
-MCP Clientが初回認可フローで参照するメタデータ。
+MCP Clientが初回認可フローで参照するメタデータ（[RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) 準拠）。
 
-**エンドポイント:** `https://mcp.mcpist.app/.well-known/oauth-protected-resource`
+**エンドポイント:** `{MCP Server Domain}/.well-known/oauth-protected-resource`
 
 **レスポンス:**
 ```json
 {
-  "resource": "https://mcp.mcpist.app",
-  "authorization_servers": ["https://auth.mcpist.app"],
+  "resource": "{MCP Server URL}",
+  "authorization_servers": ["{Auth Server URL}"],
   "scopes_supported": ["openid", "profile", "email"],
   "bearer_methods_supported": ["header"]
 }
@@ -99,6 +93,8 @@ MCP Clientが初回認可フローで参照するメタデータ。
 ---
 
 ## MCP Protocol
+
+[MCP Protocol 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25) 準拠。
 
 ### サポートするメソッド
 
@@ -110,13 +106,13 @@ MCP Clientが初回認可フローで参照するメタデータ。
 | tools/call | ツール実行 | HDL → MOD |
 | resources/list | リソース一覧取得 | HDL → MOD |
 | resources/read | リソース取得 | HDL → MOD |
-| prompts/list | プロンプト一覧取得 | HDL → DST + MOD |
-| prompts/get | プロンプト取得 | HDL → DST + MOD |
+| prompts/list | プロンプト一覧取得 | HDL → MOD |
+| prompts/get | プロンプト取得 | HDL → MOD |
 
 ### リクエスト形式
 
 ```
-POST https://mcp.mcpist.app/mcp
+POST {MCP Server Domain}/mcp
 Authorization: Bearer {access_token}
 Content-Type: application/json
 Accept: application/json, text/event-stream
@@ -133,25 +129,20 @@ MCP-Session-Id: {session_id}
 
 ---
 
-## 内部コンポーネント詳細
+## 内部処理フロー
 
-### Auth Middleware（AMW）
+SRV内部では以下の順序でリクエストを処理する。
 
-X-Gateway-Secretを検証し、認証済みリクエストをHDLへ転送する。
+| 順序 | コンポーネント | 処理内容 | 詳細仕様 |
+|------|----------------|----------|----------|
+| 1 | AMW | X-Gateway-Secret検証 | [itr-amw.md](./itr-amw.md) |
+| 2 | HDL | JSON-RPC解析、権限確認、ルーティング | [itr-hdl.md](./itr-hdl.md) |
+| 3 | MOD | 外部サービス連携、プリミティブ提供 | [itr-mod.md](./itr-mod.md) |
 
-詳細: [itr-amw.md](./itr-amw.md)
-
-### MCP Handler（HDL）
-
-JSON-RPCリクエストを解析し、MCPプリミティブ（tools, resources, prompts）を統一的に管理・処理する。DSTから権限情報を取得し、MODにプリミティブ操作を委譲する。
-
-詳細: [itr-hdl.md](./itr-hdl.md)
-
-### Modules（MOD）
-
-外部サービスとの連携を実装する個別モジュールの集合。tools, resources, promptsの全プリミティブを提供する。
-
-詳細: [itr-mod.md](./itr-mod.md)
+**処理の流れ:**
+1. **AMW**: GWYからのリクエストを受信し、X-Gateway-Secretを検証。検証成功時のみHDLへ転送
+2. **HDL**: JSON-RPCを解析し、DSTからユーザー権限を取得。アカウント状態・クレジット・モジュール有効性を確認後、MODにプリミティブ操作を委譲
+3. **MOD**: 外部サービスAPIを呼び出し、結果をHDLへ返却。ツール実行成功時はDSTにクレジット消費を記録
 
 ---
 

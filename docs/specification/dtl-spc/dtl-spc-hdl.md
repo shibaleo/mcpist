@@ -12,7 +12,7 @@
 
 ## 概要
 
-本ドキュメントはMCP Handler（HDL）の内部実装詳細を記述する。コンポーネント間のやり取りについては[itr-hdl.md](./itr-hdl.md)を参照。
+本ドキュメントはMCP Handler（HDL）の内部実装詳細を記述する。コンポーネント間のやり取りについては[itr-hdl.md](../interaction/itr-hdl.md)を参照。
 
 **準拠仕様:** [Model Context Protocol Specification 2025-03-26](https://spec.modelcontextprotocol.io/specification/2025-03-26/)
 
@@ -385,6 +385,6 @@ HDLは以下のメタツールを提供する。
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-hdl.md](./itr-hdl.md) | MCP Handler インタラクション仕様 |
-| [itr-mod.md](./itr-mod.md) | Modules詳細仕様 |
-| [itr-dst.md](./itr-dst.md) | Data Store詳細仕様 |
+| [itr-hdl.md](../interaction/itr-hdl.md) | MCP Handler インタラクション仕様 |
+| [itr-mod.md](../interaction/itr-mod.md) | Modules詳細仕様 |
+| [itr-dst.md](../interaction/itr-dst.md) | Data Store詳細仕様 |
