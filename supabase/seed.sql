@@ -106,7 +106,7 @@ INSERT INTO auth.users (
     '',
     '',
     '',
-    '{"provider": "email", "providers": ["email"]}',
+    '{"provider": "email", "providers": ["email"], "role": "admin"}',
     '{}'
 ) ON CONFLICT (id) DO NOTHING;
 
