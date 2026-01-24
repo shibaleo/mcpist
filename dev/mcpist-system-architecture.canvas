@@ -1,0 +1,43 @@
+{
+	"nodes":[
+		{"id":"8e620d320a79e866","type":"group","x":-70,"y":-330,"width":720,"height":730,"color":"4","label":"Auth + DB Backend"},
+		{"id":"mcp-server-group","type":"group","x":1080,"y":-240,"width":300,"height":640,"color":"2","label":"MCPサーバー"},
+		{"id":"ext-services-group","type":"group","x":390,"y":480,"width":650,"height":216,"label":"外部WEBサービス"},
+		{"id":"payment-service","type":"text","text":"## 決済代行サービス\n- クレジットカード情報\n- プラン情報\n- webhook\n- checkout","x":-35,"y":480,"width":260,"height":196},
+		{"id":"auth-server","type":"text","text":"## Authサーバー\n- OAuth 2.1準拠\n- JWT発行\n- JWKS公開\n- MCPクライアントに認証情報を付与","x":390,"y":-297,"width":230,"height":200,"color":"4"},
+		{"id":"session-manager","type":"text","text":"## Sessionマネージャー\n- ユーザーID発行\n- ソーシャルログイン連携\n- セッション管理","x":-30,"y":-287,"width":300,"height":180,"color":"4"},
+		{"id":"client","type":"text","text":"## MCPクライアント(OAuth2.0)\n- LLMからリクエスト受付\n- ツール呼び出し","x":315,"y":-640,"width":380,"height":140},
+		{"id":"auth-provider","type":"text","text":"## 認証プロバイダ\n- ソーシャルログイン\n- ID提供\n- OAuth 2.0想定","x":-10,"y":-640,"width":260,"height":140},
+		{"id":"token-vault","type":"text","text":"## Token Vault\n- 外部サービスシークレット\n- OAuthリフレッシュトークン\n- MCPサーバー認証シークレット\n- MCPサーバー認証リフレッシュトークン","x":250,"y":-62,"width":370,"height":190,"color":"4"},
+		{"id":"user-console","type":"text","text":"## ユーザーコンソール\n- 外部OAuth連携\n- 外部シークレット保存\n- ツール有効/無効設定\n- クレジット課金","x":-380,"y":-77,"width":280,"height":220,"color":"6"},
+		{"id":"9b6cb4403e2ed881","type":"text","text":"## MCPクライアント(apikey)\n- LLMからリクエスト受付\n- ツール呼び出し","x":710,"y":-640,"width":380,"height":140},
+		{"id":"data-store","type":"text","text":"## Data Store\n- ユーザー情報\n- 課金情報\n- クレジット残高情報\n- ツール有効/無効 設定","x":370,"y":165,"width":240,"height":210,"color":"4"},
+		{"id":"modules","type":"text","text":"## モジュール\n- MCPリソース\n- MCPツール\n- MCPプロンプト\n- 外部サービスアクセス","x":1100,"y":175,"width":240,"height":190,"color":"2"},
+		{"id":"mcp-handler","type":"text","text":"## MCPハンドラ\n- tools/list, call\n- resources\n- prompts","x":1100,"y":-32,"width":240,"height":160,"color":"2"},
+		{"id":"ext-service-api","type":"text","text":"## 外部サービスAPI\n- API提供\n- ユーザー所有リソース","x":760,"y":536,"width":240,"height":140},
+		{"id":"ext-auth-server","type":"text","text":"## 外部Authサーバー\n- 認可フロー\n- OAuth 2.0想定","x":435,"y":536,"width":290,"height":140},
+		{"id":"auth-middleware","type":"text","text":"## Authミドルウェア\n- X-Gateway-Secret検証","x":1100,"y":-197,"width":240,"height":130,"color":"2"},
+		{"id":"api-gateway","type":"text","text":"## APIゲートウェイ\n- ユーザー認証","x":780,"y":-182,"width":240,"height":100,"color":"5"}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"client","fromSide":"bottom","toNode":"api-gateway","toSide":"top","label":"MCP通信"},
+		{"id":"e2","fromNode":"api-gateway","fromSide":"right","toNode":"auth-middleware","toSide":"left"},
+		{"id":"e3","fromNode":"client","fromSide":"bottom","toNode":"auth-server","toSide":"top","label":"認証"},
+		{"id":"e7","fromNode":"user-console","fromSide":"right","toNode":"payment-service","toSide":"left","label":"決済"},
+		{"id":"e8","fromNode":"user-console","fromSide":"right","toNode":"token-vault","toSide":"left","label":"トークン登録"},
+		{"id":"e9","fromNode":"user-console","fromSide":"right","toNode":"data-store","toSide":"left","label":"ツール設定登録"},
+		{"id":"e13","fromNode":"user-console","fromSide":"right","toNode":"ext-auth-server","toSide":"left","label":"認可フロー"},
+		{"id":"e15","fromNode":"modules","fromSide":"bottom","toNode":"ext-service-api","toSide":"right","label":"リソースアクセス"},
+		{"id":"e16","fromNode":"auth-middleware","fromSide":"bottom","toNode":"mcp-handler","toSide":"top"},
+		{"id":"f2ce8df9848d42e5","fromNode":"session-manager","fromSide":"right","toNode":"auth-server","toSide":"left"},
+		{"id":"063f56f2e02fb1a9","fromNode":"9b6cb4403e2ed881","fromSide":"bottom","toNode":"api-gateway","toSide":"top"},
+		{"id":"6381d912c19e9e83","fromNode":"session-manager","fromSide":"top","toNode":"auth-provider","toSide":"bottom","label":"ソーシャルログイン"},
+		{"id":"b3ef90c7b89610be","fromNode":"data-store","fromSide":"left","toNode":"payment-service","toSide":"top"},
+		{"id":"2a50e79804d6d53c","fromNode":"modules","fromSide":"left","toNode":"token-vault","toSide":"right","label":"トークン取得"},
+		{"id":"261c62ec5a7fe7da","fromNode":"api-gateway","fromSide":"left","toNode":"token-vault","toSide":"right"},
+		{"id":"9ade10e6ef5d0dc2","fromNode":"api-gateway","fromSide":"left","toNode":"auth-server","toSide":"right"},
+		{"id":"58721c3f917fc09c","fromNode":"mcp-handler","fromSide":"left","toNode":"data-store","toSide":"right"},
+		{"id":"7609b4d5fda38610","fromNode":"mcp-handler","fromSide":"bottom","toNode":"modules","toSide":"top"},
+		{"id":"1d144a0a4ea632e1","fromNode":"modules","fromSide":"left","toNode":"data-store","toSide":"right"}
+	]
+}

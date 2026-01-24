@@ -1,0 +1,8 @@
+from,to,from_type,to_type,from_tier,to_tier,relationship,description
+COR-101,COR-102,COR,COR,Tier4,Tier4,導出,$0/月コスト制約 → Koyeb選択
+COR-101,COR-103,COR,COR,Tier4,Tier4,導出,$0/月コスト制約 → Vercel選択
+COR-102,COR-104,COR,COR,Tier4,Tier4,導出,Koyeb選択 → コールドスタート対策
+COR-001,COR-004,COR,COR,Tier2,Tier2,相互補強,メタツール方式 ↔ 決定論的オーケストレーター（責任範囲明確化）
+COR-001,COR-008,COR,COR,Tier2,Tier3,相互補強,メタツール方式 ↔ TOON形式（Context Rot対策）
+COR-003,COR-005,COR,COR,Tier2,Tier3,相互補強,サーバー側認証 ↔ RLS非依存認可（認可責任集約）
+COR-007,COR-009,COR,COR,Tier1,Tier3,相互補強,Go採用 ↔ モジュールCLI実装（Go実装前提）

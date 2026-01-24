@@ -1,0 +1,27 @@
+from,to,from_type,to_type,description
+PSN-1,PSN-1-US-01,PSN,UST,個人用ペルソナ → コンテキスト分離
+PSN-1,PSN-1-US-02,PSN,UST,個人用ペルソナ → アカウント分離
+PSN-1,PSN-1-US-03,PSN,UST,個人用ペルソナ → バックグラウンド実行
+PSN-1,PSN-1-US-04,PSN,UST,個人用ペルソナ → 複数サービス統合
+PSN-1,PSN-1-US-05,PSN,UST,個人用ペルソナ → 信頼できる情報源
+PSN-1,PSN-1-US-06,PSN,UST,個人用ペルソナ → 自動記録
+PSN-1,PSN-1-US-07,PSN,UST,個人用ペルソナ → データ活用
+PSN-1,PSN-1-US-08,PSN,UST,個人用ペルソナ → 即時実行
+PSN-1,PSN-1-US-09,PSN,UST,個人用ペルソナ → 複数タスク並列
+PSN-2,PSN-2-US-01,PSN,UST,仕事用ペルソナ → 定型作業自動化
+PSN-2,PSN-2-US-02,PSN,UST,仕事用ペルソナ → データセキュリティ
+PSN-2,PSN-2-US-03,PSN,UST,仕事用ペルソナ → 人間判断保持
+PSN-2,PSN-2-US-04,PSN,UST,仕事用ペルソナ → タスク構造把握
+PSN-2,PSN-2-US-05,PSN,UST,仕事用ペルソナ → 例外通知
+PSN-2,PSN-2-US-06,PSN,UST,仕事用ペルソナ → 個人裁量範囲
+PSN-2,PSN-2-US-07,PSN,UST,仕事用ペルソナ → 学習時間確保
+PSN-3,PSN-3-US-01,PSN,UST,開発者ペルソナ → 高速開発サイクル
+PSN-3,PSN-3-US-02,PSN,UST,開発者ペルソナ → 最小構成開発
+PSN-3,PSN-3-US-03,PSN,UST,開発者ペルソナ → セキュリティ検証
+PSN-3,PSN-3-US-04,PSN,UST,開発者ペルソナ → 障害許容設計
+PSN-3,PSN-3-US-05,PSN,UST,開発者ペルソナ → 安全デフォルト
+PSN-3,PSN-3-US-06,PSN,UST,開発者ペルソナ → 放置運用
+PSN-3,PSN-3-US-07,PSN,UST,開発者ペルソナ → 構造化ログ
+PSN-3,PSN-3-US-08,PSN,UST,開発者ペルソナ → 個人向けスケール
+PSN-3,PSN-3-US-09,PSN,UST,開発者ペルソナ → AI伴走開発
+PSN-3,PSN-3-US-10,PSN,UST,開発者ペルソナ → 成果実感

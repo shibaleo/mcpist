@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "title": "MCPist PSN-UST-ACC-REQ-SPEC-COR 依存関係DAG",
+    "version": "v1.0",
+    "created": "2026-01-14",
+    "totalNodes": 147,
+    "totalEdges": 186
+  },
+  "layers": {
+    "PSN": {
+      "description": "ペルソナ（3件）",
+      "color": "#FFE4B5",
+      "nodes": ["PSN-1", "PSN-2", "PSN-3"]
+    },
+    "UST": {
+      "description": "ユーザーストーリー（26件）",
+      "color": "#FFFACD/#E6E6FA/#98FB98",
+      "nodes": {
+        "PSN-1": ["PSN-1-US-01", "PSN-1-US-02", "PSN-1-US-03", "PSN-1-US-04", "PSN-1-US-05", "PSN-1-US-06", "PSN-1-US-07", "PSN-1-US-08", "PSN-1-US-09"],
+        "PSN-2": ["PSN-2-US-01", "PSN-2-US-02", "PSN-2-US-03", "PSN-2-US-04", "PSN-2-US-05", "PSN-2-US-06", "PSN-2-US-07"],
+        "PSN-3": ["PSN-3-US-01", "PSN-3-US-02", "PSN-3-US-03", "PSN-3-US-04", "PSN-3-US-05", "PSN-3-US-06", "PSN-3-US-07", "PSN-3-US-08", "PSN-3-US-09", "PSN-3-US-10"]
+      }
+    },
+    "ACC": {
+      "description": "受け入れ基準（25件）",
+      "color": "#FFD700/#DDA0DD/#90EE90",
+      "nodes": {
+        "PSN-1": ["PSN-1-ACC-01", "PSN-1-ACC-02", "PSN-1-ACC-03", "PSN-1-ACC-04", "PSN-1-ACC-05", "PSN-1-ACC-06", "PSN-1-ACC-07", "PSN-1-ACC-08"],
+        "PSN-2": ["PSN-2-ACC-01", "PSN-2-ACC-02", "PSN-2-ACC-03", "PSN-2-ACC-04", "PSN-2-ACC-05", "PSN-2-ACC-06", "PSN-2-ACC-07"],
+        "PSN-3": ["PSN-3-ACC-01", "PSN-3-ACC-02", "PSN-3-ACC-03", "PSN-3-ACC-04", "PSN-3-ACC-05", "PSN-3-ACC-06", "PSN-3-ACC-07", "PSN-3-ACC-08", "PSN-3-ACC-09", "PSN-3-ACC-10"]
+      }
+    },
+    "REQ": {
+      "description": "要件（96件中56件抽出）",
+      "categories": {
+        "自前実装": {
+          "color": "#87CEEB",
+          "nodes": ["REQ-001", "REQ-002", "REQ-003", "REQ-009", "REQ-010", "REQ-011", "REQ-012", "REQ-014", "REQ-015", "REQ-017", "REQ-018", "REQ-019", "REQ-020", "REQ-021", "REQ-022", "REQ-023", "REQ-024", "REQ-025", "REQ-026", "REQ-027", "REQ-028", "REQ-029", "REQ-030", "REQ-031", "REQ-032", "REQ-033", "REQ-034", "REQ-035", "REQ-036", "REQ-037", "REQ-048", "REQ-052", "REQ-057", "REQ-058", "REQ-059", "REQ-060", "REQ-061", "REQ-093", "REQ-094", "REQ-095", "REQ-096", "REQ-005"]
+        },
+        "外部規格依存": {
+          "color": "#FFA500",
+          "nodes": ["REQ-004", "REQ-006", "REQ-007", "REQ-008", "REQ-013", "REQ-016", "REQ-038", "REQ-039", "REQ-044", "REQ-045", "REQ-046", "REQ-047", "REQ-050", "REQ-051"]
+        }
+      }
+    },
+    "SPEC": {
+      "description": "仕様書（7件）",
+      "color": "#ADD8E6",
+      "nodes": ["spec-req", "spec-sys", "spec-inf", "spec-dsn", "spec-tst", "spec-ops", "spec-mnl"]
+    },
+    "COR": {
+      "description": "コア機能（13件）",
+      "tiers": {
+        "Tier1": {
+          "description": "強固（5つの理由）",
+          "color": "#DC143C",
+          "nodes": ["COR-007"]
+        },
+        "Tier2": {
+          "description": "強固（3つの理由）",
+          "color": "#FF6347",
+          "nodes": ["COR-001", "COR-003", "COR-004", "COR-006"]
+        },
+        "Tier3": {
+          "description": "強固（2つの理由）",
+          "color": "#FF6347",
+          "nodes": ["COR-005", "COR-008", "COR-009"]
+        },
+        "Tier4": {
+          "description": "暫定（1つの理由）",
+          "color": "#FFC0CB",
+          "nodes": ["COR-101", "COR-102", "COR-103", "COR-104"]
+        }
+      }
+    }
+  },
+  "edges": {
+    "PSN_to_UST": [
+      {"from": "PSN-1", "to": "PSN-1-US-01"},
+      {"from": "PSN-1", "to": "PSN-1-US-02"},
+      {"from": "PSN-1", "to": "PSN-1-US-03"},
+      {"from": "PSN-1", "to": "PSN-1-US-04"},
+      {"from": "PSN-1", "to": "PSN-1-US-05"},
+      {"from": "PSN-1", "to": "PSN-1-US-06"},
+      {"from": "PSN-1", "to": "PSN-1-US-07"},
+      {"from": "PSN-1", "to": "PSN-1-US-08"},
+      {"from": "PSN-1", "to": "PSN-1-US-09"},
+      {"from": "PSN-2", "to": "PSN-2-US-01"},
+      {"from": "PSN-2", "to": "PSN-2-US-02"},
+      {"from": "PSN-2", "to": "PSN-2-US-03"},
+      {"from": "PSN-2", "to": "PSN-2-US-04"},
+      {"from": "PSN-2", "to": "PSN-2-US-05"},
+      {"from": "PSN-2", "to": "PSN-2-US-06"},
+      {"from": "PSN-2", "to": "PSN-2-US-07"},
+      {"from": "PSN-3", "to": "PSN-3-US-01"},
+      {"from": "PSN-3", "to": "PSN-3-US-02"},
+      {"from": "PSN-3", "to": "PSN-3-US-03"},
+      {"from": "PSN-3", "to": "PSN-3-US-04"},
+      {"from": "PSN-3", "to": "PSN-3-US-05"},
+      {"from": "PSN-3", "to": "PSN-3-US-06"},
+      {"from": "PSN-3", "to": "PSN-3-US-07"},
+      {"from": "PSN-3", "to": "PSN-3-US-08"},
+      {"from": "PSN-3", "to": "PSN-3-US-09"},
+      {"from": "PSN-3", "to": "PSN-3-US-10"}
+    ],
+    "UST_to_ACC": [
+      {"from": "PSN-1-US-01", "to": "PSN-1-ACC-01"},
+      {"from": "PSN-1-US-02", "to": "PSN-1-ACC-02"},
+      {"from": "PSN-1-US-03", "to": "PSN-1-ACC-03"},
+      {"from": "PSN-1-US-04", "to": "PSN-1-ACC-04"},
+      {"from": "PSN-1-US-05", "to": "PSN-1-ACC-05"},
+      {"from": "PSN-1-US-06", "to": "PSN-1-ACC-06"},
+      {"from": "PSN-1-US-07", "to": "PSN-1-ACC-07"},
+      {"from": "PSN-1-US-08", "to": "PSN-1-ACC-08"},
+      {"from": "PSN-1-US-09", "to": "PSN-1-ACC-08"},
+      {"from": "PSN-2-US-01", "to": "PSN-2-ACC-01"},
+      {"from": "PSN-2-US-02", "to": "PSN-2-ACC-02"},
+      {"from": "PSN-2-US-03", "to": "PSN-2-ACC-03"},
+      {"from": "PSN-2-US-04", "to": "PSN-2-ACC-04"},
+      {"from": "PSN-2-US-05", "to": "PSN-2-ACC-05"},
+      {"from": "PSN-2-US-06", "to": "PSN-2-ACC-06"},
+      {"from": "PSN-2-US-07", "to": "PSN-2-ACC-07"},
+      {"from": "PSN-3-US-01", "to": "PSN-3-ACC-01"},
+      {"from": "PSN-3-US-02", "to": "PSN-3-ACC-02"},
+      {"from": "PSN-3-US-03", "to": "PSN-3-ACC-03"},
+      {"from": "PSN-3-US-04", "to": "PSN-3-ACC-04"},
+      {"from": "PSN-3-US-05", "to": "PSN-3-ACC-05"},
+      {"from": "PSN-3-US-06", "to": "PSN-3-ACC-06"},
+      {"from": "PSN-3-US-07", "to": "PSN-3-ACC-07"},
+      {"from": "PSN-3-US-08", "to": "PSN-3-ACC-08"},
+      {"from": "PSN-3-US-09", "to": "PSN-3-ACC-09"},
+      {"from": "PSN-3-US-10", "to": "PSN-3-ACC-10"}
+    ],
+    "COR_internal": [
+      {"from": "COR-101", "to": "COR-102", "note": "$0制約 → Koyeb選択"},
+      {"from": "COR-101", "to": "COR-103", "note": "$0制約 → Vercel選択"},
+      {"from": "COR-102", "to": "COR-104", "note": "Koyeb → コールドスタート対策"},
+      {"from": "COR-001", "to": "COR-004", "note": "メタツール ↔ 決定論的（相互補強）"},
+      {"from": "COR-001", "to": "COR-008", "note": "メタツール ↔ TOON（Context Rot対策）"},
+      {"from": "COR-003", "to": "COR-005", "note": "サーバー認証 ↔ RLS非依存"},
+      {"from": "COR-007", "to": "COR-009", "note": "Go採用 ↔ モジュールCLI"}
+    ]
+  },
+  "statistics": {
+    "PSN": 3,
+    "UST": 26,
+    "ACC": 25,
+    "REQ": 56,
+    "SPEC": 7,
+    "COR_solid": 9,
+    "COR_tentative": 4,
+    "total_COR": 13
+  }
+}
