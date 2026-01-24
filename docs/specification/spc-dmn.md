@@ -111,11 +111,11 @@ MCP API (mcp.dev.mcpist.app等)
 
 MCPクライアント（Claude.ai, ChatGPT, Claude Code等）が接続するURL。
 
-| 環境 | URL | 認証方式 |
-|------|-----|---------|
+| 環境  | URL                        | 認証方式              |
+| --- | -------------------------- | ----------------- |
 | Dev | https://mcp.dev.mcpist.app | OAuth 2.0 / APIキー |
 | Stg | https://mcp.stg.mcpist.app | OAuth 2.0 / APIキー |
-| Prd | https://mcp.mcpist.app | OAuth 2.0 / APIキー |
+| Prd | https://mcp.mcpist.app     | OAuth 2.0 / APIキー |
 
 ---
 
