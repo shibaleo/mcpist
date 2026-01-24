@@ -24,7 +24,7 @@ import {
   getMyConnections,
   upsertTokenWithVerification,
   deleteToken,
-  type OAuthConnection,
+  type ServiceConnection,
   type ConnectionProgress,
   TokenVaultError,
 } from "@/lib/token-vault"
@@ -167,7 +167,7 @@ export default function MyConnectionsPage() {
   const { accentColor } = useAppearance()
   const accentPreview = accentColors.find(c => c.id === accentColor)?.preview ?? "#22c55e"
   const [searchQuery, setSearchQuery] = useState("")
-  const [connections, setConnections] = useState<OAuthConnection[]>([])
+  const [connections, setConnections] = useState<ServiceConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
   const [disconnectDialog, setDisconnectDialog] = useState<string | null>(null)
@@ -352,16 +352,12 @@ export default function MyConnectionsPage() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {categoryServices.map((service) => {
                     const connection = getConnectionForService(service.id)
-                    const isConnected = !!connection && !connection.is_expired
-                    const isExpired = connection?.is_expired
+                    const isConnected = !!connection
 
                     return (
                       <Card
                         key={service.id}
-                        className={cn(
-                          "transition-all",
-                          isExpired && "border-warning/50",
-                        )}
+                        className="transition-all"
                         style={isConnected ? { borderColor: `${accentPreview}80` } : undefined}
                       >
                         <CardContent className="p-4">
@@ -384,7 +380,6 @@ export default function MyConnectionsPage() {
                                     接続済
                                   </Badge>
                                 )}
-                                {isExpired && <Badge className="bg-warning/20 text-warning border-warning/30">期限切れ</Badge>}
                               </div>
                               <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
                               {connection && (
@@ -395,7 +390,7 @@ export default function MyConnectionsPage() {
                             </div>
                           </div>
                           <div className="mt-4 flex justify-end gap-2">
-                            {isConnected || isExpired ? (
+                            {isConnected ? (
                               <>
                                 <Button variant="outline" size="sm" onClick={() => handleConnect(service.id)}>
                                   <Link2 className="h-4 w-4 mr-1" />

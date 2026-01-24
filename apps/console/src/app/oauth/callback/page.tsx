@@ -252,7 +252,8 @@ function CallbackContent() {
       }
 
       if (!response.ok) {
-        throw new Error(`Status: ${response.status}`)
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
       updateTestStep(0, { status: 'success', message: '接続成功' })

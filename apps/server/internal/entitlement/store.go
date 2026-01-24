@@ -65,13 +65,6 @@ type ConsumeResult struct {
 	Error            string `json:"error,omitempty"`
 }
 
-// ModuleToken represents the result of get_module_token RPC
-type ModuleToken struct {
-	Found       bool              `json:"found"`
-	Credentials map[string]string `json:"credentials,omitempty"`
-	Error       string            `json:"error,omitempty"`
-}
-
 // cache stores user context with TTL
 type cache struct {
 	mu    sync.RWMutex
@@ -247,48 +240,6 @@ func (s *Store) ConsumeCredit(userID, module, tool string, amount int, requestID
 
 	// Invalidate cache to reflect new balance
 	s.cache.delete(userID)
-
-	return &result, nil
-}
-
-// GetModuleToken retrieves the module's credentials from Vault
-func (s *Store) GetModuleToken(userID, module string) (*ModuleToken, error) {
-	if s.serviceKey == "" {
-		// Return mock token for development
-		return &ModuleToken{
-			Found:       true,
-			Credentials: map[string]string{"access_token": "dev_mock_token"},
-		}, nil
-	}
-
-	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_module": "%s"}`, userID, module)
-	req, err := http.NewRequest(
-		"POST",
-		s.supabaseURL+"/rest/v1/rpc/get_module_token",
-		strings.NewReader(reqBody),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", s.serviceKey)
-	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call get_module_token: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get_module_token failed: status %d", resp.StatusCode)
-	}
-
-	var result ModuleToken
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
 
 	return &result, nil
 }

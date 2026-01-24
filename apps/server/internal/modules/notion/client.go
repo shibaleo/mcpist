@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"mcpist/server/internal/httpclient"
-	"mcpist/server/internal/vault"
+	"mcpist/server/internal/token"
 )
 
 const (
@@ -15,29 +15,28 @@ const (
 
 var client = httpclient.New()
 
-// getToken retrieves token from vault for the given user
-// Priority: OAuth token > Long-term token
+// getToken retrieves token from Vault via RPC for the given user
 func getToken(ctx context.Context) string {
-	// Get user_id from context (will be set by auth middleware)
-	// For now, use "dev" as mock user_id
-	userID := "dev"
+	// Get user_id from context (set by auth middleware via X-User-ID header)
+	userID := ""
 	if uid := ctx.Value("user_id"); uid != nil {
 		if s, ok := uid.(string); ok {
 			userID = s
 		}
 	}
 
-	tokens, err := vault.GetTokens(userID, "notion")
-	if err != nil {
-		log.Printf("Failed to get notion tokens from vault: %v", err)
+	if userID == "" {
+		log.Printf("No user_id in context for notion token retrieval")
 		return ""
 	}
 
-	// Prefer OAuth token if available, fallback to long-term token
-	if tokens.OAuthToken != "" {
-		return tokens.OAuthToken
+	credentials, err := token.GetStore().GetModuleToken(ctx, userID, "notion")
+	if err != nil {
+		log.Printf("Failed to get notion token from vault: %v", err)
+		return ""
 	}
-	return tokens.LongTermToken
+
+	return credentials.AccessToken
 }
 
 func headers(ctx context.Context) map[string]string {

@@ -1,13 +1,10 @@
 import { createClient } from './supabase/client'
 import { validateToken } from './token-validator'
 
-export interface OAuthConnection {
+// RPC: list_service_connections の戻り値に対応
+export interface ServiceConnection {
   id: string
   service: string
-  token_type: string
-  scope: string | null
-  expires_at: string | null
-  is_expired: boolean
   created_at: string
   updated_at: string
 }
@@ -28,10 +25,11 @@ export class TokenVaultError extends Error {
   }
 }
 
-export async function getMyConnections(): Promise<OAuthConnection[]> {
+// RPC: list_service_connections を呼び出し
+export async function getMyConnections(): Promise<ServiceConnection[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('get_my_oauth_connections')
+  const { data, error } = await supabase.rpc('list_service_connections')
 
   if (error) {
     throw new TokenVaultError(error.message, error.code)
@@ -59,7 +57,7 @@ async function withMinDelay<T>(promiseLike: PromiseLike<T>, minDelayMs: number):
 export async function upsertTokenWithVerification(
   params: UpsertTokenParams,
   onProgress: (progress: ConnectionProgress) => void
-): Promise<string> {
+): Promise<void> {
   const supabase = createClient()
 
   // Step 1: トークンを外部APIで検証（最低1秒表示）
@@ -78,16 +76,31 @@ export async function upsertTokenWithVerification(
   }
 
   // Step 2: Vaultへ登録（最低1秒表示）
+  // RPC: upsert_service_token(p_service, p_credentials)
   onProgress({ step: 'saving', message: 'トークンを保存中...' })
 
-  const { data, error } = await withMinDelay(
-    supabase.rpc('upsert_oauth_token', {
+  // Vault JSON形式で credentials を構築
+  const credentials: Record<string, unknown> = {
+    access_token: params.accessToken,
+    _auth_type: params.refreshToken ? 'oauth2' : 'api_key',
+  }
+  if (params.refreshToken) {
+    credentials.refresh_token = params.refreshToken
+  }
+  if (params.tokenType) {
+    credentials.token_type = params.tokenType
+  }
+  if (params.scope) {
+    credentials.scope = params.scope
+  }
+  if (params.expiresAt) {
+    credentials._expires_at = params.expiresAt.toISOString()
+  }
+
+  const { error } = await withMinDelay(
+    supabase.rpc('upsert_service_token', {
       p_service: params.service,
-      p_access_token: params.accessToken,
-      p_refresh_token: params.refreshToken,
-      p_token_type: params.tokenType ?? 'Bearer',
-      p_scope: params.scope,
-      p_expires_at: params.expiresAt?.toISOString(),
+      p_credentials: credentials,
     }),
     1000
   )
@@ -96,11 +109,12 @@ export async function upsertTokenWithVerification(
     throw new TokenVaultError(error.message, error.code)
   }
 
-  // Step 2: Vaultから取得して検証（最低1秒表示）
+  // Step 3: Vaultから取得して検証（最低1秒表示）
+  // RPC: list_service_connections
   onProgress({ step: 'verifying', message: '接続を確認中...' })
 
   const { data: connections, error: verifyError } = await withMinDelay(
-    supabase.rpc('get_my_oauth_connections'),
+    supabase.rpc('list_service_connections'),
     1000
   )
 
@@ -108,40 +122,52 @@ export async function upsertTokenWithVerification(
     throw new TokenVaultError(verifyError.message, verifyError.code)
   }
 
-  const savedConnection = connections?.find((c: OAuthConnection) => c.service === params.service)
+  const savedConnection = connections?.find((c: ServiceConnection) => c.service === params.service)
   if (!savedConnection) {
     throw new TokenVaultError('接続の確認に失敗しました')
   }
 
-  // Step 3: 完了
+  // Step 4: 完了
   onProgress({ step: 'completed', message: '接続完了' })
-
-  return data
 }
 
-export async function upsertToken(params: UpsertTokenParams): Promise<string> {
+// RPC: upsert_service_token(p_service, p_credentials)
+export async function upsertToken(params: UpsertTokenParams): Promise<void> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('upsert_oauth_token', {
+  // Vault JSON形式で credentials を構築
+  const credentials: Record<string, unknown> = {
+    access_token: params.accessToken,
+    _auth_type: params.refreshToken ? 'oauth2' : 'api_key',
+  }
+  if (params.refreshToken) {
+    credentials.refresh_token = params.refreshToken
+  }
+  if (params.tokenType) {
+    credentials.token_type = params.tokenType
+  }
+  if (params.scope) {
+    credentials.scope = params.scope
+  }
+  if (params.expiresAt) {
+    credentials._expires_at = params.expiresAt.toISOString()
+  }
+
+  const { error } = await supabase.rpc('upsert_service_token', {
     p_service: params.service,
-    p_access_token: params.accessToken,
-    p_refresh_token: params.refreshToken,
-    p_token_type: params.tokenType ?? 'Bearer',
-    p_scope: params.scope,
-    p_expires_at: params.expiresAt?.toISOString(),
+    p_credentials: credentials,
   })
 
   if (error) {
     throw new TokenVaultError(error.message, error.code)
   }
-
-  return data
 }
 
+// RPC: delete_service_token(p_service)
 export async function deleteToken(service: string): Promise<boolean> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('delete_oauth_token', {
+  const { data, error } = await supabase.rpc('delete_service_token', {
     p_service: service,
   })
 
@@ -149,5 +175,5 @@ export async function deleteToken(service: string): Promise<boolean> {
     throw new TokenVaultError(error.message, error.code)
   }
 
-  return data
+  return data?.deleted ?? false
 }
