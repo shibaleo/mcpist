@@ -47,7 +47,7 @@ export interface Database {
           deleted: boolean
         }
       }
-      get_my_role: {
+      get_user_role: {
         Args: Record<string, never>
         Returns: string
       }
