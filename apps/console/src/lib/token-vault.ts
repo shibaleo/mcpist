@@ -16,6 +16,9 @@ export interface UpsertTokenParams {
   tokenType?: string
   scope?: string
   expiresAt?: Date
+  // Basic認証用
+  username?: string
+  metadata?: Record<string, string>
 }
 
 export class TokenVaultError extends Error {
@@ -54,6 +57,47 @@ async function withMinDelay<T>(promiseLike: PromiseLike<T>, minDelayMs: number):
   return result
 }
 
+// Vault JSON形式で credentials を構築
+function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
+  // auth_typeを決定: Basic認証 > OAuth2 > API Key
+  let authType = 'api_key'
+  if (params.username) {
+    authType = 'basic'
+  } else if (params.refreshToken) {
+    authType = 'oauth2'
+  }
+
+  const credentials: Record<string, unknown> = {
+    _auth_type: authType,
+  }
+
+  if (authType === 'basic') {
+    // Basic認証: username(email) + password(token)
+    credentials.username = params.username
+    credentials.password = params.accessToken
+    if (params.metadata) {
+      credentials._metadata = params.metadata
+    }
+  } else {
+    // OAuth2 / API Key
+    credentials.access_token = params.accessToken
+    if (params.refreshToken) {
+      credentials.refresh_token = params.refreshToken
+    }
+    if (params.tokenType) {
+      credentials.token_type = params.tokenType
+    }
+    if (params.scope) {
+      credentials.scope = params.scope
+    }
+    if (params.expiresAt) {
+      credentials._expires_at = params.expiresAt.toISOString()
+    }
+  }
+
+  return credentials
+}
+
 export async function upsertTokenWithVerification(
   params: UpsertTokenParams,
   onProgress: (progress: ConnectionProgress) => void
@@ -63,8 +107,13 @@ export async function upsertTokenWithVerification(
   // Step 1: トークンを外部APIで検証（最低1秒表示）
   onProgress({ step: 'validating', message: 'トークンを検証中...' })
 
+  // Basic認証の場合は追加フィールドを渡す
+  const validationExtra = params.username && params.metadata?.domain
+    ? { email: params.username, domain: params.metadata.domain }
+    : undefined
+
   const validationResult = await withMinDelay(
-    validateToken(params.service, params.accessToken),
+    validateToken(params.service, params.accessToken, validationExtra),
     1000
   )
 
@@ -79,23 +128,7 @@ export async function upsertTokenWithVerification(
   // RPC: upsert_service_token(p_service, p_credentials)
   onProgress({ step: 'saving', message: 'トークンを保存中...' })
 
-  // Vault JSON形式で credentials を構築
-  const credentials: Record<string, unknown> = {
-    access_token: params.accessToken,
-    _auth_type: params.refreshToken ? 'oauth2' : 'api_key',
-  }
-  if (params.refreshToken) {
-    credentials.refresh_token = params.refreshToken
-  }
-  if (params.tokenType) {
-    credentials.token_type = params.tokenType
-  }
-  if (params.scope) {
-    credentials.scope = params.scope
-  }
-  if (params.expiresAt) {
-    credentials._expires_at = params.expiresAt.toISOString()
-  }
+  const credentials = buildCredentials(params)
 
   const { error } = await withMinDelay(
     supabase.rpc('upsert_service_token', {
@@ -135,23 +168,7 @@ export async function upsertTokenWithVerification(
 export async function upsertToken(params: UpsertTokenParams): Promise<void> {
   const supabase = createClient()
 
-  // Vault JSON形式で credentials を構築
-  const credentials: Record<string, unknown> = {
-    access_token: params.accessToken,
-    _auth_type: params.refreshToken ? 'oauth2' : 'api_key',
-  }
-  if (params.refreshToken) {
-    credentials.refresh_token = params.refreshToken
-  }
-  if (params.tokenType) {
-    credentials.token_type = params.tokenType
-  }
-  if (params.scope) {
-    credentials.scope = params.scope
-  }
-  if (params.expiresAt) {
-    credentials._expires_at = params.expiresAt.toISOString()
-  }
+  const credentials = buildCredentials(params)
 
   const { error } = await supabase.rpc('upsert_service_token', {
     p_service: params.service,

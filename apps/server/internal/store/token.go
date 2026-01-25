@@ -74,11 +74,12 @@ type Credentials struct {
 // TokenResult represents the result of get_module_token RPC
 // Matches the TVL response format from dtl-itr-MOD-TVL.md
 type TokenResult struct {
-	UserID      string       `json:"user_id"`
-	Service     string       `json:"service"`
-	AuthType    string       `json:"auth_type"`
-	Credentials *Credentials `json:"credentials,omitempty"`
-	Error       string       `json:"error,omitempty"`
+	UserID      string            `json:"user_id"`
+	Service     string            `json:"service"`
+	AuthType    string            `json:"auth_type"`
+	Credentials *Credentials      `json:"credentials,omitempty"`
+	Metadata    map[string]string `json:"metadata,omitempty"` // e.g., domain for Atlassian
+	Error       string            `json:"error,omitempty"`
 }
 
 // NewTokenStore creates a new token store
@@ -144,6 +145,11 @@ func (s *TokenStore) GetModuleToken(ctx context.Context, userID, module string) 
 	// Copy auth_type from result to credentials if not set
 	if result.Credentials.AuthType == "" {
 		result.Credentials.AuthType = result.AuthType
+	}
+
+	// Copy metadata from result to credentials (for Basic auth like Jira/Confluence)
+	if result.Metadata != nil && result.Credentials.Metadata == nil {
+		result.Credentials.Metadata = result.Metadata
 	}
 
 	return result.Credentials, nil

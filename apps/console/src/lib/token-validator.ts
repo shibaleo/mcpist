@@ -9,12 +9,21 @@ export interface TokenValidationResult {
   details?: Record<string, unknown>
 }
 
+export interface TokenValidationParams {
+  service: string
+  token: string
+  // Basic認証用の追加フィールド
+  email?: string
+  domain?: string
+}
+
 /**
  * Validate token for a given service via API route
  */
 export async function validateToken(
   service: string,
-  token: string
+  token: string,
+  extra?: { email?: string; domain?: string }
 ): Promise<TokenValidationResult> {
   try {
     console.log('[token-validator] Calling API for service:', service)
@@ -23,7 +32,7 @@ export async function validateToken(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ service, token }),
+      body: JSON.stringify({ service, token, ...extra }),
     })
 
     console.log('[token-validator] Response status:', response.status)
