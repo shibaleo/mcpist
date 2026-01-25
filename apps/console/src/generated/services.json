@@ -1,0 +1,40 @@
+{
+  "services": [
+    {
+      "id": "airtable",
+      "name": "Airtable",
+      "description": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+      "apiVersion": "v0"
+    },
+    {
+      "id": "confluence",
+      "name": "Confluence",
+      "description": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",
+      "apiVersion": "v2"
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "GitHub API - リポジトリ、Issue、PR、Actions、検索",
+      "apiVersion": "2022-11-28"
+    },
+    {
+      "id": "jira",
+      "name": "Jira",
+      "description": "Jira API - Issue/Project操作（検索、作成、更新、コメント、ワークログ）",
+      "apiVersion": "3"
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "description": "Notion API - ページ・データベース・ブロック操作",
+      "apiVersion": "2022-06-28"
+    },
+    {
+      "id": "supabase",
+      "name": "Supabase",
+      "description": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ",
+      "apiVersion": "v1"
+    }
+  ]
+}

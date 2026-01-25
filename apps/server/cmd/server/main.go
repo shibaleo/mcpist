@@ -9,6 +9,7 @@ import (
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/jira"
@@ -24,6 +25,7 @@ func init() {
 	modules.RegisterModule(jira.New())
 	modules.RegisterModule(confluence.New())
 	modules.RegisterModule(supabase.New())
+	modules.RegisterModule(airtable.New())
 }
 
 func main() {
