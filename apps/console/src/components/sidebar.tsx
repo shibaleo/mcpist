@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getServiceConnections } from "@/lib/credits"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,11 +24,9 @@ import {
   Server,
   Settings2,
   CreditCard,
-  Store,
   Zap,
   Shield,
   HelpCircle,
-  Key,
 } from "lucide-react"
 
 const MIN_WIDTH = 150
@@ -39,13 +38,11 @@ const COLLAPSED_WIDTH = 64
 const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
-    { href: "/my/mcp-connection", label: "サーバー接続", icon: Server },
-    { href: "/my/api-keys", label: "APIキー", icon: Key },
+    { href: "/my/mcp-connection", label: "MCP接続", icon: Server },
     { href: "/my/connections", label: "サービス連携", icon: Link2 },
     { href: "/my/preferences", label: "ツール設定", icon: Settings2 },
   ],
   general: [
-    { href: "/marketplace", label: "マーケットプレイス", icon: Store },
     { href: "/billing", label: "請求", icon: CreditCard },
     { href: "/settings", label: "設定", icon: Settings },
   ],
@@ -71,7 +68,23 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
 
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = useState(false)
+  const [connectionCount, setConnectionCount] = useState(0)
   const sidebarRef = useRef<HTMLElement>(null)
+
+  // 接続済みサービス数を取得
+  useEffect(() => {
+    async function fetchConnectionCount() {
+      try {
+        const connections = await getServiceConnections()
+        setConnectionCount(connections.length)
+      } catch (error) {
+        console.error("Failed to fetch connection count:", error)
+      }
+    }
+    if (user) {
+      fetchConnectionCount()
+    }
+  }, [user])
 
   const handleSignOut = async () => {
     await signOut()
@@ -195,7 +208,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
               borderColor: `${accentPreview}30`,
             }}
           >
-            3
+            {connectionCount}
           </div>
           <span className={cn(
             "text-sm text-muted-foreground transition-opacity duration-300 whitespace-nowrap",
