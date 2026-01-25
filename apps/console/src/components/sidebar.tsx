@@ -38,9 +38,9 @@ const COLLAPSED_WIDTH = 64
 const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
-    { href: "/my/mcp-connection", label: "MCP接続", icon: Server },
-    { href: "/my/connections", label: "サービス連携", icon: Link2 },
-    { href: "/my/preferences", label: "ツール設定", icon: Settings2 },
+    { href: "/mcp", label: "MCP接続", icon: Server },
+    { href: "/connections", label: "サービス連携", icon: Link2 },
+    { href: "/tools", label: "ツール設定", icon: Settings2 },
   ],
   general: [
     { href: "/billing", label: "請求", icon: CreditCard },

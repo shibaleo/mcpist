@@ -1,4 +1,4 @@
-package entitlement
+package middleware
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"mcpist/server/internal/store"
 )
 
 // ContextKey is the type for context keys
@@ -36,14 +38,14 @@ func (ctx *AuthContext) TotalCredits() int {
 // Authorizer handles authorization checks
 type Authorizer struct {
 	gatewaySecret string
-	store         *Store
+	store         *store.UserStore
 }
 
 // NewAuthorizer creates a new authorizer
-func NewAuthorizer(store *Store) *Authorizer {
+func NewAuthorizer(userStore *store.UserStore) *Authorizer {
 	return &Authorizer{
 		gatewaySecret: os.Getenv("GATEWAY_SECRET"),
-		store:         store,
+		store:         userStore,
 	}
 }
 

@@ -1,0 +1,562 @@
+{
+  "modules": [
+    {
+      "id": "confluence",
+      "name": "Confluence",
+      "description": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",
+      "apiVersion": "v2",
+      "tools": [
+        {
+          "id": "list_spaces",
+          "name": "list_spaces",
+          "description": "List all Confluence spaces accessible to the current user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_space",
+          "name": "get_space",
+          "description": "Get details of a specific Confluence space by ID or key.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_pages",
+          "name": "get_pages",
+          "description": "List pages in a Confluence space.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_page",
+          "name": "get_page",
+          "description": "Get a Confluence page by ID with its content.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_page",
+          "name": "create_page",
+          "description": "Create a new Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_page",
+          "name": "update_page",
+          "description": "Update an existing Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "delete_page",
+          "name": "delete_page",
+          "description": "Delete a Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "search",
+          "name": "search",
+          "description": "Search Confluence content using CQL (Confluence Query Language). Example: 'type=page AND space=MYSPACE AND text~\"keyword\"'",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_page_comments",
+          "name": "get_page_comments",
+          "description": "Get comments on a Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "add_page_comment",
+          "name": "add_page_comment",
+          "description": "Add a comment to a Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_page_labels",
+          "name": "get_page_labels",
+          "description": "Get labels on a Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "add_page_label",
+          "name": "add_page_label",
+          "description": "Add a label to a Confluence page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "GitHub API - リポジトリ、Issue、PR、Actions、検索",
+      "apiVersion": "2022-11-28",
+      "tools": [
+        {
+          "id": "get_user",
+          "name": "get_user",
+          "description": "Get information about the authenticated GitHub user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_repos",
+          "name": "list_repos",
+          "description": "List repositories for the authenticated user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_repo",
+          "name": "get_repo",
+          "description": "Get details of a specific repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_branches",
+          "name": "list_branches",
+          "description": "List branches in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_commits",
+          "name": "list_commits",
+          "description": "List commits in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_file_content",
+          "name": "get_file_content",
+          "description": "Get the content of a file in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_issues",
+          "name": "list_issues",
+          "description": "List issues in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_issue",
+          "name": "get_issue",
+          "description": "Get details of a specific issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_issue",
+          "name": "create_issue",
+          "description": "Create a new issue in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_issue",
+          "name": "update_issue",
+          "description": "Update an existing issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "add_issue_comment",
+          "name": "add_issue_comment",
+          "description": "Add a comment to an issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_prs",
+          "name": "list_prs",
+          "description": "List pull requests in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_pr",
+          "name": "get_pr",
+          "description": "Get details of a specific pull request.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_pr",
+          "name": "create_pr",
+          "description": "Create a new pull request.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_pr_files",
+          "name": "list_pr_files",
+          "description": "List files changed in a pull request.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "search_repos",
+          "name": "search_repos",
+          "description": "Search for repositories.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "search_code",
+          "name": "search_code",
+          "description": "Search for code across repositories.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "search_issues",
+          "name": "search_issues",
+          "description": "Search for issues and pull requests.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_workflows",
+          "name": "list_workflows",
+          "description": "List workflows in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_workflow_runs",
+          "name": "list_workflow_runs",
+          "description": "List workflow runs in a repository.",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    },
+    {
+      "id": "jira",
+      "name": "Jira",
+      "description": "Jira API - Issue/Project操作（検索、作成、更新、コメント、ワークログ）",
+      "apiVersion": "3",
+      "tools": [
+        {
+          "id": "get_myself",
+          "name": "get_myself",
+          "description": "Get information about the current Jira user (myself).",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_projects",
+          "name": "list_projects",
+          "description": "List all Jira projects accessible to the current user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_project",
+          "name": "get_project",
+          "description": "Get details of a specific Jira project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "search",
+          "name": "search",
+          "description": "Search for Jira issues using JQL (Jira Query Language). Example JQL: 'project = PROJ AND status = \"In Progress\"'",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_issue",
+          "name": "get_issue",
+          "description": "Get details of a specific Jira issue by key or ID.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_issue",
+          "name": "create_issue",
+          "description": "Create a new Jira issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_issue",
+          "name": "update_issue",
+          "description": "Update an existing Jira issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_transitions",
+          "name": "get_transitions",
+          "description": "Get available transitions for an issue. Use this to find valid transition IDs before changing issue status.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "transition_issue",
+          "name": "transition_issue",
+          "description": "Transition an issue to a new status. Use get_transitions first to get valid transition IDs.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_comments",
+          "name": "get_comments",
+          "description": "Get comments on a Jira issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "add_comment",
+          "name": "add_comment",
+          "description": "Add a comment to a Jira issue.",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "description": "Notion API - ページ・データベース・ブロック操作",
+      "apiVersion": "2022-06-28",
+      "tools": [
+        {
+          "id": "search",
+          "name": "search",
+          "description": "Search pages and databases in Notion by title. Returns pages and databases shared with the integration.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_page",
+          "name": "get_page",
+          "description": "Retrieve a Notion page by ID. Returns page properties and metadata.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_page_content",
+          "name": "get_page_content",
+          "description": "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_page",
+          "name": "create_page",
+          "description": "Create a new page in Notion. Can create as a child of another page or in a database.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_page",
+          "name": "update_page",
+          "description": "Update a Notion page's properties.",
+          "dangerous": true,
+          "defaultEnabled": false
+        },
+        {
+          "id": "get_database",
+          "name": "get_database",
+          "description": "Retrieve a Notion database schema and metadata.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "query_database",
+          "name": "query_database",
+          "description": "Query a Notion database with optional filters and sorts. Returns pages in the database.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "append_blocks",
+          "name": "append_blocks",
+          "description": "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
+          "dangerous": true,
+          "defaultEnabled": false
+        },
+        {
+          "id": "delete_block",
+          "name": "delete_block",
+          "description": "Delete a block from Notion. This also deletes all children of the block.",
+          "dangerous": true,
+          "defaultEnabled": false
+        },
+        {
+          "id": "list_comments",
+          "name": "list_comments",
+          "description": "List comments on a Notion page or block.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "add_comment",
+          "name": "add_comment",
+          "description": "Add a comment to a Notion page.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_users",
+          "name": "list_users",
+          "description": "List all users in the Notion workspace.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_user",
+          "name": "get_user",
+          "description": "Get information about a Notion user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_bot_user",
+          "name": "get_bot_user",
+          "description": "Get information about the current integration bot user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    },
+    {
+      "id": "supabase",
+      "name": "Supabase",
+      "description": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ",
+      "apiVersion": "v1",
+      "tools": [
+        {
+          "id": "list_organizations",
+          "name": "list_organizations",
+          "description": "List all organizations you have access to.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_projects",
+          "name": "list_projects",
+          "description": "List all Supabase projects you have access to. Use this first to get project_ref for other operations.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_project",
+          "name": "get_project",
+          "description": "Get details of a specific project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_tables",
+          "name": "list_tables",
+          "description": "List all tables in the database with their schemas. Returns table names and column counts.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "run_query",
+          "name": "run_query",
+          "description": "Execute a SQL query against the database. Supports both read and write operations.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_migrations",
+          "name": "list_migrations",
+          "description": "List all database migrations that have been applied.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "apply_migration",
+          "name": "apply_migration",
+          "description": "Apply a new database migration. Use for DDL operations like CREATE TABLE, ALTER TABLE, etc.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_logs",
+          "name": "get_logs",
+          "description": "Get logs for a specific service. Available services: api, postgres, edge-function, auth, storage, realtime.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_security_advisors",
+          "name": "get_security_advisors",
+          "description": "Get security recommendations and potential issues for the project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_performance_advisors",
+          "name": "get_performance_advisors",
+          "description": "Get performance recommendations and potential issues for the project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_project_url",
+          "name": "get_project_url",
+          "description": "Get the base URL for a Supabase project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_api_keys",
+          "name": "get_api_keys",
+          "description": "Get the API keys for the project (anon key and service role key).",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "generate_typescript_types",
+          "name": "generate_typescript_types",
+          "description": "Generate TypeScript type definitions from the database schema.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_edge_functions",
+          "name": "list_edge_functions",
+          "description": "List all Edge Functions deployed in the project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_edge_function",
+          "name": "get_edge_function",
+          "description": "Get details of a specific Edge Function.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_storage_buckets",
+          "name": "list_storage_buckets",
+          "description": "List all storage buckets in the project.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_storage_config",
+          "name": "get_storage_config",
+          "description": "Get storage configuration for the project including file size limits and features.",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    }
+  ]
+}

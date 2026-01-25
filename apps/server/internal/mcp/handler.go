@@ -10,14 +10,15 @@ import (
 	"sync"
 	"time"
 
-	"mcpist/server/internal/entitlement"
+	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/store"
 )
 
 type Handler struct {
-	sessions         map[string]*Session
-	mu               sync.RWMutex
-	entitlementStore *entitlement.Store
+	sessions  map[string]*Session
+	mu        sync.RWMutex
+	userStore *store.UserStore
 }
 
 type Session struct {
@@ -28,10 +29,10 @@ type Session struct {
 	messages chan []byte
 }
 
-func NewHandler(store *entitlement.Store) *Handler {
+func NewHandler(userStore *store.UserStore) *Handler {
 	return &Handler{
-		sessions:         make(map[string]*Session),
-		entitlementStore: store,
+		sessions:  make(map[string]*Session),
+		userStore: userStore,
 	}
 }
 
@@ -236,8 +237,8 @@ func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallRe
 	switch params.Name {
 	case "get_module_schema":
 		return h.handleGetModuleSchema(params.Arguments)
-	case "call":
-		return h.handleCall(ctx, params.Arguments)
+	case "run":
+		return h.handleRun(ctx, params.Arguments)
 	case "batch":
 		return h.handleBatch(ctx, params.Arguments)
 	default:
@@ -259,7 +260,7 @@ func (h *Handler) handleGetModuleSchema(args map[string]interface{}) (*ToolCallR
 	return result, nil
 }
 
-func (h *Handler) handleCall(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
+func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
 	moduleName, ok := args["module"].(string)
 	if !ok {
 		return nil, &Error{Code: InvalidParams, Message: "module must be a string"}
@@ -279,10 +280,10 @@ func (h *Handler) handleCall(ctx context.Context, args map[string]interface{}) (
 	creditCost := 1
 
 	// Check module/tool access authorization
-	authCtx := entitlement.GetAuthContext(ctx)
+	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx != nil {
 		if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
-			authErr, ok := err.(*entitlement.AuthError)
+			authErr, ok := err.(*middleware.AuthError)
 			if ok {
 				return nil, &Error{Code: InvalidRequest, Message: authErr.Message}
 			}
@@ -299,7 +300,7 @@ func (h *Handler) handleCall(ctx context.Context, args map[string]interface{}) (
 	if authCtx != nil {
 		// Generate a unique request ID for idempotency
 		requestID := generateRequestID()
-		consumeResult, err := h.entitlementStore.ConsumeCredit(
+		consumeResult, err := h.userStore.ConsumeCredit(
 			authCtx.UserID,
 			moduleName,
 			toolName,
@@ -323,15 +324,34 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 		return nil, &Error{Code: InvalidParams, Message: "commands must be a string"}
 	}
 
-	// Note: Batch authorization and credit consumption is handled per-command inside modules.Batch
-	// We pass context so individual commands can be checked and credits consumed
-
-	result, err := modules.Batch(ctx, commands)
+	batchResult, err := modules.Batch(ctx, commands)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
-	return result, nil
+	// Consume credits for successful tool executions
+	if batchResult.SuccessCount > 0 {
+		authCtx := middleware.GetAuthContext(ctx)
+		if authCtx != nil {
+			requestID := generateRequestID()
+			creditCost := batchResult.SuccessCount // 1 credit per successful tool call
+			consumeResult, err := h.userStore.ConsumeCredit(
+				authCtx.UserID,
+				"batch",
+				"batch",
+				creditCost,
+				requestID,
+				nil,
+			)
+			if err != nil {
+				log.Printf("Failed to consume credits for batch: %v", err)
+			} else if !consumeResult.Success {
+				log.Printf("Credit consumption failed for batch: %s", consumeResult.Error)
+			}
+		}
+	}
+
+	return batchResult.Result, nil
 }
 
 // generateRequestID generates a unique request ID for idempotency

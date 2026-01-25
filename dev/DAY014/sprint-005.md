@@ -187,8 +187,8 @@
 - [ ] MCP Server: 全RPC関数を呼び出せる
 
 ### Phase 3: パスルーティング設計
-- [ ] dsn-route.md が作成されている
-- [ ] 不要ルートが削除/整理されている
+- [x] dsn-route.md が作成されている
+- [x] ルート構造が整理されている（`/settings`と`/my/preferences`は用途が異なるため両方維持）
 
 ### Phase 4: ユーザーコンソール要件定義
 - [ ] spc-ui.md が作成されている
@@ -289,24 +289,180 @@ feat: add OAuth consent management to MCP connection and admin pages
 
 ---
 
-### 次のタスク: Phase 3 パスルーティング設計
+### 2026-01-25: パスルーティング設計（Phase 3完了）
 
-現行のルート構造を整理し、設計書を作成する。
+#### 実装内容
 
-#### 作業内容
+ルート構造の簡素化と管理者機能の分離を実施。
 
-1. **dsn-route.md の作成**
-   - 全ページ・APIルートのURL設計
-   - 認証要件（public / authenticated / admin）
-   - 各ルートの責務・用途
+#### 変更内容
 
-2. **不要ルートの整理**
-   - `/dev/mcp-client` - 開発用、本番では不要
-   - `/settings` と `/my/preferences` の重複解消
-   - `/my/api-keys` と `/my/mcp-connection` の統合検討
+| 変更前 | 変更後 | 備考 |
+|--------|--------|------|
+| `/my/connections` | `/connections` | トップレベルに移動 |
+| `/my/mcp-connection` | `/mcp` | 名称簡略化 |
+| `/my/preferences` | `/tools` | 用途を明確化 |
+| `(console)/admin` | `(admin)/admin` | 別Route Groupに分離 |
 
-3. **ルート命名規則の統一**
-   - `/my/*` - ユーザー個人の設定・管理
-   - `/admin/*` - 管理者機能
-   - `/oauth/*` - OAuth関連
-   - `/api/*` - API Routes
+#### 新規ファイル
+
+- `apps/console/src/app/(admin)/layout.tsx` - 管理者用レイアウト（AdminGuard）
+
+#### 設計方針
+
+- **管理者は他ユーザーのページにアクセスできない**（SOC-2準拠）
+- admin権限はSQLでのみ付与（`raw_app_meta_data->>'role' = 'admin'`）
+- `isAdmin`判定はサイドバーと`(admin)/layout.tsx`の2箇所のみ
+
+#### 参照
+
+- [dsn-route.md](../../docs/design/dsn-route.md) - ルート設計書
+
+---
+
+### 2026-01-25: ツール設定API実装計画（Phase 5）
+
+#### 背景
+
+モジュール（notion, github, jira等）は今後も拡張されるため、ツール定義を一元管理する仕組みが必要。
+
+#### アーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Single Source of Truth                       │
+│                                                                 │
+│    apps/server/internal/modules/*/tools.go                     │
+│    (Go側のツール定義が正)                                        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ go run ./cmd/tools-export
+┌─────────────────────────────────────────────────────────────────┐
+│                    apps/console/src/lib/tools.json              │
+│                    (UIでの表示用、CIで自動生成)                   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ UI表示
+┌─────────────────────────────────────────────────────────────────┐
+│                    /tools ページ                                │
+│                    (ユーザーがツールを選択)                       │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ RPC保存
+┌─────────────────────────────────────────────────────────────────┐
+│                    tool_settings テーブル                       │
+│                    (デフォルトからの差分のみ保存)                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### タスク一覧
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| S5-070 | tools-exportコマンド作成 | ⬜ 未着手 | Go側ツール定義をJSON出力 |
+| S5-071 | tools.json生成 | ⬜ 未着手 | CI/ビルド時に自動生成 |
+| S5-072 | tool_settingsテーブル作成 | ⬜ 未着手 | user_id, module, enabled_tools |
+| S5-073 | get_tool_settings RPC作成 | ⬜ 未着手 | ユーザーのツール設定取得 |
+| S5-074 | upsert_tool_settings RPC作成 | ⬜ 未着手 | ツール設定保存 |
+| S5-075 | /tools ページをtools.json使用に変更 | ⬜ 未着手 | 現在のハードコード削除 |
+| S5-076 | CIにtools.json検証追加 | ⬜ 未着手 | Go出力とconsole/tools.jsonの差分チェック |
+| S5-077 | 未使用Goモジュール削除 | ⬜ 未着手 | 使われていないモジュールをクリーンアップ |
+
+#### tools.json スキーマ案
+
+```json
+{
+  "modules": [
+    {
+      "id": "notion",
+      "name": "Notion",
+      "description": "Notion API - ページ・データベース・ブロック操作",
+      "apiVersion": "2022-06-28",
+      "tools": [
+        {
+          "id": "search",
+          "name": "search",
+          "description": "Notionページとデータベースをタイトルで検索",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_page",
+          "name": "update_page",
+          "description": "ページのプロパティを更新",
+          "dangerous": true,
+          "defaultEnabled": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### tool_settings テーブル案
+
+```sql
+CREATE TABLE tool_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    module TEXT NOT NULL,
+    enabled_tools TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, module)
+);
+```
+
+#### CIワークフロー
+
+```yaml
+# .github/workflows/validate-tools.yml
+name: Validate Tools
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Export Go tool definitions
+        run: |
+          cd apps/server
+          go run ./cmd/tools-export > /tmp/go-tools.json
+      - name: Compare with UI definitions
+        run: |
+          diff /tmp/go-tools.json apps/console/src/lib/tools.json
+```
+
+---
+
+### 次のタスク: Phase 5 ツール設定API
+
+ツール定義の一元管理とAPI実装を行う。
+
+#### 作業順序
+
+1. **未使用Goモジュールの整理** (S5-077)
+   - 現在登録されていないモジュールを確認
+   - 不要なコードを削除
+
+2. **tools-exportコマンド作成** (S5-070)
+   - 全モジュールのツール定義をJSON形式で出力
+   - `go run ./cmd/tools-export`で実行可能に
+
+3. **tool_settingsテーブル作成** (S5-072)
+   - マイグレーションファイル作成
+   - RLS設定
+
+4. **RPC関数作成** (S5-073, S5-074)
+   - get_tool_settings
+   - upsert_tool_settings
+
+5. **/toolsページ改修** (S5-075)
+   - tools.jsonからツール一覧を読み込み
+   - RPCでユーザー設定を保存/取得
+
+6. **CI設定** (S5-076)
+   - tools.json検証ジョブ追加
