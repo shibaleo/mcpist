@@ -6,17 +6,24 @@ import (
 	"net/http"
 	"os"
 
-	"mcpist/server/internal/entitlement"
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/modules/confluence"
+	"mcpist/server/internal/modules/github"
+	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/notion"
+	"mcpist/server/internal/modules/supabase"
+	"mcpist/server/internal/store"
 )
 
 func init() {
 	// Register modules
-	// Environment variables are loaded via dotenv-cli in package.json scripts
 	modules.RegisterModule(notion.New())
+	modules.RegisterModule(github.New())
+	modules.RegisterModule(jira.New())
+	modules.RegisterModule(confluence.New())
+	modules.RegisterModule(supabase.New())
 }
 
 func main() {
@@ -39,9 +46,9 @@ func main() {
 	log.Printf("Registered modules: %v", modules.ListModules())
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
 
-	// Initialize entitlement store and authorizer
-	entitlementStore := entitlement.NewStore()
-	authorizer := entitlement.NewAuthorizer(entitlementStore)
+	// Initialize stores and authorizer
+	userStore := store.NewUserStore()
+	authorizer := middleware.NewAuthorizer(userStore)
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -51,11 +58,11 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","instance":"%s","region":"%s"}`, instanceID, instanceRegion)
 	})
 
-	// MCP endpoint with CORS and authorization middleware
+	// MCP endpoint with authorization middleware
 	// Note: Authentication is handled by Cloudflare Worker, not Go Server
 	// Worker sets X-User-ID and X-Gateway-Secret headers
-	mcpHandler := mcp.NewHandler(entitlementStore)
-	http.Handle("/mcp", middleware.CORS(authorizer.Authorize(mcpHandler)))
+	mcpHandler := mcp.NewHandler(userStore)
+	http.Handle("/mcp", authorizer.Authorize(mcpHandler))
 
 	log.Printf("Starting MCP server on port %s", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil); err != nil {

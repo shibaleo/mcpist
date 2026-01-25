@@ -1,4 +1,4 @@
-package entitlement
+package store
 
 import (
 	"encoding/json"
@@ -10,20 +10,20 @@ import (
 	"time"
 )
 
-// Store manages user context queries to Supabase
-type Store struct {
+// UserStore manages user context queries to Supabase
+type UserStore struct {
 	supabaseURL string
 	serviceKey  string
 	client      *http.Client
-	cache       *cache
+	cache       *userCache
 }
 
 // UserContext represents the user's context from get_user_context RPC
 type UserContext struct {
-	AccountStatus  string            `json:"account_status"`
-	FreeCredits    int               `json:"free_credits"`
-	PaidCredits    int               `json:"paid_credits"`
-	EnabledModules []string          `json:"enabled_modules"`
+	AccountStatus  string              `json:"account_status"`
+	FreeCredits    int                 `json:"free_credits"`
+	PaidCredits    int                 `json:"paid_credits"`
+	EnabledModules []string            `json:"enabled_modules"`
 	DisabledTools  map[string][]string `json:"disabled_tools"` // module -> []tool
 }
 
@@ -58,42 +58,42 @@ func (uc *UserContext) IsToolEnabled(module, tool string) bool {
 
 // ConsumeResult represents the result of consume_credit RPC
 type ConsumeResult struct {
-	Success          bool `json:"success"`
-	FreeCredits      int  `json:"free_credits"`
-	PaidCredits      int  `json:"paid_credits"`
-	AlreadyProcessed bool `json:"already_processed,omitempty"`
+	Success          bool   `json:"success"`
+	FreeCredits      int    `json:"free_credits"`
+	PaidCredits      int    `json:"paid_credits"`
+	AlreadyProcessed bool   `json:"already_processed,omitempty"`
 	Error            string `json:"error,omitempty"`
 }
 
-// cache stores user context with TTL
-type cache struct {
+// userCache stores user context with TTL
+type userCache struct {
 	mu    sync.RWMutex
-	items map[string]*cacheItem
+	items map[string]*userCacheItem
 	ttl   time.Duration
 }
 
-type cacheItem struct {
+type userCacheItem struct {
 	context   *UserContext
 	expiresAt time.Time
 }
 
-// NewStore creates a new entitlement store
-func NewStore() *Store {
-	return &Store{
+// NewUserStore creates a new user store
+func NewUserStore() *UserStore {
+	return &UserStore{
 		supabaseURL: os.Getenv("SUPABASE_URL"),
 		serviceKey:  os.Getenv("SUPABASE_SECRET_KEY"),
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		cache: &cache{
-			items: make(map[string]*cacheItem),
+		cache: &userCache{
+			items: make(map[string]*userCacheItem),
 			ttl:   30 * time.Second, // Cache for 30 seconds
 		},
 	}
 }
 
 // GetUserContext retrieves the user's context (account status, credits, modules, tools)
-func (s *Store) GetUserContext(userID string) (*UserContext, error) {
+func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 	// Check cache first
 	if cached := s.cache.get(userID); cached != nil {
 		return cached, nil
@@ -112,7 +112,7 @@ func (s *Store) GetUserContext(userID string) (*UserContext, error) {
 }
 
 // fetchUserContext calls the Supabase RPC function
-func (s *Store) fetchUserContext(userID string) (*UserContext, error) {
+func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	if s.serviceKey == "" {
 		// Return default context for development without service key
 		return &UserContext{
@@ -150,10 +150,10 @@ func (s *Store) fetchUserContext(userID string) (*UserContext, error) {
 
 	// RPC returns a table, so we get an array
 	var results []struct {
-		AccountStatus  string   `json:"account_status"`
-		FreeCredits    int      `json:"free_credits"`
-		PaidCredits    int      `json:"paid_credits"`
-		EnabledModules []string `json:"enabled_modules"`
+		AccountStatus  string          `json:"account_status"`
+		FreeCredits    int             `json:"free_credits"`
+		PaidCredits    int             `json:"paid_credits"`
+		EnabledModules []string        `json:"enabled_modules"`
 		DisabledTools  json.RawMessage `json:"disabled_tools"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
@@ -186,7 +186,7 @@ func (s *Store) fetchUserContext(userID string) (*UserContext, error) {
 }
 
 // ConsumeCredit consumes credits for a tool execution (idempotent)
-func (s *Store) ConsumeCredit(userID, module, tool string, amount int, requestID string, taskID *string) (*ConsumeResult, error) {
+func (s *UserStore) ConsumeCredit(userID, module, tool string, amount int, requestID string, taskID *string) (*ConsumeResult, error) {
 	if s.serviceKey == "" {
 		// Skip in development
 		return &ConsumeResult{
@@ -245,13 +245,13 @@ func (s *Store) ConsumeCredit(userID, module, tool string, amount int, requestID
 }
 
 // InvalidateCache removes a user's cached context
-func (s *Store) InvalidateCache(userID string) {
+func (s *UserStore) InvalidateCache(userID string) {
 	s.cache.delete(userID)
 }
 
 // Cache methods
 
-func (c *cache) get(userID string) *UserContext {
+func (c *userCache) get(userID string) *UserContext {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -267,17 +267,17 @@ func (c *cache) get(userID string) *UserContext {
 	return item.context
 }
 
-func (c *cache) set(userID string, ctx *UserContext) {
+func (c *userCache) set(userID string, ctx *UserContext) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.items[userID] = &cacheItem{
+	c.items[userID] = &userCacheItem{
 		context:   ctx,
 		expiresAt: time.Now().Add(c.ttl),
 	}
 }
 
-func (c *cache) delete(userID string) {
+func (c *userCache) delete(userID string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

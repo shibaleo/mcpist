@@ -47,7 +47,7 @@ func MetaTools() []Tool {
 	return []Tool{
 		{
 			Name:        "get_module_schema",
-			Description: "モジュールのツール定義を取得。重要: 各モジュールにつき1セッション1回のみ呼び出すこと。スキーマは会話履歴にキャッシュされるため、同一モジュールへの2回目以降の呼び出しはcallを直接使用すること。",
+			Description: "モジュールのツール定義を取得。重要: 各モジュールにつき1セッション1回のみ呼び出すこと。スキーマは会話履歴にキャッシュされるため、同一モジュールへの2回目以降の呼び出しはrunを直接使用すること。",
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
@@ -60,7 +60,7 @@ func MetaTools() []Tool {
 			},
 		},
 		{
-			Name: "call",
+			Name: "run",
 			Description: `モジュールのツールを単発実行。
 
 【利用可能モジュール】
@@ -75,7 +75,7 @@ func MetaTools() []Tool {
 
 【使い方】
 1. get_module_schema(module) でツール一覧とパラメータを確認
-2. call(module, tool, params) で実行`,
+2. run(module, tool, params) で実行`,
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
@@ -243,8 +243,15 @@ type taskState struct {
 	skipped bool
 }
 
+// BatchResult contains the tool call result and success count for credit consumption
+type BatchResult struct {
+	Result       *ToolCallResult
+	SuccessCount int
+}
+
 // Batch executes multiple tools from JSONL input with DAG-based parallel execution
-func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
+// Returns the result and the count of successful tool executions for credit consumption
+func Batch(ctx context.Context, commands string) (*BatchResult, error) {
 	// Parse commands
 	lines := strings.Split(strings.TrimSpace(commands), "\n")
 	tasks := make(map[string]*taskState)
@@ -258,23 +265,32 @@ func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
 
 		var cmd BatchCommand
 		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
-			return &ToolCallResult{
-				Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("JSON parse error: %v", err)}},
-				IsError: true,
+			return &BatchResult{
+				Result: &ToolCallResult{
+					Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("JSON parse error: %v", err)}},
+					IsError: true,
+				},
+				SuccessCount: 0,
 			}, nil
 		}
 
 		if cmd.ID == "" {
-			return &ToolCallResult{
-				Content: []ContentBlock{{Type: "text", Text: "id field is required for all commands"}},
-				IsError: true,
+			return &BatchResult{
+				Result: &ToolCallResult{
+					Content: []ContentBlock{{Type: "text", Text: "id field is required for all commands"}},
+					IsError: true,
+				},
+				SuccessCount: 0,
 			}, nil
 		}
 
 		if _, exists := tasks[cmd.ID]; exists {
-			return &ToolCallResult{
-				Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("duplicate id: %s", cmd.ID)}},
-				IsError: true,
+			return &BatchResult{
+				Result: &ToolCallResult{
+					Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("duplicate id: %s", cmd.ID)}},
+					IsError: true,
+				},
+				SuccessCount: 0,
 			}, nil
 		}
 
@@ -289,9 +305,12 @@ func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
 	for _, state := range tasks {
 		for _, dep := range state.cmd.After {
 			if _, exists := tasks[dep]; !exists {
-				return &ToolCallResult{
-					Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("unknown dependency %s for task %s", dep, state.cmd.ID)}},
-					IsError: true,
+				return &BatchResult{
+					Result: &ToolCallResult{
+						Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("unknown dependency %s for task %s", dep, state.cmd.ID)}},
+						IsError: true,
+					},
+					SuccessCount: 0,
 				}, nil
 			}
 		}
@@ -299,9 +318,12 @@ func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
 
 	// Detect circular dependencies
 	if cycle := detectCycle(tasks); cycle != "" {
-		return &ToolCallResult{
-			Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("circular dependency detected: %s", cycle)}},
-			IsError: true,
+		return &BatchResult{
+			Result: &ToolCallResult{
+				Content: []ContentBlock{{Type: "text", Text: fmt.Sprintf("circular dependency detected: %s", cycle)}},
+				IsError: true,
+			},
+			SuccessCount: 0,
 		}, nil
 	}
 
@@ -319,11 +341,12 @@ func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
 
 	wg.Wait()
 
-	// Build response
+	// Build response and count successful executions
 	response := BatchResponse{
 		Results: make(map[string]string),
 		Errors:  make(map[string]string),
 	}
+	successCount := 0
 
 	for _, id := range order {
 		state := tasks[id]
@@ -331,19 +354,23 @@ func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
 			response.Errors[id] = state.err.Error()
 		} else if state.skipped {
 			response.Errors[id] = "skipped due to dependency failure"
-		} else if state.cmd.RawOutput {
-			// raw_output: true -> return JSON as-is
-			response.Results[id] = state.result
-		} else if state.cmd.Output {
-			// output: true -> convert to compact format (TOON/MD)
-			if m, ok := registry[state.cmd.Module]; ok {
-				if converter, ok := m.(CompactConverter); ok {
-					response.Results[id] = converter.ToCompact(state.cmd.Tool, state.result)
-				} else {
-					response.Results[id] = state.result // No converter, return JSON
-				}
-			} else {
+		} else {
+			// Successful execution
+			successCount++
+			if state.cmd.RawOutput {
+				// raw_output: true -> return JSON as-is
 				response.Results[id] = state.result
+			} else if state.cmd.Output {
+				// output: true -> convert to compact format (TOON/MD)
+				if m, ok := registry[state.cmd.Module]; ok {
+					if converter, ok := m.(CompactConverter); ok {
+						response.Results[id] = converter.ToCompact(state.cmd.Tool, state.result)
+					} else {
+						response.Results[id] = state.result // No converter, return JSON
+					}
+				} else {
+					response.Results[id] = state.result
+				}
 			}
 		}
 	}
@@ -356,11 +383,14 @@ func Batch(ctx context.Context, commands string) (*ToolCallResult, error) {
 		response.Results = nil
 	}
 
-	// Return JSON format
+	// Return JSON format with success count
 	jsonBytes, _ := json.Marshal(response)
 
-	return &ToolCallResult{
-		Content: []ContentBlock{{Type: "text", Text: string(jsonBytes)}},
+	return &BatchResult{
+		Result: &ToolCallResult{
+			Content: []ContentBlock{{Type: "text", Text: string(jsonBytes)}},
+		},
+		SuccessCount: successCount,
 	}, nil
 }
 
