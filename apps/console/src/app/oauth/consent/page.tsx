@@ -53,7 +53,7 @@ function ConsentContent() {
       setUser({ id: user.id, email: user.email ?? null })
 
       // Check if user is admin using RPC
-      const { data: role } = await supabase.rpc('get_my_role')
+      const { data: role } = await supabase.rpc('get_user_role')
       setIsAdmin(role === 'admin')
 
       // Fetch authorization details from Supabase OAuth Server

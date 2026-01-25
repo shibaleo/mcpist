@@ -24,7 +24,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 async function fetchUserRole(client: SupabaseClient): Promise<"user" | "admin"> {
-  const { data } = await client.rpc("get_my_role")
+  const { data } = await client.rpc("get_user_role")
   return (data as "user" | "admin") || "user"
 }
 
