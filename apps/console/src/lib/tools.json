@@ -1,6 +1,91 @@
 {
   "modules": [
     {
+      "id": "airtable",
+      "name": "Airtable",
+      "description": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+      "apiVersion": "v0",
+      "tools": [
+        {
+          "id": "list_bases",
+          "name": "list_bases",
+          "description": "List all accessible Airtable bases with their names, IDs, and permission levels",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "describe",
+          "name": "describe",
+          "description": "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "query",
+          "name": "query",
+          "description": "Query Airtable records with filtering, sorting, and pagination",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_record",
+          "name": "get_record",
+          "description": "Retrieve a single record by ID",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create",
+          "name": "create",
+          "description": "Create new records in a table. Supports batch creation (up to 10 records per request)",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update",
+          "name": "update",
+          "description": "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "delete",
+          "name": "delete",
+          "description": "Delete records from a table. Supports batch deletion (up to 10 records per request)",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "search_records",
+          "name": "search_records",
+          "description": "Search for records containing specific text across specified fields or all text fields",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "aggregate_records",
+          "name": "aggregate_records",
+          "description": "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_table",
+          "name": "create_table",
+          "description": "Create a new table in a base with specified fields",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_table",
+          "name": "update_table",
+          "description": "Update table metadata (name and/or description)",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    },
+    {
       "id": "confluence",
       "name": "Confluence",
       "description": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",

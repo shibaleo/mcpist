@@ -1,6 +1,12 @@
 {
   "services": [
     {
+      "id": "airtable",
+      "name": "Airtable",
+      "description": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+      "apiVersion": "v0"
+    },
+    {
       "id": "confluence",
       "name": "Confluence",
       "description": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",
