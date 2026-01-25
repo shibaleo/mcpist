@@ -61,6 +61,7 @@ export const serviceIcons: Record<string, string> = {
   jira: "kanban",
   confluence: "book",
   supabase: "database",
+  airtable: "table",
   "google-calendar": "calendar",
   "microsoft-todo": "check-square",
 }

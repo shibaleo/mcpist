@@ -75,7 +75,7 @@ func init() {
 }
 
 func main() {
-	outputDir := flag.String("output", "", "Output directory for JSON files (default: stdout)")
+	outputDir := flag.String("output", "../console/src/lib", "Output directory for JSON files (default: ../console/src/lib)")
 	format := flag.String("format", "both", "Output format: services, tools, or both")
 	flag.Parse()
 
