@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/jira"
@@ -60,6 +61,7 @@ var serviceDisplayNames = map[string]string{
 	"jira":       "Jira",
 	"confluence": "Confluence",
 	"supabase":   "Supabase",
+	"airtable":   "Airtable",
 }
 
 func init() {
@@ -69,6 +71,7 @@ func init() {
 	modules.RegisterModule(jira.New())
 	modules.RegisterModule(confluence.New())
 	modules.RegisterModule(supabase.New())
+	modules.RegisterModule(airtable.New())
 }
 
 func main() {
