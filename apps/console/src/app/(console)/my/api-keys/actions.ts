@@ -70,7 +70,13 @@ export async function revokeApiKeyAction(
  * Invalidate the API key cache in the Worker
  */
 async function invalidateWorkerCache(keyHash: string): Promise<void> {
-  const response = await fetch(`${WORKER_URL}/internal/invalidate-api-key`, {
+  const url = `${WORKER_URL}/internal/invalidate-api-key`
+
+  console.log(`[InvalidateCache] URL: ${url}`)
+  console.log(`[InvalidateCache] INTERNAL_SECRET set: ${INTERNAL_SECRET ? 'yes' : 'no'}`)
+  console.log(`[InvalidateCache] INTERNAL_SECRET length: ${INTERNAL_SECRET.length}`)
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -79,8 +85,14 @@ async function invalidateWorkerCache(keyHash: string): Promise<void> {
     body: JSON.stringify({ key_hash: keyHash }),
   })
 
+  console.log(`[InvalidateCache] Response status: ${response.status}`)
+
   if (!response.ok) {
     const errorText = await response.text()
+    console.error(`[InvalidateCache] Error response: ${errorText}`)
     throw new Error(`Worker returned ${response.status}: ${errorText}`)
   }
+
+  const responseText = await response.text()
+  console.log(`[InvalidateCache] Success response: ${responseText}`)
 }
