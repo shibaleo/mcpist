@@ -45,8 +45,15 @@ func main() {
 	}
 
 	// Log registered modules
-	log.Printf("Registered modules: %v", modules.ListModules())
+	moduleNames := modules.ListModules()
+	log.Printf("Registered modules: %v", moduleNames)
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
+
+	// Sync modules to database (ensures all registered modules exist)
+	moduleStore := store.NewModuleStore()
+	if err := moduleStore.SyncModules(moduleNames); err != nil {
+		log.Printf("Warning: Failed to sync modules to database: %v", err)
+	}
 
 	// Initialize stores and authorizer
 	userStore := store.NewUserStore()
