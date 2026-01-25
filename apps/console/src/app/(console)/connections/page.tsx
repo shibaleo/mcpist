@@ -27,125 +27,61 @@ import {
   type ConnectionProgress,
   TokenVaultError,
 } from "@/lib/token-vault"
+import { services, getServiceIcon } from "@/lib/module-data"
+import { ServiceIcon } from "@/components/service-icon"
 
-// カテゴリ定義（背景色付き）
-const categories = [
-  { id: "productivity", name: "生産性", bgClass: "bg-blue-500/10" },
-  { id: "development", name: "開発", bgClass: "bg-purple-500/10" },
-  { id: "communication", name: "コミュニケーション", bgClass: "bg-green-500/10" },
-  { id: "storage", name: "ストレージ", bgClass: "bg-amber-500/10" },
-  { id: "analytics", name: "分析", bgClass: "bg-cyan-500/10" },
-  { id: "marketing", name: "マーケティング", bgClass: "bg-pink-500/10" },
-] as const
-
-type CategoryId = (typeof categories)[number]["id"]
-
-// 認証方法の型
-type AuthMethod = "oauth2" | "personal_token" | "apikey" | "integration_token"
-
-// 拡張サービス定義（ダミーデータ）
-interface ExtendedService {
-  id: string
+// 認証方法の設定（サービスごとの追加情報）
+interface AuthConfigField {
   name: string
-  description: string
-  category: CategoryId
-  authMethod: AuthMethod
+  label: string
+  type: 'text' | 'password' | 'email'
+  placeholder: string
+}
+
+interface AuthConfig {
   authLabel: string
   helpText?: string
+  authType: 'api_key' | 'basic'
+  extraFields?: AuthConfigField[]
 }
 
-const extendedServices: ExtendedService[] = [
-  // 生産性
-  { id: "google-calendar", name: "Google Calendar", description: "カレンダーイベントの管理と同期", category: "productivity", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "notion", name: "Notion", description: "ドキュメントとデータベースの連携", category: "productivity", authMethod: "integration_token", authLabel: "内部インテグレーション", helpText: "Notion設定 > インテグレーション > 新しいインテグレーションから取得してください" },
-  { id: "microsoft-todo", name: "Microsoft To Do", description: "タスク・リストの管理", category: "productivity", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "todoist", name: "Todoist", description: "タスク管理とプロジェクト整理", category: "productivity", authMethod: "personal_token", authLabel: "APIトークン", helpText: "Todoist設定 > 連携 > APIトークンから取得してください" },
-  { id: "asana", name: "Asana", description: "チームプロジェクト管理", category: "productivity", authMethod: "personal_token", authLabel: "Personal Access Token", helpText: "Asana開発者コンソールから取得してください" },
-  { id: "trello", name: "Trello", description: "カンバンボード形式のタスク管理", category: "productivity", authMethod: "apikey", authLabel: "APIキー", helpText: "Trello Power-Up Admin Portalから取得してください" },
-  { id: "airtable", name: "Airtable", description: "スプレッドシート型データベース", category: "productivity", authMethod: "personal_token", authLabel: "Personal Access Token", helpText: "Airtableアカウント設定から取得してください" },
-  { id: "clickup", name: "ClickUp", description: "オールインワンプロジェクト管理", category: "productivity", authMethod: "personal_token", authLabel: "APIトークン", helpText: "ClickUp設定 > アプリから取得してください" },
-  { id: "monday", name: "Monday.com", description: "ワークマネジメントプラットフォーム", category: "productivity", authMethod: "personal_token", authLabel: "APIトークン", helpText: "Monday.com管理画面 > APIから取得してください" },
-  { id: "evernote", name: "Evernote", description: "ノートとメモの管理", category: "productivity", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  // 開発
-  { id: "github", name: "GitHub", description: "リポジトリとイシューの管理", category: "development", authMethod: "personal_token", authLabel: "Personal Access Token", helpText: "GitHub Settings > Developer settings > Personal access tokensから発行してください" },
-  { id: "jira", name: "Jira", description: "プロジェクト管理連携", category: "development", authMethod: "apikey", authLabel: "APIトークン", helpText: "Atlassian管理画面 > APIトークンから発行してください" },
-  { id: "confluence", name: "Confluence", description: "Wiki・ドキュメント管理", category: "development", authMethod: "apikey", authLabel: "APIトークン", helpText: "Atlassian管理画面 > APIトークンから発行してください（Jiraと共通）" },
-  { id: "gitlab", name: "GitLab", description: "DevOpsプラットフォーム", category: "development", authMethod: "personal_token", authLabel: "Personal Access Token", helpText: "GitLab User Settings > Access Tokensから取得してください" },
-  { id: "bitbucket", name: "Bitbucket", description: "Gitリポジトリホスティング", category: "development", authMethod: "apikey", authLabel: "App Password", helpText: "Bitbucket Personal settings > App passwordsから取得してください" },
-  { id: "linear", name: "Linear", description: "モダンなイシュートラッキング", category: "development", authMethod: "personal_token", authLabel: "Personal API Key", helpText: "Linear Settings > API > Personal API keysから取得してください" },
-  { id: "sentry", name: "Sentry", description: "エラー監視とパフォーマンス", category: "development", authMethod: "personal_token", authLabel: "Auth Token", helpText: "Sentry User Settings > Auth Tokensから取得してください" },
-  { id: "vercel", name: "Vercel", description: "フロントエンドデプロイ", category: "development", authMethod: "personal_token", authLabel: "Access Token", helpText: "Vercel Account Settings > Tokensから取得してください" },
-  // コミュニケーション
-  { id: "slack", name: "Slack", description: "チームコミュニケーション", category: "communication", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "discord", name: "Discord", description: "コミュニティチャット", category: "communication", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "teams", name: "Microsoft Teams", description: "ビジネスコラボレーション", category: "communication", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "zoom", name: "Zoom", description: "ビデオ会議", category: "communication", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "gmail", name: "Gmail", description: "メール管理", category: "communication", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "outlook", name: "Outlook", description: "メールとカレンダー", category: "communication", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  // ストレージ
-  { id: "google-drive", name: "Google Drive", description: "クラウドストレージ", category: "storage", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "dropbox", name: "Dropbox", description: "ファイル同期と共有", category: "storage", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "onedrive", name: "OneDrive", description: "Microsoft クラウドストレージ", category: "storage", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "box", name: "Box", description: "エンタープライズストレージ", category: "storage", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "aws-s3", name: "AWS S3", description: "オブジェクトストレージ", category: "storage", authMethod: "apikey", authLabel: "Access Key", helpText: "AWS IAMコンソールからAccess Key IDとSecret Access Keyを取得してください" },
-  // 分析
-  { id: "google-analytics", name: "Google Analytics", description: "ウェブ解析", category: "analytics", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "mixpanel", name: "Mixpanel", description: "プロダクト分析", category: "analytics", authMethod: "apikey", authLabel: "API Secret", helpText: "Mixpanel Project Settings > API Secretから取得してください" },
-  { id: "amplitude", name: "Amplitude", description: "行動分析プラットフォーム", category: "analytics", authMethod: "apikey", authLabel: "API Key", helpText: "Amplitude Settings > Projectsから取得してください" },
-  { id: "hotjar", name: "Hotjar", description: "ヒートマップと録画", category: "analytics", authMethod: "personal_token", authLabel: "Personal Access Token", helpText: "Hotjar Account Settings > Personal Access Tokensから取得してください" },
-  { id: "posthog", name: "PostHog", description: "オープンソース分析", category: "analytics", authMethod: "personal_token", authLabel: "Personal API Key", helpText: "PostHog Project Settings > Personal API Keysから取得してください" },
-  // マーケティング
-  { id: "mailchimp", name: "Mailchimp", description: "メールマーケティング", category: "marketing", authMethod: "apikey", authLabel: "APIキー", helpText: "Mailchimp Account > Extras > API keysから取得してください" },
-  { id: "hubspot", name: "HubSpot", description: "CRM・マーケティング", category: "marketing", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-  { id: "intercom", name: "Intercom", description: "カスタマーメッセージング", category: "marketing", authMethod: "personal_token", authLabel: "Access Token", helpText: "Intercom Developer Hub > Your apps > Authenticationから取得してください" },
-  { id: "zendesk", name: "Zendesk", description: "カスタマーサポート", category: "marketing", authMethod: "apikey", authLabel: "APIトークン", helpText: "Zendesk Admin > Channels > APIから取得してください" },
-  { id: "salesforce", name: "Salesforce", description: "CRMプラットフォーム", category: "marketing", authMethod: "oauth2", authLabel: "OAuth 2.0" },
-]
-
-// サービスアイコンのマッピング
-const serviceIcons: Record<string, string> = {
-  "google-calendar": "📅",
-  "notion": "📝",
-  "github": "🐙",
-  "jira": "🎯",
-  "confluence": "📚",
-  "microsoft-todo": "✅",
-  "todoist": "✔️",
-  "asana": "📋",
-  "trello": "📌",
-  "airtable": "📊",
-  "clickup": "⚡",
-  "monday": "📆",
-  "evernote": "🐘",
-  "gitlab": "🦊",
-  "bitbucket": "🪣",
-  "linear": "🔵",
-  "sentry": "🔺",
-  "vercel": "▲",
-  "slack": "💬",
-  "discord": "🎮",
-  "teams": "👥",
-  "zoom": "📹",
-  "gmail": "📧",
-  "outlook": "📬",
-  "google-drive": "📁",
-  "dropbox": "📦",
-  "onedrive": "☁️",
-  "box": "📥",
-  "aws-s3": "🪣",
-  "google-analytics": "📈",
-  "mixpanel": "📊",
-  "amplitude": "📉",
-  "hotjar": "🔥",
-  "posthog": "🦔",
-  "mailchimp": "🐵",
-  "hubspot": "🧡",
-  "intercom": "💬",
-  "zendesk": "🎧",
-  "salesforce": "☁️",
+const authConfig: Record<string, AuthConfig> = {
+  notion: {
+    authLabel: "内部インテグレーショントークン",
+    helpText: "Notion設定 > マイコネクション > インテグレーションを開発または管理する > 新しいインテグレーションから取得してください",
+    authType: 'api_key',
+  },
+  github: {
+    authLabel: "Personal Access Token",
+    helpText: "GitHub Settings > Developer settings > Personal access tokens > Fine-grained tokens から発行してください",
+    authType: 'api_key',
+  },
+  jira: {
+    authLabel: "APIトークン",
+    helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください",
+    authType: 'basic',
+    extraFields: [
+      { name: 'email', label: 'メールアドレス', type: 'email', placeholder: 'user@example.com' },
+      { name: 'domain', label: 'ドメイン', type: 'text', placeholder: 'yourcompany.atlassian.net' },
+    ],
+  },
+  confluence: {
+    authLabel: "APIトークン",
+    helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください（Jiraと共通のトークンを使用できます）",
+    authType: 'basic',
+    extraFields: [
+      { name: 'email', label: 'メールアドレス', type: 'email', placeholder: 'user@example.com' },
+      { name: 'domain', label: 'ドメイン', type: 'text', placeholder: 'yourcompany.atlassian.net' },
+    ],
+  },
+  supabase: {
+    authLabel: "Personal Access Token",
+    helpText: "Supabase Management APIへ接続するPersonal Access Tokenを取得してください（Dashboard > Account > Access Tokens）",
+    authType: 'api_key',
+  },
 }
 
-export default function MyConnectionsPage() {
+export default function ConnectionsPage() {
   const { user } = useAuth()
   const { accentColor } = useAppearance()
   const accentPreview = accentColors.find(c => c.id === accentColor)?.preview ?? "#22c55e"
@@ -155,6 +91,7 @@ export default function MyConnectionsPage() {
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
   const [disconnectDialog, setDisconnectDialog] = useState<string | null>(null)
   const [tokenInput, setTokenInput] = useState("")
+  const [extraFields, setExtraFields] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [connectionProgress, setConnectionProgress] = useState<ConnectionProgress | null>(null)
 
@@ -180,20 +117,12 @@ export default function MyConnectionsPage() {
     }
   }, [user, loadConnections])
 
-  // 全サービスを表示
-  const filteredServices = extendedServices.filter(
+  // サービスをフィルタ（services.jsonから読み込んだサービスのみ）
+  const filteredServices = services.filter(
     (service) =>
       service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.description.toLowerCase().includes(searchQuery.toLowerCase()),
   )
-
-  // カテゴリごとにサービスをグループ化
-  const getServicesByCategory = (categoryId: CategoryId) => {
-    return filteredServices.filter((s) => s.category === categoryId)
-  }
-
-  // サービスが存在するカテゴリのみ取得
-  const activeCategories = categories.filter((cat) => getServicesByCategory(cat.id).length > 0)
 
   // サービスの接続状態を取得
   const getConnectionForService = (serviceId: string) => {
@@ -203,12 +132,14 @@ export default function MyConnectionsPage() {
   const handleConnect = (serviceId: string) => {
     setConnectDialog(serviceId)
     setTokenInput("")
+    setExtraFields({})
     setConnectionProgress(null)
   }
 
   const handleConnectionConfirm = () => {
     setConnectDialog(null)
     setTokenInput("")
+    setExtraFields({})
     setConnectionProgress(null)
     toast.success("接続が完了しました")
   }
@@ -216,8 +147,18 @@ export default function MyConnectionsPage() {
   const handleConnectSubmit = async () => {
     if (!connectDialog || !tokenInput || !user) return
 
+    const config = authConfig[connectDialog]
+
+    // Basic認証の場合、追加フィールドが必須
+    if (config?.authType === 'basic') {
+      const missingFields = config.extraFields?.filter(f => !extraFields[f.name])
+      if (missingFields && missingFields.length > 0) {
+        toast.error(`${missingFields.map(f => f.label).join('、')}を入力してください`)
+        return
+      }
+    }
+
     setSubmitting(true)
-    // 最初に進捗表示を開始
     setConnectionProgress({ step: 'validating', message: 'トークンを検証中...' })
 
     try {
@@ -225,20 +166,23 @@ export default function MyConnectionsPage() {
         {
           service: connectDialog,
           accessToken: tokenInput,
+          // Basic認証の場合、usernameとmetadataを渡す
+          ...(config?.authType === 'basic' && {
+            username: extraFields.email,
+            metadata: { domain: extraFields.domain },
+          }),
         },
         (progress) => {
           setConnectionProgress({ ...progress })
         }
       )
 
-      // 明示的に完了状態を設定
       setConnectionProgress({ step: 'completed', message: '接続完了' })
 
-      // 接続完了後、接続一覧を更新（エラーでもダイアログは維持）
       try {
         await loadConnections()
       } catch {
-        // loadConnectionsのエラーは無視（完了表示は維持）
+        // loadConnectionsのエラーは無視
       }
     } catch (error) {
       console.log('[page] Caught error:', error)
@@ -274,13 +218,14 @@ export default function MyConnectionsPage() {
     }
   }
 
-  const selectedService = connectDialog ? extendedServices.find((s) => s.id === connectDialog) : null
+  const selectedService = connectDialog ? services.find((s) => s.id === connectDialog) : null
+  const selectedAuthConfig = connectDialog ? authConfig[connectDialog] : null
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">サービス接続</h1>
-        <p className="text-muted-foreground mt-1">利用可能なサービスとの接続を管理します</p>
+        <p className="text-muted-foreground mt-1">MCPサーバーで利用可能なサービスとの接続を管理します</p>
       </div>
 
       <div className="relative max-w-md">
@@ -308,90 +253,72 @@ export default function MyConnectionsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {activeCategories.map((category) => {
-            const categoryServices = getServicesByCategory(category.id)
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredServices.map((service) => {
+            const connection = getConnectionForService(service.id)
+            const isConnected = !!connection
+
             return (
-              <div key={category.id} className={cn("rounded-xl p-4", category.bgClass)}>
-                {/* カテゴリヘッダー */}
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 className="text-sm font-semibold text-foreground">{category.name}</h2>
-                  <Badge variant="secondary" className="text-xs">
-                    {categoryServices.length}
-                  </Badge>
-                </div>
-
-                {/* サービスカード */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {categoryServices.map((service) => {
-                    const connection = getConnectionForService(service.id)
-                    const isConnected = !!connection
-
-                    return (
-                      <Card
-                        key={service.id}
-                        className="transition-all"
-                        style={isConnected ? { borderColor: `${accentPreview}80` } : undefined}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-2xl shrink-0">
-                              {serviceIcons[service.id] || "🔗"}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="font-medium text-foreground truncate">{service.name}</h3>
-                                {isConnected && (
-                                  <Badge
-                                    style={{
-                                      backgroundColor: `${accentPreview}20`,
-                                      color: accentPreview,
-                                      borderColor: `${accentPreview}30`,
-                                    }}
-                                  >
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    接続済
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
-                              {connection && (
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  接続日: {new Date(connection.created_at).toLocaleDateString("ja-JP")}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-4 flex justify-end gap-2">
-                            {isConnected ? (
-                              <>
-                                <Button variant="outline" size="sm" onClick={() => handleConnect(service.id)}>
-                                  <Link2 className="h-4 w-4 mr-1" />
-                                  更新
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => setDisconnectDialog(service.id)}>
-                                  <Unlink className="h-4 w-4 mr-1" />
-                                  切断
-                                </Button>
-                              </>
-                            ) : (
-                              <Button variant="default" size="sm" onClick={() => handleConnect(service.id)}>
-                                <Link2 className="h-4 w-4 mr-1" />
-                                接続
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </div>
+              <Card
+                key={service.id}
+                className="transition-all"
+                style={isConnected ? { borderColor: `${accentPreview}80` } : undefined}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                      <ServiceIcon icon={getServiceIcon(service.id)} className="h-6 w-6 text-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-medium text-foreground truncate">{service.name}</h3>
+                        {isConnected && (
+                          <Badge
+                            style={{
+                              backgroundColor: `${accentPreview}20`,
+                              color: accentPreview,
+                              borderColor: `${accentPreview}30`,
+                            }}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            接続済
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">API: {service.apiVersion}</p>
+                      {connection && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          接続日: {new Date(connection.created_at).toLocaleDateString("ja-JP")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    {isConnected ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleConnect(service.id)}>
+                          <Link2 className="h-4 w-4 mr-1" />
+                          更新
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setDisconnectDialog(service.id)}>
+                          <Unlink className="h-4 w-4 mr-1" />
+                          切断
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="default" size="sm" onClick={() => handleConnect(service.id)}>
+                        <Link2 className="h-4 w-4 mr-1" />
+                        接続
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )
           })}
         </div>
       )}
-
 
       {/* Connect Dialog */}
       <Dialog open={!!connectDialog} onOpenChange={(open) => !open && setConnectDialog(null)}>
@@ -399,16 +326,14 @@ export default function MyConnectionsPage() {
           <DialogHeader>
             <div className="flex items-center gap-3">
               {selectedService && (
-                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-xl">
-                  {serviceIcons[selectedService.id] || "🔗"}
+                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                  <ServiceIcon icon={getServiceIcon(selectedService.id)} className="h-5 w-5 text-foreground" />
                 </div>
               )}
               <div>
                 <DialogTitle>{selectedService?.name}に接続</DialogTitle>
                 <DialogDescription>
-                  {selectedService?.authMethod === "oauth2"
-                    ? "外部サービスの認可画面に移動します"
-                    : "認証情報を入力してください"}
+                  認証情報を入力してください
                 </DialogDescription>
               </div>
             </div>
@@ -453,37 +378,27 @@ export default function MyConnectionsPage() {
           ) : (
             <>
               <div className="space-y-4 py-4">
-                {/* OAuth2.0認可 */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">OAuth 2.0で接続</Label>
-                  <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
-                    <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <p className="text-xs text-muted-foreground">
-                      外部の認可画面に移動し、アカウントを連携します
-                    </p>
+                {/* 追加フィールド（Basic認証用） */}
+                {selectedAuthConfig?.extraFields?.map((field) => (
+                  <div key={field.name} className="space-y-2">
+                    <Label htmlFor={`field-${field.name}`} className="text-sm font-medium">
+                      {field.label}
+                    </Label>
+                    <Input
+                      id={`field-${field.name}`}
+                      type={field.type}
+                      value={extraFields[field.name] || ''}
+                      onChange={(e) => setExtraFields(prev => ({ ...prev, [field.name]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      disabled={submitting}
+                    />
                   </div>
-                  <Button
-                    className="w-full"
-                    disabled
-                  >
-                    <Link2 className="h-4 w-4 mr-2" />
-                    認可を開始（準備中）
-                  </Button>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">または</span>
-                  </div>
-                </div>
+                ))}
 
                 {/* トークン入力 */}
                 <div className="space-y-2">
                   <Label htmlFor="token-input" className="text-sm font-medium">
-                    {selectedService?.authLabel || "APIトークン"}で接続
+                    {selectedAuthConfig?.authLabel || "APIトークン"}
                   </Label>
                   <Input
                     id="token-input"
@@ -493,28 +408,27 @@ export default function MyConnectionsPage() {
                     placeholder="トークンを入力..."
                     disabled={submitting}
                   />
-                  {selectedService?.helpText && (
+                  {selectedAuthConfig?.helpText && (
                     <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
                       <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <p className="text-xs text-muted-foreground">
-                        {selectedService.helpText}
+                        {selectedAuthConfig.helpText}
                       </p>
                     </div>
                   )}
-                  <Button
-                    className="w-full"
-                    onClick={handleConnectSubmit}
-                    disabled={!tokenInput || submitting}
-                  >
-                    <Link2 className="h-4 w-4 mr-2" />
-                    トークンで接続
-                  </Button>
                 </div>
               </div>
 
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setConnectDialog(null)}>
                   キャンセル
+                </Button>
+                <Button
+                  onClick={handleConnectSubmit}
+                  disabled={!tokenInput || submitting}
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  接続
                 </Button>
               </DialogFooter>
             </>
@@ -528,7 +442,7 @@ export default function MyConnectionsPage() {
           <DialogHeader>
             <DialogTitle>接続を解除しますか？</DialogTitle>
             <DialogDescription>
-              {disconnectDialog && extendedServices.find((s) => s.id === disconnectDialog)?.name}
+              {disconnectDialog && services.find((s) => s.id === disconnectDialog)?.name}
               との接続を解除します。この操作は取り消せません。
             </DialogDescription>
           </DialogHeader>
