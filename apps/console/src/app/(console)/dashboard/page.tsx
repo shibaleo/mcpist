@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Link2, Coins, Receipt, Loader2 } from "lucide-react"
+import { Link2, Coins, Receipt, Loader2, Settings2 } from "lucide-react"
 import { getUserCredits, getServiceConnections, type UserCredits, type ServiceConnection } from "@/lib/credits"
 
 export default function DashboardPage() {
@@ -43,7 +43,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Connected Services */}
         <Card>
           <CardHeader className="pb-2">
@@ -59,6 +59,26 @@ export default function DashboardPage() {
               <>
                 <div className="text-3xl font-bold">{connections.length}</div>
                 <p className="text-xs text-muted-foreground mt-1">サービス</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Enabled Tools (Mock) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Settings2 className="h-4 w-4" />
+              有効なツール
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold">-</div>
+                <p className="text-xs text-muted-foreground mt-1">ツール設定で確認</p>
               </>
             )}
           </CardContent>

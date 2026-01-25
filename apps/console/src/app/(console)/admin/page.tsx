@@ -6,9 +6,15 @@ import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, Activity, Server, CreditCard, Play, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Copy, Check } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Users, Activity, Server, CreditCard, Play, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Copy, Check, LogIn } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getOrRegisterOAuthClient } from "@/lib/oauth-client"
+import {
+  listAllOAuthConsents,
+  OAuthConsentError,
+  type OAuthConsentAdmin,
+} from "@/lib/oauth-consents"
 
 type VerifyStep = {
   name: string
@@ -26,14 +32,38 @@ const adminStats = {
 }
 
 export default function AdminPage() {
-  const { user, isAdmin, isLoading } = useAuth()
+  const { isAdmin, isLoading } = useAuth()
   const router = useRouter()
+
+  // OAuth Consents state
+  const [oauthConsents, setOAuthConsents] = useState<OAuthConsentAdmin[]>([])
+  const [consentsLoading, setConsentsLoading] = useState(true)
+
+  // Load OAuth Consents
+  const loadOAuthConsents = useCallback(async () => {
+    try {
+      const consents = await listAllOAuthConsents()
+      setOAuthConsents(consents)
+    } catch (error) {
+      if (error instanceof OAuthConsentError) {
+        console.error("Failed to load OAuth consents:", error.message)
+      }
+    } finally {
+      setConsentsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
       router.push("/dashboard")
     }
   }, [isLoading, isAdmin, router])
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadOAuthConsents()
+    }
+  }, [isAdmin, loadOAuthConsents])
 
   if (isLoading) {
     return (
@@ -121,6 +151,13 @@ export default function AdminPage() {
       {/* OAuth Authentication Flow Verification */}
       <OAuthVerificationCard />
 
+      {/* OAuth Consents List */}
+      <OAuthConsentsCard
+        consents={oauthConsents}
+        loading={consentsLoading}
+        onRefresh={loadOAuthConsents}
+      />
+
       {/* Placeholder for future admin features */}
       <Card>
         <CardHeader>
@@ -133,6 +170,94 @@ export default function AdminPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// OAuth Consents List Card Component
+function OAuthConsentsCard({
+  consents,
+  loading,
+  onRefresh,
+}: {
+  consents: OAuthConsentAdmin[]
+  loading: boolean
+  onRefresh: () => void
+}) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <LogIn className="h-5 w-5" />
+              OAuth認可済みクライアント
+            </CardTitle>
+            <CardDescription>
+              全ユーザーのOAuth認可状況を確認できます
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "更新"
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : consents.length === 0 ? (
+          <div className="text-center py-8">
+            <LogIn className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">認可済みのクライアントはありません</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {consents.map((consent) => (
+              <div
+                key={consent.id}
+                className="flex items-center justify-between p-3 rounded-lg border"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                    <Server className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {consent.client_name || "Unknown Client"}
+                      </span>
+                      <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+                        認可済み
+                      </Badge>
+                    </div>
+                    <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                      <span>ユーザー: {consent.user_email || consent.user_id}</span>
+                      <span>スコープ: {consent.scopes}</span>
+                      <span>認可日: {formatDate(consent.granted_at)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

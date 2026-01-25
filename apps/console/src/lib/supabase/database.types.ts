@@ -88,6 +88,36 @@ export interface Database {
         }
         Returns: Json
       }
+      list_oauth_consents: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          client_id: string
+          client_name: string | null
+          scopes: string
+          granted_at: string
+        }[]
+      }
+      revoke_oauth_consent: {
+        Args: {
+          p_consent_id: string
+        }
+        Returns: {
+          revoked: boolean
+        }
+      }
+      list_all_oauth_consents: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          user_id: string
+          user_email: string | null
+          client_id: string
+          client_name: string | null
+          scopes: string
+          granted_at: string
+        }[]
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

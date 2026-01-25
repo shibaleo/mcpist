@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
-import { Search, Link2, Unlink, Info, CheckCircle2, Store, Loader2, XCircle } from "lucide-react"
+import { Search, Link2, Unlink, Info, CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -146,22 +145,6 @@ const serviceIcons: Record<string, string> = {
   "salesforce": "☁️",
 }
 
-// ユーザーが購入済み（利用可能）なサービス（モック）- 多数追加
-const purchasedServices = [
-  // 生産性
-  "google-calendar", "notion", "microsoft-todo", "todoist", "asana", "trello", "airtable", "clickup", "monday", "evernote",
-  // 開発
-  "github", "jira", "confluence", "gitlab", "bitbucket", "linear", "sentry", "vercel",
-  // コミュニケーション
-  "slack", "discord", "teams", "zoom", "gmail", "outlook",
-  // ストレージ
-  "google-drive", "dropbox", "onedrive", "box", "aws-s3",
-  // 分析
-  "google-analytics", "mixpanel", "amplitude", "hotjar", "posthog",
-  // マーケティング
-  "mailchimp", "hubspot", "intercom", "zendesk", "salesforce",
-]
-
 export default function MyConnectionsPage() {
   const { user } = useAuth()
   const { accentColor } = useAppearance()
@@ -197,12 +180,8 @@ export default function MyConnectionsPage() {
     }
   }, [user, loadConnections])
 
-  // 購入済みのサービスのみ表示（拡張サービスを使用）
-  const availableServices = extendedServices.filter((service) =>
-    purchasedServices.includes(service.id)
-  )
-
-  const filteredServices = availableServices.filter(
+  // 全サービスを表示
+  const filteredServices = extendedServices.filter(
     (service) =>
       service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       service.description.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -321,17 +300,11 @@ export default function MyConnectionsPage() {
       ) : filteredServices.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-foreground mb-2">利用可能なサービスがありません</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              マーケットプレイスでサービスを追加してください
+            <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-medium text-foreground mb-2">サービスが見つかりません</h3>
+            <p className="text-sm text-muted-foreground">
+              検索条件を変更してください
             </p>
-            <Link href="/marketplace">
-              <Button>
-                <Store className="h-4 w-4 mr-2" />
-                マーケットプレイスへ
-              </Button>
-            </Link>
           </CardContent>
         </Card>
       ) : (
@@ -419,15 +392,6 @@ export default function MyConnectionsPage() {
         </div>
       )}
 
-      <div className="pt-4 border-t">
-        <p className="text-sm text-muted-foreground">
-          他のサービスを追加したい場合は
-          <Link href="/marketplace" className="text-primary hover:underline mx-1">
-            マーケットプレイス
-          </Link>
-          をご覧ください。
-        </p>
-      </div>
 
       {/* Connect Dialog */}
       <Dialog open={!!connectDialog} onOpenChange={(open) => !open && setConnectDialog(null)}>

@@ -1,25 +1,44 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ServiceIcon } from "@/components/service-icon"
 import { useAuth } from "@/lib/auth-context"
 import { services, moduleDetails, type UserToolPreference } from "@/lib/data"
-import { cn } from "@/lib/utils"
+import { Info, Check, Link2, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { Store, Info, Check } from "lucide-react"
+import { getServiceConnections, type ServiceConnection } from "@/lib/credits"
 
 export const dynamic = "force-dynamic"
-
-// ユーザーが購入済み（利用可能）なサービス（モック）
-const purchasedServices = ["google-calendar", "notion", "github", "microsoft-todo"]
 
 export default function MyPreferencesPage() {
   const { user } = useAuth()
   const [preferences, setPreferences] = useState<UserToolPreference[]>([])
   const [savedServices, setSavedServices] = useState<Record<string, boolean>>({})
+  const [connections, setConnections] = useState<ServiceConnection[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // 接続済みサービスを取得
+  const loadConnections = useCallback(async () => {
+    try {
+      const data = await getServiceConnections()
+      setConnections(data)
+    } catch (error) {
+      console.error("Failed to load connections:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      loadConnections()
+    } else {
+      setLoading(false)
+    }
+  }, [user, loadConnections])
 
   const myPreference = preferences.find((p) => p.userId === user?.id) || {
     userId: user?.id || "",
@@ -71,8 +90,25 @@ export default function MyPreferencesPage() {
     }, 2000)
   }
 
-  // 購入済みサービスのみ表示
-  const availableServices = services.filter((s) => purchasedServices.includes(s.id))
+  // 接続済みサービスのIDセット
+  const connectedServiceIds = new Set(connections.map((c) => c.service))
+
+  // 接続済みサービスのみ表示
+  const availableServices = services.filter((s) => connectedServiceIds.has(s.id))
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
+          <p className="text-muted-foreground mt-1">利用するツールを選択してください</p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
 
   if (availableServices.length === 0) {
     return (
@@ -86,15 +122,15 @@ export default function MyPreferencesPage() {
 
         <Card>
           <CardContent className="p-8 text-center">
-            <Store className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-foreground mb-2">利用可能なサービスがありません</h3>
+            <Link2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-medium text-foreground mb-2">サービスを接続してください</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              マーケットプレイスでサービスを追加してください
+              サービス連携からサービスを接続すると、ツール設定が可能になります
             </p>
-            <Link href="/marketplace">
+            <Link href="/my/connections">
               <Button>
-                <Store className="h-4 w-4 mr-2" />
-                マーケットプレイスへ
+                <Link2 className="h-4 w-4 mr-2" />
+                サービス連携へ
               </Button>
             </Link>
           </CardContent>
@@ -173,16 +209,6 @@ export default function MyPreferencesPage() {
             </Card>
           )
         })}
-      </div>
-
-      <div className="pt-4 border-t">
-        <p className="text-sm text-muted-foreground">
-          他のサービスを追加したい場合は
-          <Link href="/marketplace" className="text-primary hover:underline mx-1">
-            マーケットプレイス
-          </Link>
-          をご覧ください。
-        </p>
       </div>
     </div>
   )
