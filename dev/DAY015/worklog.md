@@ -348,13 +348,136 @@ CREATE TABLE oauth_apps (
                    └──────────────┘     └─────────────────┘
 ```
 
-### 今後の作業 
+### 今後の作業
 
-1. **Microsoft OAuth実装**
-   - `/api/oauth/microsoft/authorize`
-   - `/api/oauth/microsoft/callback`
-   - microsoft_todo モジュール
-
+1. ~~**Microsoft OAuth実装**~~ ✅ 完了
 2. **エラーハンドリング強化**
    - OAuth認可エラーの詳細表示
    - トークン取り消し対応
+
+---
+
+## Microsoft To Do OAuth実装
+
+### 実装内容
+
+Microsoft To Do モジュールを実装。Google Calendarと同様のパターンでOAuth認証フローとトークンリフレッシュ機能を実装。
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/console/src/app/api/oauth/microsoft/authorize/route.ts` | 認可URL生成（新規作成） |
+| `apps/console/src/app/api/oauth/microsoft/callback/route.ts` | トークン交換・保存（修正: service_role権限、expires_at形式） |
+| `apps/server/internal/modules/microsoft_todo/module.go` | Microsoft To Doモジュール（新規作成） |
+| `apps/server/cmd/server/main.go` | モジュール登録追加 |
+| `apps/server/cmd/tools-export/main.go` | tools-export対応 |
+| `apps/console/src/lib/services.json` | Microsoft To Do追加 |
+| `apps/console/src/lib/tools.json` | Microsoft To Do追加 |
+
+### 実装したツール (11個)
+
+| カテゴリ | ツール | 説明 |
+|----------|--------|------|
+| Lists | list_lists | タスクリスト一覧取得 |
+| Lists | get_list | タスクリスト詳細取得 |
+| Lists | create_list | タスクリスト作成 |
+| Lists | update_list | タスクリスト更新 |
+| Lists | delete_list | タスクリスト削除 (dangerous) |
+| Tasks | list_tasks | タスク一覧取得 |
+| Tasks | get_task | タスク詳細取得 |
+| Tasks | create_task | タスク作成 |
+| Tasks | update_task | タスク更新 |
+| Tasks | complete_task | タスク完了 |
+| Tasks | delete_task | タスク削除 (dangerous) |
+
+### トークンリフレッシュ
+
+Google Calendarと同様のパターン:
+- `needsRefresh()` - 有効期限チェック（5分前）
+- `refreshToken()` - Microsoft OAuth Token Endpoint でリフレッシュ
+- `UpdateModuleToken()` - Vault に保存
+- Microsoftは新しいrefresh_tokenを返す場合があるため、それも保存
+
+### Microsoft Entra ID (Azure AD) 設定
+
+1. Azure Portal → Microsoft Entra ID → アプリの登録
+2. サポートされているアカウントの種類: 「任意の組織ディレクトリ内のアカウントと個人のMicrosoftアカウント」
+3. リダイレクトURI: `https://dev.mcpist.app/api/oauth/microsoft/callback`
+4. APIのアクセス許可: `Tasks.ReadWrite`, `offline_access`
+
+### テスト結果
+
+```
+mcp__mcpist-dev__run microsoft_todo list_lists
+→ 5件のタスクリストを取得成功 (Tasks, Daily Routine, Shopping, Wishlist, Flagged Emails)
+```
+
+✅ OAuth認証、トークン保存、API呼び出しすべて正常動作
+
+---
+
+## ツール設定のデータ永続化
+
+### 実装内容
+
+Console のツール設定（各ツールの有効/無効）をSupabase DBに保存する機能を実装。
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `supabase/migrations/00000000000019_rpc_tool_settings.sql` | tool_settings RPC関数（新規作成） |
+| `apps/console/src/lib/tool-settings.ts` | ツール設定API（新規作成） |
+| `apps/console/src/app/(console)/tools/page.tsx` | DBからの読み込み・保存機能追加 |
+
+### RPC関数
+
+| 関数 | 説明 |
+|------|------|
+| `get_tool_settings(p_user_id, p_module_name)` | ユーザーのツール設定取得 |
+| `upsert_tool_settings(p_user_id, p_module_name, p_enabled_tools, p_disabled_tools)` | ツール設定の一括更新 |
+| `get_my_tool_settings(p_module_name)` | 認証ユーザー自身の設定取得 |
+| `upsert_my_tool_settings(p_module_name, p_enabled_tools, p_disabled_tools)` | 認証ユーザー自身の設定更新 |
+
+### テスト結果
+
+Airtableモジュールでツール設定を保存・確認:
+- aggregate_records: true
+- create: true
+- create_table: false (dangerous)
+- delete: false (dangerous)
+- describe: true
+- get_record: true
+- list_bases: true
+- query: true
+- search_records: true
+- update: true
+- update_table: false (dangerous)
+
+✅ DBへの保存・読み込み正常動作
+
+---
+
+## バックログ
+
+### 未完了タスク
+
+| ID | タスク | 優先度 | 備考 |
+|----|--------|--------|------|
+| BL-001 | サービス接続時にデフォルトツール設定を自動保存 | 高 | 現状は手動で「設定を保存」が必要。接続成功時にtools.jsonのdefaultEnabledを元に自動保存すべき |
+
+### BL-001 詳細
+
+**現状の問題:**
+- サービス接続時にツール設定はDBに保存されない
+- UIではtools.jsonのdefaultEnabledが表示されるが、DBには未保存
+- ユーザーが明示的に「設定を保存」を押す必要がある
+
+**期待する動作:**
+- サービス接続成功後、自動的にデフォルトツール設定をDBに保存
+- tools.jsonのdefaultEnabledを元に、enabled/disabledを設定
+
+**実装箇所:**
+- `apps/console/src/app/(console)/tools/page.tsx` の `handleConnectionConfirm()` または接続成功後の処理
+- OAuth callback後のリダイレクト時にも対応が必要
