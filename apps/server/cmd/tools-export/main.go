@@ -14,6 +14,7 @@ import (
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/jira"
+	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
 )
@@ -64,6 +65,7 @@ var serviceDisplayNames = map[string]string{
 	"supabase":        "Supabase",
 	"airtable":        "Airtable",
 	"google_calendar": "Google Calendar",
+	"microsoft_todo":  "Microsoft To Do",
 }
 
 func init() {
@@ -75,6 +77,7 @@ func init() {
 	modules.RegisterModule(supabase.New())
 	modules.RegisterModule(airtable.New())
 	modules.RegisterModule(google_calendar.New())
+	modules.RegisterModule(microsoft_todo.New())
 }
 
 func main() {
