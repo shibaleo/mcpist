@@ -475,6 +475,91 @@
       ]
     },
     {
+      "id": "microsoft_todo",
+      "name": "Microsoft To Do",
+      "description": "Microsoft To Do API - タスク・リストの取得・作成・更新・削除",
+      "apiVersion": "v1.0",
+      "tools": [
+        {
+          "id": "list_lists",
+          "name": "list_lists",
+          "description": "Get all task lists for the user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_list",
+          "name": "get_list",
+          "description": "Get a specific task list by ID.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_list",
+          "name": "create_list",
+          "description": "Create a new task list.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_list",
+          "name": "update_list",
+          "description": "Update an existing task list.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "delete_list",
+          "name": "delete_list",
+          "description": "Delete a task list.",
+          "dangerous": true,
+          "defaultEnabled": false
+        },
+        {
+          "id": "list_tasks",
+          "name": "list_tasks",
+          "description": "Get all tasks in a task list.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_task",
+          "name": "get_task",
+          "description": "Get a specific task by ID.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_task",
+          "name": "create_task",
+          "description": "Create a new task in a task list.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_task",
+          "name": "update_task",
+          "description": "Update an existing task.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "complete_task",
+          "name": "complete_task",
+          "description": "Mark a task as completed.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "delete_task",
+          "name": "delete_task",
+          "description": "Delete a task.",
+          "dangerous": true,
+          "defaultEnabled": false
+        }
+      ]
+    },
+    {
       "id": "notion",
       "name": "Notion",
       "description": "Notion API - ページ・データベース・ブロック操作",
