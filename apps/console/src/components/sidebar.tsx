@@ -22,7 +22,6 @@ import {
   ChevronLeft,
   Link2,
   Server,
-  Settings2,
   CreditCard,
   Zap,
   Shield,
@@ -40,8 +39,7 @@ const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
     { href: "/mcp", label: "MCP接続", icon: Server },
-    { href: "/connections", label: "サービス連携", icon: Link2 },
-    { href: "/tools", label: "ツール設定", icon: Settings2 },
+    { href: "/tools", label: "サービス & ツール", icon: Link2 },
   ],
   general: [
     { href: "/billing", label: "請求", icon: CreditCard },
