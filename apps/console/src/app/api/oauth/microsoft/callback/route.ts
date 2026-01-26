@@ -1,13 +1,25 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@supabase/supabase-js"
 
 const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+
+function getAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const secretKey = process.env.SUPABASE_SECRET_KEY
+  if (!supabaseUrl || !secretKey) {
+    throw new Error("Missing Supabase configuration")
+  }
+  return createAdminClient(supabaseUrl, secretKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get("code")
   const error = url.searchParams.get("error")
-  const state = url.searchParams.get("state")
+  // state param is for CSRF protection (currently not validated)
 
   // 認証チェック
   const supabase = await createClient()
@@ -32,8 +44,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    // OAuth App の認証情報を取得
-    const { data: credentials, error: credError } = await supabase.rpc("get_oauth_app_credentials", {
+    // OAuth App の認証情報を取得（service role 権限で）
+    const adminClient = getAdminClient()
+    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
       p_provider: "microsoft"
     })
 
@@ -77,13 +90,15 @@ export async function GET(request: Request) {
     }
 
     // トークン情報を保存
+    // expires_at は Unix timestamp (秒) で保存 - dtl-itr-MOD-TVL.md 仕様準拠
     const tokenCredentials = {
+      _auth_type: "oauth2",  // Go Server側でBearer認証として使用するために必要
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token || null,
       token_type: tokenData.token_type || "Bearer",
       scope: tokenData.scope,
       expires_at: tokenData.expires_in
-        ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+        ? Math.floor(Date.now() / 1000) + tokenData.expires_in
         : null,
     }
 
