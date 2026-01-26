@@ -118,6 +118,56 @@ export interface Database {
           granted_at: string
         }[]
       }
+      list_oauth_apps: {
+        Args: Record<string, never>
+        Returns: {
+          provider: string
+          redirect_uri: string
+          enabled: boolean
+          has_credentials: boolean
+          client_id: string | null
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      upsert_oauth_app: {
+        Args: {
+          p_provider: string
+          p_client_id: string
+          p_client_secret: string
+          p_redirect_uri: string
+          p_enabled?: boolean
+        }
+        Returns: {
+          success: boolean
+          action: string
+          provider: string
+        }
+      }
+      delete_oauth_app: {
+        Args: {
+          p_provider: string
+        }
+        Returns: {
+          success: boolean
+          provider?: string
+          error?: string
+          message?: string
+        }
+      }
+      get_oauth_app_credentials: {
+        Args: {
+          p_provider: string
+        }
+        Returns: {
+          provider?: string
+          client_id?: string
+          client_secret?: string
+          redirect_uri?: string
+          error?: string
+          message?: string
+        }
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

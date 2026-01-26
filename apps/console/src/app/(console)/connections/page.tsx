@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,7 @@ import {
 } from "@/lib/token-vault"
 import { services, getServiceIcon } from "@/lib/module-data"
 import { ServiceIcon } from "@/components/service-icon"
+import { getOAuthProviderForService, getOAuthAuthorizationUrl, OAuthAppError } from "@/lib/oauth-apps"
 
 // 認証方法の設定（サービスごとの追加情報）
 interface AuthConfigField {
@@ -41,7 +43,7 @@ interface AuthConfigField {
 interface AuthConfig {
   authLabel: string
   helpText?: string
-  authType: 'api_key' | 'basic'
+  authType: 'api_key' | 'basic' | 'oauth'
   extraFields?: AuthConfigField[]
 }
 
@@ -79,11 +81,23 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Supabase Management APIへ接続するPersonal Access Tokenを取得してください（Dashboard > Account > Access Tokens）",
     authType: 'api_key',
   },
+  google_calendar: {
+    authLabel: "Google OAuth",
+    helpText: "Googleアカウントでログインして、カレンダーへのアクセスを許可します",
+    authType: 'oauth',
+  },
+  microsoft_todo: {
+    authLabel: "Microsoft OAuth",
+    helpText: "Microsoftアカウントでログインして、タスクへのアクセスを許可します",
+    authType: 'oauth',
+  },
 }
 
 export default function ConnectionsPage() {
   const { user } = useAuth()
   const { accentColor } = useAppearance()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const accentPreview = accentColors.find(c => c.id === accentColor)?.preview ?? "#22c55e"
   const [searchQuery, setSearchQuery] = useState("")
   const [connections, setConnections] = useState<ServiceConnection[]>([])
@@ -117,6 +131,22 @@ export default function ConnectionsPage() {
     }
   }, [user, loadConnections])
 
+  // OAuth認可フロー完了後のクエリパラメータを処理
+  useEffect(() => {
+    const success = searchParams.get("success")
+    const error = searchParams.get("error")
+
+    if (success) {
+      toast.success(success)
+      // URLからクエリパラメータを削除
+      router.replace("/connections")
+    } else if (error) {
+      toast.error(error)
+      // URLからクエリパラメータを削除
+      router.replace("/connections")
+    }
+  }, [searchParams, router])
+
   // サービスをフィルタ（services.jsonから読み込んだサービスのみ）
   const filteredServices = services.filter(
     (service) =>
@@ -129,7 +159,31 @@ export default function ConnectionsPage() {
     return connections.find((c) => c.service === serviceId)
   }
 
-  const handleConnect = (serviceId: string) => {
+  const handleConnect = async (serviceId: string) => {
+    const config = authConfig[serviceId]
+
+    // OAuthサービスの場合は認可URLにリダイレクト
+    if (config?.authType === 'oauth') {
+      const providerId = getOAuthProviderForService(serviceId)
+      if (!providerId) {
+        toast.error("OAuth設定が見つかりません")
+        return
+      }
+
+      try {
+        const authUrl = await getOAuthAuthorizationUrl(providerId)
+        window.location.href = authUrl
+      } catch (error) {
+        if (error instanceof OAuthAppError) {
+          toast.error(error.message)
+        } else {
+          toast.error("OAuth認可URLの取得に失敗しました")
+        }
+      }
+      return
+    }
+
+    // API Key / Basic認証の場合はダイアログを表示
     setConnectDialog(serviceId)
     setTokenInput("")
     setExtraFields({})

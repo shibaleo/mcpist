@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -84,9 +85,18 @@ type TokenResult struct {
 
 // NewTokenStore creates a new token store
 func NewTokenStore() *TokenStore {
+	// Use SUPABASE_PUBLISHABLE_KEY (anon key) for RPC calls
+	// The get_module_token RPC is SECURITY DEFINER, so anon key works
+	serviceKey := os.Getenv("SUPABASE_PUBLISHABLE_KEY")
+	if serviceKey == "" {
+		// Fallback to SUPABASE_SECRET_KEY for backwards compatibility
+		serviceKey = os.Getenv("SUPABASE_SECRET_KEY")
+	}
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	log.Printf("[TokenStore] Initialized - URL: %s, Key: %s...", supabaseURL, serviceKey[:min(20, len(serviceKey))])
 	return &TokenStore{
-		supabaseURL: os.Getenv("SUPABASE_URL"),
-		serviceKey:  os.Getenv("SUPABASE_SECRET_KEY"),
+		supabaseURL: supabaseURL,
+		serviceKey:  serviceKey,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -153,4 +163,127 @@ func (s *TokenStore) GetModuleToken(ctx context.Context, userID, module string) 
 	}
 
 	return result.Credentials, nil
+}
+
+// OAuthAppCredentials represents the OAuth app configuration from Vault
+type OAuthAppCredentials struct {
+	Provider     string `json:"provider"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	RedirectURI  string `json:"redirect_uri"`
+	Error        string `json:"error,omitempty"`
+	Message      string `json:"message,omitempty"`
+}
+
+// GetOAuthAppCredentials retrieves OAuth app credentials (client_id, client_secret) for a provider
+// Used for token refresh operations
+func (s *TokenStore) GetOAuthAppCredentials(ctx context.Context, provider string) (*OAuthAppCredentials, error) {
+	if s.serviceKey == "" {
+		return nil, fmt.Errorf("OAuth app credentials not available in development mode")
+	}
+
+	// Need service_role key for get_oauth_app_credentials
+	secretKey := os.Getenv("SUPABASE_SECRET_KEY")
+	if secretKey == "" {
+		return nil, fmt.Errorf("SUPABASE_SECRET_KEY required for OAuth app credentials")
+	}
+
+	reqBody := fmt.Sprintf(`{"p_provider": "%s"}`, provider)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		s.supabaseURL+"/rest/v1/rpc/get_oauth_app_credentials",
+		strings.NewReader(reqBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", secretKey)
+	req.Header.Set("Authorization", "Bearer "+secretKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call get_oauth_app_credentials: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get_oauth_app_credentials failed: status %d", resp.StatusCode)
+	}
+
+	var result OAuthAppCredentials
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if result.Error != "" {
+		return nil, fmt.Errorf("OAuth app error: %s - %s", result.Error, result.Message)
+	}
+
+	return &result, nil
+}
+
+// UpdateModuleToken saves refreshed credentials to Vault via RPC
+// Called after OAuth2 token refresh to persist new access_token/expires_at
+func (s *TokenStore) UpdateModuleToken(ctx context.Context, userID, module string, credentials *Credentials) error {
+	if s.serviceKey == "" {
+		// Skip in development
+		return nil
+	}
+
+	// Need service_role key for update_module_token (writes to Vault)
+	secretKey := os.Getenv("SUPABASE_SECRET_KEY")
+	if secretKey == "" {
+		return fmt.Errorf("SUPABASE_SECRET_KEY required for token update")
+	}
+
+	credJSON, err := json.Marshal(credentials)
+	if err != nil {
+		return fmt.Errorf("failed to marshal credentials: %w", err)
+	}
+
+	reqBody := fmt.Sprintf(
+		`{"p_user_id": "%s", "p_module": "%s", "p_credentials": %s}`,
+		userID, module, string(credJSON),
+	)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		s.supabaseURL+"/rest/v1/rpc/update_module_token",
+		strings.NewReader(reqBody),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", secretKey)
+	req.Header.Set("Authorization", "Bearer "+secretKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to call update_module_token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("update_module_token failed: status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Success bool   `json:"success"`
+		Error   string `json:"error,omitempty"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if !result.Success {
+		return fmt.Errorf("update_module_token failed: %s", result.Error)
+	}
+
+	return nil
 }

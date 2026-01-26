@@ -326,6 +326,70 @@
       ]
     },
     {
+      "id": "google_calendar",
+      "name": "Google Calendar",
+      "description": "Google Calendar API - 予定の取得・作成・更新・削除",
+      "apiVersion": "v3",
+      "tools": [
+        {
+          "id": "list_calendars",
+          "name": "list_calendars",
+          "description": "List all calendars accessible to the user.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_calendar",
+          "name": "get_calendar",
+          "description": "Get details of a specific calendar.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "list_events",
+          "name": "list_events",
+          "description": "List events from a calendar within a time range.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "get_event",
+          "name": "get_event",
+          "description": "Get details of a specific event.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "create_event",
+          "name": "create_event",
+          "description": "Create a new event in a calendar.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "update_event",
+          "name": "update_event",
+          "description": "Update an existing event.",
+          "dangerous": false,
+          "defaultEnabled": true
+        },
+        {
+          "id": "delete_event",
+          "name": "delete_event",
+          "description": "Delete an event from a calendar.",
+          "dangerous": true,
+          "defaultEnabled": false
+        },
+        {
+          "id": "quick_add",
+          "name": "quick_add",
+          "description": "Create an event based on a simple text string (e.g., 'Meeting with John tomorrow at 3pm').",
+          "dangerous": false,
+          "defaultEnabled": true
+        }
+      ]
+    },
+    {
       "id": "jira",
       "name": "Jira",
       "description": "Jira API - Issue/Project操作（検索、作成、更新、コメント、ワークログ）",

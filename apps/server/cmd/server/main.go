@@ -12,6 +12,7 @@ import (
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
+	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
@@ -26,6 +27,7 @@ func init() {
 	modules.RegisterModule(confluence.New())
 	modules.RegisterModule(supabase.New())
 	modules.RegisterModule(airtable.New())
+	modules.RegisterModule(google_calendar.New())
 }
 
 func main() {

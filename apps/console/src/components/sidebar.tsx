@@ -27,6 +27,7 @@ import {
   Zap,
   Shield,
   HelpCircle,
+  KeyRound,
 } from "lucide-react"
 
 const MIN_WIDTH = 150
@@ -48,6 +49,7 @@ const navItems = {
   ],
   admin: [
     { href: "/admin", label: "管理者パネル", icon: Shield },
+    { href: "/admin/oauth-apps", label: "OAuth設定", icon: KeyRound },
   ],
 }
 

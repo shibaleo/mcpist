@@ -1,0 +1,126 @@
+import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@supabase/supabase-js"
+
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+function getAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const secretKey = process.env.SUPABASE_SECRET_KEY
+  if (!supabaseUrl || !secretKey) {
+    throw new Error("Missing Supabase configuration")
+  }
+  return createAdminClient(supabaseUrl, secretKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  const code = url.searchParams.get("code")
+  const error = url.searchParams.get("error")
+  // state param is for CSRF protection (currently not validated)
+
+  // 認証チェック
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+
+  // エラーチェック
+  if (error) {
+    const errorDescription = url.searchParams.get("error_description") || error
+    return NextResponse.redirect(
+      new URL(`/connections?error=${encodeURIComponent(errorDescription)}`, request.url)
+    )
+  }
+
+  if (!code) {
+    return NextResponse.redirect(
+      new URL("/connections?error=No authorization code received", request.url)
+    )
+  }
+
+  try {
+    // OAuth App の認証情報を取得（service role 権限で）
+    const adminClient = getAdminClient()
+    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
+      p_provider: "google"
+    })
+
+    if (credError || !credentials || credentials.error) {
+      console.error("Failed to get OAuth credentials:", credError || credentials?.message)
+      return NextResponse.redirect(
+        new URL("/connections?error=OAuth credentials not configured", request.url)
+      )
+    }
+
+    // 認証コードをアクセストークンに交換
+    const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: credentials.client_id,
+        client_secret: credentials.client_secret,
+        code,
+        grant_type: "authorization_code",
+        redirect_uri: credentials.redirect_uri,
+      }),
+    })
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text()
+      console.error("Token exchange failed:", errorText)
+      return NextResponse.redirect(
+        new URL(`/connections?error=${encodeURIComponent("Failed to exchange token")}`, request.url)
+      )
+    }
+
+    const tokenData = await tokenResponse.json()
+
+    if (!tokenData.access_token) {
+      return NextResponse.redirect(
+        new URL("/connections?error=No access token received", request.url)
+      )
+    }
+
+    // トークン情報を保存
+    // expires_at は Unix timestamp (秒) で保存 - dtl-itr-MOD-TVL.md 仕様準拠
+    const tokenCredentials = {
+      _auth_type: "oauth2",  // Go Server側でBearer認証として使用するために必要
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token || null,
+      token_type: tokenData.token_type || "Bearer",
+      scope: tokenData.scope,
+      expires_at: tokenData.expires_in
+        ? Math.floor(Date.now() / 1000) + tokenData.expires_in
+        : null,
+    }
+
+    const { error: saveError } = await supabase.rpc("upsert_service_token", {
+      p_service: "google_calendar",
+      p_credentials: tokenCredentials,
+    })
+
+    if (saveError) {
+      console.error("Failed to save token:", saveError)
+      return NextResponse.redirect(
+        new URL(`/connections?error=${encodeURIComponent("Failed to save token")}`, request.url)
+      )
+    }
+
+    // 成功時はconnectionsページにリダイレクト
+    return NextResponse.redirect(
+      new URL("/connections?success=Google Calendar connected successfully", request.url)
+    )
+  } catch (err) {
+    console.error("OAuth callback error:", err)
+    return NextResponse.redirect(
+      new URL(`/connections?error=${encodeURIComponent("OAuth callback failed")}`, request.url)
+    )
+  }
+}
