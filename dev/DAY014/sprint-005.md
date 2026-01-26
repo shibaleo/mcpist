@@ -20,12 +20,13 @@
 
 | Phase | 状態 | 進捗 |
 |-------|------|------|
-| Phase 1: RPC関数実装 | ✅ 完了 | 16/17 (94%) |
-| Phase 2: RPC呼び出しリファクタ | ⬜ 未着手 | 0/9 (0%) |
+| Phase 1: RPC関数実装 | ✅ 完了 | 17/17 (100%) |
+| Phase 2: RPC呼び出しリファクタ | ✅ 完了 | 9/9 (100%) |
 | Phase 3: パスルーティング設計 | ✅ 完了 | 3/3 (100%) |
 | Phase 4: UI要件定義 | ⬜ 未着手 | 0/3 (0%) |
 | Phase 5: ツール設定API | 🔄 進行中 | 2/8 (25%) |
 | Phase 6: モジュール拡張 | ✅ 完了 | 1/1 (100%) |
+| Phase 7: OAuth トークンリフレッシュ | ✅ 完了 | Google Calendar対応 |
 
 ---
 
@@ -39,7 +40,7 @@
 | S5-002 | get_user_context | ✅ 完了 | ツール実行用ユーザー情報 |
 | S5-003 | consume_credit | ✅ 完了 | クレジット消費・履歴記録 |
 | S5-004 | get_module_token | ✅ 完了 | モジュール用トークン取得 |
-| S5-005 | update_module_token | ⬜ 未着手 | リフレッシュ後トークン保存 |
+| S5-005 | update_module_token | ✅ 完了 | リフレッシュ後トークン保存 |
 | S5-006 | generate_api_key | ✅ 完了 | APIキー生成 |
 | S5-007 | list_api_keys | ✅ 完了 | APIキー一覧取得 |
 | S5-008 | revoke_api_key | ✅ 完了 | APIキー論理削除 |
@@ -55,19 +56,19 @@
 
 ---
 
-### Phase 2: RPC呼び出しリファクタ ⬜
+### Phase 2: RPC呼び出しリファクタ ✅
 
 | ID | タスク | 状態 | 備考 |
 |----|--------|------|------|
-| S5-020 | api-keys ページをRPC使用に統一 | ⬜ 未着手 | generate/list/revoke |
-| S5-021 | connections ページをRPC使用に統一 | ⬜ 未着手 | list/upsert/delete |
-| S5-022 | dashboard クレジット表示をRPC化 | ⬜ 未着手 | 直接テーブル参照 → RPC |
-| S5-023 | token-vault API Route リファクタ | ⬜ 未着手 | upsert_service_token RPC使用 |
-| S5-024 | database.types.ts にRPC型定義追加 | ⬜ 未着手 | 新規RPC全てに対応 |
-| S5-030 | Worker: lookup_user_by_key_hash 使用 | ⬜ 未着手 | 既存実装の整理 |
-| S5-040 | Go: get_module_token RPC使用 | ⬜ 未着手 | 現在: 直接クエリ |
-| S5-041 | Go: consume_credit RPC使用 | ⬜ 未着手 | 現在: 直接クエリ |
-| S5-042 | Go: get_user_context RPC呼び出し | ⬜ 未着手 | アカウント状態・設定取得 |
+| S5-020 | api-keys ページをRPC使用に統一 | ✅ 完了 | generate/list/revoke |
+| S5-021 | connections ページをRPC使用に統一 | ✅ 完了 | list/upsert/delete |
+| S5-022 | dashboard クレジット表示をRPC化 | ✅ 完了 | 直接テーブル参照 → RPC |
+| S5-023 | token-vault API Route リファクタ | ✅ 完了 | upsert_service_token RPC使用 |
+| S5-024 | database.types.ts にRPC型定義追加 | ✅ 完了 | 新規RPC全てに対応 |
+| S5-030 | Worker: lookup_user_by_key_hash 使用 | ✅ 完了 | 既存実装確認済み |
+| S5-040 | Go: get_module_token RPC使用 | ✅ 完了 | RPC使用確認済み |
+| S5-041 | Go: consume_credit RPC使用 | ✅ 完了 | RPC使用確認済み |
+| S5-042 | Go: get_user_context RPC呼び出し | ✅ 完了 | RPC使用確認済み |
 
 ---
 
@@ -114,12 +115,24 @@
 
 ---
 
+### Phase 7: OAuth トークンリフレッシュ ✅
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| S5-090 | update_module_token RPC実装 | ✅ 完了 | vault.create_secret使用 |
+| S5-091 | get_oauth_app_credentials RPC | ✅ 完了 | OAuth App認証情報取得 |
+| S5-092 | Google Calendar トークンリフレッシュ | ✅ 完了 | 有効期限5分前にリフレッシュ |
+| S5-093 | OAuth App設定UI | ✅ 完了 | /admin/oauth-apps |
+
+---
+
 ## インフラ整備 ✅
 
 | タスク | 状態 | 備考 |
 |--------|------|------|
-| Render GitHub連携 | ✅ 完了 | auto-deploy on commit |
-| Koyeb GitHub連携 | ✅ 完了 | auto-deploy on commit |
+| Render GitHub連携 | ✅ 完了 | Go Server auto-deploy |
+| Koyeb GitHub連携 | ✅ 完了 | Go Server auto-deploy |
+| Vercel GitHub連携 | ✅ 完了 | Console (Next.js) auto-deploy |
 | render.yaml追加 | ✅ 完了 | IaC設定 |
 | 不要ファイル削除 | ✅ 完了 | .devcontainer/, compose/, infra/ |
 | モジュール自動同期 | ✅ 完了 | sync_modules RPC |
@@ -154,14 +167,28 @@
 - `render.yaml` 追加
 - 不要ファイル削除: `.devcontainer/`, `compose/`, `infra/`
 
+### 2026-01-26 (continued)
+
+**RPC呼び出しリファクタ完了**
+- Console/Worker/Go Server: 全て既にRPC利用済みを確認
+- Phase 2: 9/9 (100%) 完了
+
+**OAuth トークンリフレッシュ実装**
+- `update_module_token` RPC: vault.create_secret使用で実装
+- Google Calendar: トークン有効期限5分前に自動リフレッシュ
+- OAuth App Settings: redirect_uri を本番URLに更新
+
+**解決した問題**
+- vault.secrets UPDATE権限問題 → DELETE + vault.create_secret で解決
+- redirect_uri_mismatch → oauth_appsテーブルのredirect_uri更新で解決
+
 ---
 
 ## 残タスク（優先度順）
 
-1. **マイグレーションpush** - sync_modules RPC適用
-2. **Phase 2: RPC呼び出しリファクタ** - Console/Worker/Goサーバーの統一
-3. **Phase 5: ツール設定API** - tool_settingsテーブル・RPC作成
-4. **Phase 4: UI要件定義** - spc-ui.md作成
+1. **Microsoft Todo OAuth実装** - Sprint-006予定
+2. **Phase 5: ツール設定API** - tool_settingsテーブル・RPC作成
+3. **Phase 4: UI要件定義** - spc-ui.md作成
 
 ---
 

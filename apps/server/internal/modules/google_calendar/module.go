@@ -20,7 +20,7 @@ const (
 	googleCalendarAPIBase = "https://www.googleapis.com/calendar/v3"
 	googleCalendarVersion = "v3"
 	googleTokenURL        = "https://oauth2.googleapis.com/token"
-	tokenRefreshBuffer    = 365 * 24 * 60 * 60 // DEBUG: Force refresh (1 year buffer)
+	tokenRefreshBuffer    = 5 * 60 // Refresh 5 minutes before expiry
 )
 
 var client = httpclient.New()
