@@ -12,6 +12,7 @@ import (
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
+	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
@@ -56,12 +57,13 @@ type ToolExport struct {
 
 // Service display names (Module.Name() returns lowercase id)
 var serviceDisplayNames = map[string]string{
-	"notion":     "Notion",
-	"github":     "GitHub",
-	"jira":       "Jira",
-	"confluence": "Confluence",
-	"supabase":   "Supabase",
-	"airtable":   "Airtable",
+	"notion":          "Notion",
+	"github":          "GitHub",
+	"jira":            "Jira",
+	"confluence":      "Confluence",
+	"supabase":        "Supabase",
+	"airtable":        "Airtable",
+	"google_calendar": "Google Calendar",
 }
 
 func init() {
@@ -72,6 +74,7 @@ func init() {
 	modules.RegisterModule(confluence.New())
 	modules.RegisterModule(supabase.New())
 	modules.RegisterModule(airtable.New())
+	modules.RegisterModule(google_calendar.New())
 }
 
 func main() {

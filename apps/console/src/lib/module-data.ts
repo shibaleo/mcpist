@@ -62,8 +62,8 @@ export const serviceIcons: Record<string, string> = {
   confluence: "book",
   supabase: "database",
   airtable: "table",
-  "google-calendar": "calendar",
-  "microsoft-todo": "check-square",
+  google_calendar: "calendar",
+  microsoft_todo: "check-square",
 }
 
 export function getServiceIcon(serviceId: string): string {

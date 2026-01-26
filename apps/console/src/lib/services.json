@@ -19,6 +19,12 @@
       "apiVersion": "2022-11-28"
     },
     {
+      "id": "google_calendar",
+      "name": "Google Calendar",
+      "description": "Google Calendar API - 予定の取得・作成・更新・削除",
+      "apiVersion": "v3"
+    },
+    {
       "id": "jira",
       "name": "Jira",
       "description": "Jira API - Issue/Project操作（検索、作成、更新、コメント、ワークログ）",
