@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 
-// Debug: log env vars at config load time
-console.log('[next.config] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   env: {
