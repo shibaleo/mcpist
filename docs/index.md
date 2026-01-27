@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Specification
-      link: /002_specification/
+      link: /specification/
     - theme: alt
       text: GitHub
       link: https://github.com/shiba-dog-and-leo/mcpist
@@ -24,9 +24,9 @@ features:
 
 ## Documentation Sections
 
-- [001_requirements](/001_requirements/)
-- [002_specification](/002_specification/)
-- [003_design](/003_design/)
-- [004_test](/004_test/)
-- [005_security](/005_security/)
-- [006_operation](/006_operation/)
+- [Requirements](/requirements/)
+- [Specification](/specification/)
+- [Design](/design/)
+- [Test](/test/)
+- [Security](/security/)
+- [Operation](/operation/)

@@ -337,6 +337,22 @@ Step 1-4 は Console 側、Step 5-6 は Go Server 側。並行して進められ
 
 ---
 
+## 実装進捗
+
+| Step | 内容 | 状態 |
+|------|------|------|
+| 1 | tools.json を annotations 形式に変換 | ✅ 完了 (D16-001) |
+| 2 | module-data.ts の型定義 + ヘルパー関数 | ✅ 完了 (D16-001) |
+| 3 | tools/page.tsx の参照を更新 | ✅ 完了 (D16-001) |
+| 4 | tool-settings.ts の saveDefaultToolSettings を更新 | ✅ 完了 (D16-001) |
+| 5 | Go Server の types.go に ToolAnnotations 追加 | ✅ 完了 (D16-010) |
+| 6 | Go Server の各モジュール tools.go に annotations 追加 | ✅ 完了 (D16-010) |
+
+- Step 1-4: コミット `645b79d` で完了
+- Step 5-6: `Dangerous bool` を完全削除し、`ToolAnnotations` 構造体 + プリセット定数（AnnotateReadOnly, AnnotateCreate, AnnotateUpdate, AnnotateDelete, AnnotateDestructive）を追加。全8モジュール115ツールに annotations を設定。tools-export も annotations 形式に更新
+
+---
+
 ## 変更ファイル一覧
 
 | ファイル | 変更内容 |

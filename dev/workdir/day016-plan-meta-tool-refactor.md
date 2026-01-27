@@ -212,13 +212,13 @@ func availableModuleNames(enabledModules []string, disabledTools map[string][]st
 | ステップ | 状態 |
 |----------|------|
 | types.go: Property.Items 追加 | ✅ 完了 |
-| modules.go: DynamicMetaTools() 実装 | ⬜ 未着手 |
-| modules.go: GetModuleSchemas() 実装 | ⬜ 未着手 |
-| modules.go: filterTools(), availableModuleNames() 実装 | ⬜ 未着手 |
-| handler.go: handleToolsList(ctx) 動的化 | ⬜ 未着手 |
-| handler.go: handleGetModuleSchema(ctx, args) 配列対応 | ⬜ 未着手 |
-| handler.go: processRequest/handleToolCall の引数変更 | ⬜ 未着手 |
-| go build 確認 | ⬜ 未着手 |
+| modules.go: filterTools(), availableModuleNames() 実装 | ✅ 完了 |
+| modules.go: DynamicMetaTools() 実装 | ✅ 完了 |
+| modules.go: GetModuleSchemas() 実装 | ✅ 完了 |
+| handler.go: handleToolsList(ctx) 動的化 | ✅ 完了 |
+| handler.go: handleGetModuleSchema(ctx, args) 配列対応 | ✅ 完了 |
+| handler.go: processRequest/handleToolCall の引数変更 | ✅ 完了 |
+| go build 確認 | ✅ 完了 |
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## 主要な差分（仕様 ↔ 実装）
 
-### 1) Token Vault API の形が仕様と異なる
+### 1) Token Vault API の形が仕様と異なる ✅ 仕様修正済み (BL-003)
 - 仕様: Token Vault は **Edge Functions の HTTP API** として `POST /token-vault` を提供し、`Authorization: Bearer <publishable key>` でアクセスする想定。
   - `docs/specification/dtl-spc/itf-tvl.md`
 - 実装: Go サーバは **Supabase RPC `get_module_token` を直接呼び出す**方式。
@@ -17,65 +17,70 @@
   - `supabase/migrations/00000000000011_fix_get_module_token_metadata.sql`
 - さらに Console 側に **内部用 `/api/token-vault`** があるが、これは Next.js API であり仕様の `POST /token-vault` とは別物。
   - `apps/console/src/app/api/token-vault/route.ts`
+- **対応**: `itf-tvl.md` を v2.0 に更新し、Supabase RPC方式に合わせた
 
-### 2) MCP メタツール名の不一致
+### 2) MCP メタツール名の不一致 ✅ 仕様修正済み (BL-004)
 - 仕様: `get_module_schema`, `call`, `batch`
   - `docs/specification/spc-itf.md`
 - 実装: `get_module_schema`, `run`, `batch`
   - `apps/server/internal/modules/modules.go`
   - `apps/server/internal/mcp/handler.go`
+- **対応**: `spc-itf.md` の `call` → `run` に修正
 
-### 3) Long-lived Token のプレフィックス不一致
+### 3) Long-lived Token のプレフィックス不一致 ✅ 仕様修正済み (BL-005)
 - 仕様: `mcpist_...`
   - `docs/specification/spc-itf.md`
 - 実装: `mpt_...` を生成・検証
   - `supabase/migrations/00000000000006_rpc_console.sql`
   - `apps/worker/src/index.ts`
+- **対応**: `spc-itf.md` の `mcpist_` → `mpt_` に修正
 
-### 4) Auth Server の独立実装がない
+### 4) Auth Server の独立実装がない ✅ 仕様修正済み (BL-006)
 - 仕様: `auth.mcpist.app` に OAuth/OIDC エンドポイントがある前提
   - `docs/specification/dtl-spc/idx-ept.md`
 - 実装: Supabase Auth を直接使い、Worker が `/.well-known/*` のメタデータを返す構成
   - `apps/worker/src/index.ts`
+- **対応**: `idx-ept.md` を Supabase Auth + Worker 構成に更新
 
-### 5) API Gateway の Rate Limit 未実装
+### 5) API Gateway の Rate Limit 未実装 ⬜ 未修正 (BL-010)
 - 仕様: API Gateway がレート制限を担う
   - `docs/specification/spc-dsn.md`
 - 実装: コメントで「削除済み」と明記
   - `apps/worker/src/index.ts`
 
-### 6) JWT 検証項目の差
+### 6) JWT 検証項目の差 ⬜ 未修正 (BL-011)
 - 仕様: `aud`, `iss`, `exp` を含む厳密検証
   - `docs/specification/spc-itf.md`
 - 実装: Supabase API(userinfo/user)確認＋JWKS検証の 3段構えだが、`aud` を明示チェックしていない
   - `apps/worker/src/index.ts`
 
-### 7) MCP エラーコードの差
+### 7) MCP エラーコードの差 ⬜ 未修正 (BL-012)
 - 仕様: 2001–2005 の拡張エラーコード
   - `docs/specification/spc-itf.md`
 - 実装: JSON-RPC 標準コードのみ
   - `apps/server/internal/mcp/types.go`
 
-### 8) Console API 設計の差
+### 8) Console API 設計の差 ⬜ 未修正 (BL-013)
 - 仕様: `/api/dashboard` など REST API 前提
   - `docs/specification/spc-itf.md`
 - 実装: Supabase RPC を直接呼び出す設計。該当 API ルートは未実装
   - `apps/console/src/lib/api-keys.ts`
   - `supabase/migrations/00000000000006_rpc_console.sql`
 
-### 9) PSP Webhook 未実装
+### 9) PSP Webhook 未実装 ⬜ 未修正 (BL-014)
 - 仕様: `/webhooks/stripe` を公開
   - `docs/specification/spc-itf.md`
 - 実装: ルート／ハンドラ未確認
   - `apps/server`, `apps/worker`, `apps/console` 内に該当なし
 
-### 10) Token Refresh の担当が仕様と異なる
+### 10) Token Refresh の担当が仕様と異なる ✅ 仕様修正済み (BL-007)
 - 仕様: Token Vault がトークンリフレッシュを担う前提
   - `docs/specification/spc-itf.md`
 - 実装: 各モジュールが refresh を実装し、更新は RPC `update_module_token` で保存
   - `apps/server/internal/modules/google_calendar/module.go`
   - `apps/server/internal/modules/microsoft_todo/module.go`
   - `apps/server/internal/store/token.go`
+- **対応**: `itf-tvl.md` にモジュール側リフレッシュの設計を反映
 
 ## 仕様と一致している点
 - **アーキテクチャ構成**（Go server / Worker / Next.js / Supabase）
@@ -110,6 +115,25 @@
 - Console API: `validate-token`, OAuth Google/Microsoft の API 群
   - `apps/console/src/app/api/validate-token/route.ts`
   - `apps/console/src/app/api/oauth/*/route.ts`
+
+## 対応状況サマリ
+
+| # | 差分 | 状態 | バックログ |
+|---|------|------|-----------|
+| 1 | Token Vault API | ✅ 仕様修正済み | BL-003 |
+| 2 | メタツール名 call→run | ✅ 仕様修正済み | BL-004 |
+| 3 | Tokenプレフィックス | ✅ 仕様修正済み | BL-005 |
+| 4 | Auth Server | ✅ 仕様修正済み | BL-006 |
+| 5 | Rate Limit | ⬜ 未修正 | BL-010 |
+| 6 | JWT audチェック | ⬜ 未修正 | BL-011 |
+| 7 | MCPエラーコード | ⬜ 未修正 | BL-012 |
+| 8 | Console API設計 | ⬜ 未修正 | BL-013 |
+| 9 | PSP Webhook | ⬜ 未修正 | BL-014 |
+| 10 | Token Refresh | ✅ 仕様修正済み | BL-007 |
+
+**修正済み: 5/10、未修正: 5/10**
+
+---
 
 ## 参照ファイル
 - `docs/specification/spc-sys.md`
