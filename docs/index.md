@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Specification
-      link: /specification/
+      link: /002_specification/
     - theme: alt
       text: GitHub
       link: https://github.com/shiba-dog-and-leo/mcpist
@@ -21,3 +21,12 @@ features:
   - title: Subscription Management
     details: Usage-based billing with Stripe integration
 ---
+
+## Documentation Sections
+
+- [001_requirements](/001_requirements/)
+- [002_specification](/002_specification/)
+- [003_design](/003_design/)
+- [004_test](/004_test/)
+- [005_security](/005_security/)
+- [006_operation](/006_operation/)
