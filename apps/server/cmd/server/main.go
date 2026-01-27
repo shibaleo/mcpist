@@ -9,6 +9,7 @@ import (
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/observability"
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
@@ -33,6 +34,9 @@ func init() {
 }
 
 func main() {
+	// Initialize observability (Loki)
+	observability.Init()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8089"

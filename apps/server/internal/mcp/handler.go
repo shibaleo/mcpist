@@ -7,11 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
-	"time"
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/observability"
 	"mcpist/server/internal/store"
 )
 
@@ -197,7 +198,7 @@ func (h *Handler) processRequest(ctx context.Context, req *Request) (interface{}
 	case "initialized":
 		return nil, nil
 	case "tools/list":
-		return h.handleToolsList(), nil
+		return h.handleToolsList(ctx)
 	case "tools/call":
 		return h.handleToolCall(ctx, req)
 	default:
@@ -218,9 +219,12 @@ func (h *Handler) handleInitialize(req *Request) *InitializeResult {
 	}
 }
 
-func (h *Handler) handleToolsList() *ToolsListResult {
-	// Return only meta tools (lazy loading)
-	return &ToolsListResult{Tools: modules.MetaTools()}
+func (h *Handler) handleToolsList(ctx context.Context) (*ToolsListResult, *Error) {
+	authCtx := middleware.GetAuthContext(ctx)
+	if authCtx == nil {
+		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+	}
+	return &ToolsListResult{Tools: modules.DynamicMetaTools(authCtx.EnabledModules, authCtx.DisabledTools)}, nil
 }
 
 func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallResult, *Error) {
@@ -236,7 +240,7 @@ func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallRe
 
 	switch params.Name {
 	case "get_module_schema":
-		return h.handleGetModuleSchema(params.Arguments)
+		return h.handleGetModuleSchema(ctx, params.Arguments)
 	case "run":
 		return h.handleRun(ctx, params.Arguments)
 	case "batch":
@@ -246,13 +250,36 @@ func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallRe
 	}
 }
 
-func (h *Handler) handleGetModuleSchema(args map[string]interface{}) (*ToolCallResult, *Error) {
-	moduleName, ok := args["module"].(string)
-	if !ok {
-		return nil, &Error{Code: InvalidParams, Message: "module must be a string"}
+func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
+	var moduleNames []string
+
+	switch v := args["module"].(type) {
+	case []interface{}:
+		// Array input: ["notion", "jira"]
+		for _, item := range v {
+			name, ok := item.(string)
+			if !ok {
+				return nil, &Error{Code: InvalidParams, Message: "module array must contain strings"}
+			}
+			moduleNames = append(moduleNames, name)
+		}
+	case string:
+		// Backward compatible: single string "notion"
+		moduleNames = []string{v}
+	default:
+		return nil, &Error{Code: InvalidParams, Message: "module must be a string or array of strings"}
 	}
 
-	result, err := modules.GetModuleSchema(moduleName)
+	if len(moduleNames) == 0 {
+		return nil, &Error{Code: InvalidParams, Message: "module must not be empty"}
+	}
+
+	authCtx := middleware.GetAuthContext(ctx)
+	if authCtx == nil {
+		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+	}
+
+	result, err := modules.GetModuleSchemas(moduleNames, authCtx.DisabledTools)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
@@ -276,43 +303,41 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 		params = make(map[string]interface{})
 	}
 
-	// Get tool cost (default: 1 credit per call)
+	// Currently 1 credit per tool. To support per-tool pricing,
+	// replace with e.g. modules.CreditCost(moduleName, toolName).
 	creditCost := 1
 
-	// Check module/tool access authorization
 	authCtx := middleware.GetAuthContext(ctx)
-	if authCtx != nil {
-		if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
-			authErr, ok := err.(*middleware.AuthError)
-			if ok {
-				return nil, &Error{Code: InvalidRequest, Message: authErr.Message}
-			}
-			return nil, &Error{Code: InvalidRequest, Message: err.Error()}
-		}
+	if authCtx == nil {
+		return nil, &Error{Code: InternalError, Message: "auth context missing"}
 	}
 
-	result, err := modules.Call(ctx, moduleName, toolName, params)
+	if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
+		authErr, ok := err.(*middleware.AuthError)
+		if ok {
+			return nil, &Error{Code: InvalidRequest, Message: authErr.Message}
+		}
+		return nil, &Error{Code: InvalidRequest, Message: err.Error()}
+	}
+
+	result, err := modules.Run(ctx, moduleName, toolName, params)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
 	// Consume credits after successful call
-	if authCtx != nil {
-		// Generate a unique request ID for idempotency
-		requestID := generateRequestID()
-		consumeResult, err := h.userStore.ConsumeCredit(
-			authCtx.UserID,
-			moduleName,
-			toolName,
-			creditCost,
-			requestID,
-			nil, // no task_id for single calls
-		)
-		if err != nil {
-			log.Printf("Failed to consume credits: %v", err)
-		} else if !consumeResult.Success {
-			log.Printf("Credit consumption failed: %s", consumeResult.Error)
-		}
+	consumeResult, err := h.userStore.ConsumeCredit(
+		authCtx.UserID,
+		moduleName,
+		toolName,
+		creditCost,
+		middleware.GetRequestID(ctx),
+		nil, // no task_id for single calls
+	)
+	if err != nil {
+		log.Printf("Failed to consume credits: %v", err)
+	} else if !consumeResult.Success {
+		log.Printf("Credit consumption failed: %s", consumeResult.Error)
 	}
 
 	return result, nil
@@ -324,6 +349,17 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 		return nil, &Error{Code: InvalidParams, Message: "commands must be a string"}
 	}
 
+	authCtx := middleware.GetAuthContext(ctx)
+	if authCtx == nil {
+		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+	}
+
+	// All-or-Nothing: pre-check all commands before execution
+	requestID := middleware.GetRequestID(ctx)
+	if mcpErr := checkBatchPermissions(requestID, authCtx, commands); mcpErr != nil {
+		return nil, mcpErr
+	}
+
 	batchResult, err := modules.Batch(ctx, commands)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
@@ -331,30 +367,85 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 
 	// Consume credits for successful tool executions
 	if batchResult.SuccessCount > 0 {
-		authCtx := middleware.GetAuthContext(ctx)
-		if authCtx != nil {
-			requestID := generateRequestID()
-			creditCost := batchResult.SuccessCount // 1 credit per successful tool call
-			consumeResult, err := h.userStore.ConsumeCredit(
-				authCtx.UserID,
-				"batch",
-				"batch",
-				creditCost,
-				requestID,
-				nil,
-			)
-			if err != nil {
-				log.Printf("Failed to consume credits for batch: %v", err)
-			} else if !consumeResult.Success {
-				log.Printf("Credit consumption failed for batch: %s", consumeResult.Error)
-			}
+		creditCost := batchResult.SuccessCount // 1 credit per successful tool call
+		consumeResult, err := h.userStore.ConsumeCredit(
+			authCtx.UserID,
+			"batch",
+			"batch",
+			creditCost,
+			requestID,
+			nil,
+		)
+		if err != nil {
+			log.Printf("Failed to consume credits for batch: %v", err)
+		} else if !consumeResult.Success {
+			log.Printf("Credit consumption failed for batch: %s", consumeResult.Error)
 		}
 	}
 
 	return batchResult.Result, nil
 }
 
-// generateRequestID generates a unique request ID for idempotency
-func generateRequestID() string {
-	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().UnixNano()%1000000)
+// checkBatchPermissions parses batch JSONL and checks all tools are permitted.
+// Returns an MCP error if any tool is denied (All-or-Nothing).
+// Client receives a vague message; server log records specific denied tools (Layer 3: Detection).
+func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, commands string) *Error {
+	lines := strings.Split(strings.TrimSpace(commands), "\n")
+
+	var deniedDetails []string // for server log only
+	toolCount := 0
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		var cmd struct {
+			Module string `json:"module"`
+			Tool   string `json:"tool"`
+		}
+		if err := json.Unmarshal([]byte(line), &cmd); err != nil {
+			continue // JSON parse errors are handled later by modules.Batch
+		}
+		if cmd.Module == "" || cmd.Tool == "" {
+			continue // validation handled by modules.Batch
+		}
+
+		toolCount++
+
+		// creditCost=0: skip credit check (credits are consumed after execution)
+		if err := authCtx.CanAccessTool(cmd.Module, cmd.Tool, 0); err != nil {
+			if authErr, ok := err.(*middleware.AuthError); ok {
+				deniedDetails = append(deniedDetails, fmt.Sprintf("%s:%s(%s)", cmd.Module, cmd.Tool, authErr.Code))
+			} else {
+				deniedDetails = append(deniedDetails, fmt.Sprintf("%s:%s", cmd.Module, cmd.Tool))
+			}
+		}
+	}
+
+	if len(deniedDetails) > 0 {
+		// Layer 3: Detection log (server-side only, not exposed to client)
+		observability.LogSecurityEvent(requestID, authCtx.UserID, "batch_permission_denied", map[string]any{
+			"denied_tools": deniedDetails,
+		})
+
+		return &Error{
+			Code:    InvalidRequest,
+			Message: "batch rejected: one or more tools are not permitted",
+		}
+	}
+
+	// Credit balance check: currently 1 credit per tool.
+	// To support per-tool pricing, replace toolCount with a sum of
+	// per-tool costs (e.g. modules.CreditCost(module, tool)) accumulated in the loop above.
+	if authCtx.TotalCredits() < toolCount {
+		return &Error{
+			Code:    InvalidRequest,
+			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d", toolCount, authCtx.TotalCredits()),
+		}
+	}
+
+	return nil
 }
+

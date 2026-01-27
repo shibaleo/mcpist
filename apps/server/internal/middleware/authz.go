@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -17,6 +19,8 @@ type ContextKey string
 const (
 	// AuthContextKey is the context key for auth context
 	AuthContextKey ContextKey = "authContext"
+	// RequestIDKey is the context key for request tracing ID
+	RequestIDKey ContextKey = "requestID"
 )
 
 // AuthContext contains user authentication and authorization info
@@ -41,10 +45,15 @@ type Authorizer struct {
 	store         *store.UserStore
 }
 
-// NewAuthorizer creates a new authorizer
+// NewAuthorizer creates a new authorizer.
+// Panics if GATEWAY_SECRET is not set — required in all environments.
 func NewAuthorizer(userStore *store.UserStore) *Authorizer {
+	secret := os.Getenv("GATEWAY_SECRET")
+	if secret == "" {
+		log.Fatal("GATEWAY_SECRET is not set. Set it via environment variable or .env.dev")
+	}
 	return &Authorizer{
-		gatewaySecret: os.Getenv("GATEWAY_SECRET"),
+		gatewaySecret: secret,
 		store:         userStore,
 	}
 }
@@ -59,8 +68,15 @@ func (a *Authorizer) Authorize(next http.Handler) http.Handler {
 			return
 		}
 
-		// Add auth context to request context
+		// Generate or propagate request ID for tracing
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = generateRequestID()
+		}
+
+		// Add auth context and request ID to request context
 		ctx := context.WithValue(r.Context(), AuthContextKey, authCtx)
+		ctx = context.WithValue(ctx, RequestIDKey, requestID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -68,14 +84,12 @@ func (a *Authorizer) Authorize(next http.Handler) http.Handler {
 // ValidateRequest validates the request and returns auth context
 func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 	// 1. Verify gateway secret (ensures request came from Worker)
-	if a.gatewaySecret != "" {
-		requestSecret := r.Header.Get("X-Gateway-Secret")
-		if requestSecret != a.gatewaySecret {
-			return nil, &AuthError{
-				Code:    "INVALID_GATEWAY_SECRET",
-				Message: "Invalid gateway secret",
-				Status:  http.StatusUnauthorized,
-			}
+	requestSecret := r.Header.Get("X-Gateway-Secret")
+	if requestSecret != a.gatewaySecret {
+		return nil, &AuthError{
+			Code:    "INVALID_GATEWAY_SECRET",
+			Message: "Invalid gateway secret",
+			Status:  http.StatusUnauthorized,
 		}
 	}
 
@@ -214,4 +228,19 @@ func (a *Authorizer) writeErrorResponse(w http.ResponseWriter, err error) {
 func GetAuthContext(ctx context.Context) *AuthContext {
 	authCtx, _ := ctx.Value(AuthContextKey).(*AuthContext)
 	return authCtx
+}
+
+// GetRequestID extracts request ID from context
+func GetRequestID(ctx context.Context) string {
+	id, _ := ctx.Value(RequestIDKey).(string)
+	return id
+}
+
+// generateRequestID creates a random 16-byte hex request ID
+func generateRequestID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("fallback-%d", os.Getpid())
+	}
+	return hex.EncodeToString(b)
 }
