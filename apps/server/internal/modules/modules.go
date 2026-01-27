@@ -239,8 +239,9 @@ func GetModuleSchema(moduleName string) (*ToolCallResult, error) {
 }
 
 // GetModuleSchemas returns schemas for multiple modules with tool filtering.
+// Modules with zero enabled tools are treated as unknown (not exposed to client).
 // Unknown module names are reported as errors in the response but don't prevent other modules from returning.
-func GetModuleSchemas(moduleNames []string, disabledTools map[string][]string) (*ToolCallResult, error) {
+func GetModuleSchemas(moduleNames []string, enabledModules []string, disabledTools map[string][]string) (*ToolCallResult, error) {
 	var schemas []ModuleSchema
 	var errors []string
 
@@ -252,6 +253,10 @@ func GetModuleSchemas(moduleNames []string, disabledTools map[string][]string) (
 		}
 
 		tools := filterTools(name, m.Tools(), disabledTools)
+		if len(tools) == 0 {
+			errors = append(errors, fmt.Sprintf("Unknown module: %s", name))
+			continue
+		}
 		schemas = append(schemas, ModuleSchema{
 			Module:      m.Name(),
 			Description: m.Description(),
@@ -262,10 +267,11 @@ func GetModuleSchemas(moduleNames []string, disabledTools map[string][]string) (
 		})
 	}
 
-	// If all modules were unknown, return error
+	// If all modules were unknown or had no enabled tools, return error with available list
 	if len(schemas) == 0 && len(errors) > 0 {
+		available := availableModuleNames(enabledModules, disabledTools)
 		return &ToolCallResult{
-			Content: []ContentBlock{{Type: "text", Text: strings.Join(errors, "; ") + fmt.Sprintf(". Available: %v", ListModules())}},
+			Content: []ContentBlock{{Type: "text", Text: strings.Join(errors, "; ") + fmt.Sprintf(". Available: %v", available)}},
 			IsError: true,
 		}, nil
 	}

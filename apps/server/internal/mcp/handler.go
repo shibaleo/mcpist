@@ -279,7 +279,7 @@ func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]int
 		return nil, &Error{Code: InternalError, Message: "auth context missing"}
 	}
 
-	result, err := modules.GetModuleSchemas(moduleNames, authCtx.DisabledTools)
+	result, err := modules.GetModuleSchemas(moduleNames, authCtx.EnabledModules, authCtx.DisabledTools)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
