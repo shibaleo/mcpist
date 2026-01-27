@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,6 +31,7 @@ import {
   XCircle,
   Unlink,
   Info,
+  ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -63,6 +64,7 @@ interface AuthConfigField {
 interface AuthConfig {
   authLabel: string
   helpText?: string
+  helpUrl?: string
   authType: "api_key" | "basic" | "oauth"
   extraFields?: AuthConfigField[]
 }
@@ -72,17 +74,20 @@ const authConfig: Record<string, AuthConfig> = {
     authLabel: "内部インテグレーショントークン",
     helpText:
       "Notion設定 > マイコネクション > インテグレーションを開発または管理する > 新しいインテグレーションから取得してください",
+    helpUrl: "https://www.notion.so/profile/integrations",
     authType: "api_key",
   },
   github: {
     authLabel: "Personal Access Token",
     helpText:
       "GitHub Settings > Developer settings > Personal access tokens > Fine-grained tokens から発行してください",
+    helpUrl: "https://github.com/settings/tokens?type=beta",
     authType: "api_key",
   },
   jira: {
     authLabel: "APIトークン",
     helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください",
+    helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
     authType: "basic",
     extraFields: [
       { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
@@ -93,6 +98,7 @@ const authConfig: Record<string, AuthConfig> = {
     authLabel: "APIトークン",
     helpText:
       "Atlassian管理画面 > セキュリティ > APIトークンから発行してください（Jiraと共通のトークンを使用できます）",
+    helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
     authType: "basic",
     extraFields: [
       { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
@@ -103,6 +109,7 @@ const authConfig: Record<string, AuthConfig> = {
     authLabel: "Personal Access Token",
     helpText:
       "Supabase Management APIへ接続するPersonal Access Tokenを取得してください（Dashboard > Account > Access Tokens）",
+    helpUrl: "https://supabase.com/dashboard/account/tokens",
     authType: "api_key",
   },
   google_calendar: {
@@ -275,6 +282,20 @@ export default function ToolsPage() {
     setLocalToolSettings((prev) => ({
       ...prev,
       [moduleId]: allEnabled,
+    }))
+  }
+
+  const handleDeselectAll = (moduleId: string) => {
+    const mod = modules.find((m) => m.id === moduleId)
+    if (!mod) return
+
+    const allDisabled: Record<string, boolean> = {}
+    mod.tools.forEach((t) => {
+      allDisabled[t.id] = false
+    })
+    setLocalToolSettings((prev) => ({
+      ...prev,
+      [moduleId]: allDisabled,
     }))
   }
 
@@ -634,6 +655,9 @@ export default function ToolsPage() {
                   <Button variant="outline" size="sm" onClick={() => handleSelectAll(selectedModule.id)}>
                     全選択
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDeselectAll(selectedModule.id)}>
+                    全解除
+                  </Button>
                 </div>
               </div>
               {selectedModule.tools.map((tool) => {
@@ -645,15 +669,10 @@ export default function ToolsPage() {
                   <div
                     key={tool.id}
                     className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg border",
+                      "flex items-center gap-3 p-3 rounded-lg border",
                       dangerous && "border-yellow-500/30 bg-yellow-500/5"
                     )}
                   >
-                    <Checkbox
-                      checked={isToolEnabled(selectedModule.id, tool.id)}
-                      onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
-                      className="mt-1"
-                    />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm font-mono">{tool.name}</span>
@@ -679,6 +698,10 @@ export default function ToolsPage() {
                       </div>
                       <p className="text-sm text-muted-foreground">{tool.description}</p>
                     </div>
+                    <Switch
+                      checked={isToolEnabled(selectedModule.id, tool.id)}
+                      onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
+                    />
                   </div>
                 )
               })}
@@ -803,7 +826,20 @@ export default function ToolsPage() {
                   {dialogAuthConfig?.helpText && (
                     <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
                       <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <p className="text-xs text-muted-foreground">{dialogAuthConfig.helpText}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">{dialogAuthConfig.helpText}</p>
+                        {dialogAuthConfig.helpUrl && (
+                          <a
+                            href={dialogAuthConfig.helpUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            トークンを取得する
+                          </a>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
