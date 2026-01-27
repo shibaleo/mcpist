@@ -262,6 +262,7 @@ async function fetchBackend(
   const headers = new Headers(request.headers);
   headers.set("X-User-ID", authResult.userId);
   headers.set("X-Auth-Type", authResult.type);
+  headers.set("X-Request-ID", crypto.randomUUID());
 
   if (env.GATEWAY_SECRET) {
     headers.set("X-Gateway-Secret", env.GATEWAY_SECRET);

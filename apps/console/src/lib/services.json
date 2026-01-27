@@ -9,43 +9,43 @@
     {
       "id": "confluence",
       "name": "Confluence",
-      "description": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",
+      "description": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
       "apiVersion": "v2"
     },
     {
       "id": "github",
       "name": "GitHub",
-      "description": "GitHub API - リポジトリ、Issue、PR、Actions、検索",
+      "description": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
       "apiVersion": "2022-11-28"
     },
     {
       "id": "google_calendar",
       "name": "Google Calendar",
-      "description": "Google Calendar API - 予定の取得・作成・更新・削除",
+      "description": "Google Calendar API - List, create, update, and delete events",
       "apiVersion": "v3"
     },
     {
       "id": "jira",
       "name": "Jira",
-      "description": "Jira API - Issue/Project操作（検索、作成、更新、コメント、ワークログ）",
+      "description": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
       "apiVersion": "3"
     },
     {
       "id": "microsoft_todo",
       "name": "Microsoft To Do",
-      "description": "Microsoft To Do API - タスク・リストの取得・作成・更新・削除",
+      "description": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
       "apiVersion": "v1.0"
     },
     {
       "id": "notion",
       "name": "Notion",
-      "description": "Notion API - ページ・データベース・ブロック操作",
+      "description": "Notion API - Page, Database, Block, Comment, and User operations",
       "apiVersion": "2022-06-28"
     },
     {
       "id": "supabase",
       "name": "Supabase",
-      "description": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ",
+      "description": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
       "apiVersion": "v1"
     }
   ]
