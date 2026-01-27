@@ -673,6 +673,10 @@ export default function ToolsPage() {
                       dangerous && "border-yellow-500/30 bg-yellow-500/5"
                     )}
                   >
+                    <Switch
+                      checked={isToolEnabled(selectedModule.id, tool.id)}
+                      onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
+                    />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm font-mono">{tool.name}</span>
@@ -698,10 +702,6 @@ export default function ToolsPage() {
                       </div>
                       <p className="text-sm text-muted-foreground">{tool.description}</p>
                     </div>
-                    <Switch
-                      checked={isToolEnabled(selectedModule.id, tool.id)}
-                      onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
-                    />
                   </div>
                 )
               })}
