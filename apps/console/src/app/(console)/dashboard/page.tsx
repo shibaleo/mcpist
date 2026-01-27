@@ -5,23 +5,27 @@ import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link2, Coins, Receipt, Loader2, Settings2 } from "lucide-react"
 import { getUserCredits, getServiceConnections, type UserCredits, type ServiceConnection } from "@/lib/credits"
+import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const [credits, setCredits] = useState<UserCredits | null>(null)
   const [connections, setConnections] = useState<ServiceConnection[]>([])
+  const [toolSettings, setToolSettings] = useState<ToolSetting[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
       try {
-        const [creditsData, connectionsData] = await Promise.all([
+        const [creditsData, connectionsData, toolSettingsData] = await Promise.all([
           getUserCredits(),
           getServiceConnections(),
+          getMyToolSettings(),
         ])
         setCredits(creditsData)
         setConnections(connectionsData)
+        setToolSettings(toolSettingsData)
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
       } finally {
@@ -33,6 +37,8 @@ export default function DashboardPage() {
   }, [])
 
   const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
+  const enabledToolCount = toolSettings.filter((t) => t.enabled).length
+  const totalToolCount = toolSettings.length
 
   return (
     <div className="p-6 space-y-6">
@@ -77,8 +83,8 @@ export default function DashboardPage() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : (
               <>
-                <div className="text-3xl font-bold">-</div>
-                <p className="text-xs text-muted-foreground mt-1">ツール設定で確認</p>
+                <div className="text-3xl font-bold">{enabledToolCount}</div>
+                <p className="text-xs text-muted-foreground mt-1">{totalToolCount} ツール中</p>
               </>
             )}
           </CardContent>
