@@ -137,6 +137,20 @@ export async function saveDefaultToolSettings(
     return
   }
 
+  // 既にツール設定が存在する場合はスキップ（ユーザーのカスタム設定を保持）
+  const { data: existing, error: fetchError } = await supabase.rpc("get_my_tool_settings", {
+    p_module_name: moduleName,
+  })
+
+  if (fetchError) {
+    console.error(`[tool-settings] Failed to check existing settings for ${moduleName}:`, fetchError)
+    return
+  }
+
+  if (existing && existing.length > 0) {
+    return
+  }
+
   const enabledTools: string[] = []
   const disabledTools: string[] = []
 
