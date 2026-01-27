@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"mcpist/server/internal/middleware"
+	"mcpist/server/internal/observability"
 )
 
 // =============================================================================
@@ -39,21 +41,84 @@ func ListModules() []string {
 }
 
 // =============================================================================
+// Tool Filtering
+// =============================================================================
+
+// filterTools returns tools excluding disabled ones for a given module.
+// If disabledTools is nil (no auth context), all tools are returned.
+func filterTools(moduleName string, tools []Tool, disabledTools map[string][]string) []Tool {
+	if disabledTools == nil {
+		return tools
+	}
+	disabled, ok := disabledTools[moduleName]
+	if !ok {
+		return tools
+	}
+	disabledSet := make(map[string]bool, len(disabled))
+	for _, t := range disabled {
+		disabledSet[t] = true
+	}
+	var filtered []Tool
+	for _, tool := range tools {
+		if !disabledSet[tool.Name] {
+			filtered = append(filtered, tool)
+		}
+	}
+	return filtered
+}
+
+// availableModuleNames returns module names that are enabled and have at least one active tool.
+// If enabledModules is nil (no auth context), all registered modules are returned.
+func availableModuleNames(enabledModules []string, disabledTools map[string][]string) []string {
+	if enabledModules == nil {
+		return ListModules()
+	}
+	var available []string
+	for _, name := range enabledModules {
+		m, ok := registry[name]
+		if !ok {
+			continue
+		}
+		filtered := filterTools(name, m.Tools(), disabledTools)
+		if len(filtered) > 0 {
+			available = append(available, name)
+		}
+	}
+	return available
+}
+
+// =============================================================================
 // Meta Tools
 // =============================================================================
 
-// MetaTools returns the three meta tools for lazy loading
-func MetaTools() []Tool {
+// DynamicMetaTools returns meta tools with dynamic module lists based on user's enabled modules and tool settings.
+// If enabledModules is nil, all modules are listed (backward-compatible).
+func DynamicMetaTools(enabledModules []string, disabledTools map[string][]string) []Tool {
+	available := availableModuleNames(enabledModules, disabledTools)
+	moduleList := strings.Join(available, ", ")
+
+	// Build module description lines for run tool
+	var moduleLines []string
+	for _, name := range available {
+		m, ok := registry[name]
+		if !ok {
+			continue
+		}
+		moduleLines = append(moduleLines, fmt.Sprintf("- %s: %s", name, m.Description()))
+	}
+	moduleDesc := strings.Join(moduleLines, "\n")
+
 	return []Tool{
 		{
 			Name:        "get_module_schema",
-			Description: "モジュールのツール定義を取得。重要: 各モジュールにつき1セッション1回のみ呼び出すこと。スキーマは会話履歴にキャッシュされるため、同一モジュールへの2回目以降の呼び出しはrunを直接使用すること。",
+			Description: "Get tool definitions for modules. Important: Call only once per module per session. Schemas are cached in conversation history, so use run directly for subsequent calls to the same module.",
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
 					"module": {
-						Type:        "string",
-						Description: "モジュール名(notion, github, jira, confluence, supabase, google_calendar, microsoft_todo, rag)",
+						Type:        "array",
+						Description: fmt.Sprintf("Array of module names (e.g. [\"notion\", \"jira\"]). Available: %s", moduleList),
+						Items:       &Property{Type: "string"},
 					},
 				},
 				Required: []string{"module"},
@@ -61,35 +126,28 @@ func MetaTools() []Tool {
 		},
 		{
 			Name: "run",
-			Description: `モジュールのツールを単発実行。
+			Description: fmt.Sprintf(`Execute a single module tool.
 
-【利用可能モジュール】
-- notion: ページ・データベース操作
-- github: リポジトリ、Issue、PR操作
-- jira: Issue/Project操作
-- confluence: Wiki操作
-- supabase: DB操作、ストレージ
-- google_calendar: 予定の取得・作成
-- microsoft_todo: タスク管理
-- rag: ドキュメント検索
+[Available Modules]
+%s
 
-【使い方】
-1. get_module_schema(module) でツール一覧とパラメータを確認
-2. run(module, tool, params) で実行`,
+[Usage]
+1. get_module_schema(module) to check available tools and parameters
+2. run(module, tool, params) to execute`, moduleDesc),
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
 					"module": {
 						Type:        "string",
-						Description: "モジュール名",
+						Description: "Module name",
 					},
 					"tool": {
 						Type:        "string",
-						Description: "ツール名",
+						Description: "Tool name",
 					},
 					"params": {
 						Type:        "object",
-						Description: "ツールパラメータ",
+						Description: "Tool parameters",
 					},
 				},
 				Required: []string{"module", "tool"},
@@ -97,38 +155,38 @@ func MetaTools() []Tool {
 		},
 		{
 			Name: "batch",
-			Description: `複数ツールを一括実行（JSONL形式、依存関係・並列実行対応）。
+			Description: `Execute multiple tools in batch (JSONL format, with dependency and parallel execution support).
 
-【フィールド】
-- id (必須): タスク識別子
-- module (必須): モジュール名
-- tool (必須): ツール名
-- params: パラメータ
-- after: 依存タスクID配列（これらの完了を待ってから実行）
-- output: trueでTOON/MD形式で結果を返却
-- raw_output: trueでJSON形式で結果を返却（outputより優先）
+[Fields]
+- id (required): Task identifier
+- module (required): Module name
+- tool (required): Tool name
+- params: Parameters
+- after: Dependency task ID array (waits for these to complete before executing)
+- output: If true, returns result in TOON/MD format
+- raw_output: If true, returns result in JSON format (takes precedence over output)
 
-【変数参照】${id.results[index].field} 形式でJSONPathアクセス
+[Variable References] Access via JSONPath: ${id.results[index].field}
 
-【例1: 並列取得】
+[Example 1: Parallel Fetch]
 {"id":"tasks","module":"microsoft_todo","tool":"list_tasks","params":{"listId":"AQMk..."},"output":true}
 {"id":"daily","module":"microsoft_todo","tool":"list_tasks","params":{"listId":"AQMk..."},"output":true}
 
-【例2: 連鎖処理】
-{"id":"search","module":"notion","tool":"search","params":{"query":"設計"}}
+[Example 2: Chained Processing]
+{"id":"search","module":"notion","tool":"search","params":{"query":"design"}}
 {"id":"page","module":"notion","tool":"get_page_content","params":{"page_id":"${search.results[0].id}"},"after":["search"],"output":true}
 
-【実行ルール】
-- afterなし → goroutineで並列実行
-- afterあり → 依存タスク完了後に実行
-- 循環依存 → エラー
-- 依存タスク失敗 → 依存先もスキップ`,
+[Execution Rules]
+- No after -> parallel execution via goroutines
+- With after -> executes after dependent tasks complete
+- Circular dependency -> error
+- Dependent task failure -> dependents are skipped`,
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
 					"commands": {
 						Type:        "string",
-						Description: "JSONL形式のコマンド列",
+						Description: "Commands in JSONL format",
 					},
 				},
 				Required: []string{"commands"},
@@ -180,12 +238,59 @@ func GetModuleSchema(moduleName string) (*ToolCallResult, error) {
 	}, nil
 }
 
+// GetModuleSchemas returns schemas for multiple modules with tool filtering.
+// Unknown module names are reported as errors in the response but don't prevent other modules from returning.
+func GetModuleSchemas(moduleNames []string, disabledTools map[string][]string) (*ToolCallResult, error) {
+	var schemas []ModuleSchema
+	var errors []string
+
+	for _, name := range moduleNames {
+		m, ok := registry[name]
+		if !ok {
+			errors = append(errors, fmt.Sprintf("Unknown module: %s", name))
+			continue
+		}
+
+		tools := filterTools(name, m.Tools(), disabledTools)
+		schemas = append(schemas, ModuleSchema{
+			Module:      m.Name(),
+			Description: m.Description(),
+			APIVersion:  m.APIVersion(),
+			Tools:       tools,
+			Resources:   m.Resources(),
+			Prompts:     m.Prompts(),
+		})
+	}
+
+	// If all modules were unknown, return error
+	if len(schemas) == 0 && len(errors) > 0 {
+		return &ToolCallResult{
+			Content: []ContentBlock{{Type: "text", Text: strings.Join(errors, "; ") + fmt.Sprintf(". Available: %v", ListModules())}},
+			IsError: true,
+		}, nil
+	}
+
+	jsonBytes, err := json.MarshalIndent(schemas, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	text := string(jsonBytes)
+	if len(errors) > 0 {
+		text = fmt.Sprintf("⚠ %s\n\n%s", strings.Join(errors, "; "), text)
+	}
+
+	return &ToolCallResult{
+		Content: []ContentBlock{{Type: "text", Text: text}},
+	}, nil
+}
+
 // =============================================================================
 // Tool Execution
 // =============================================================================
 
-// Call executes a single tool in a module
-func Call(ctx context.Context, moduleName, toolName string, params map[string]interface{}) (*ToolCallResult, error) {
+// Run executes a single tool in a module
+func Run(ctx context.Context, moduleName, toolName string, params map[string]interface{}) (*ToolCallResult, error) {
 	start := time.Now()
 
 	m, ok := registry[moduleName]
@@ -198,16 +303,17 @@ func Call(ctx context.Context, moduleName, toolName string, params map[string]in
 
 	result, err := m.ExecuteTool(ctx, toolName, params)
 	durationMs := time.Since(start).Milliseconds()
+	requestID := middleware.GetRequestID(ctx)
 
 	if err != nil {
-		log.Printf("[%s.%s] error (%dms): %s", moduleName, toolName, durationMs, err.Error())
+		observability.LogToolCall(requestID, moduleName, toolName, durationMs, "error", err.Error())
 		return &ToolCallResult{
 			Content: []ContentBlock{{Type: "text", Text: err.Error()}},
 			IsError: true,
 		}, nil
 	}
 
-	log.Printf("[%s.%s] success (%dms)", moduleName, toolName, durationMs)
+	observability.LogToolCall(requestID, moduleName, toolName, durationMs, "success", "")
 	return &ToolCallResult{
 		Content: []ContentBlock{{Type: "text", Text: result}},
 	}, nil
@@ -454,7 +560,7 @@ func executeTask(ctx context.Context, taskID string, tasks map[string]*taskState
 	resolvedParams := resolveVariables(state.cmd.Params, resultStore)
 
 	// Execute the tool
-	result, err := Call(ctx, state.cmd.Module, state.cmd.Tool, resolvedParams)
+	result, err := Run(ctx, state.cmd.Module, state.cmd.Tool, resolvedParams)
 	if err != nil {
 		state.err = err
 		return

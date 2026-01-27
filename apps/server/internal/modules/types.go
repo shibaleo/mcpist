@@ -39,12 +39,60 @@ type CompactConverter interface {
 // Tool Definition
 // =============================================================================
 
+// ToolAnnotations describes the tool's behavior hints per MCP spec (2025-11-25).
+type ToolAnnotations struct {
+	ReadOnlyHint    *bool `json:"readOnlyHint,omitempty"`
+	DestructiveHint *bool `json:"destructiveHint,omitempty"`
+	IdempotentHint  *bool `json:"idempotentHint,omitempty"`
+	OpenWorldHint   *bool `json:"openWorldHint,omitempty"`
+}
+
+// Helper to create *bool for annotation fields
+func boolPtr(v bool) *bool { return &v }
+
+// Pre-built annotation sets for common tool patterns
+var (
+	// AnnotateReadOnly: list, get, search, query tools
+	AnnotateReadOnly = &ToolAnnotations{
+		ReadOnlyHint:  boolPtr(true),
+		OpenWorldHint: boolPtr(false),
+	}
+	// AnnotateCreate: create, add, append tools (non-idempotent write)
+	AnnotateCreate = &ToolAnnotations{
+		ReadOnlyHint:    boolPtr(false),
+		DestructiveHint: boolPtr(false),
+		IdempotentHint:  boolPtr(false),
+		OpenWorldHint:   boolPtr(false),
+	}
+	// AnnotateUpdate: update, transition tools (idempotent write)
+	AnnotateUpdate = &ToolAnnotations{
+		ReadOnlyHint:    boolPtr(false),
+		DestructiveHint: boolPtr(false),
+		IdempotentHint:  boolPtr(true),
+		OpenWorldHint:   boolPtr(false),
+	}
+	// AnnotateDelete: delete tools (destructive, idempotent)
+	AnnotateDelete = &ToolAnnotations{
+		ReadOnlyHint:    boolPtr(false),
+		DestructiveHint: boolPtr(true),
+		IdempotentHint:  boolPtr(true),
+		OpenWorldHint:   boolPtr(false),
+	}
+	// AnnotateDestructive: run_query, apply_migration (destructive, non-idempotent)
+	AnnotateDestructive = &ToolAnnotations{
+		ReadOnlyHint:    boolPtr(false),
+		DestructiveHint: boolPtr(true),
+		IdempotentHint:  boolPtr(false),
+		OpenWorldHint:   boolPtr(false),
+	}
+)
+
 // Tool represents an MCP tool definition
 type Tool struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	InputSchema InputSchema `json:"inputSchema"`
-	Dangerous   bool        `json:"dangerous,omitempty"` // Requires confirmation
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	InputSchema InputSchema      `json:"inputSchema"`
+	Annotations *ToolAnnotations `json:"annotations,omitempty"`
 }
 
 // InputSchema defines the input parameters for a tool

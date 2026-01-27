@@ -36,7 +36,7 @@ func (m *ConfluenceModule) Name() string {
 
 // Description returns the module description
 func (m *ConfluenceModule) Description() string {
-	return "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）"
+	return "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)"
 }
 
 // APIVersion returns the Confluence API version
@@ -149,6 +149,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_spaces",
 		Description: "List all Confluence spaces accessible to the current user.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -160,6 +161,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_space",
 		Description: "Get details of a specific Confluence space by ID or key.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -171,6 +173,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_pages",
 		Description: "List pages in a Confluence space.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -184,6 +187,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_page",
 		Description: "Get a Confluence page by ID with its content.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -196,6 +200,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_page",
 		Description: "Create a new Confluence page.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -210,6 +215,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_page",
 		Description: "Update an existing Confluence page.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -224,6 +230,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "delete_page",
 		Description: "Delete a Confluence page.",
+		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -235,6 +242,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "search",
 		Description: "Search Confluence content using CQL (Confluence Query Language). Example: 'type=page AND space=MYSPACE AND text~\"keyword\"'",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -248,6 +256,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_page_comments",
 		Description: "Get comments on a Confluence page.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -261,6 +270,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "add_page_comment",
 		Description: "Add a comment to a Confluence page.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -273,6 +283,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_page_labels",
 		Description: "Get labels on a Confluence page.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -284,6 +295,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "add_page_label",
 		Description: "Add a label to a Confluence page.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{

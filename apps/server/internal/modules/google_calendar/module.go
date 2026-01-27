@@ -40,7 +40,7 @@ func (m *GoogleCalendarModule) Name() string {
 
 // Description returns the module description
 func (m *GoogleCalendarModule) Description() string {
-	return "Google Calendar API - 予定の取得・作成・更新・削除"
+	return "Google Calendar API - List, create, update, and delete events"
 }
 
 // APIVersion returns the Google Calendar API version
@@ -214,6 +214,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_calendars",
 		Description: "List all calendars accessible to the user.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -222,6 +223,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_calendar",
 		Description: "Get details of a specific calendar.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -234,6 +236,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_events",
 		Description: "List events from a calendar within a time range.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -251,6 +254,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_event",
 		Description: "Get details of a specific event.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -263,6 +267,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_event",
 		Description: "Create a new event in a calendar.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -282,6 +287,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_event",
 		Description: "Update an existing event.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -300,7 +306,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "delete_event",
 		Description: "Delete an event from a calendar.",
-		Dangerous:   true,
+		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -314,6 +320,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "quick_add",
 		Description: "Create an event based on a simple text string (e.g., 'Meeting with John tomorrow at 3pm').",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{

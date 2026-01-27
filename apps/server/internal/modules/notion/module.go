@@ -22,7 +22,7 @@ func (m *NotionModule) Name() string {
 
 // Description returns the module description
 func (m *NotionModule) Description() string {
-	return "Notion API - ページ・データベース・ブロック操作"
+	return "Notion API - Page, Database, Block, Comment, and User operations"
 }
 
 // APIVersion returns the Notion API version

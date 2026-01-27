@@ -33,13 +33,20 @@ type ServiceExport struct {
 	Services []Service `json:"services"`
 }
 
+// ToolAnnotations mirrors modules.ToolAnnotations for JSON export
+type ToolAnnotations struct {
+	ReadOnlyHint    *bool `json:"readOnlyHint,omitempty"`
+	DestructiveHint *bool `json:"destructiveHint,omitempty"`
+	IdempotentHint  *bool `json:"idempotentHint,omitempty"`
+	OpenWorldHint   *bool `json:"openWorldHint,omitempty"`
+}
+
 // ToolDef represents a tool definition for tools.json
 type ToolDef struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Description    string `json:"description"`
-	Dangerous      bool   `json:"dangerous"`
-	DefaultEnabled bool   `json:"defaultEnabled"`
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Annotations *ToolAnnotations `json:"annotations,omitempty"`
 }
 
 // ModuleDef represents a module definition for tools.json
@@ -164,11 +171,17 @@ func exportTools(moduleNames []string, outputDir string) {
 
 		for _, tool := range m.Tools() {
 			toolDef := ToolDef{
-				ID:             tool.Name,
-				Name:           tool.Name,
-				Description:    tool.Description,
-				Dangerous:      tool.Dangerous,
-				DefaultEnabled: !tool.Dangerous, // Dangerous tools are disabled by default
+				ID:          tool.Name,
+				Name:        tool.Name,
+				Description: tool.Description,
+			}
+			if tool.Annotations != nil {
+				toolDef.Annotations = &ToolAnnotations{
+					ReadOnlyHint:    tool.Annotations.ReadOnlyHint,
+					DestructiveHint: tool.Annotations.DestructiveHint,
+					IdempotentHint:  tool.Annotations.IdempotentHint,
+					OpenWorldHint:   tool.Annotations.OpenWorldHint,
+				}
 			}
 			moduleDef.Tools = append(moduleDef.Tools, toolDef)
 		}

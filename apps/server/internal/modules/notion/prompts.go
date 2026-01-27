@@ -13,34 +13,34 @@ func promptDefinitions() []modules.Prompt {
 	return []modules.Prompt{
 		{
 			Name:        "notion_create_meeting_notes",
-			Description: "会議メモページの作成テンプレート",
+			Description: "Template for creating a meeting notes page",
 			Arguments: []modules.PromptArgument{
-				{Name: "title", Description: "会議タイトル", Required: true},
-				{Name: "date", Description: "会議日時 (YYYY-MM-DD)", Required: true},
-				{Name: "attendees", Description: "参加者（カンマ区切り）", Required: false},
-				{Name: "parent_page_id", Description: "親ページID", Required: true},
+				{Name: "title", Description: "Meeting title", Required: true},
+				{Name: "date", Description: "Meeting date (YYYY-MM-DD)", Required: true},
+				{Name: "attendees", Description: "Attendees (comma-separated)", Required: false},
+				{Name: "parent_page_id", Description: "Parent page ID", Required: true},
 			},
 		},
 		{
 			Name:        "notion_create_task",
-			Description: "タスクページの作成テンプレート",
+			Description: "Template for creating a task page",
 			Arguments: []modules.PromptArgument{
-				{Name: "title", Description: "タスクタイトル", Required: true},
-				{Name: "description", Description: "タスク詳細", Required: false},
-				{Name: "due_date", Description: "期限 (YYYY-MM-DD)", Required: false},
-				{Name: "priority", Description: "優先度 (high/medium/low)", Required: false},
-				{Name: "database_id", Description: "タスクデータベースID", Required: true},
+				{Name: "title", Description: "Task title", Required: true},
+				{Name: "description", Description: "Task description", Required: false},
+				{Name: "due_date", Description: "Due date (YYYY-MM-DD)", Required: false},
+				{Name: "priority", Description: "Priority (high/medium/low)", Required: false},
+				{Name: "database_id", Description: "Task database ID", Required: true},
 			},
 		},
 		{
 			Name:        "notion_weekly_report",
-			Description: "週次レポートページの作成テンプレート",
+			Description: "Template for creating a weekly report page",
 			Arguments: []modules.PromptArgument{
-				{Name: "week_start", Description: "週の開始日 (YYYY-MM-DD)", Required: true},
-				{Name: "accomplishments", Description: "今週の成果", Required: false},
-				{Name: "challenges", Description: "課題・問題点", Required: false},
-				{Name: "next_week_plans", Description: "来週の予定", Required: false},
-				{Name: "parent_page_id", Description: "親ページID", Required: true},
+				{Name: "week_start", Description: "Week start date (YYYY-MM-DD)", Required: true},
+				{Name: "accomplishments", Description: "This week's accomplishments", Required: false},
+				{Name: "challenges", Description: "Challenges and issues", Required: false},
+				{Name: "next_week_plans", Description: "Next week's plans", Required: false},
+				{Name: "parent_page_id", Description: "Parent page ID", Required: true},
 			},
 		},
 	}
@@ -75,19 +75,19 @@ func generateMeetingNotesPrompt(args map[string]any) (string, error) {
 **Title:** %s - %s
 
 **Blocks to create:**
-1. Heading 2: "参加者"
+1. Heading 2: "Attendees"
    - Bulleted list: %s
 
-2. Heading 2: "アジェンダ"
+2. Heading 2: "Agenda"
    - Numbered list: (empty items for user to fill)
 
-3. Heading 2: "議事メモ"
+3. Heading 2: "Meeting Notes"
    - Paragraph: (empty for notes)
 
-4. Heading 2: "アクションアイテム"
+4. Heading 2: "Action Items"
    - To-do items: (empty checkboxes)
 
-5. Heading 2: "次回予定"
+5. Heading 2: "Next Meeting"
    - Paragraph: (empty)
 
 **Instructions:**
@@ -155,16 +155,16 @@ func generateWeeklyReportPrompt(args map[string]any) (string, error) {
 **Title:** Weekly Report - Week of %s
 
 **Structure:**
-1. Heading 2: "今週の成果"
+1. Heading 2: "Accomplishments"
 %s
 
-2. Heading 2: "課題・問題点"
+2. Heading 2: "Challenges & Issues"
 %s
 
-3. Heading 2: "来週の予定"
+3. Heading 2: "Next Week's Plans"
 %s
 
-4. Heading 2: "メトリクス"
+4. Heading 2: "Metrics"
    - Table or callout for KPIs
 
 **Instructions:**
@@ -184,7 +184,7 @@ Use the Notion API to:
 
 func formatAttendees(attendees string) string {
 	if attendees == "" {
-		return "(参加者を追加)"
+		return "(Add attendees)"
 	}
 	parts := strings.Split(attendees, ",")
 	var result []string
@@ -203,7 +203,7 @@ func conditionalLine(prefix, value string) string {
 
 func formatListItems(items string) string {
 	if items == "" {
-		return "   - (追加予定)"
+		return "   - (To be added)"
 	}
 	parts := strings.Split(items, ",")
 	var result []string
