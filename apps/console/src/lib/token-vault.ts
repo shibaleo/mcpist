@@ -1,5 +1,6 @@
 import { createClient } from './supabase/client'
 import { validateToken } from './token-validator'
+import { saveDefaultToolSettings } from './tool-settings'
 
 // RPC: list_service_connections の戻り値に対応
 export interface ServiceConnection {
@@ -160,7 +161,10 @@ export async function upsertTokenWithVerification(
     throw new TokenVaultError('接続の確認に失敗しました')
   }
 
-  // Step 4: 完了
+  // Step 4: デフォルトツール設定を保存
+  await saveDefaultToolSettings(supabase, params.service)
+
+  // Step 5: 完了
   onProgress({ step: 'completed', message: '接続完了' })
 }
 
