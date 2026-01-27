@@ -17,6 +17,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "search",
 			Description: "Search pages and databases in Notion by title. Returns pages and databases shared with the integration.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -39,6 +40,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "get_page",
 			Description: "Retrieve a Notion page by ID. Returns page properties and metadata.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -53,6 +55,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "get_page_content",
 			Description: "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -75,6 +78,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "create_page",
 			Description: "Create a new page in Notion. Can create as a child of another page or in a database.",
+			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -115,12 +119,13 @@ func toolDefinitions() []modules.Tool {
 				},
 				Required: []string{"page_id", "properties"},
 			},
-			Dangerous: true,
+			Annotations: modules.AnnotateUpdate,
 		},
 		// Databases
 		{
 			Name:        "get_database",
 			Description: "Retrieve a Notion database schema and metadata.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -135,6 +140,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "query_database",
 			Description: "Query a Notion database with optional filters and sorts. Returns pages in the database.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -162,6 +168,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "append_blocks",
 			Description: "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
+			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -176,11 +183,11 @@ func toolDefinitions() []modules.Tool {
 				},
 				Required: []string{"block_id", "blocks"},
 			},
-			Dangerous: true,
 		},
 		{
 			Name:        "delete_block",
 			Description: "Delete a block from Notion. This also deletes all children of the block.",
+			Annotations: modules.AnnotateDelete,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -191,12 +198,12 @@ func toolDefinitions() []modules.Tool {
 				},
 				Required: []string{"block_id"},
 			},
-			Dangerous: true,
 		},
 		// Comments
 		{
 			Name:        "list_comments",
 			Description: "List comments on a Notion page or block.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -215,6 +222,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "add_comment",
 			Description: "Add a comment to a Notion page.",
+			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -234,6 +242,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "list_users",
 			Description: "List all users in the Notion workspace.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -247,6 +256,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "get_user",
 			Description: "Get information about a Notion user.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -261,6 +271,7 @@ func toolDefinitions() []modules.Tool {
 		{
 			Name:        "get_bot_user",
 			Description: "Get information about the current integration bot user.",
+			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type:       "object",
 				Properties: map[string]modules.Property{},

@@ -116,6 +116,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_bases",
 		Description: "List all accessible Airtable bases with their names, IDs, and permission levels",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -125,6 +126,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "describe",
 		Description: "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -141,6 +143,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "query",
 		Description: "Query Airtable records with filtering, sorting, and pagination",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -160,6 +163,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_record",
 		Description: "Retrieve a single record by ID",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -173,6 +177,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create",
 		Description: "Create new records in a table. Supports batch creation (up to 10 records per request)",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -187,6 +192,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update",
 		Description: "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -201,6 +207,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "delete",
 		Description: "Delete records from a table. Supports batch deletion (up to 10 records per request)",
+		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -215,6 +222,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "search_records",
 		Description: "Search for records containing specific text across specified fields or all text fields",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -231,6 +239,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "aggregate_records",
 		Description: "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -248,6 +257,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_table",
 		Description: "Create a new table in a base with specified fields",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -263,6 +273,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_table",
 		Description: "Update table metadata (name and/or description)",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{

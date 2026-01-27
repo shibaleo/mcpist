@@ -36,7 +36,7 @@ func (m *GitHubModule) Name() string {
 
 // Description returns the module description
 func (m *GitHubModule) Description() string {
-	return "GitHub API - リポジトリ、Issue、PR、Actions、検索"
+	return "GitHub API - Repository, Issue, PR, Actions, and Search operations"
 }
 
 // APIVersion returns the GitHub API version
@@ -123,6 +123,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_user",
 		Description: "Get information about the authenticated GitHub user.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -132,6 +133,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_repos",
 		Description: "List repositories for the authenticated user.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -145,6 +147,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_repo",
 		Description: "Get details of a specific repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -157,6 +160,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_branches",
 		Description: "List branches in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -170,6 +174,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_commits",
 		Description: "List commits in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -185,6 +190,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_file_content",
 		Description: "Get the content of a file in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -200,6 +206,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_issues",
 		Description: "List issues in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -215,6 +222,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_issue",
 		Description: "Get details of a specific issue.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -228,6 +236,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_issue",
 		Description: "Create a new issue in a repository.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -244,6 +253,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_issue",
 		Description: "Update an existing issue.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -262,6 +272,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "add_issue_comment",
 		Description: "Add a comment to an issue.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -277,6 +288,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_prs",
 		Description: "List pull requests in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -292,6 +304,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_pr",
 		Description: "Get details of a specific pull request.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -305,6 +318,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_pr",
 		Description: "Create a new pull request.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -322,6 +336,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_pr_files",
 		Description: "List files changed in a pull request.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -337,6 +352,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "search_repos",
 		Description: "Search for repositories.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -351,6 +367,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "search_code",
 		Description: "Search for code across repositories.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -364,6 +381,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "search_issues",
 		Description: "Search for issues and pull requests.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -379,6 +397,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_workflows",
 		Description: "List workflows in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -392,6 +411,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_workflow_runs",
 		Description: "List workflow runs in a repository.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{

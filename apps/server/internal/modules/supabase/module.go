@@ -31,7 +31,7 @@ func (m *SupabaseModule) Name() string {
 
 // Description returns the module description
 func (m *SupabaseModule) Description() string {
-	return "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ"
+	return "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage"
 }
 
 // APIVersion returns the Supabase API version
@@ -115,6 +115,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_organizations",
 		Description: "List all organizations you have access to.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -123,6 +124,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_projects",
 		Description: "List all Supabase projects you have access to. Use this first to get project_ref for other operations.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -131,6 +133,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_project",
 		Description: "Get details of a specific project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -143,6 +146,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_tables",
 		Description: "List all tables in the database with their schemas. Returns table names and column counts.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -155,6 +159,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "run_query",
 		Description: "Execute a SQL query against the database. Supports both read and write operations.",
+		Annotations: modules.AnnotateDestructive,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -167,6 +172,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_migrations",
 		Description: "List all database migrations that have been applied.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -178,6 +184,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "apply_migration",
 		Description: "Apply a new database migration. Use for DDL operations like CREATE TABLE, ALTER TABLE, etc.",
+		Annotations: modules.AnnotateDestructive,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -192,6 +199,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_logs",
 		Description: "Get logs for a specific service. Available services: api, postgres, edge-function, auth, storage, realtime.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -206,6 +214,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_security_advisors",
 		Description: "Get security recommendations and potential issues for the project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -217,6 +226,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_performance_advisors",
 		Description: "Get performance recommendations and potential issues for the project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -229,6 +239,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_project_url",
 		Description: "Get the base URL for a Supabase project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -240,6 +251,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_api_keys",
 		Description: "Get the API keys for the project (anon key and service role key).",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -251,6 +263,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "generate_typescript_types",
 		Description: "Generate TypeScript type definitions from the database schema.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -263,6 +276,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_edge_functions",
 		Description: "List all Edge Functions deployed in the project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -274,6 +288,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_edge_function",
 		Description: "Get details of a specific Edge Function.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -287,6 +302,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_storage_buckets",
 		Description: "List all storage buckets in the project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -298,6 +314,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_storage_config",
 		Description: "Get storage configuration for the project including file size limits and features.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{

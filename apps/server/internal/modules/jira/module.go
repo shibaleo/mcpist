@@ -34,7 +34,7 @@ func (m *JiraModule) Name() string {
 
 // Description returns the module description
 func (m *JiraModule) Description() string {
-	return "Jira API - Issue/Project操作（検索、作成、更新、コメント、ワークログ）"
+	return "Jira API - Issue/Project operations (search, create, update, comment, transition)"
 }
 
 // APIVersion returns the Jira API version
@@ -135,6 +135,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_myself",
 		Description: "Get information about the current Jira user (myself).",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -143,6 +144,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_projects",
 		Description: "List all Jira projects accessible to the current user.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -154,6 +156,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_project",
 		Description: "Get details of a specific Jira project.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -165,6 +168,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "search",
 		Description: "Search for Jira issues using JQL (Jira Query Language). Example JQL: 'project = PROJ AND status = \"In Progress\"'",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -179,6 +183,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_issue",
 		Description: "Get details of a specific Jira issue by key or ID.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -191,6 +196,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_issue",
 		Description: "Create a new Jira issue.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -209,6 +215,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_issue",
 		Description: "Update an existing Jira issue.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -225,6 +232,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_transitions",
 		Description: "Get available transitions for an issue. Use this to find valid transition IDs before changing issue status.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -236,6 +244,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "transition_issue",
 		Description: "Transition an issue to a new status. Use get_transitions first to get valid transition IDs.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -249,6 +258,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_comments",
 		Description: "Get comments on a Jira issue.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -262,6 +272,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "add_comment",
 		Description: "Add a comment to a Jira issue.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{

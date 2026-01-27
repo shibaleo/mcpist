@@ -15,25 +15,25 @@ func resourceDefinitions() []modules.Resource {
 		{
 			URI:         "notion://pages/{page_id}",
 			Name:        "Notion Page",
-			Description: "Notionページの内容を取得",
+			Description: "Get the content of a Notion page",
 			MimeType:    "application/json",
 		},
 		{
 			URI:         "notion://databases/{database_id}",
 			Name:        "Notion Database Schema",
-			Description: "Notionデータベースのスキーマを取得",
+			Description: "Get the schema of a Notion database",
 			MimeType:    "application/json",
 		},
 		{
 			URI:         "notion://databases/{database_id}/rows",
 			Name:        "Notion Database Rows",
-			Description: "Notionデータベースの行を取得",
+			Description: "Get rows from a Notion database",
 			MimeType:    "application/json",
 		},
 		{
 			URI:         "notion://blocks/{block_id}/children",
 			Name:        "Notion Block Children",
-			Description: "Notionブロックの子ブロックを取得",
+			Description: "Get child blocks of a Notion block",
 			MimeType:    "application/json",
 		},
 	}

@@ -40,7 +40,7 @@ func (m *MicrosoftTodoModule) Name() string {
 
 // Description returns the module description
 func (m *MicrosoftTodoModule) Description() string {
-	return "Microsoft To Do API - タスク・リストの取得・作成・更新・削除"
+	return "Microsoft To Do API - List, create, update, and delete tasks and task lists"
 }
 
 // APIVersion returns the Microsoft Graph API version
@@ -223,6 +223,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_lists",
 		Description: "Get all task lists for the user.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
 			Properties: map[string]modules.Property{},
@@ -231,6 +232,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_list",
 		Description: "Get a specific task list by ID.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -242,6 +244,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_list",
 		Description: "Create a new task list.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -253,6 +256,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_list",
 		Description: "Update an existing task list.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -265,7 +269,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "delete_list",
 		Description: "Delete a task list.",
-		Dangerous:   true,
+		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -278,6 +282,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "list_tasks",
 		Description: "Get all tasks in a task list.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -291,6 +296,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "get_task",
 		Description: "Get a specific task by ID.",
+		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -303,6 +309,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "create_task",
 		Description: "Create a new task in a task list.",
+		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -319,6 +326,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "update_task",
 		Description: "Update an existing task.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -337,6 +345,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "complete_task",
 		Description: "Mark a task as completed.",
+		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
@@ -349,7 +358,7 @@ var toolDefinitions = []modules.Tool{
 	{
 		Name:        "delete_task",
 		Description: "Delete a task.",
-		Dangerous:   true,
+		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
