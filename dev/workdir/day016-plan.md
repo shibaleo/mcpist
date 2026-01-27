@@ -100,4 +100,4 @@ spec-impl-compare.mdで特定された主要な差分を仕様書に反映する
 - [day015-worklog.md](./day015-worklog.md) - 前日作業ログ
 - [day015-review.md](./day015-review.md) - 前日振り返り
 - [day015-backlog.md](./day015-backlog.md) - バックログ
-- [spec-impl-compare.md](./spec-impl-compare.md) - 仕様・実装差分
+- [spec-impl-compare.md](day016-spec-impl-compare.md) - 仕様・実装差分

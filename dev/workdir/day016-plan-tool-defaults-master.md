@@ -1,4 +1,8 @@
-# 計画書: ツール定義マスタ管理（管理者設定）
+# ~~計画書: ツール定義マスタ管理（管理者設定）~~ **OBSOLETE**
+
+> **廃止理由 (2026-01-27):** MCP Tool Annotations (plan-tool-annotations.md) の採用により、`defaultEnabled` / `dangerous` は annotations から機械的に導出する方針に決定。annotations はツール固有の性質（コード内在）であり、DB管理や管理画面は不要。本計画の全ステップは実装しない。
+>
+> 参照: plan-tool-annotations.md（Step 1-6 全完了）
 
 ## 日付
 
@@ -241,6 +245,23 @@ Go Server 起動時のフロー:
 ## GPT Custom Connector との関連（参考）
 
 GPTのカスタムコネクタ（Actions）では、OpenAPI仕様ベースでツールメタ情報を渡す仕様がある。MCPistのアプローチはこれと似ているが、MCPプロトコル経由で `get_module_schema` として動的にツール定義を返す点が異なる。管理者マスタ化により、GPTの「ツール有効/無効」管理に近い体験を実現できる。
+
+---
+
+## 実装進捗
+
+| Step | 内容 | 状態 |
+|------|------|------|
+| 1 | マイグレーション: tool_definitions + tool_defaults テーブル作成 | ⬜ 未着手 |
+| 2 | RPC: sync_tool_definitions 実装 | ⬜ 未着手 |
+| 3 | RPC: get_tool_defaults + upsert_tool_defaults 実装 | ⬜ 未着手 |
+| 4 | Go Server: 起動時に sync_tool_definitions 呼び出し | ⬜ 未着手 |
+| 5 | Console: 管理画面 /admin/tool-defaults ページ作成 | ⬜ 未着手 |
+| 6 | Console: saveDefaultToolSettings を DB 参照に変更 | ⬜ 未着手 |
+| 7 | tools.json の defaultEnabled / dangerous を削除 | ⬜ 未着手 |
+
+現在は D16-001 で実装した `tools.json` + `isDefaultEnabled()` による静的導出方式で運用中。
+DB管理への移行は次スプリント以降。
 
 ---
 
