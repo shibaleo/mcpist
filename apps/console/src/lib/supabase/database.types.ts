@@ -168,6 +168,24 @@ export interface Database {
           message?: string
         }
       }
+      get_my_tool_settings: {
+        Args: {
+          p_module_name?: string | null
+        }
+        Returns: {
+          module_name: string
+          tool_name: string
+          enabled: boolean
+        }[]
+      }
+      upsert_my_tool_settings: {
+        Args: {
+          p_module_name: string
+          p_enabled_tools: string[]
+          p_disabled_tools: string[]
+        }
+        Returns: Json
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

@@ -19,7 +19,7 @@ import {
 import { ServiceIcon } from "@/components/service-icon"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
-import { modules, services, getServiceIcon } from "@/lib/module-data"
+import { modules, services, getServiceIcon, isDefaultEnabled, isDangerous } from "@/lib/module-data"
 import {
   Check,
   Link2,
@@ -208,7 +208,7 @@ export default function ToolsPage() {
       // なければデフォルト値を構築
       const defaults: Record<string, boolean> = {}
       mod.tools.forEach((t) => {
-        defaults[t.id] = t.defaultEnabled
+        defaults[t.id] = isDefaultEnabled(t)
       })
       return defaults
     },
@@ -284,7 +284,7 @@ export default function ToolsPage() {
 
     const defaults: Record<string, boolean> = {}
     mod.tools.forEach((t) => {
-      defaults[t.id] = t.defaultEnabled
+      defaults[t.id] = isDefaultEnabled(t)
     })
     setLocalToolSettings((prev) => ({
       ...prev,
@@ -636,33 +636,52 @@ export default function ToolsPage() {
                   </Button>
                 </div>
               </div>
-              {selectedModule.tools.map((tool) => (
-                <div
-                  key={tool.id}
-                  className={cn(
-                    "flex items-start gap-3 p-3 rounded-lg border",
-                    tool.dangerous && "border-yellow-500/30 bg-yellow-500/5"
-                  )}
-                >
-                  <Checkbox
-                    checked={isToolEnabled(selectedModule.id, tool.id)}
-                    onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm font-mono">{tool.name}</span>
-                      {tool.dangerous && (
-                        <Badge variant="outline" className="text-yellow-500 border-yellow-500/50 text-xs">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          危険
-                        </Badge>
-                      )}
+              {selectedModule.tools.map((tool) => {
+                const dangerous = isDangerous(tool)
+                const readOnly = tool.annotations.readOnlyHint === true
+                const destructive = tool.annotations.destructiveHint === true
+                const idempotent = tool.annotations.idempotentHint === true
+                return (
+                  <div
+                    key={tool.id}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border",
+                      dangerous && "border-yellow-500/30 bg-yellow-500/5"
+                    )}
+                  >
+                    <Checkbox
+                      checked={isToolEnabled(selectedModule.id, tool.id)}
+                      onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm font-mono">{tool.name}</span>
+                        {readOnly ? (
+                          <Badge variant="outline" className="text-blue-500 border-blue-500/50 text-xs">
+                            ReadOnly
+                          </Badge>
+                        ) : (
+                          <>
+                            {destructive && (
+                              <Badge variant="outline" className="text-yellow-500 border-yellow-500/50 text-xs">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Destructive
+                              </Badge>
+                            )}
+                            {idempotent && (
+                              <Badge variant="outline" className="text-muted-foreground border-muted-foreground/50 text-xs">
+                                Idempotent
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{tool.description}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{tool.description}</p>
                   </div>
-                </div>
-              ))}
+                )
+              })}
               <div className="flex justify-end items-center gap-2 pt-2">
                 {savedModules[selectedModule.id] && (
                   <span className="text-sm text-green-500 flex items-center gap-1">

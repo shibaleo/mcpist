@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { saveDefaultToolSettings } from "@/lib/tool-settings"
 
 const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
@@ -113,6 +114,9 @@ export async function GET(request: Request) {
         new URL(`/connections?error=${encodeURIComponent("Failed to save token")}`, request.url)
       )
     }
+
+    // デフォルトツール設定を保存
+    await saveDefaultToolSettings(supabase, "microsoft_todo")
 
     // 成功時はconnectionsページにリダイレクト
     return NextResponse.redirect(

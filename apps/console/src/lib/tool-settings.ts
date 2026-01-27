@@ -1,7 +1,9 @@
 // Tool Settings API - Supabase RPC wrapper
 // ユーザーのツール設定をデータベースから取得・保存
 
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
+import { getModule, isDefaultEnabled } from "./module-data"
 
 // ツール設定の型
 export interface ToolSetting {
@@ -86,11 +88,12 @@ export async function upsertMyToolSettings(
   }
 
   // RPCがエラーオブジェクトを返した場合
-  if (data?.error) {
-    throw new ToolSettingsError(data.error)
+  const result = data as Record<string, unknown> | null
+  if (result?.error) {
+    throw new ToolSettingsError(String(result.error))
   }
 
-  return data
+  return result as { success: boolean; module: string; enabled_count: number; disabled_count: number }
 }
 
 /**
@@ -115,4 +118,44 @@ export async function saveModuleToolSettings(
   }
 
   await upsertMyToolSettings(moduleName, enabledTools, disabledTools)
+}
+
+/**
+ * モジュールのデフォルトツール設定を保存
+ * サービス接続時に呼び出す（トークン保存後）
+ * @param supabase Supabaseクライアント（サーバー/クライアント両対応）
+ * @param moduleName モジュール名
+ */
+export async function saveDefaultToolSettings(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  moduleName: string
+): Promise<void> {
+  const mod = getModule(moduleName)
+  if (!mod) {
+    console.warn(`[tool-settings] Module not found: ${moduleName}`)
+    return
+  }
+
+  const enabledTools: string[] = []
+  const disabledTools: string[] = []
+
+  for (const tool of mod.tools) {
+    if (isDefaultEnabled(tool)) {
+      enabledTools.push(tool.id)
+    } else {
+      disabledTools.push(tool.id)
+    }
+  }
+
+  const { error } = await supabase.rpc("upsert_my_tool_settings", {
+    p_module_name: moduleName,
+    p_enabled_tools: enabledTools,
+    p_disabled_tools: disabledTools,
+  })
+
+  if (error) {
+    console.error(`[tool-settings] Failed to save default settings for ${moduleName}:`, error)
+    // エラーは投げない（トークン保存は成功しているので）
+  }
 }
