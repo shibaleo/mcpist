@@ -107,5 +107,5 @@ Sprint-006 では「整える」フェーズに移行する。仕様と実装の
 - [sprint005.md](./sprint005.md) - Sprint 計画書
 - DAY014: [worklog](../diary/day014-review.md) / [review](../diary/day014-review.md)
 - DAY015: [worklog](../diary/day015-worklog.md) / [review](../diary/day015-review.md)
-- DAY016: [worklog](../workdir/day016-worklog.md) / [review](../workdir/day016-review.md)
-- [day016-backlog.md](../workdir/day016-backlog.md) - バックログ
+- DAY016: [worklog](day016-worklog.md) / [review](day016-review.md)
+- [day016-backlog.md](day016-backlog.md) - バックログ

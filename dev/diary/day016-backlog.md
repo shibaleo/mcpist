@@ -100,7 +100,7 @@ Sprint-005 は Phase 4, Phase 5 の一部を残して終了とする。
 
 ## 参考
 
-- [day016-worklog.md](./day016-worklog.md) - 作業ログ
-- [day016-plan.md](./day016-plan.md) - 計画
+- [day016-worklog.md](day016-worklog.md) - 作業ログ
+- [day016-plan.md](day016-plan.md) - 計画
 - [day015-backlog.md](./day015-backlog.md) - 前日バックログ
 - [sprint005.md](../sprint/sprint005.md) - スプリント計画
