@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.0 |
 | Note | MCP Client (OAuth2.0) Interaction Specification - 実装範囲外 |
 
@@ -62,7 +62,7 @@ MCP Client (OAuth2.0)（略号: CLO）は、LLM Host（Claude Code, Cursor等）
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-GWY.md](./itr-GWY.md) | API Gateway詳細仕様 |
 | [itr-AUS.md](./itr-AUS.md) | Auth Server詳細仕様 |
 | [itr-CLK.md](./itr-CLK.md) | MCP Client (API KEY)詳細仕様 |

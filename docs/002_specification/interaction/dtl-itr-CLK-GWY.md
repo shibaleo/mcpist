@@ -13,27 +13,27 @@
 
 ## 概要
 
-| 項目 | 内容 |
-|------|------|
-| 連携元 | MCP Client (API KEY) (CLK) |
-| 連携先 | API Gateway (GWY) |
-| 内容 | MCP通信 |
-| プロトコル | MCP over SSE (HTTPS) |
+| 項目    | 内容                         |
+| ----- | -------------------------- |
+| 連携元   | MCP Client (API KEY) (CLK) |
+| 連携先   | API Gateway (GWY)          |
+| 内容    | MCP通信                      |
+| プロトコル | Sreamable HTTP             |
 
 ---
 
 ## 詳細
 
-| 項目 | 内容 |
-|------|------|
-| プロトコル | [MCP Protocol 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)（JSON-RPC 2.0 over Streamable HTTP） |
-| 認証方式 | API KEY（Bearer Token形式） |
-| エンドポイント | `https://mcp.mcpist.app/mcp` |
+| 項目      | 内容                                                                                                                                  |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| プロトコル   | [MCP Protocol 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)（JSON-RPC 2.0 over Streamable HTTP）              |
+| 認証方式    | API KEY（Bearer Token形式）                                                                                                             |
+| エンドポイント | - `https://mcp.mcpist.app/mcp` (本番環境)<br>- `https://mcp.stg.mcpist.app/mcp` (ステージング環境)<br>- `https://mcp.dev.mcpist.app/mcp` (開発環境) |
 
 ### API KEY形式
 
 ```
-mcpist_{random_string_32chars}
+mpt_{random_string_32chars}
 ```
 
 ### リクエストヘッダー（MCP仕様準拠）
@@ -47,7 +47,7 @@ MCP-Session-Id: {session_id}
 
 [Authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization):
 ```
-Authorization: Bearer mcpist_xxx
+Authorization: Bearer mpt_xxx
 ```
 
 HTTP標準:

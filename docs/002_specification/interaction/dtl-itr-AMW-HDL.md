@@ -2,12 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 |
-| ID | ITR-REL-007 |
-| Note | Auth Middleware - MCP Handler Interaction Detail |
+| 項目      | 値                                                |
+| ------- | ------------------------------------------------ |
+| Status  | `reviewed`                                       |
+| Version | v2.0                                             |
+| Note    | Auth Middleware - MCP Handler Interaction Detail |
 
 ---
 
@@ -29,28 +28,39 @@
 | プロトコル | 内部関数呼び出し |
 | 入力 | JSON-RPC 2.0リクエスト + ユーザーコンテキスト |
 
-### ユーザーコンテキスト（AMWからHDLへ渡す情報）
+### AMW が HDL へ渡す情報
 
-| フィールド | 説明 |
-|-----------|------|
-| user_id | 認証済みユーザーID |
-| request_id | リクエスト追跡用ID |
-| client_ip | クライアントIPアドレス |
+リクエストコンテキストに以下を格納し、HDL へ委譲する。
 
-### 転送する情報
+**AuthContext:**
 
-- user_id（X-User-Idから抽出）
-- リクエストボディ（JSON-RPC）
-- リクエストメタデータ
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| user_id | string (UUID) | 認証済みユーザーID |
+| auth_type | string | 認証方式（`jwt` / `api_key`） |
+| free_credits | integer | 無料クレジット残高 |
+| paid_credits | integer | 有料クレジット残高 |
+| enabled_modules | string[] | 有効なモジュール一覧 |
+| disabled_tools | map\<string, string[]\> | モジュール別の無効ツール一覧 |
 
-AMWは認証処理のみを担当し、MCPプロトコルの解釈はHDLに委譲する。
+**RequestID:**
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| request_id | string (UUID) | リクエストトレース用ID（GWY が発行） |
+
+### 期待する振る舞い
+
+- AMW は認証・認可処理のみを担当し、MCP プロトコルの解釈は HDL に委譲する
+- HDL に到達するリクエストは account_status が active であることが保証されている
+- HDL はクレジット残高・モジュール有効性・ツール有効性の判定に AuthContext を使用する
 
 ---
 
 ## 関連ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [itr-AMW.md](./itr-AMW.md) | Auth Middleware 詳細仕様 |
-| [itr-HDL.md](./itr-HDL.md) | MCP Handler 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |
+| ドキュメント                     | 内容                 |
+| -------------------------- | ------------------ |
+| [itr-AMW.md](./itr-AMW.md) | Auth Middleware 仕様 |
+| [itr-HDL.md](./itr-HDL.md) | MCP Handler 仕様     |
+

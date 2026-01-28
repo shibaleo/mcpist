@@ -184,6 +184,7 @@ export default function McpClientPage() {
     addLog(`  client_id: ${clientId}`)
 
     // Build authorization URL
+    // FIXME: RFC 8707 Resource Indicators — resource パラメータ未送信 (BL-060)
     const redirectUri = `${consoleUrl}/dev/mcp-client/callback`
     const params = new URLSearchParams({
       response_type: 'code',

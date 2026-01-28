@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.0 |
 | Note | External Auth Server Interaction Specification - 実装範囲外 |
 
@@ -25,7 +25,6 @@ External Service API（EXT）と同一サービス内で連携する。
 | 相手 | 方向 | やり取り | 詳細 |
 |------|------|----------|------|
 | User Console | EAS ← CON | 認可フロー受付 | [dtl-itr-CON-EAS.md](./dtl-itr-CON-EAS.md) |
-| Token Vault | EAS ← TVL | トークンリフレッシュ | [dtl-itr-EAS-TVL.md](./dtl-itr-EAS-TVL.md) |
 
 ---
 
@@ -40,7 +39,7 @@ External Service API（EXT）と同一サービス内で連携する。
 | Data Store (DST) | CON経由 |
 | Auth Middleware (AMW) | MCP Server内部 |
 | MCP Handler (HDL) | MCP Server内部 |
-| Modules (MOD) | TVL経由 |
+| Modules (MOD) | EXT経由（トークンリフレッシュはMODがEXT側で処理） |
 | Identity Provider (IDP) | ソーシャルログイン専用 |
 | Payment Service Provider (PSP) | 課金専用 |
 
@@ -51,7 +50,6 @@ External Service API（EXT）と同一サービス内で連携する。
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
-| [itr-TVL.md](./itr-TVL.md) | Token Vault詳細仕様 |
 | [itr-EXT.md](./itr-EXT.md) | External Service API詳細仕様 |

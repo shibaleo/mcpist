@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v3.1 |
 | Note | MCP Handler Interaction Specification (MCP Server内部) - REG統合版 |
 
@@ -60,12 +60,12 @@ MCP Handler（HDL）は、MCPプロトコルを解釈し、モジュールを管
 
 ## 関連ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
-| [dtl-spc-hdl.md](../dtl-spc/dtl-spc-hdl.md) | MCP Handler詳細仕様 |
-| [itr-AMW.md](./itr-AMW.md) | Auth Middleware詳細仕様 |
-| [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
-| [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
-| [itr-SRV.md](./itr-SRV.md) | MCP Server詳細仕様 |
+| ドキュメント                                      | 内容                  |
+| ------------------------------------------- | ------------------- |
+| [spc-sys.md](../spc-sys.md)                 | システム仕様書             |
+| [spc-itr.md](spc-itr.md)                 | インタラクション仕様書         |
+| [dtl-spc-hdl.md](../dtl-spc/dtl-spc-hdl.md) | MCP Handler詳細仕様     |
+| [itr-AMW.md](./itr-AMW.md)                  | Auth Middleware詳細仕様 |
+| [itr-DST.md](./itr-DST.md)                  | Data Store詳細仕様      |
+| [itr-MOD.md](./itr-MOD.md)                  | Modules詳細仕様         |
+

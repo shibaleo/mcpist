@@ -22,7 +22,7 @@
 
 **関連ドキュメント:**
 - [spc-sys.md](./spc-sys.md) - コンポーネント定義
-- [spc-itr.md](./spc-itr.md) - コンポーネント間のやり取り
+- [spc-itr.md](spc-itr.md) - コンポーネント間のやり取り
 - [spc-inf.md](./spc-inf.md) - インフラ構成
 - [spc-dsn.md](./spc-dsn.md) - 実装構成
 
@@ -524,6 +524,6 @@ type Module interface {
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
-| [spc-itr.md](./spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [spc-inf.md](./spc-inf.md) | インフラ仕様書 |
 | [spc-dsn.md](./spc-dsn.md) | 設計仕様書 |

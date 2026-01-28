@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.1 |
 | Note | Token Vault Interaction Specification |
 
@@ -16,8 +16,7 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 
 主な責務：
 - 外部サービスのOAuthトークン保存・取得
-- トークンリフレッシュの自動実行
-- API KEY認証の提供
+- APIシークレットの暗号化保存
 - トークンの暗号化保存
 
 ---
@@ -26,10 +25,9 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 
 | 相手 | 方向 | やり取り | 詳細 |
 |------|------|----------|------|
-| API Gateway | TVL ← GWY | API KEY検証 | [dtl-itr-GWY-TVL.md](./dtl-itr-GWY-TVL.md) |
 | User Console | TVL ← CON | トークン登録 | [dtl-itr-CON-TVL.md](./dtl-itr-CON-TVL.md) |
 | Modules | TVL → MOD | トークン提供 | [dtl-itr-MOD-TVL.md](./dtl-itr-MOD-TVL.md) |
-| External Auth Server | TVL → EAS | トークンリフレッシュ | [dtl-itr-EAS-TVL.md](./dtl-itr-EAS-TVL.md) |
+| Data Store | TVL ← DST | ユーザー紐付け | [dtl-itr-DST-TVL.md](./dtl-itr-DST-TVL.md) |
 
 ---
 
@@ -47,12 +45,16 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 
 | コンポーネント | 理由 |
 |----------------|------|
-| MCP Client (OAuth2.0) (CLO) | AUS経由で認証 |
+| MCP Client (CLO/CLK) | GWY経由 |
+| API Gateway (GWY) | 直接連携なし |
 | Auth Server (AUS) | OAuth2.0はAUS担当 |
 | Session Manager (SSM) | DST経由 |
-| Auth Middleware (AMW) | GWY経由 |
+| Auth Middleware (AMW) | MCP Server内部 |
 | MCP Handler (HDL) | MOD経由 |
+| Observability (OBS) | 直接連携なし |
 | Identity Provider (IDP) | SSM経由 |
+| External Auth Server (EAS) | EXT経由 |
+| External Service API (EXT) | MOD経由 |
 | Payment Service Provider (PSP) | DST経由 |
 
 ---
@@ -62,8 +64,8 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itf-tvl.md](../dtl-spc/itf-tvl.md) | Token Vault API仕様 |
-| [itr-GWY.md](./itr-GWY.md) | API Gateway詳細仕様 |
 | [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
 | [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |

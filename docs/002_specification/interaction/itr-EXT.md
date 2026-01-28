@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.0 |
 | Note | External Service API Interaction Specification - 実装範囲外 |
 
@@ -70,7 +70,7 @@ External Service API（EXT）は、各モジュールがアクセスする外部
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
 | [itr-EAS.md](./itr-EAS.md) | External Auth Server詳細仕様 |
 | [itr-TVL.md](./itr-TVL.md) | Token Vault詳細仕様 |

@@ -195,7 +195,7 @@ MCP Serverは包含概念であり、内部コンポーネント（AMW, HDL, MOD
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../002_specification/spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../002_specification/spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [idx-itr-rel.md](../002_specification/interaction/idx-itr-rel.md) | インタラクション関係ID一覧 |
 | [tst-tvl.md](./tst-tvl.md) | Token Vault テスト手順書 |
 | [tst-oauth-mock-server.md](./tst-oauth-mock-server.md) | OAuth mockサーバー手順書 |

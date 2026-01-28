@@ -13,22 +13,22 @@
 
 ## 概要
 
-| 項目 | 内容 |
-|------|------|
-| 連携元 | MCP Client (OAuth2.0) (CLO) |
-| 連携先 | API Gateway (GWY) |
-| 内容 | MCP通信 |
-| プロトコル | MCP over SSE (HTTPS) |
+| 項目    | 内容                          |
+| ----- | --------------------------- |
+| 連携元   | MCP Client (OAuth2.0) (CLO) |
+| 連携先   | API Gateway (GWY)           |
+| 内容    | MCP通信                       |
+| プロトコル | Sreamable HTTP              |
 
 ---
 
 ## 詳細
 
-| 項目      | 内容                                                                                                                     |
-| ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| プロトコル   | [MCP Protocol 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)（JSON-RPC 2.0 over Streamable HTTP） |
-| 認証      | Bearer Token（JWT）                                                                                                      |
-| エンドポイント | `https://mcp.mcpist.app/mcp`                                                                                           |
+| 項目      | 内容                                                                                                                                  |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| プロトコル   | [MCP Protocol 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)（JSON-RPC 2.0 over Streamable HTTP）              |
+| 認証      | Bearer Token（JWT）                                                                                                                   |
+| エンドポイント | - `https://mcp.mcpist.app/mcp` (本番環境)<br>- `https://mcp.stg.mcpist.app/mcp` (ステージング環境)<br>- `https://mcp.dev.mcpist.app/mcp` (開発環境) |
 
 ### リクエストヘッダー（MCP仕様準拠）
 
