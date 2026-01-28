@@ -54,6 +54,6 @@
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-hdl.md](./itr-hdl.md) | MCP Handler 詳細仕様 |
-| [itr-dst.md](./itr-dst.md) | Data Store 詳細仕様 |
+| [itr-HDL.md](./itr-HDL.md) | MCP Handler 詳細仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

@@ -1,4 +1,4 @@
-# External Service API インタラクション仕様書（itr-ext）
+# External Service API インタラクション仕様書（itr-EXT）
 
 ## ドキュメント管理情報
 
@@ -71,6 +71,6 @@ External Service API（EXT）は、各モジュールがアクセスする外部
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
-| [itr-mod.md](./itr-mod.md) | Modules詳細仕様 |
-| [itr-eas.md](./itr-eas.md) | External Auth Server詳細仕様 |
-| [itr-tvl.md](./itr-tvl.md) | Token Vault詳細仕様 |
+| [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
+| [itr-EAS.md](./itr-EAS.md) | External Auth Server詳細仕様 |
+| [itr-TVL.md](./itr-TVL.md) | Token Vault詳細仕様 |

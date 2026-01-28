@@ -62,6 +62,6 @@ sequenceDiagram
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-con.md](./itr-con.md) | User Console 詳細仕様 |
-| [itr-eas.md](./itr-eas.md) | External Auth Server 詳細仕様 |
+| [itr-CON.md](./itr-CON.md) | User Console 詳細仕様 |
+| [itr-EAS.md](./itr-EAS.md) | External Auth Server 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

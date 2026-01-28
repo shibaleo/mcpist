@@ -104,6 +104,6 @@ POST /token
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-clo.md](./itr-clo.md) | MCP Client (OAuth2.0) 詳細仕様 |
-| [itr-aus.md](./itr-aus.md) | Auth Server 詳細仕様 |
+| [itr-CLO.md](./itr-CLO.md) | MCP Client (OAuth2.0) 詳細仕様 |
+| [itr-AUS.md](./itr-AUS.md) | Auth Server 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

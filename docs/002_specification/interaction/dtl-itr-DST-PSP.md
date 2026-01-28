@@ -64,6 +64,6 @@
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-psp.md](./itr-psp.md) | Payment Service Provider 詳細仕様 |
-| [itr-dst.md](./itr-dst.md) | Data Store 詳細仕様 |
+| [itr-PSP.md](./itr-PSP.md) | Payment Service Provider 詳細仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

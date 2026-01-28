@@ -91,7 +91,7 @@ API KEYはUser Console（CON）で発行する。ユーザーは発行されたA
 **注意事項:**
 - API KEYは発行時に一度だけ表示される（再表示不可）
 - 紛失した場合は再発行が必要
-- 発行フローの詳細は [itr-con.md](./itr-con.md) を参照
+- 発行フローの詳細は [itr-CON.md](./itr-CON.md) を参照
 
 ---
 
@@ -99,6 +99,6 @@ API KEYはUser Console（CON）で発行する。ユーザーは発行されたA
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-clk.md](./itr-clk.md) | MCP Client (API KEY) 詳細仕様 |
-| [itr-gwy.md](./itr-gwy.md) | API Gateway 詳細仕様 |
+| [itr-CLK.md](./itr-CLK.md) | MCP Client (API KEY) 詳細仕様 |
+| [itr-GWY.md](./itr-GWY.md) | API Gateway 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

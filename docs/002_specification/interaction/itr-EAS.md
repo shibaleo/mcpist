@@ -1,4 +1,4 @@
-# External Auth Server インタラクション仕様書（itr-eas）
+# External Auth Server インタラクション仕様書（itr-EAS）
 
 ## ドキュメント管理情報
 
@@ -52,6 +52,6 @@ External Service API（EXT）と同一サービス内で連携する。
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
-| [itr-con.md](./itr-con.md) | User Console詳細仕様 |
-| [itr-tvl.md](./itr-tvl.md) | Token Vault詳細仕様 |
-| [itr-ext.md](./itr-ext.md) | External Service API詳細仕様 |
+| [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
+| [itr-TVL.md](./itr-TVL.md) | Token Vault詳細仕様 |
+| [itr-EXT.md](./itr-EXT.md) | External Service API詳細仕様 |

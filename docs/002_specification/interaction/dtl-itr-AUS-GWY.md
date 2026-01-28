@@ -38,7 +38,7 @@ GWYはAUSからJWKSを取得し、MCP ClientからのJWTを検証する。
 1. GWYがJWTを受信
 2. JWKSから公開鍵を取得（キャッシュ優先）
 3. JWT署名を検証
-4. クレーム（iss, aud, exp）を検証（クレーム定義は[itr-aus.md](./itr-aus.md#jwtaccess_token仕様)参照）
+4. クレーム（iss, aud, exp）を検証（クレーム定義は[itr-AUS.md](./itr-AUS.md#jwtaccess_token仕様)参照）
 5. 検証成功時：ユーザー情報をヘッダーに付与してAMWへ転送
 
 ### 付与するヘッダー
@@ -71,6 +71,6 @@ X-Gateway-Secret: {shared_secret}
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-gwy.md](./itr-gwy.md) | API Gateway 詳細仕様 |
-| [itr-aus.md](./itr-aus.md) | Auth Server 詳細仕様 |
+| [itr-GWY.md](./itr-GWY.md) | API Gateway 詳細仕様 |
+| [itr-AUS.md](./itr-AUS.md) | Auth Server 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

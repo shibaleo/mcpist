@@ -1,4 +1,4 @@
-# Token Vault インタラクション仕様書（itr-tvl）
+# Token Vault インタラクション仕様書（itr-TVL）
 
 ## ドキュメント管理情報
 
@@ -64,6 +64,6 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
 | [itf-tvl.md](../dtl-spc/itf-tvl.md) | Token Vault API仕様 |
-| [itr-gwy.md](./itr-gwy.md) | API Gateway詳細仕様 |
-| [itr-con.md](./itr-con.md) | User Console詳細仕様 |
-| [itr-mod.md](./itr-mod.md) | Modules詳細仕様 |
+| [itr-GWY.md](./itr-GWY.md) | API Gateway詳細仕様 |
+| [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
+| [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
