@@ -2,12 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 |
-| ID | ITR-REL-016 |
-| Note | User Console - Data Store Interaction Detail |
+| 項目      | 値                                            |
+| ------- | -------------------------------------------- |
+| Status  | `reviewed`                                   |
+| Version | v2.0                                         |
+| Note    | User Console - Data Store Interaction Detail |
 
 ---
 
@@ -17,8 +16,8 @@
 |------|------|
 | 連携元 | User Console (CON) |
 | 連携先 | Data Store (DST) |
-| 内容 | ツール設定登録 |
-| プロトコル | 内部API |
+| 内容 | ユーザー設定管理 |
+| プロトコル | Supabase RPC |
 
 ---
 
@@ -26,45 +25,49 @@
 
 | 項目 | 内容 |
 |------|------|
-| 用途 | ユーザー設定の管理 |
-| 操作 | モジュール有効/無効、ツール設定変更 |
+| 方向 | CON → DST（単方向） |
+| 用途 | ユーザー設定の参照・登録・更新 |
 
 ### 管理対象の設定
 
 | 設定 | 説明 | 操作 |
 |------|------|------|
-| enabled_modules | ユーザーが有効化したモジュール一覧 | 登録/更新 |
-| tool_settings | モジュール内の個別ツールの有効/無効設定 | 登録/更新 |
-| user_prompts | ユーザー定義プロンプト | 登録/更新/削除 |
-| credit_balance | クレジット残高 | 参照のみ |
+| enabled_modules | ユーザーが有効化したモジュール一覧 | 参照/登録/更新 |
+| tool_settings | モジュール内の個別ツールの有効/無効設定 | 参照/登録/更新 |
+| user_prompts | ユーザー定義プロンプト | 参照/登録/更新/削除 |
+| credit_balance | クレジット残高 | 参照/付与 |
 | account_status | アカウント状態（active/suspended/disabled） | 参照のみ |
 | usage_stats | 利用統計（モジュール別/期間別の消費量等） | 参照のみ |
 
-### クレジット初期化
+### クレジット付与
 
-サインアップ完了時に、アプリケーション層からクレジットの初期レコードを生成する。
+CON からユーザーに任意整数分のクレジットを付与できる。
 
 | 項目 | 内容 |
 |------|------|
-| トリガー | ユーザーのサインアップ完了（初回ログイン検知） |
+| トリガー | 管理者操作、キャンペーン適用、課金完了等 |
 | 方向 | CON → DST（単方向） |
-| 操作 | credits テーブルへの初期レコード生成 |
+| 操作 | credits テーブルへのクレジット加算 |
 
 **credits テーブル:**
 
-| フィールド | 型 | 初期値 |
-|-----------|------|--------|
+| フィールド | 型 | 説明 |
+|-----------|------|------|
 | user_id | UUID | ユーザーID |
-| free_credits | integer | 1000 |
-| paid_credits | integer | 0 |
+| free_credits | integer | 無料クレジット残高 |
+| paid_credits | integer | 有料クレジット残高 |
 
 ### 期待する振る舞い
 
-- ユーザーの初回サインアップ時に、CON が DST に credits レコードを作成する
-- 無料クレジット（free_credits = 1000）が初期付与される
-- credits レコードが既に存在する場合は重複作成しない（冪等）
-- module_settings / tool_settings / api_keys 等はユーザー操作時にオンデマンドで作成される
-- クレジット残高・アカウント状態・利用統計は参照のみ（更新は他コンポーネントの責務）
+- CON は DST に対して Supabase RPC を介してユーザー設定を参照・更新する
+- enabled_modules の参照・登録・更新は module_settings テーブルを使用する
+- tool_settings の参照・登録・更新は `get_my_tool_settings` / `upsert_my_tool_settings` RPC を使用する
+- user_prompts の参照・登録・更新・削除は prompts テーブルを使用する
+- credit_balance は `get_user_context` RPC で参照し、クレジット付与は専用 RPC を使用する
+- account_status は `get_user_context` RPC で参照する（更新は他コンポーネントの責務）
+- usage_stats は専用 RPC で参照する（集計は DST 側で実施）
+- すべての RPC は認証済みユーザー（`authenticated` role）のみ実行可能
+- RPC 内で `auth.uid()` を使用して現在のユーザーを判定し、他ユーザーのデータにはアクセスできない
 
 ---
 
@@ -74,4 +77,4 @@
 |-------------|------|
 | [itr-CON.md](./itr-CON.md) | User Console 詳細仕様 |
 | [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |
+| [dtl-itr-AUS-DST.md](./dtl-itr-AUS-DST.md) | AUS→DST ユーザー初期化（トリガー） |
