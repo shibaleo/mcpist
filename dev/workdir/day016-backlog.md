@@ -60,11 +60,14 @@ Sprint-005 は Phase 4, Phase 5 の一部を残して終了とする。
 | BL-013 | Console API設計の更新 | 未着手 | spc-itf.md | REST API定義→Supabase RPC直接呼び出し方式に更新 |
 | BL-014 | PSP Webhook仕様の整理 | 未着手 | spc-itf.md | 未実装。仕様から削除または「将来実装予定」に変更 |
 
-### 継続バックログ
+### CON-DST 仕様・実装差分
 
-| ID | タスク | 状態 | 備考 |
-|----|--------|------|------|
-| BL-002 | 切断時のツール設定クリーンアップ | 保留 | DB migration必要。孤立データ問題 |
+| ID | タスク | 状態 | 対象ファイル | 備考 |
+|----|--------|------|-------------|------|
+| BL-015 | enabled_modules 参照API実装 | 未着手 | dtl-itr-CON-DST.md | 仕様: 登録/更新可。実装: module_settingsテーブル未使用 |
+| BL-016 | user_prompts 管理UI実装 | 未着手 | dtl-itr-CON-DST.md | 仕様: 登録/更新/削除可。実装: テーブルのみ、UI未実装 |
+| BL-017 | usage_stats 参照API実装 | 未着手 | dtl-itr-CON-DST.md | 仕様: 参照のみ。実装: 未実装 |
+| BL-018 | クレジット付与機能（CON→DST） | 未着手 | dtl-itr-CON-DST.md | 仕様: CONから任意整数分のクレジット付与。実装: トリガーで初期化のみ |
 
 ---
 

@@ -2,12 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 |
-| ID | ITR-REL-021 |
-| Note | Data Store - Payment Service Provider Interaction Detail |
+| 項目      | 値                                                        |
+| ------- | -------------------------------------------------------- |
+| Status  | `draft`                                                  |
+| Version | v1.0                                                     |
+| Note    | Data Store - Payment Service Provider Interaction Detail |
 
 ---
 
@@ -62,8 +61,8 @@
 
 ## 関連ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [itr-PSP.md](./itr-PSP.md) | Payment Service Provider 詳細仕様 |
-| [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |
+| ドキュメント                             | 内容                            |
+| ---------------------------------- | ----------------------------- |
+| [itr-PSP.md](./itr-PSP.md)         | Payment Service Provider 詳細仕様 |
+| [itr-DST.md](./itr-DST.md)         | Data Store 詳細仕様               |
+

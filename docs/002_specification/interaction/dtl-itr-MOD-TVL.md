@@ -4,9 +4,8 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `draft` |
-| Version | v1.1 |
-| ID | ITR-REL-010 |
+| Status | `reviewed` |
+| Version | v2.0 |
 | Note | Modules - Token Vault Interaction Detail |
 
 ---
