@@ -2,12 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 |
-| ID | ITR-REL-023 |
-| Note | Auth Server - Data Store Interaction Detail |
+| 項目      | 値                                           |
+| ------- | ------------------------------------------- |
+| Status  | `reviewed`                                  |
+| Version | v2.0                                        |
+| Note    | Auth Server - Data Store Interaction Detail |
 
 ---
 
@@ -26,26 +25,33 @@
 
 | 項目 | 内容 |
 |------|------|
-| トリガー | ユーザー登録・認証完了時 |
-| 操作 | auth.usersテーブルのユーザーIDをアプリケーションテーブルへ同期 |
+| トリガー | ユーザー登録完了時 |
+| 方向 | AUS → DST（単方向） |
+| 操作 | アプリケーションテーブルへの初期レコード生成 |
 
-### メカニズム
+### 生成されるレコード
 
-Supabase Authがauth.usersにレコードを作成した際、PostgreSQLトリガーによりアプリケーション側のユーザーテーブルにレコードが自動生成される。
+**users テーブル:**
 
-### データフロー
+| フィールド | 型 | 初期値 |
+|-----------|------|--------|
+| id | UUID | AUS のユーザーID |
+| account_status | string | `active` |
+| preferences | object | `{}` |
 
-| 方向 | 内容 |
-|------|------|
-| AUS → DST | ユーザー登録時にトリガーでユーザーIDを同期 |
-| AUS ← DST | （直接の逆方向通信なし） |
+### 期待する振る舞い
+
+- AUS でユーザーが作成されると、DST に users レコードが自動生成される
+- 初期状態は account_status = `active`、preferences = `{}`
+- credits / module_settings / tool_settings / api_keys 等はユーザー操作時にアプリケーション層で作成される（AUS トリガーの責務外）
+- AUS ← DST の逆方向通信は存在しない
 
 ---
 
 ## 関連ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [itr-AUS.md](./itr-AUS.md) | Auth Server 詳細仕様 |
-| [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |
+| ドキュメント                     | 内容             |
+| -------------------------- | -------------- |
+| [itr-AUS.md](./itr-AUS.md) | Auth Server 仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store 仕様  |
+

@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.0 |
 | Note | Payment Service Provider Interaction Specification - 実装範囲外 |
 
@@ -96,7 +96,7 @@ PSP側で定義され、DSTが参照する情報。
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
 | [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
 | [dtl-spc-credit-model.md](../dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |

@@ -352,6 +352,6 @@ INSERT INTO mcpist.modules (id, name, status) VALUES
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-tbl.md](../002_specification/spc-tbl.md) | テーブル仕様書 |
-| [spc-itr.md](../002_specification/spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [dtl-spc-credit-model.md](../002_specification/dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
 | dtl-dsn-tbl.md | テーブル詳細設計書（未作成） |

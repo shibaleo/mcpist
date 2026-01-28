@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.0 |
 | Note | API Gateway Interaction Specification |
 
@@ -28,8 +28,9 @@ API Gateway（GWY）は、外部からのリクエストを受け付けるエン
 | MCP Client (OAuth2.0) | GWY ← CLO | MCP通信リクエスト受付（JWT認証） | [dtl-itr-CLO-GWY.md](./dtl-itr-CLO-GWY.md) |
 | MCP Client (API KEY) | GWY ← CLK | MCP通信リクエスト受付（API KEY認証） | [dtl-itr-CLK-GWY.md](./dtl-itr-CLK-GWY.md) |
 | Auth Server | GWY → AUS | JWKS取得 | [dtl-itr-AUS-GWY.md](./dtl-itr-AUS-GWY.md) |
-| Token Vault | GWY → TVL | API KEYハッシュ検証 | [dtl-itr-GWY-TVL.md](./dtl-itr-GWY-TVL.md) |
+| Data Store | GWY → DST | APIキー検証 | [dtl-itr-DST-GWY.md](./dtl-itr-DST-GWY.md) |
 | Auth Middleware | GWY → AMW | リクエスト転送 | [dtl-itr-AMW-GWY.md](./dtl-itr-AMW-GWY.md) |
+| Observability | GWY → OBS | HTTPリクエストログ送信 | [dtl-itr-GWY-OBS.md](./dtl-itr-GWY-OBS.md) |
 
 ---
 
@@ -37,8 +38,8 @@ API Gateway（GWY）は、外部からのリクエストを受け付けるエン
 
 | コンポーネント | 理由 |
 |----------------|------|
-| Session Manager (SSM) | 認証はAUS/TVLが担当 |
-| Data Store (DST) | AMW/HDL経由 |
+| Session Manager (SSM) | 認証はAUS/DSTが担当 |
+| Token Vault (TVL) | 直接連携なし |
 | MCP Handler (HDL) | AMW経由 |
 | Modules (MOD) | MCP Server内部 |
 | User Console (CON) | 別アプリケーション |
@@ -54,7 +55,8 @@ API Gateway（GWY）は、外部からのリクエストを受け付けるエン
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-AUS.md](./itr-AUS.md) | Auth Server詳細仕様 |
-| [itr-TVL.md](./itr-TVL.md) | Token Vault詳細仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
 | [itr-AMW.md](./itr-AMW.md) | Auth Middleware詳細仕様 |
+| [itr-OBS.md](./itr-OBS.md) | Observability詳細仕様 |

@@ -2,12 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 |
-| ID | ITR-REL-002 |
-| Note | Auth Server - MCP Client (OAuth2.0) Interaction Detail |
+| 項目      | 値                                                      |
+| ------- | ------------------------------------------------------ |
+| Status  | `reviewed`                                             |
+| Version | v2.0                                                   |
+| Note    | Auth Server - MCP Client (OAuth2.0) Interaction Detail |
 
 ---
 
@@ -28,24 +27,26 @@
 |------|------|
 | プロトコル | HTTPS |
 | 認証方式 | OAuth 2.1 + PKCE |
-| 参照仕様 | [OAuth 2.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-12), [RFC 7636 (PKCE)](https://datatracker.ietf.org/doc/html/rfc7636), [RFC 8707 (Resource Indicators)](https://datatracker.ietf.org/doc/html/rfc8707) |
+| 参照仕様 | [OAuth 2.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-12), [RFC 7636 (PKCE)](https://datatracker.ietf.org/doc/html/rfc7636), [RFC 8414 (OAuth Authorization Server Metadata)](https://datatracker.ietf.org/doc/html/rfc8414), [RFC 9728 (OAuth Protected Resource Metadata)](https://www.rfc-editor.org/rfc/rfc9728) |
 
 ### 初回認可フロー
 
 ```mermaid
 sequenceDiagram
     participant CLO as MCP Client (OAuth2.0)
-    participant SRV as MCP Server (Resource Server)
+    participant GWY as API Gateway
     participant AUS as Auth Server
 
-    CLO->>SRV: MCPリクエスト（トークンなし）
-    SRV-->>CLO: 401 Unauthorized
+    CLO->>GWY: MCPリクエスト（トークンなし）
+    GWY-->>CLO: 401 Unauthorized + WWW-Authenticate
 
-    CLO->>SRV: GET /.well-known/oauth-protected-resource
-    SRV-->>CLO: {"authorization_servers": [...], "resource": "..."}
+    CLO->>GWY: GET /.well-known/oauth-protected-resource
+    GWY-->>CLO: Protected Resource Metadata
 
-    CLO->>AUS: GET /.well-known/openid-configuration
-    AUS-->>CLO: Auth Serverメタデータ
+    CLO->>GWY: GET /.well-known/oauth-authorization-server
+    GWY->>AUS: GET /auth/v1/.well-known/openid-configuration
+    AUS-->>GWY: Authorization Server Metadata
+    GWY-->>CLO: Authorization Server Metadata
 
     Note over CLO,AUS: OAuth 2.1 + PKCE フロー
     CLO->>AUS: 認可リクエスト（/authorize）
@@ -53,11 +54,38 @@ sequenceDiagram
     CLO->>AUS: トークン交換（/token）
     AUS-->>CLO: JWT (access_token)
 
-    CLO->>SRV: MCPリクエスト（Bearer JWT）
-    SRV-->>CLO: 正常レスポンス
+    CLO->>GWY: MCPリクエスト（Bearer JWT）
+    GWY-->>CLO: 正常レスポンス
 ```
 
-### OAuth 2.1 + PKCEフロー詳細
+### Discovery エンドポイント
+
+CLO から見た Discovery エンドポイントは GWY が公開する。Authorization Server Metadata は GWY が AUS（Supabase Auth）の openid-configuration をプロキシして返却する。
+
+**1. Protected Resource Metadata（RFC 9728）:**
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| resource | string | 保護リソースの識別子（MCP エンドポイント URL） |
+| authorization_servers | string[] | 認可サーバー URL の一覧 |
+| scopes_supported | string[] | サポートするスコープ |
+| bearer_methods_supported | string[] | Bearer トークンの送信方法 |
+
+**2. Authorization Server Metadata（RFC 8414）:**
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| issuer | string | 認可サーバーの識別子 |
+| authorization_endpoint | string | 認可エンドポイント URL |
+| token_endpoint | string | トークンエンドポイント URL |
+| registration_endpoint | string | 動的クライアント登録エンドポイント URL |
+| response_types_supported | string[] | `["code"]` |
+| grant_types_supported | string[] | `["authorization_code", "refresh_token"]` |
+| code_challenge_methods_supported | string[] | `["S256"]` |
+| token_endpoint_auth_methods_supported | string[] | `["none"]` |
+| scopes_supported | string[] | `["openid", "profile", "email"]` |
+
+### OAuth 2.1 + PKCE フロー詳細
 
 **1. 認可リクエスト:**
 ```
@@ -65,11 +93,10 @@ GET /authorize
   ?response_type=code
   &client_id={client_id}
   &redirect_uri={redirect_uri}
-  &scope=openid profile
+  &scope=openid profile email
   &code_challenge={code_challenge}
   &code_challenge_method=S256
   &state={state}
-  &resource=https://mcp.mcpist.app
 ```
 
 **2. 認可コード返却:**
@@ -85,7 +112,6 @@ POST /token
   &redirect_uri={redirect_uri}
   &client_id={client_id}
   &code_verifier={code_verifier}
-  &resource=https://mcp.mcpist.app
 ```
 
 **4. トークンレスポンス:**
@@ -98,12 +124,20 @@ POST /token
 }
 ```
 
+### 期待する振る舞い
+
+- CLO はトークンなしでリクエストした際、GWY から `401` と `WWW-Authenticate: Bearer resource_metadata="..."` を受け取り、Discovery フローを開始する
+- Discovery エンドポイントは GWY がプロキシとして提供し、AUS（Supabase Auth）の openid-configuration を取得して返却する
+- 認可リクエストには PKCE（S256）が必須。`code_challenge` / `code_verifier` なしのリクエストは拒否される
+- `state` パラメータによる CSRF 保護が必須
+- トークン交換で取得した `access_token` は JWT 形式であり、GWY が JWKS で署名検証する
+
 ---
 
 ## 関連ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [itr-CLO.md](./itr-CLO.md) | MCP Client (OAuth2.0) 詳細仕様 |
-| [itr-AUS.md](./itr-AUS.md) | Auth Server 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |
+| ドキュメント                     | 内容                       |
+| -------------------------- | ------------------------ |
+| [itr-CLO.md](./itr-CLO.md) | MCP Client (OAuth2.0) 仕様 |
+| [itr-AUS.md](./itr-AUS.md) | Auth Server 仕様           |
+

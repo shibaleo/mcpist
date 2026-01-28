@@ -4,7 +4,7 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `reviewed` |
+| Status | `draft` |
 | Version | v2.0 |
 | Note | Auth Server Interaction Specification |
 
@@ -126,7 +126,7 @@ Auth Server（AUS）は、OAuth 2.1準拠の認可サーバー。MCP Client (OAu
 | ドキュメント | 内容 |
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
-| [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
+| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-CLO.md](./itr-CLO.md) | MCP Client (OAuth2.0)詳細仕様 |
 | [itr-GWY.md](./itr-GWY.md) | API Gateway詳細仕様 |
 | [itr-SSM.md](./itr-SSM.md) | Session Manager詳細仕様 |

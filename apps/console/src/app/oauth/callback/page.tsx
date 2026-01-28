@@ -155,6 +155,7 @@ function CallbackContent() {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
+          // FIXME: RFC 8707 Resource Indicators — resource パラメータ未送信 (BL-060)
           body: new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
