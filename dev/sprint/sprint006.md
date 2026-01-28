@@ -128,5 +128,5 @@ dtl-itr-DST-GWY, DST-PSP, DST-SSM, DST-TVL, GWY-OBS
 
 - [sprint005-review.md](./sprint005-review.md) - Sprint-005 レビュー
 - [sprint005.md](./sprint005.md) - Sprint-005 計画書
-- [day016-backlog.md](../workdir/day016-backlog.md) - DAY016 バックログ（引き継ぎ候補）
+- [day016-backlog.md](day016-backlog.md) - DAY016 バックログ（引き継ぎ候補）
 - [sprint004.md](./sprint004.md) - Sprint-004 計画書（仕様書作成フェーズ）
