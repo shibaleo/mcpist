@@ -61,12 +61,12 @@ Sprint-004 で作成した仕様書群を現在の実装に合わせて更新す
 
 | ID | タスク | 対象ファイル | 備考 |
 |----|--------|-------------|------|
-| S6-010 | Rate Limit 記述の更新 | spc-dsn.md | 実装では削除済み。仕様から削除 or「将来実装予定」 |
+| S6-010 | Rate Limit 記述の更新 | spc-dsn.md | **完了** 課金対象外・インフラ保護目的として維持 |
 | S6-011 | JWT `aud` チェック要件の整理 | spc-itf.md | 実装では明示チェックなし。方針決定 |
 | S6-012 | MCP 拡張エラーコード (2001-2005) の整理 | spc-itf.md | 実装では JSON-RPC 標準コードのみ |
 | S6-013 | Console API 設計の更新 | spc-itf.md | REST API → Supabase RPC 直接呼び出し方式 |
 | S6-014 | PSP Webhook 仕様の整理 | spc-itf.md | Phase 1 実装に合わせて更新 |
-| S6-015 | Tool Sieve 設計書の作成 | dsn-permission-system.md | Layer 1/2/3 の設計を文書化 |
+| S6-015 | ~~Tool Sieve 設計書の作成~~ | ~~dsn-permission-system.md~~ | **削除** セキュリティ仕様として扱うべき。設計仕様のスコープ外 |
 | S6-016 | Observability 設計書の作成 | dsn-observability.md | Loki, X-Request-ID, ログ種別の設計を文書化 |
 | S6-017 | MCP Tool Annotations 仕様反映 | spc-itf.md | annotations フィールドの仕様記述 |
 
@@ -128,7 +128,7 @@ Sprint-004 で作成した仕様書群を現在の実装に合わせて更新す
 
 ### Phase 2: 仕様書更新
 - [ ] BL-010〜014 の5項目が全て resolved（修正 or「将来実装予定」明記）
-- [ ] Tool Sieve 設計書が存在する
+- ~~Tool Sieve 設計書が存在する~~ （削除: セキュリティ仕様のスコープ）
 - [ ] Observability 設計書が存在する
 - [ ] spec-impl-compare.md の未解決項目がゼロ
 

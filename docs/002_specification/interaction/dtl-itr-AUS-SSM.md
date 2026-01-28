@@ -48,7 +48,7 @@ sequenceDiagram
     alt 未ログイン
         SSM-->>AUS: 未認証
         AUS-->>Browser: SSMログイン画面へリダイレクト
-        Note over Browser,SSM: SSMがログイン処理を実行（詳細はitr-ssm参照）
+        Note over Browser,SSM: SSMがログイン処理を実行（詳細はitr-SSM参照）
         SSM-->>Browser: リダイレクト（AUSへ）
         Browser->>AUS: 認証完了
     end
@@ -69,7 +69,7 @@ sequenceDiagram
 4. ログイン完了後、SSMがAUSにユーザー情報を返却
 5. AUSが同意画面を表示し、認可コードを発行
 
-ログイン処理の詳細（認証方式、IDP連携等）は [itr-ssm.md](./itr-ssm.md) を参照。
+ログイン処理の詳細（認証方式、IDP連携等）は [itr-SSM.md](./itr-SSM.md) を参照。
 
 ### SSMから取得する情報
 
@@ -83,6 +83,6 @@ sequenceDiagram
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-ssm.md](./itr-ssm.md) | Session Manager 詳細仕様 |
-| [itr-aus.md](./itr-aus.md) | Auth Server 詳細仕様 |
+| [itr-SSM.md](./itr-SSM.md) | Session Manager 詳細仕様 |
+| [itr-AUS.md](./itr-AUS.md) | Auth Server 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

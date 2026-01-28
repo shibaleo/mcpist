@@ -187,6 +187,6 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-mod.md](./itr-mod.md) | Modules 詳細仕様 |
-| [itr-tvl.md](./itr-tvl.md) | Token Vault 詳細仕様 |
+| [itr-MOD.md](./itr-MOD.md) | Modules 詳細仕様 |
+| [itr-TVL.md](./itr-TVL.md) | Token Vault 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

@@ -2,11 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `approved` |
-| Version | v2.0 (Sprint-003) |
-| Note | Infrastructure Specification |
+| 項目      | 値                            |
+| ------- | ---------------------------- |
+| Status  | `reviewed`                   |
+| Version | v3.0 (Sprint-006)            |
+| Note    | Infrastructure Specification |
 
 ---
 
@@ -23,150 +23,160 @@
 
 ---
 
-## コンポーネントとインフラのマッピング
+## レイヤー別インフラ構成
 
-### クライアント層（実装範囲外）
+### Consumer Layer（実装範囲外）
 
 | コンポーネント | 説明 | インフラ配置 |
 |--------------|------|-------------|
 | MCPクライアント (OAuth) | Claude.ai, ChatGPT等 | 実装範囲外 |
 | MCPクライアント (APIキー) | Claude Code, Cursor等 | 実装範囲外 |
 
-### ゲートウェイ層
+### Edge Service Layer
+
+| コンポーネント         | 説明                      | インフラ配置                                       |
+| --------------- | ----------------------- | -------------------------------------------- |
+| API Gateway     | 認証検証、フェイルオーバー、プロキシ      | **Cloudflare Worker**                        |
+| API Key Cache   | APIキー検証結果キャッシュ          | **Cloudflare KV**                            |
+| DNS             | ドメイン管理                  | **Cloudflare DNS**                           |
+| OAuth Discovery | RFC 9728 / 8414 メタデータ提供 | **Cloudflare Worker**                        |
+| Observability   | 構造化ログ送信                 | Cloudflare Worker → **Grafana Cloud (Loki)** |
+
+### Compute Layer
 
 | コンポーネント | 説明 | インフラ配置 |
 |--------------|------|-------------|
-| APIゲートウェイ | 認証検証、プロキシ | **Cloudflare Worker** |
-| APIキーキャッシュ | APIキー検証結果キャッシュ | **Cloudflare KV** |
+| MCP Server (Primary) | Go + Docker Container | **Render** |
+| MCP Server (Secondary) | フェイルオーバー先、Primary と同一構成 | **Koyeb** |
 
-### MCPサーバー層
+### Backend Platform Layer
 
-| コンポーネント | 説明 | インフラ配置 |
-|--------------|------|-------------|
-| Authミドルウェア | Gateway Secret検証 | **Render** (Primary) / **Koyeb** (Secondary) |
-| MCPハンドラ | tools/list, tools/call | **Render** (Primary) / **Koyeb** (Secondary) |
-| モジュールレジストリ | get_module_schema, call, batch | **Render** (Primary) / **Koyeb** (Secondary) |
-| モジュール | Notion, GitHub, Jira等 | **Render** (Primary) / **Koyeb** (Secondary) |
+| コンポーネント         | 説明                     | インフラ配置                                |
+| --------------- | ---------------------- | ------------------------------------- |
+| OAuth Server    | OAuth 2.1, JWT発行       | **Supabase Auth**                     |
+| Session Manager | ユーザーID発行、ソーシャルログイン     | **Supabase Auth**                     |
+| Data Store      | ユーザー情報、クレジット、設定、トークン   | **Supabase PostgreSQL** (mcpist スキーマ) |
+| Token Vault     | 外部サービストークン・APIシークレット保存 | **Supabase PostgreSQL + Vault**       |
 
-### Auth + DB Backend層
+### UI Layer
 
-| コンポーネント | 説明 | インフラ配置 |
-|--------------|------|-------------|
-| Authサーバー | OAuth 2.1, JWT発行 | **Supabase Auth** |
-| Sessionマネージャー | ユーザーID発行、ソーシャルログイン | **Supabase Auth** |
-| Data Store | ユーザー情報、課金情報、設定 | **Supabase PostgreSQL** (mcpistスキーマ) |
-| Token Vault | 外部サービストークン保存 | **Supabase PostgreSQL + Vault** |
+| コンポーネント      | 説明                 | インフラ配置                  |
+| ------------ | ------------------ | ----------------------- |
+| User Console | 管理画面、OAuth連携、ツール設定 | **Vercel**              |
+| 静的アセット       | CSS, JS, 画像        | **Vercel Edge Network** |
 
-### フロントエンド層
+### Delivery Layer
 
 | コンポーネント | 説明 | インフラ配置 |
 |--------------|------|-------------|
-| ユーザーコンソール | 管理画面、OAuth連携、設定 | **Vercel** |
-| 静的アセット | CSS, JS, 画像 | **Vercel Edge Network** |
+| Source Code / CI/CD | ソースコード管理、Lint、Test、Build、Deploy | **GitHub** (Actions) |
+| Container Registry | Docker イメージ配布 | **DockerHub** |
 
-### 外部サービス（実装範囲外）
+### Observability Layer
 
 | コンポーネント | 説明 | インフラ配置 |
 |--------------|------|-------------|
-| 認証プロバイダ | ソーシャルログイン | Google, GitHub等 |
-| 決済代行サービス | クレジットカード決済 | Stripe |
-| 外部Authサーバー | 外部サービス認可 | Notion, Google等 |
-| 外部サービスAPI | リソースアクセス | Notion API, Google Calendar API等 |
+| Log Store | 構造化ログ、セキュリティイベント、X-Request-ID トレース | **Grafana Cloud (Loki)** |
+
+### External Integration Layer（実装範囲外）
+
+| コンポーネント                  | 説明              | インフラ配置                           |
+| ------------------------ | --------------- | -------------------------------- |
+| Payment Service Provider | 決済代行、Checkout / Webhook | **Stripe** |
+| Identity Provider        | ソーシャルログイン       | Google, Apple, Microsoft, GitHub  |
+| External Auth Server     | 外部サービス認可（OAuth） | Notion, Google, Microsoft等       |
+| External Service API     | リソースアクセス        | Notion API, Google Calendar API等 |
 
 ---
 
 ## インフラサービス一覧
 
-| インフラサービス              | 用途                      | プラン            |
-| --------------------- | ----------------------- | -------------- |
-| **Cloudflare Worker** | APIゲートウェイ               | Free           |
-| **Cloudflare KV**     | APIキーキャッシュ              | Free           |
-| **Cloudflare DNS**    | ドメイン管理                  | Free           |
-| **Render**            | MCPサーバー (Primary)       | Free (Starter) |
-| **Koyeb**             | MCPサーバー (Secondary)     | Free (nano)    |
-| **Supabase**          | Auth, PostgreSQL, Vault | Free           |
-| **Vercel**            | Console, Edge Network   | Free (Hobby)   |
-| **DockerHub**         | Dockerイメージホスト           | Free (Public)  |
-| **GitHub**            | ソースコード、Actions          | Free           |
-| **Grafana Cloud**     | ログ収集 (Loki)             | Free           |
+| インフラサービス | 用途 | プラン |
+|-----------------|------|--------|
+| **Cloudflare Worker** | APIゲートウェイ、OAuth Discovery | Free |
+| **Cloudflare KV** | APIキーキャッシュ | Free |
+| **Cloudflare DNS** | ドメイン管理 | Free |
+| **Render** | MCPサーバー (Primary) | Free (Starter) |
+| **Koyeb** | MCPサーバー (Secondary) | Free (nano) |
+| **Supabase** | Auth, PostgreSQL, Vault | Free |
+| **Vercel** | Console, Edge Network | Free (Hobby) |
+| **GitHub** | ソースコード、Actions | Free |
+| **DockerHub** | Docker イメージ配布 | Free |
+| **Grafana Cloud** | ログ収集 (Loki) | Free |
+| **Stripe** | 決済代行 | 決済手数料のみ |
 
 ---
 
 ## データストア配置
 
-| データ種別 | テーブル/スキーマ | インフラ配置 |
-|-----------|-----------------|-------------|
-| ユーザー情報 | mcpist.users | Supabase PostgreSQL |
-| サブスクリプション | mcpist.subscriptions | Supabase PostgreSQL |
-| プラン | mcpist.plans | Supabase PostgreSQL |
-| APIキー | mcpist.api_keys | Supabase PostgreSQL |
-| OAuthトークン | mcpist.oauth_tokens | Supabase PostgreSQL |
-| 暗号化シークレット | vault.secrets | Supabase Vault |
-| 認証ユーザー | auth.users | Supabase Auth |
-
-**スキーマ設計方針:**
-
-| スキーマ | 用途 | 管理 |
-|---------|------|------|
-| auth | 共通認証基盤 | Supabase管理 |
-| vault | 暗号化ストア | Supabase管理 |
-| mcpist | MCPist関連テーブル | MCPist |
-| public | RPCラッパー関数 | MCPist |
+| スキーマ | 用途 | インフラ配置 | 管理 |
+|---------|------|-------------|------|
+| auth | 共通認証基盤 | Supabase Auth | Supabase管理 |
+| vault | 暗号化ストア | Supabase Vault | Supabase管理 |
+| mcpist | MCPist業務データ（ユーザー、クレジット、トークン、設定等） | Supabase PostgreSQL | MCPist |
+| public | RPCラッパー関数 | Supabase PostgreSQL | MCPist |
+MCPistのビジネスデータはmcpistスキーマに保存し、スキーマ公開しない。データアクセスはpublicに配置されたRPC関数経由で行う。
+個別テーブルの定義は [spc-tbl.md](./spc-tbl.md) を参照。
 
 ---
 
-## アーキテクチャ図
+## インフラ構成図
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              MCP Client                                      │
-│                        (Claude.ai, ChatGPT, Claude Code, Cursor)             │
+│                         Consumer Layer (Out of Scope)                       │
+│                    (Claude.ai, ChatGPT, Claude Code, Cursor)               │
 └───────────────────────────────────┬─────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Cloudflare                                         │
-│  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │                         Worker (APIゲートウェイ)                         ││
-│  └───────────────────────────────────┬─────────────────────────────────────┘│
-│                                      │                                       │
-│                      ┌───────────────┴───────────────┐                      │
-│                      │              KV               │                      │
-│                      │     (APIキーキャッシュ)        │                      │
-│                      └───────────────────────────────┘                      │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                       ┌───────────────┴───────────────┐
-                       ▼                               ▼
-              ┌─────────────────┐             ┌─────────────────┐
-              │     Render      │             │     Koyeb       │
-              │   (Primary)     │             │   (Secondary)   │
-              │                 │             │                 │
-              │   MCP Server    │             │   MCP Server    │
-              │   (Docker)      │             │   (Docker)      │
-              └────────┬────────┘             └────────┬────────┘
-                       └───────────────┬───────────────┘
-                                       │
-                                       ▼
+│                         Edge Service Layer                                  │
+│                                                                             │
+│  ┌──────────────────────┐  ┌───────────────┐  ┌────────────────────────┐   │
+│  │  Worker (API Gateway) │  │ Cloudflare KV │  │    Cloudflare DNS     │   │
+│  │  JWT/APIキー検証       │  │ APIキーキャッシュ │  │    ドメイン管理        │   │
+│  │  OAuth Discovery      │  │               │  │                        │   │
+│  │  フェイルオーバー       │  │               │  │                        │   │
+│  └──────────────────────┘  └───────────────┘  └────────────────────────┘   │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                   ┌───────────────┴───────────────┐
+                   ▼                               ▼
+          ┌─────────────────┐             ┌─────────────────┐
+          │     Render      │             │     Koyeb       │
+          │   (Primary)     │             │   (Secondary)   │
+          │                 │             │                 │
+          │   MCP Server    │             │   MCP Server    │
+          │   (Docker)      │             │   (Docker)      │
+          └────────┬────────┘             └────────┬────────┘
+                   └───────────────┬───────────────┘
+                                   │         Compute Layer
+                   ┌───────────────┼───────────────┐
+                   ▼               ▼               ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                             Supabase                                         │
-│                                                                              │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
-│  │      Auth       │  │   PostgreSQL    │  │     Vault       │             │
-│  │                 │  │                 │  │                 │             │
-│  │  Session管理    │  │  mcpistスキーマ  │  │  暗号化保存     │             │
-│  │  OAuth Server   │  │  publicスキーマ  │  │                 │             │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘             │
+│                       Backend Platform Layer                                │
+│                                                                             │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐            │
+│  │  Supabase Auth  │  │   PostgreSQL    │  │  Supabase Vault │            │
+│  │                 │  │                 │  │                 │            │
+│  │  OAuth Server   │  │  mcpistスキーマ  │  │  暗号化保存     │            │
+│  │  Session管理    │  │  publicスキーマ  │  │                 │            │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘            │
 └─────────────────────────────────────────────────────────────────────────────┘
-                                       │
-              ┌────────────────────────┼────────────────────────┐
-              ▼                        ▼                        ▼
-┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
-│       Vercel        │   │       Stripe        │   │    External APIs    │
-│                     │   │                     │   │                     │
-│   User Console      │   │   決済代行          │   │  Notion, Google     │
-│   (Next.js)         │   │   (実装範囲外)      │   │  Calendar, etc.     │
-└─────────────────────┘   └─────────────────────┘   └─────────────────────┘
+
+┌──────────────────┐                           ┌────────────────────────────┐
+│    UI Layer      │                           │    Delivery Layer          │
+│                  │                           │                            │
+│  Vercel          │                           │  GitHub → DockerHub        │
+│  (Next.js)       │                           │  (CI/CD)  (Docker Image)   │
+└──────────────────┘                           └────────────────────────────┘
+
+┌────────────────────────────────────────────────┐
+│              Observability Layer                │
+│                                                │
+│  Grafana Cloud (Loki)                          │
+│  ← Edge Service Layer / Compute Layer から送信  │
+└────────────────────────────────────────────────┘
 ```
 
 ---
@@ -180,11 +190,12 @@
 | Koyeb | Free (nano) | $0 |
 | Supabase | Free | $0 |
 | Vercel | Free (Hobby) | $0 |
-| DockerHub | Free | $0 |
 | GitHub | Free | $0 |
+| DockerHub | Free | $0 |
 | Grafana Cloud | Free | $0 |
+| Stripe | 決済手数料のみ | 決済額の3.6% |
 
-**月額固定費: $0**
+**月額固定費: $0**（Stripe は月額料金なし。決済発生時に手数料3.6%が差し引かれる）
 
 ---
 

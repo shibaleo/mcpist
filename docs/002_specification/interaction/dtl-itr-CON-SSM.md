@@ -66,6 +66,6 @@ sequenceDiagram
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-con.md](./itr-con.md) | User Console 詳細仕様 |
-| [itr-ssm.md](./itr-ssm.md) | Session Manager 詳細仕様 |
+| [itr-CON.md](./itr-CON.md) | User Console 詳細仕様 |
+| [itr-SSM.md](./itr-SSM.md) | Session Manager 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

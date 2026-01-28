@@ -544,7 +544,7 @@ type CacheEntry struct {
     │
     ├─ 1. Auth Middleware（JWT検証、user_id抽出）
     │
-    ├─ 2. Permission Gate（Tool Sieve、権限チェック）
+    ├─ 2. Permission Gate（権限チェック）
     │
     ├─ 3. Usage Meter: Check ← 事前チェック（Quota/Credit）
     │

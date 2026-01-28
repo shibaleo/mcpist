@@ -67,6 +67,6 @@ Authorization: OAuth oauth_consumer_key="xxx", oauth_token="xxx", oauth_signatur
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-mod.md](./itr-mod.md) | Modules 詳細仕様 |
-| [itr-ext.md](./itr-ext.md) | External Service API 詳細仕様 |
+| [itr-MOD.md](./itr-MOD.md) | Modules 詳細仕様 |
+| [itr-EXT.md](./itr-EXT.md) | External Service API 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

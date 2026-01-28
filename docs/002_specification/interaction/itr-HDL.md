@@ -1,4 +1,4 @@
-# MCP Handler インタラクション仕様書（itr-hdl）
+# MCP Handler インタラクション仕様書（itr-HDL）
 
 ## ドキュメント管理情報
 
@@ -65,7 +65,7 @@ MCP Handler（HDL）は、MCPプロトコルを解釈し、モジュールを管
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
 | [dtl-spc-hdl.md](../dtl-spc/dtl-spc-hdl.md) | MCP Handler詳細仕様 |
-| [itr-amw.md](./itr-amw.md) | Auth Middleware詳細仕様 |
-| [itr-dst.md](./itr-dst.md) | Data Store詳細仕様 |
-| [itr-mod.md](./itr-mod.md) | Modules詳細仕様 |
-| [itr-srv.md](./itr-srv.md) | MCP Server詳細仕様 |
+| [itr-AMW.md](./itr-AMW.md) | Auth Middleware詳細仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
+| [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
+| [itr-SRV.md](./itr-SRV.md) | MCP Server詳細仕様 |

@@ -46,6 +46,6 @@
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-hdl.md](./itr-hdl.md) | MCP Handler 詳細仕様 |
-| [itr-mod.md](./itr-mod.md) | Modules 詳細仕様 |
+| [itr-HDL.md](./itr-HDL.md) | MCP Handler 詳細仕様 |
+| [itr-MOD.md](./itr-MOD.md) | Modules 詳細仕様 |
 | [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

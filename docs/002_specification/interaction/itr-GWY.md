@@ -1,4 +1,4 @@
-# API Gateway インタラクション仕様書（itr-gwy）
+# API Gateway インタラクション仕様書（itr-GWY）
 
 ## ドキュメント管理情報
 
@@ -55,6 +55,6 @@ API Gateway（GWY）は、外部からのリクエストを受け付けるエン
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
-| [itr-aus.md](./itr-aus.md) | Auth Server詳細仕様 |
-| [itr-tvl.md](./itr-tvl.md) | Token Vault詳細仕様 |
-| [itr-amw.md](./itr-amw.md) | Auth Middleware詳細仕様 |
+| [itr-AUS.md](./itr-AUS.md) | Auth Server詳細仕様 |
+| [itr-TVL.md](./itr-TVL.md) | Token Vault詳細仕様 |
+| [itr-AMW.md](./itr-AMW.md) | Auth Middleware詳細仕様 |

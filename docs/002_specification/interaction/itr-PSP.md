@@ -1,4 +1,4 @@
-# Payment Service Provider インタラクション仕様書（itr-psp）
+# Payment Service Provider インタラクション仕様書（itr-PSP）
 
 ## ドキュメント管理情報
 
@@ -97,6 +97,6 @@ PSP側で定義され、DSTが参照する情報。
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](../spc-itr.md) | インタラクション仕様書 |
-| [itr-con.md](./itr-con.md) | User Console詳細仕様 |
-| [itr-dst.md](./itr-dst.md) | Data Store詳細仕様 |
+| [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
 | [dtl-spc-credit-model.md](../dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |

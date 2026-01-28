@@ -2,11 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 (DAY8) |
-| Note | Design Specification |
+| 項目      | 値                    |
+| ------- | -------------------- |
+| Status  | `reviewed`           |
+| Version | v2.0 (Sprint-006)    |
+| Note    | Design Specification |
 
 ---
 
@@ -18,14 +18,14 @@
 
 ## 技術スタック概要
 
-| カテゴリ | 技術 | 用途 |
-|---------|------|------|
-| サーバー言語 | Go 1.21+ | MCP Server |
-| コンテナ | Docker | デプロイ |
-| フロントエンド | Next.js 14+ / React | User Console |
-| Edge Runtime | Cloudflare Workers | API Gateway |
-| データベース | PostgreSQL 15+ | Supabase |
-| 認証 | Supabase Auth | OAuth 2.1 / JWT |
+| カテゴリ         | 技術                     | 用途              |
+| ------------ | ---------------------- | --------------- |
+| サーバー言語       | Go 1.23+               | MCP Server      |
+| コンテナ         | Docker                 | デプロイ            |
+| フロントエンド      | Next.js 15+ / React 19 | User Console    |
+| Edge Runtime | Cloudflare Workers     | API Gateway     |
+| データベース       | PostgreSQL 15+         | Supabase        |
+| 認証           | Supabase Auth          | OAuth 2.1 / JWT |
 
 ---
 
@@ -35,28 +35,26 @@
 
 | 項目 | 技術 | 備考 |
 |------|------|------|
-| 言語 | Go 1.21+ | 並行処理、メモリ効率 |
-| フレームワーク | 標準ライブラリ (net/http) | シンプル、依存最小化 |
+| 言語 | Go 1.23+ | 並行処理、メモリ効率 |
+| フレームワーク | 標準ライブラリ (net/http) | 外部依存ゼロ |
 | コンテナ | Docker (Alpine) | マルチステージビルド |
-| デプロイ先 | Koyeb (Primary) / Fly.io (Standby) | |
+| デプロイ先 | Render (Primary) / Koyeb (Secondary) | |
 
 **SRV内部コンポーネント:**
 
 | コンポーネント | 実装方式 |
 |---------------|----------|
-| Auth Middleware (AMW) | Go middleware |
-| MCP Handler (HDL) | Go handler |
-| Module Registry (REG) | Go struct + interface |
-| Modules (MOD) | Go modules (internal/modules/) |
+| Authorization Middleware (AMW) | Go middleware (`middleware/authz.go`) |
+| MCP Handler (HDL) | Go handler (`mcp/handler.go`)。プリミティブへのルーティングを担当 |
+| Modules (MOD) | Go modules (`modules/`)。各モジュールが `Module` interface を実装 |
+| Store (STR) | Go store (`store/`)。Supabase REST API + RPC 経由のデータアクセス |
+| Observability (OBS) | Go observability (`observability/loki.go`)。Grafana Loki への構造化ログ送信 |
 
-**主要ライブラリ:**
+**依存ライブラリ:**
 
-| ライブラリ | 用途 |
-|-----------|------|
-| net/http (標準ライブラリ) | HTTPサーバー・ルーター |
-| github.com/golang-jwt/jwt/v5 | JWT検証 |
-| github.com/supabase-community/supabase-go | Supabase SDK |
-| github.com/prometheus/client_golang | メトリクス |
+Go 標準ライブラリのみで実装。外部モジュール依存なし（`net/http`, `crypto`, `encoding/json` 等）。
+
+全ての外部サービス（Supabase, Loki, 各モジュールAPI）は HTTP REST で通信する。
 
 ---
 
@@ -67,13 +65,21 @@
 | 言語 | TypeScript | Cloudflare Workers |
 | ランタイム | Cloudflare Workers | Edge |
 | ツール | Wrangler | デプロイ |
-| ストレージ | Cloudflare KV | Rate Limitカウンター |
+| ストレージ | Cloudflare KV | APIキー検証キャッシュ、Rate Limitカウンター |
 
 **責務:**
-- JWT署名検証
+- JWT検証（Supabase userinfo / Auth API / JWKS の3段構え）
+- APIキー検証（SHA-256 → KVキャッシュ → Supabase RPC fallback）
 - グローバルRate Limit（IP単位）
 - Burst制限（ユーザー単位）
-- X-User-ID付与
+- X-User-ID / X-Auth-Type / X-Gateway-Secret ヘッダ付与
+- X-Request-ID 発行（`crypto.randomUUID()`）
+- Backend フェイルオーバー（Primary → Secondary）
+- OAuth Discovery メタデータ提供（RFC 9728 / 8414）
+- ヘルスチェック（`/health` + cron 5分間隔）
+- CORS ハンドリング
+
+**備考:** Rate Limit / Burst制限は課金対象外。濫用防止のためのインフラ保護目的で実装する。
 
 ---
 
@@ -81,9 +87,9 @@
 
 | 項目 | 技術 | 備考 |
 |------|------|------|
-| フレームワーク | Next.js 14+ | App Router |
+| フレームワーク | Next.js 15+ | App Router |
 | 言語 | TypeScript | |
-| UI | React + Tailwind CSS | |
+| UI | React 19 + Tailwind CSS | |
 | デプロイ先 | Vercel | Edge Functions対応 |
 | 認証 | Supabase Auth | @supabase/ssr |
 
@@ -93,27 +99,33 @@
 |-----------|------|
 | @supabase/supabase-js | Supabase SDK |
 | @supabase/ssr | SSR対応認証 |
-| @stripe/stripe-js | Stripe決済 |
+| @radix-ui/* | UIコンポーネント（Dialog, Switch, Tabs 等） |
+| jose | JWT検証 |
+| lucide-react | アイコン |
+| sonner | Toast通知 |
+| next-themes | テーマ管理 |
 | tailwindcss | スタイリング |
 
 ---
 
-### Entitlement Store / Token Vault（ENT / TVL）
+### Data Store（Supabase PostgreSQL）
 
 | 項目 | 技術 | 備考 |
 |------|------|------|
 | データベース | PostgreSQL 15+ | Supabase |
 | スキーマ | mcpist | 専用スキーマ |
 | アクセス制御 | RLS (Row Level Security) | |
-| 暗号化 | Supabase Vault | OAuthトークン |
+| 暗号化 | Supabase Vault | OAuthトークン・APIシークレット |
 | マイグレーション | Supabase CLI | |
 
 **アクセス方式:**
 
 | クライアント | 接続方式 |
 |-------------|----------|
-| SRV (Go) | supabase-go SDK / 直接PostgreSQL |
+| SRV (Go) | Supabase REST API + RPC |
 | CON (Next.js) | @supabase/supabase-js |
+
+ユーザーごとのアクセス権限（Authentication ）は各コンポーネントの責務として実装する。
 
 ---
 
@@ -129,7 +141,7 @@
 **対応認証方式:**
 - Email/Password
 - Magic Link
-- OAuth（Google, GitHub等）
+- OAuth（Google, Apple, Microsoft, GitHub）
 - MFA（TOTP）
 
 ---
@@ -140,7 +152,6 @@
 
 | ツール | 用途 |
 |--------|------|
-| Docker Compose | ローカル環境構築 |
 | Supabase CLI | ローカルDB、Auth |
 | Air | Go Hot Reload |
 | pnpm | Node.js パッケージ管理 |
@@ -169,11 +180,12 @@ feature/xxx → PR → dev → PR → main → 本番デプロイ
 ```
 
 **CIトリガー:**
+
 | イベント | 実行内容 |
 |---------|----------|
 | PR作成/更新 | Lint, Test, Build |
 | devマージ | 統合テスト（将来ステージング環境追加時に自動デプロイ） |
-| mainマージ | Deploy (Koyeb, Fly.io, Vercel, Cloudflare) |
+| mainマージ | Deploy (Render, Koyeb, Vercel, Cloudflare) |
 
 **備考:**
 - 機能開発は feature/* → dev にマージ
@@ -190,25 +202,23 @@ mcpist/
 ├── apps/
 │   ├── server/               # MCP Server (Go)
 │   │   ├── cmd/
-│   │   │   └── server/       # エントリーポイント
+│   │   │   ├── server/       # エントリーポイント
+│   │   │   └── tools-export/ # tools.json 生成CLI
 │   │   ├── internal/
 │   │   │   ├── mcp/          # MCP Protocol Handler
-│   │   │   ├── modules/      # Module Registry + Modules
-│   │   │   │   ├── registry.go
-│   │   │   │   ├── notion/
-│   │   │   │   ├── google_calendar/
-│   │   │   │   └── microsoft_todo/
-│   │   │   ├── auth/         # Auth Middleware
-│   │   │   ├── entitlement/  # ENT アクセス
-│   │   │   └── vault/        # TVL アクセス
+│   │   │   ├── middleware/   # Authorization Middleware
+│   │   │   ├── modules/     # Module interface + 各モジュール実装
+│   │   │   ├── store/       # Data Store アクセス (user, token, module)
+│   │   │   ├── observability/ # Loki ログ送信
+│   │   │   └── httpclient/  # HTTP Client ユーティリティ
 │   │   ├── Dockerfile
 │   │   └── go.mod
 │   │
 │   ├── console/              # User Console (Next.js)
-│   │   ├── app/              # App Router
-│   │   ├── components/
-│   │   ├── lib/
-│   │   │   └── supabase/
+│   │   ├── src/
+│   │   │   ├── app/          # App Router
+│   │   │   ├── components/
+│   │   │   └── lib/
 │   │   └── package.json
 │   │
 │   └── worker/               # API Gateway (Cloudflare Worker)
@@ -217,20 +227,18 @@ mcpist/
 │       ├── wrangler.toml
 │       └── package.json
 │
-├── packages/                 # 共有パッケージ（将来）
-│   └── shared-types/         # 共通型定義等
-│
 ├── supabase/                 # Supabase設定
 │   ├── migrations/           # DBマイグレーション
-│   ├── functions/            # Edge Functions（必要に応じて）
+│   ├── seed.sql
 │   └── config.toml
+│
+├── docs/                     # VitePress ドキュメント
 │
 ├── .github/
 │   └── workflows/            # CI/CD
 │
-├── docker-compose.yml        # ローカル開発環境
 ├── pnpm-workspace.yaml       # pnpm workspace設定
-└── turbo.json                # Turborepo設定（オプション）
+└── turbo.json                # Turborepo設定
 ```
 
 **モノレポ管理:**
@@ -239,7 +247,6 @@ mcpist/
 |--------|------|
 | pnpm workspace | パッケージ管理 |
 | Turborepo | ビルドキャッシュ、タスク並列実行、CI時間短縮 |
-| Docker Compose | ローカル統合環境 |
 
 ---
 
