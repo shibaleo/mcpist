@@ -1,4 +1,4 @@
-# API Gateway インタラクション仕様書（itr-GWY）
+﻿# API Gateway インタラクション仕様書（itr-GWY）
 
 ## ドキュメント管理情報
 
@@ -21,16 +21,31 @@ API Gateway（GWY）は、外部からのリクエストを受け付けるエン
 
 ---
 
-## 連携サマリー
+## 連携サマリー（dtl-itrまとめ）
 
-| 相手 | 方向 | やり取り | 詳細 |
-|------|------|----------|------|
-| MCP Client (OAuth2.0) | GWY ← CLO | MCP通信リクエスト受付（JWT認証） | [dtl-itr-CLO-GWY.md](./dtl-itr-CLO-GWY.md) |
-| MCP Client (API KEY) | GWY ← CLK | MCP通信リクエスト受付（API KEY認証） | [dtl-itr-CLK-GWY.md](./dtl-itr-CLK-GWY.md) |
-| Auth Server | GWY → AUS | JWKS取得 | [dtl-itr-AUS-GWY.md](./dtl-itr-AUS-GWY.md) |
-| Data Store | GWY → DST | APIキー検証 | [dtl-itr-DST-GWY.md](./dtl-itr-DST-GWY.md) |
-| Auth Middleware | GWY → AMW | リクエスト転送 | [dtl-itr-AMW-GWY.md](./dtl-itr-AMW-GWY.md) |
-| Observability | GWY → OBS | HTTPリクエストログ送信 | [dtl-itr-GWY-OBS.md](./dtl-itr-GWY-OBS.md) |
+### AMW
+- [dtl-itr-AMW-GWY.md](./dtl-itr-AMW-GWY.md)
+  - リクエスト転送
+
+### AUS
+- [dtl-itr-AUS-GWY.md](./dtl-itr-AUS-GWY.md)
+  - JWT 検証
+
+### CLK
+- [dtl-itr-CLK-GWY.md](./dtl-itr-CLK-GWY.md)
+  - MCP通信
+
+### CLO
+- [dtl-itr-CLO-GWY.md](./dtl-itr-CLO-GWY.md)
+  - MCP通信
+
+### DST
+- [dtl-itr-DST-GWY.md](./dtl-itr-DST-GWY.md)
+  - APIキー検証
+
+### OBS
+- [dtl-itr-GWY-OBS.md](./dtl-itr-GWY-OBS.md)
+  - リクエスト/認証/ルーティングのログ送信
 
 ---
 
@@ -60,3 +75,6 @@ API Gateway（GWY）は、外部からのリクエストを受け付けるエン
 | [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
 | [itr-AMW.md](./itr-AMW.md) | Auth Middleware詳細仕様 |
 | [itr-OBS.md](./itr-OBS.md) | Observability詳細仕様 |
+
+
+

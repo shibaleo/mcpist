@@ -2,12 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `draft` |
-| Version | v1.0 |
-| ID | ITR-REL-024 |
-| Note | Data Store - API Gateway Interaction Detail |
+| 項目      | 値                                           |
+| ------- | ------------------------------------------- |
+| Status  | `reviewed`                                  |
+| Version | v2.0                                        |
+| Note    | Data Store - API Gateway Interaction Detail |
 
 ---
 
@@ -40,14 +39,19 @@
 
 | 関数 | 入力 | 出力 |
 |------|------|------|
-| `lookup_user_by_key_hash` | SHA-256ハッシュ値 | user_id, key_status |
+| `lookup_user_by_key_hash` | SHA-256ハッシュ値 | valid, user_id, error |
+
+### 認可/権限
+
+- ユーザーに紐づくデータはRLSで保護する
+- `lookup_user_by_key_hash` はユーザーに紐づくため publishable role で呼び出す
 
 ---
 
 ## 関連ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [itr-GWY.md](./itr-GWY.md) | API Gateway 詳細仕様 |
-| [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |
+| ドキュメント                     | 内容             |
+| -------------------------- | -------------- |
+| [itr-GWY.md](./itr-GWY.md) | API Gateway 仕様 |
+| [itr-DST.md](./itr-DST.md) | Data Store 仕様  |
+

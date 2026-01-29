@@ -1,4 +1,4 @@
-# Auth Server インタラクション仕様書（itr-AUS）
+﻿# Auth Server インタラクション仕様書（itr-AUS）
 
 ## ドキュメント管理情報
 
@@ -24,13 +24,23 @@ Auth Server（AUS）は、OAuth 2.1準拠の認可サーバー。MCP Client (OAu
 
 ---
 
-## 連携サマリー
+## 連携サマリー（dtl-itrまとめ）
 
-| 相手 | 方向 | やり取り | 詳細 |
-|------|------|----------|------|
-| MCP Client (OAuth2.0) | AUS ← CLO | OAuth 2.1認証リクエスト受付 | [dtl-itr-AUS-CLO.md](./dtl-itr-AUS-CLO.md) |
-| API Gateway | AUS → GWY | JWT提供 | [dtl-itr-AUS-GWY.md](./dtl-itr-AUS-GWY.md) |
-| Session Manager | AUS ↔ SSM | ユーザー認証連携 | [dtl-itr-AUS-SSM.md](./dtl-itr-AUS-SSM.md) |
+### CLO
+- [dtl-itr-AUS-CLO.md](./dtl-itr-AUS-CLO.md)
+  - OAuth認可
+
+### DST
+- [dtl-itr-AUS-DST.md](./dtl-itr-AUS-DST.md)
+  - ユーザーID共有
+
+### GWY
+- [dtl-itr-AUS-GWY.md](./dtl-itr-AUS-GWY.md)
+  - JWT 検証
+
+### SSM
+- [dtl-itr-AUS-SSM.md](./dtl-itr-AUS-SSM.md)
+  - 認可フローにおけるセッション確認・ユーザー認証
 
 ---
 
@@ -130,3 +140,7 @@ Auth Server（AUS）は、OAuth 2.1準拠の認可サーバー。MCP Client (OAu
 | [itr-CLO.md](./itr-CLO.md) | MCP Client (OAuth2.0)詳細仕様 |
 | [itr-GWY.md](./itr-GWY.md) | API Gateway詳細仕様 |
 | [itr-SSM.md](./itr-SSM.md) | Session Manager詳細仕様 |
+
+
+
+
