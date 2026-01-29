@@ -9,7 +9,6 @@ import (
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/observability"
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
@@ -18,6 +17,7 @@ import (
 	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
+	"mcpist/server/internal/observability"
 	"mcpist/server/internal/store"
 )
 

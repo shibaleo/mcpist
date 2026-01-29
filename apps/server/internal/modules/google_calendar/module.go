@@ -33,14 +33,25 @@ func New() *GoogleCalendarModule {
 	return &GoogleCalendarModule{}
 }
 
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Google Calendar API - List, create, update, and delete events",
+	"ja-JP": "Google Calendar API - イベントの一覧表示、作成、更新、削除",
+}
+
 // Name returns the module name
 func (m *GoogleCalendarModule) Name() string {
 	return "google_calendar"
 }
 
-// Description returns the module description
-func (m *GoogleCalendarModule) Description() string {
-	return "Google Calendar API - List, create, update, and delete events"
+// Descriptions returns the module descriptions in all languages
+func (m *GoogleCalendarModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *GoogleCalendarModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Google Calendar API version
@@ -212,8 +223,12 @@ func headers(ctx context.Context) map[string]string {
 var toolDefinitions = []modules.Tool{
 	// Calendars
 	{
-		Name:        "list_calendars",
-		Description: "List all calendars accessible to the user.",
+		ID:   "google_calendar:list_calendars",
+		Name: "list_calendars",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all calendars accessible to the user.",
+			"ja-JP": "ユーザーがアクセス可能なすべてのカレンダーを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -221,8 +236,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_calendar",
-		Description: "Get details of a specific calendar.",
+		ID:   "google_calendar:get_calendar",
+		Name: "get_calendar",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific calendar.",
+			"ja-JP": "特定のカレンダーの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -234,8 +253,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Events
 	{
-		Name:        "list_events",
-		Description: "List events from a calendar within a time range.",
+		ID:   "google_calendar:list_events",
+		Name: "list_events",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List events from a calendar within a time range.",
+			"ja-JP": "時間範囲内のカレンダーからイベントを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -252,8 +275,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_event",
-		Description: "Get details of a specific event.",
+		ID:   "google_calendar:get_event",
+		Name: "get_event",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific event.",
+			"ja-JP": "特定のイベントの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -265,8 +292,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_event",
-		Description: "Create a new event in a calendar.",
+		ID:   "google_calendar:create_event",
+		Name: "create_event",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new event in a calendar.",
+			"ja-JP": "カレンダーに新しいイベントを作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -285,8 +316,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update_event",
-		Description: "Update an existing event.",
+		ID:   "google_calendar:update_event",
+		Name: "update_event",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing event.",
+			"ja-JP": "既存のイベントを更新します。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -304,8 +339,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "delete_event",
-		Description: "Delete an event from a calendar.",
+		ID:   "google_calendar:delete_event",
+		Name: "delete_event",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete an event from a calendar.",
+			"ja-JP": "カレンダーからイベントを削除します。",
+		},
 		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -318,8 +357,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Quick add
 	{
-		Name:        "quick_add",
-		Description: "Create an event based on a simple text string (e.g., 'Meeting with John tomorrow at 3pm').",
+		ID:   "google_calendar:quick_add",
+		Name: "quick_add",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create an event based on a simple text string (e.g., 'Meeting with John tomorrow at 3pm').",
+			"ja-JP": "シンプルなテキスト文字列に基づいてイベントを作成します（例：'明日午後3時にJohnとミーティング'）。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",

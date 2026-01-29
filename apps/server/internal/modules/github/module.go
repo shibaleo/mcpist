@@ -29,14 +29,25 @@ func New() *GitHubModule {
 	return &GitHubModule{}
 }
 
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
+	"ja-JP": "GitHub API - リポジトリ、Issue、PR、Actions、検索操作",
+}
+
 // Name returns the module name
 func (m *GitHubModule) Name() string {
 	return "github"
 }
 
-// Description returns the module description
-func (m *GitHubModule) Description() string {
-	return "GitHub API - Repository, Issue, PR, Actions, and Search operations"
+// Descriptions returns the module descriptions in all languages
+func (m *GitHubModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *GitHubModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the GitHub API version
@@ -121,8 +132,12 @@ func headers(ctx context.Context) map[string]string {
 var toolDefinitions = []modules.Tool{
 	// User
 	{
-		Name:        "get_user",
-		Description: "Get information about the authenticated GitHub user.",
+		ID:   "github:get_user",
+		Name: "get_user",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get information about the authenticated GitHub user.",
+			"ja-JP": "認証済みGitHubユーザーの情報を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -131,8 +146,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Repositories
 	{
-		Name:        "list_repos",
-		Description: "List repositories for the authenticated user.",
+		ID:   "github:list_repos",
+		Name: "list_repos",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List repositories for the authenticated user.",
+			"ja-JP": "認証済みユーザーのリポジトリを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -145,8 +164,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_repo",
-		Description: "Get details of a specific repository.",
+		ID:   "github:get_repo",
+		Name: "get_repo",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific repository.",
+			"ja-JP": "特定のリポジトリの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -158,8 +181,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_branches",
-		Description: "List branches in a repository.",
+		ID:   "github:list_branches",
+		Name: "list_branches",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List branches in a repository.",
+			"ja-JP": "リポジトリ内のブランチを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -172,8 +199,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_commits",
-		Description: "List commits in a repository.",
+		ID:   "github:list_commits",
+		Name: "list_commits",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List commits in a repository.",
+			"ja-JP": "リポジトリ内のコミットを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -188,8 +219,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_file_content",
-		Description: "Get the content of a file in a repository.",
+		ID:   "github:get_file_content",
+		Name: "get_file_content",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get the content of a file in a repository.",
+			"ja-JP": "リポジトリ内のファイルの内容を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -204,8 +239,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Issues
 	{
-		Name:        "list_issues",
-		Description: "List issues in a repository.",
+		ID:   "github:list_issues",
+		Name: "list_issues",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List issues in a repository.",
+			"ja-JP": "リポジトリ内のIssueを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -220,8 +259,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_issue",
-		Description: "Get details of a specific issue.",
+		ID:   "github:get_issue",
+		Name: "get_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific issue.",
+			"ja-JP": "特定のIssueの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -234,8 +277,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_issue",
-		Description: "Create a new issue in a repository.",
+		ID:   "github:create_issue",
+		Name: "create_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new issue in a repository.",
+			"ja-JP": "リポジトリに新しいIssueを作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -251,8 +298,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update_issue",
-		Description: "Update an existing issue.",
+		ID:   "github:update_issue",
+		Name: "update_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing issue.",
+			"ja-JP": "既存のIssueを更新します。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -270,8 +321,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "add_issue_comment",
-		Description: "Add a comment to an issue.",
+		ID:   "github:add_issue_comment",
+		Name: "add_issue_comment",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Add a comment to an issue.",
+			"ja-JP": "Issueにコメントを追加します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -286,8 +341,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Pull Requests
 	{
-		Name:        "list_prs",
-		Description: "List pull requests in a repository.",
+		ID:   "github:list_prs",
+		Name: "list_prs",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List pull requests in a repository.",
+			"ja-JP": "リポジトリ内のプルリクエストを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -302,8 +361,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_pr",
-		Description: "Get details of a specific pull request.",
+		ID:   "github:get_pr",
+		Name: "get_pr",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific pull request.",
+			"ja-JP": "特定のプルリクエストの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -316,8 +379,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_pr",
-		Description: "Create a new pull request.",
+		ID:   "github:create_pr",
+		Name: "create_pr",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new pull request.",
+			"ja-JP": "新しいプルリクエストを作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -334,8 +401,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_pr_files",
-		Description: "List files changed in a pull request.",
+		ID:   "github:list_pr_files",
+		Name: "list_pr_files",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List files changed in a pull request.",
+			"ja-JP": "プルリクエストで変更されたファイルを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -350,8 +421,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Search
 	{
-		Name:        "search_repos",
-		Description: "Search for repositories.",
+		ID:   "github:search_repos",
+		Name: "search_repos",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search for repositories.",
+			"ja-JP": "リポジトリを検索します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -365,8 +440,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "search_code",
-		Description: "Search for code across repositories.",
+		ID:   "github:search_code",
+		Name: "search_code",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search for code across repositories.",
+			"ja-JP": "リポジトリ全体でコードを検索します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -379,8 +458,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "search_issues",
-		Description: "Search for issues and pull requests.",
+		ID:   "github:search_issues",
+		Name: "search_issues",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search for issues and pull requests.",
+			"ja-JP": "Issueとプルリクエストを検索します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -395,8 +478,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Actions
 	{
-		Name:        "list_workflows",
-		Description: "List workflows in a repository.",
+		ID:   "github:list_workflows",
+		Name: "list_workflows",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List workflows in a repository.",
+			"ja-JP": "リポジトリ内のワークフローを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -409,8 +496,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_workflow_runs",
-		Description: "List workflow runs in a repository.",
+		ID:   "github:list_workflow_runs",
+		Name: "list_workflow_runs",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List workflow runs in a repository.",
+			"ja-JP": "リポジトリ内のワークフロー実行を一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",

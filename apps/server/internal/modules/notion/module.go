@@ -15,14 +15,25 @@ func New() *NotionModule {
 	return &NotionModule{}
 }
 
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Notion API - Page, Database, Block, Comment, and User operations",
+	"ja-JP": "Notion API - ページ、データベース、ブロック、コメント、ユーザー操作",
+}
+
 // Name returns the module name
 func (m *NotionModule) Name() string {
 	return "notion"
 }
 
-// Description returns the module description
-func (m *NotionModule) Description() string {
-	return "Notion API - Page, Database, Block, Comment, and User operations"
+// Descriptions returns the module descriptions in all languages
+func (m *NotionModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *NotionModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Notion API version

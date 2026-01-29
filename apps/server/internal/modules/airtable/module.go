@@ -30,14 +30,25 @@ func New() *AirtableModule {
 	return &AirtableModule{}
 }
 
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+	"ja-JP": "Airtable API - ベース、テーブル、レコード操作（検索・集計機能付き）",
+}
+
 // Name returns the module name
 func (m *AirtableModule) Name() string {
 	return "airtable"
 }
 
-// Description returns the module description
-func (m *AirtableModule) Description() string {
-	return "Airtable API - Bases, Tables, Records operations with search and aggregation"
+// Descriptions returns the module descriptions in all languages
+func (m *AirtableModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *AirtableModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Airtable API version
@@ -114,8 +125,12 @@ func headers(ctx context.Context) map[string]string {
 var toolDefinitions = []modules.Tool{
 	// Base Operations
 	{
-		Name:        "list_bases",
-		Description: "List all accessible Airtable bases with their names, IDs, and permission levels",
+		ID:   "airtable:list_bases",
+		Name: "list_bases",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all accessible Airtable bases with their names, IDs, and permission levels",
+			"ja-JP": "アクセス可能なすべてのAirtableベースをその名前、ID、権限レベルとともに一覧表示します",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -124,25 +139,33 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Schema Operations
 	{
-		Name:        "describe",
-		Description: "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
+		ID:   "airtable:describe",
+		Name: "describe",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
+			"ja-JP": "Airtableのベースまたはテーブルスキーマを説明します。detailLevelを使用してコンテキストを最適化：tableIdentifiersOnly（最小限）、identifiersOnly（IDと名前）、full（フィールドタイプを含む完全な詳細）",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"base_id":        {Type: "string", Description: "Base ID (starts with 'app')"},
-				"scope":          {Type: "string", Description: "Scope of description: 'base' for all tables, 'table' for a specific table"},
-				"table":          {Type: "string", Description: "Table name or ID (required when scope='table')"},
-				"detail_level":   {Type: "string", Description: "Detail level: tableIdentifiersOnly, identifiersOnly, or full (default: full)"},
-				"include_views":  {Type: "boolean", Description: "Include view information (default: false)"},
+				"base_id":       {Type: "string", Description: "Base ID (starts with 'app')"},
+				"scope":         {Type: "string", Description: "Scope of description: 'base' for all tables, 'table' for a specific table"},
+				"table":         {Type: "string", Description: "Table name or ID (required when scope='table')"},
+				"detail_level":  {Type: "string", Description: "Detail level: tableIdentifiersOnly, identifiersOnly, or full (default: full)"},
+				"include_views": {Type: "boolean", Description: "Include view information (default: false)"},
 			},
 			Required: []string{"base_id"},
 		},
 	},
 	// Record Operations
 	{
-		Name:        "query",
-		Description: "Query Airtable records with filtering, sorting, and pagination",
+		ID:   "airtable:query",
+		Name: "query",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Query Airtable records with filtering, sorting, and pagination",
+			"ja-JP": "フィルタリング、ソート、ページネーションを使用してAirtableレコードをクエリします",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -161,8 +184,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_record",
-		Description: "Retrieve a single record by ID",
+		ID:   "airtable:get_record",
+		Name: "get_record",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Retrieve a single record by ID",
+			"ja-JP": "IDで単一のレコードを取得します",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -175,8 +202,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create",
-		Description: "Create new records in a table. Supports batch creation (up to 10 records per request)",
+		ID:   "airtable:create",
+		Name: "create",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create new records in a table. Supports batch creation (up to 10 records per request)",
+			"ja-JP": "テーブルに新しいレコードを作成します。バッチ作成をサポート（リクエストごとに最大10レコード）",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -190,8 +221,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update",
-		Description: "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
+		ID:   "airtable:update",
+		Name: "update",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
+			"ja-JP": "既存のレコードを更新します。バッチ更新をサポート（リクエストごとに最大10レコード）。PATCH（部分更新）を使用",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -205,8 +240,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "delete",
-		Description: "Delete records from a table. Supports batch deletion (up to 10 records per request)",
+		ID:   "airtable:delete",
+		Name: "delete",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete records from a table. Supports batch deletion (up to 10 records per request)",
+			"ja-JP": "テーブルからレコードを削除します。バッチ削除をサポート（リクエストごとに最大10レコード）",
+		},
 		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -218,10 +257,14 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"base_id", "table", "record_ids"},
 		},
 	},
-	// NEW: Search Records
+	// Search Records
 	{
-		Name:        "search_records",
-		Description: "Search for records containing specific text across specified fields or all text fields",
+		ID:   "airtable:search_records",
+		Name: "search_records",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search for records containing specific text across specified fields or all text fields",
+			"ja-JP": "指定されたフィールドまたはすべてのテキストフィールドで特定のテキストを含むレコードを検索します",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -235,10 +278,14 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"base_id", "table", "search_term"},
 		},
 	},
-	// NEW: Aggregate Records
+	// Aggregate Records
 	{
-		Name:        "aggregate_records",
-		Description: "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
+		ID:   "airtable:aggregate_records",
+		Name: "aggregate_records",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
+			"ja-JP": "オプションのグループ化を使用してレコードに対して集計操作（sum、count、avg、min、max）を実行します",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -253,10 +300,14 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"base_id", "table", "operation"},
 		},
 	},
-	// NEW: Create Table
+	// Create Table
 	{
-		Name:        "create_table",
-		Description: "Create a new table in a base with specified fields",
+		ID:   "airtable:create_table",
+		Name: "create_table",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new table in a base with specified fields",
+			"ja-JP": "指定されたフィールドでベースに新しいテーブルを作成します",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -269,10 +320,14 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"base_id", "name", "fields"},
 		},
 	},
-	// NEW: Update Table
+	// Update Table
 	{
-		Name:        "update_table",
-		Description: "Update table metadata (name and/or description)",
+		ID:   "airtable:update_table",
+		Name: "update_table",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update table metadata (name and/or description)",
+			"ja-JP": "テーブルのメタデータ（名前および/または説明）を更新します",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",

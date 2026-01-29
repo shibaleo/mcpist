@@ -15,8 +15,12 @@ func toolDefinitions() []modules.Tool {
 	return []modules.Tool{
 		// Search
 		{
-			Name:        "search",
-			Description: "Search pages and databases in Notion by title. Returns pages and databases shared with the integration.",
+			ID:   "notion:search",
+			Name: "search",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Search pages and databases in Notion by title. Returns pages and databases shared with the integration.",
+				"ja-JP": "Notionのページとデータベースをタイトルで検索します。インテグレーションと共有されているページとデータベースを返します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -38,8 +42,12 @@ func toolDefinitions() []modules.Tool {
 		},
 		// Pages
 		{
-			Name:        "get_page",
-			Description: "Retrieve a Notion page by ID. Returns page properties and metadata.",
+			ID:   "notion:get_page",
+			Name: "get_page",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Retrieve a Notion page by ID. Returns page properties and metadata.",
+				"ja-JP": "IDでNotionページを取得します。ページのプロパティとメタデータを返します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -53,8 +61,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "get_page_content",
-			Description: "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
+			ID:   "notion:get_page_content",
+			Name: "get_page_content",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
+				"ja-JP": "Notionページのコンテンツ（ブロック）を取得します。実際のテキストコンテンツを読み取るために使用します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -76,8 +88,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "create_page",
-			Description: "Create a new page in Notion. Can create as a child of another page or in a database.",
+			ID:   "notion:create_page",
+			Name: "create_page",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Create a new page in Notion. Can create as a child of another page or in a database.",
+				"ja-JP": "Notionに新しいページを作成します。別のページの子として、またはデータベース内に作成できます。",
+			},
 			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -103,8 +119,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "update_page",
-			Description: "Update a Notion page's properties.",
+			ID:   "notion:update_page",
+			Name: "update_page",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Update a Notion page's properties.",
+				"ja-JP": "Notionページのプロパティを更新します。",
+			},
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
@@ -123,8 +143,12 @@ func toolDefinitions() []modules.Tool {
 		},
 		// Databases
 		{
-			Name:        "get_database",
-			Description: "Retrieve a Notion database schema and metadata.",
+			ID:   "notion:get_database",
+			Name: "get_database",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Retrieve a Notion database schema and metadata.",
+				"ja-JP": "Notionデータベースのスキーマとメタデータを取得します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -138,8 +162,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "query_database",
-			Description: "Query a Notion database with optional filters and sorts. Returns pages in the database.",
+			ID:   "notion:query_database",
+			Name: "query_database",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Query a Notion database with optional filters and sorts. Returns pages in the database.",
+				"ja-JP": "オプションのフィルターとソートでNotionデータベースをクエリします。データベース内のページを返します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -166,8 +194,12 @@ func toolDefinitions() []modules.Tool {
 		},
 		// Blocks
 		{
-			Name:        "append_blocks",
-			Description: "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
+			ID:   "notion:append_blocks",
+			Name: "append_blocks",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
+				"ja-JP": "ページまたはブロックにコンテンツブロックを追加します。テキスト、見出し、リストなどを追加するために使用します。",
+			},
 			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -185,8 +217,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "delete_block",
-			Description: "Delete a block from Notion. This also deletes all children of the block.",
+			ID:   "notion:delete_block",
+			Name: "delete_block",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Delete a block from Notion. This also deletes all children of the block.",
+				"ja-JP": "Notionからブロックを削除します。ブロックのすべての子も削除されます。",
+			},
 			Annotations: modules.AnnotateDelete,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -201,8 +237,12 @@ func toolDefinitions() []modules.Tool {
 		},
 		// Comments
 		{
-			Name:        "list_comments",
-			Description: "List comments on a Notion page or block.",
+			ID:   "notion:list_comments",
+			Name: "list_comments",
+			Descriptions: modules.LocalizedText{
+				"en-US": "List comments on a Notion page or block.",
+				"ja-JP": "Notionページまたはブロックのコメントを一覧表示します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -220,8 +260,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "add_comment",
-			Description: "Add a comment to a Notion page.",
+			ID:   "notion:add_comment",
+			Name: "add_comment",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Add a comment to a Notion page.",
+				"ja-JP": "Notionページにコメントを追加します。",
+			},
 			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -240,8 +284,12 @@ func toolDefinitions() []modules.Tool {
 		},
 		// Users
 		{
-			Name:        "list_users",
-			Description: "List all users in the Notion workspace.",
+			ID:   "notion:list_users",
+			Name: "list_users",
+			Descriptions: modules.LocalizedText{
+				"en-US": "List all users in the Notion workspace.",
+				"ja-JP": "Notionワークスペース内のすべてのユーザーを一覧表示します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -254,8 +302,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "get_user",
-			Description: "Get information about a Notion user.",
+			ID:   "notion:get_user",
+			Name: "get_user",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Get information about a Notion user.",
+				"ja-JP": "Notionユーザーの情報を取得します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type: "object",
@@ -269,8 +321,12 @@ func toolDefinitions() []modules.Tool {
 			},
 		},
 		{
-			Name:        "get_bot_user",
-			Description: "Get information about the current integration bot user.",
+			ID:   "notion:get_bot_user",
+			Name: "get_bot_user",
+			Descriptions: modules.LocalizedText{
+				"en-US": "Get information about the current integration bot user.",
+				"ja-JP": "現在のインテグレーションボットユーザーの情報を取得します。",
+			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
 				Type:       "object",

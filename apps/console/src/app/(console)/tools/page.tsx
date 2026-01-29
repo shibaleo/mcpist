@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Dialog,
@@ -19,7 +20,15 @@ import {
 import { ServiceIcon } from "@/components/service-icon"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
-import { modules, services, getServiceIcon, isDefaultEnabled, isDangerous } from "@/lib/module-data"
+import {
+  modules,
+  services,
+  getServiceIcon,
+  isDefaultEnabled,
+  isDangerous,
+  getServiceDescription,
+  getToolDescription,
+} from "@/lib/module-data"
 import {
   Check,
   Link2,
@@ -32,6 +41,7 @@ import {
   Unlink,
   Info,
   ExternalLink,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -48,9 +58,14 @@ import {
   getMyToolSettings,
   toToolSettingsMap,
   saveModuleToolSettings,
+  getMyModuleDescriptions,
+  toModuleDescriptionsMap,
+  updateModuleDescription,
   ToolSettingsError,
   type ToolSettingsMap,
+  type ModuleDescriptionsMap,
 } from "@/lib/tool-settings"
+import { getUserSettings, type Language } from "@/lib/user-settings"
 
 
 // 認証方法の設定
@@ -143,6 +158,15 @@ export default function ToolsPage() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
 
+  // Module description state
+  const [moduleDescriptions, setModuleDescriptions] = useState<ModuleDescriptionsMap>({})
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null)
+  const [editingDescription, setEditingDescription] = useState("")
+  const [savingDescription, setSavingDescription] = useState(false)
+
+  // Language setting
+  const [language, setLanguage] = useState<Language>("ja-JP")
+
   // Dialog states
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
   const [disconnectDialog, setDisconnectDialog] = useState<string | null>(null)
@@ -166,10 +190,16 @@ export default function ToolsPage() {
   // ツール設定を取得
   const loadToolSettings = useCallback(async () => {
     try {
-      const settings = await getMyToolSettings()
+      const [settings, descriptions, userSettings] = await Promise.all([
+        getMyToolSettings(),
+        getMyModuleDescriptions(),
+        getUserSettings(),
+      ])
       const settingsMap = toToolSettingsMap(settings)
       setToolSettings(settingsMap)
       setLocalToolSettings(settingsMap)
+      setModuleDescriptions(toModuleDescriptionsMap(descriptions))
+      setLanguage(userSettings.language)
     } catch (error) {
       if (error instanceof ToolSettingsError) {
         console.error("Failed to load tool settings:", error.message)
@@ -246,6 +276,12 @@ export default function ToolsPage() {
       }
     }
   }, [loading, selectedServiceId, connectedServiceIds])
+
+  // サービス切り替え時に編集状態をリセット
+  useEffect(() => {
+    setEditingModuleId(null)
+    setEditingDescription("")
+  }, [selectedServiceId])
 
   // カルーセルナビゲーション
   const scrollCarousel = (direction: "left" | "right") => {
@@ -346,6 +382,50 @@ export default function ToolsPage() {
       }
     } finally {
       setSavingModules((prev) => ({ ...prev, [moduleId]: false }))
+    }
+  }
+
+  // モジュール説明関連
+  const getModuleDescription = (moduleId: string): string | undefined => {
+    return moduleDescriptions[moduleId]
+  }
+
+  const handleEditModuleDescription = (moduleId: string) => {
+    setEditingModuleId(moduleId)
+    setEditingDescription(getModuleDescription(moduleId) || "")
+  }
+
+  const handleCancelEdit = () => {
+    setEditingModuleId(null)
+    setEditingDescription("")
+  }
+
+  const handleSaveModuleDescription = async (moduleId: string) => {
+    setSavingDescription(true)
+    try {
+      const description = editingDescription.trim()
+      await updateModuleDescription(moduleId, description)
+      // ローカル状態を更新
+      setModuleDescriptions((prev) => {
+        const newMap = { ...prev }
+        if (description) {
+          newMap[moduleId] = description
+        } else {
+          delete newMap[moduleId]
+        }
+        return newMap
+      })
+      setEditingModuleId(null)
+      setEditingDescription("")
+      toast.success("モジュール説明を保存しました")
+    } catch (error) {
+      if (error instanceof ToolSettingsError) {
+        toast.error(`保存に失敗しました: ${error.message}`)
+      } else {
+        toast.error("保存に失敗しました")
+      }
+    } finally {
+      setSavingDescription(false)
     }
   }
 
@@ -618,7 +698,7 @@ export default function ToolsPage() {
                       </Badge>
                     )}
                   </div>
-                  <CardDescription>{selectedService.description}</CardDescription>
+                  <CardDescription>{getServiceDescription(selectedService, language)}</CardDescription>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -642,6 +722,68 @@ export default function ToolsPage() {
               </div>
             </div>
           </CardHeader>
+
+          {/* モジュール説明（接続済みの場合のみ） */}
+          {isSelectedConnected && selectedModule && (
+            <CardContent className="border-t pt-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-sm text-foreground">カスタム説明</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {(editingModuleId === selectedModule.id ? editingDescription : getModuleDescription(selectedModule.id) || "").length}/256
+                  </span>
+                </div>
+                <Textarea
+                  value={editingModuleId === selectedModule.id ? editingDescription : getModuleDescription(selectedModule.id) || ""}
+                  onChange={(e) => {
+                    if (editingModuleId !== selectedModule.id) {
+                      setEditingModuleId(selectedModule.id)
+                    }
+                    setEditingDescription(e.target.value)
+                  }}
+                  onFocus={() => {
+                    if (editingModuleId !== selectedModule.id) {
+                      setEditingModuleId(selectedModule.id)
+                      setEditingDescription(getModuleDescription(selectedModule.id) || "")
+                    }
+                  }}
+                  placeholder="このモジュールの使い方や注意点を記述してください（AIへの追加コンテキストとして使用されます）"
+                  className="min-h-[80px] resize-none"
+                  maxLength={256}
+                />
+                {editingModuleId === selectedModule.id && (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={savingDescription}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      キャンセル
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveModuleDescription(selectedModule.id)}
+                      disabled={savingDescription}
+                    >
+                      {savingDescription ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          保存中...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          保存
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          )}
 
           {/* ツール設定（接続済みの場合のみ） */}
           {isSelectedConnected && selectedModule && (
@@ -700,7 +842,7 @@ export default function ToolsPage() {
                           </>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{tool.description}</p>
+                      <p className="text-sm text-muted-foreground">{getToolDescription(tool, language)}</p>
                     </div>
                   </div>
                 )

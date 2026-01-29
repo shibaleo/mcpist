@@ -29,9 +29,20 @@ func (m *SupabaseModule) Name() string {
 	return "supabase"
 }
 
-// Description returns the module description
-func (m *SupabaseModule) Description() string {
-	return "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage"
+// moduleDescriptions holds multilingual module descriptions
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
+	"ja-JP": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ",
+}
+
+// Descriptions returns multilingual module descriptions
+func (m *SupabaseModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *SupabaseModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Supabase API version
@@ -113,8 +124,12 @@ func headers(ctx context.Context) map[string]string {
 var toolDefinitions = []modules.Tool{
 	// Account Tools
 	{
-		Name:        "list_organizations",
-		Description: "List all organizations you have access to.",
+		ID:   "supabase:list_organizations",
+		Name: "list_organizations",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all organizations you have access to.",
+			"ja-JP": "アクセス可能なすべての組織を一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -122,8 +137,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_projects",
-		Description: "List all Supabase projects you have access to. Use this first to get project_ref for other operations.",
+		ID:   "supabase:list_projects",
+		Name: "list_projects",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all Supabase projects you have access to. Use this first to get project_ref for other operations.",
+			"ja-JP": "アクセス可能なすべてのSupabaseプロジェクトを一覧表示します。他の操作のためにproject_refを取得するために最初に使用してください。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -131,8 +150,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_project",
-		Description: "Get details of a specific project.",
+		ID:   "supabase:get_project",
+		Name: "get_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific project.",
+			"ja-JP": "特定のプロジェクトの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -144,8 +167,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Database Tools
 	{
-		Name:        "list_tables",
-		Description: "List all tables in the database with their schemas. Returns table names and column counts.",
+		ID:   "supabase:list_tables",
+		Name: "list_tables",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all tables in the database with their schemas. Returns table names and column counts.",
+			"ja-JP": "データベース内のすべてのテーブルをスキーマとともに一覧表示します。テーブル名とカラム数を返します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -157,8 +184,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "run_query",
-		Description: "Execute a SQL query against the database. Supports both read and write operations.",
+		ID:   "supabase:run_query",
+		Name: "run_query",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Execute a SQL query against the database. Supports both read and write operations.",
+			"ja-JP": "データベースに対してSQLクエリを実行します。読み取りと書き込みの両方の操作をサポートします。",
+		},
 		Annotations: modules.AnnotateDestructive,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -170,8 +201,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_migrations",
-		Description: "List all database migrations that have been applied.",
+		ID:   "supabase:list_migrations",
+		Name: "list_migrations",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all database migrations that have been applied.",
+			"ja-JP": "適用されたすべてのデータベースマイグレーションを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -182,8 +217,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "apply_migration",
-		Description: "Apply a new database migration. Use for DDL operations like CREATE TABLE, ALTER TABLE, etc.",
+		ID:   "supabase:apply_migration",
+		Name: "apply_migration",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Apply a new database migration. Use for DDL operations like CREATE TABLE, ALTER TABLE, etc.",
+			"ja-JP": "新しいデータベースマイグレーションを適用します。CREATE TABLE、ALTER TABLEなどのDDL操作に使用します。",
+		},
 		Annotations: modules.AnnotateDestructive,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -197,8 +236,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Debugging Tools
 	{
-		Name:        "get_logs",
-		Description: "Get logs for a specific service. Available services: api, postgres, edge-function, auth, storage, realtime.",
+		ID:   "supabase:get_logs",
+		Name: "get_logs",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get logs for a specific service. Available services: api, postgres, edge-function, auth, storage, realtime.",
+			"ja-JP": "特定のサービスのログを取得します。利用可能なサービス：api、postgres、edge-function、auth、storage、realtime。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -212,8 +255,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_security_advisors",
-		Description: "Get security recommendations and potential issues for the project.",
+		ID:   "supabase:get_security_advisors",
+		Name: "get_security_advisors",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get security recommendations and potential issues for the project.",
+			"ja-JP": "プロジェクトのセキュリティ推奨事項と潜在的な問題を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -224,8 +271,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_performance_advisors",
-		Description: "Get performance recommendations and potential issues for the project.",
+		ID:   "supabase:get_performance_advisors",
+		Name: "get_performance_advisors",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get performance recommendations and potential issues for the project.",
+			"ja-JP": "プロジェクトのパフォーマンス推奨事項と潜在的な問題を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -237,8 +288,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Development Tools
 	{
-		Name:        "get_project_url",
-		Description: "Get the base URL for a Supabase project.",
+		ID:   "supabase:get_project_url",
+		Name: "get_project_url",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get the base URL for a Supabase project.",
+			"ja-JP": "SupabaseプロジェクトのベースURLを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -249,8 +304,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_api_keys",
-		Description: "Get the API keys for the project (anon key and service role key).",
+		ID:   "supabase:get_api_keys",
+		Name: "get_api_keys",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get the API keys for the project (anon key and service role key).",
+			"ja-JP": "プロジェクトのAPIキー（匿名キーとサービスロールキー）を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -261,8 +320,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "generate_typescript_types",
-		Description: "Generate TypeScript type definitions from the database schema.",
+		ID:   "supabase:generate_typescript_types",
+		Name: "generate_typescript_types",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Generate TypeScript type definitions from the database schema.",
+			"ja-JP": "データベーススキーマからTypeScript型定義を生成します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -274,8 +337,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Edge Function Tools
 	{
-		Name:        "list_edge_functions",
-		Description: "List all Edge Functions deployed in the project.",
+		ID:   "supabase:list_edge_functions",
+		Name: "list_edge_functions",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all Edge Functions deployed in the project.",
+			"ja-JP": "プロジェクトにデプロイされたすべてのEdge Functionsを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -286,8 +353,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_edge_function",
-		Description: "Get details of a specific Edge Function.",
+		ID:   "supabase:get_edge_function",
+		Name: "get_edge_function",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific Edge Function.",
+			"ja-JP": "特定のEdge Functionの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -300,8 +371,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Storage Tools
 	{
-		Name:        "list_storage_buckets",
-		Description: "List all storage buckets in the project.",
+		ID:   "supabase:list_storage_buckets",
+		Name: "list_storage_buckets",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all storage buckets in the project.",
+			"ja-JP": "プロジェクト内のすべてのストレージバケットを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -312,8 +387,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_storage_config",
-		Description: "Get storage configuration for the project including file size limits and features.",
+		ID:   "supabase:get_storage_config",
+		Name: "get_storage_config",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get storage configuration for the project including file size limits and features.",
+			"ja-JP": "ファイルサイズ制限や機能を含むプロジェクトのストレージ設定を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
