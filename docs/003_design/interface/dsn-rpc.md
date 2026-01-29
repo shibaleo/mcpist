@@ -75,4 +75,4 @@
 | [dtl-dsn-tbl.md](./dtl-dsn-tbl.md) | テーブル詳細設計書 |
 | [spc-tbl.md](../002_specification/spc-tbl.md) | テーブル仕様書 |
 | [itr-dst.md](../002_specification/interaction/itr-dst.md) | Data Store インタラクション仕様 |
-| [dtl-spc-credit-model.md](../002_specification/dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [dtl-spc-credit-model.md](dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |

@@ -119,5 +119,5 @@ jitter = 0-500ms のランダム値
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-mod.md](../002_specification/interaction/itr-mod.md) | Modules インタラクション仕様 |
-| [itf-mod.md](../002_specification/dtl-spc/itf-mod.md) | モジュールインターフェース仕様 |
+| [itr-mod.md](itr-MOD.md) | Modules インタラクション仕様 |
+| [itf-mod.md](itf-mod.md) | モジュールインターフェース仕様 |

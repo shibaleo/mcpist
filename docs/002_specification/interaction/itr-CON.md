@@ -1,4 +1,4 @@
-﻿# User Console インタラクション仕様書（itr-CON）
+# User Console インタラクション仕様書（itr-CON）
 
 ## ドキュメント管理情報
 

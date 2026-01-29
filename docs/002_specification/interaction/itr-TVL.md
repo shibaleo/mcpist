@@ -71,7 +71,7 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 |-------------|------|
 | [spc-sys.md](../spc-sys.md) | システム仕様書 |
 | [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
-| [itf-tvl.md](../dtl-spc/itf-tvl.md) | Token Vault API仕様 |
+|[itf-tvl.md](itf-tvl.md)) | Token Vault API仕様 |
 | [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
 | [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
 | [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |

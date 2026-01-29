@@ -159,4 +159,4 @@ Phase 2 以降でサブスクリプション方式の導入を検討する。
 | [itr-CON.md](./itr-CON.md) | User Console 詳細仕様 |
 | [itr-PSP.md](./itr-PSP.md) | Payment Service Provider 詳細仕様 |
 | [dtl-itr-DST-PSP.md](./dtl-itr-DST-PSP.md) | DST→PSP Webhook 処理詳細 |
-| [dtl-spc-credit-model.md](../dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [dtl-spc-credit-model.md](dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |

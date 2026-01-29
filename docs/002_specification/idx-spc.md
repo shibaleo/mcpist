@@ -90,15 +90,15 @@ API仕様、データ構造のオントロジー定義を記載。
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itf-tvl.md](./dtl-spc/itf-tvl.md) | Token Vault API仕様 |
-| [itf-mod.md](./dtl-spc/itf-mod.md) | モジュールインターフェース仕様 |
+| [itf-tvl.md](itf-tvl.md) | Token Vault API仕様 |
+| [itf-mod.md](itf-mod.md) | モジュールインターフェース仕様 |
 
 ### その他
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [idx-ept.md](./dtl-spc/idx-ept.md) | エンドポイント一覧 |
-| [dtl-spc-credit-model.md](./dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [idx-ept.md](idx-ept.md) | エンドポイント一覧 |
+| [dtl-spc-credit-model.md](dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
 
 ---
 
@@ -106,5 +106,5 @@ API仕様、データ構造のオントロジー定義を記載。
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [dsn-adt.md](../003_design/dsn-adt.md) | 監査・請求・分析設計書 |
-| [dsn-err.md](../003_design/dsn-err.md) | エラーハンドリング設計書 |
+| [dsn-adt.md](dsn-adt.md) | 監査・請求・分析設計書 |
+| [dsn-err.md](dsn-err.md) | エラーハンドリング設計書 |

@@ -176,4 +176,4 @@ sequenceDiagram
 | [itr-HDL.md](./itr-HDL.md) | MCP Handler 詳細仕様 |
 | [itr-DST.md](./itr-DST.md) | Data Store 詳細仕様 |
 | [dtl-itr-AMW-DST.md](./dtl-itr-AMW-DST.md) | AMW→DST ユーザーコンテキスト取得 |
-| [dtl-spc-credit-model.md](../dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [dtl-spc-credit-model.md](dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |

@@ -14,8 +14,8 @@
 
 本ドキュメントは、MCPistのデータベーステーブル設計を定義する。
 
-- テーブル仕様: [spc-tbl.md](../002_specification/spc-tbl.md)
-- 詳細設計（列定義・制約・インデックス）: dtl-dsn-tbl.md（未作成）
+- テーブル仕様: [spc-tbl.md](../../002_specification/spc-tbl.md)
+- 詳細設計（列定義・制約・インデックス）: [dtl-dsn-tbl.md](./dtl-dsn-tbl.md)
 
 ---
 
@@ -103,7 +103,6 @@ erDiagram
         uuid id PK
         uuid user_id FK
         string service
-        string auth_type
         uuid credentials_secret_id
         timestamp created_at
         timestamp updated_at
@@ -112,10 +111,9 @@ erDiagram
     oauth_apps {
         uuid id PK
         string provider UK
-        string client_id
-        uuid client_secret_id
+        uuid secret_id
         string redirect_uri
-        array scopes
+        boolean enabled
         timestamp created_at
         timestamp updated_at
     }
@@ -216,7 +214,6 @@ erDiagram
 |---------|-----|------|
 | modules | name | モジュール名の一意性 |
 | api_keys | key_hash | ハッシュの一意性 |
-| api_keys | key_prefix | プレフィックスの一意性（高速検索用） |
 | service_tokens | (user_id, service) | ユーザー×サービスの一意性 |
 | oauth_apps | provider | プロバイダの一意性 |
 | prompts | (user_id, module_id, name) | ユーザー×モジュール内でのプロンプト名一意性 |
@@ -269,7 +266,6 @@ CREATE TYPE mcpist.credit_transaction_type AS ENUM (
 | id | UUID | 主キー |
 | user_id | UUID | ユーザーID（auth.users参照） |
 | service | TEXT | サービス名（notion, google_calendar等） |
-| auth_type | TEXT | 認証タイプ（long_term, oauth2） |
 | credentials_secret_id | UUID | vault.secretsへの参照 |
 | created_at | TIMESTAMPTZ | 作成日時 |
 | updated_at | TIMESTAMPTZ | 更新日時 |
@@ -284,10 +280,9 @@ CREATE TYPE mcpist.credit_transaction_type AS ENUM (
 |-----|-----|------|
 | id | UUID | 主キー |
 | provider | TEXT | プロバイダ名（google, microsoft）、ユニーク |
-| client_id | TEXT | OAuth Client ID |
-| client_secret_id | UUID | vault.secretsへの参照（Client Secret） |
+| secret_id | UUID | vault.secretsへの参照（client_id, client_secret） |
 | redirect_uri | TEXT | OAuthコールバックURL |
-| scopes | TEXT[] | 要求するスコープ配列 |
+| enabled | BOOLEAN | このプロバイダが有効か |
 | created_at | TIMESTAMPTZ | 作成日時 |
 | updated_at | TIMESTAMPTZ | 更新日時 |
 
@@ -351,7 +346,7 @@ INSERT INTO mcpist.modules (id, name, status) VALUES
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [spc-tbl.md](../002_specification/spc-tbl.md) | テーブル仕様書 |
-| [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
-| [dtl-spc-credit-model.md](../002_specification/dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
-| dtl-dsn-tbl.md | テーブル詳細設計書（未作成） |
+| [spc-tbl.md](../../002_specification/spc-tbl.md) | テーブル仕様書 |
+| [spc-itr.md](../../002_specification/interaction/spc-itr.md) | インタラクション仕様書 |
+| [dtl-spc-credit-model.md](../../002_specification/dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [dtl-dsn-tbl.md](./dtl-dsn-tbl.md) | テーブル詳細設計書 |

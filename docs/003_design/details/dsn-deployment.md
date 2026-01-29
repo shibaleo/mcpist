@@ -5,8 +5,8 @@
 MCPサーバーのデプロイ戦略。ホットスタンバイ、CI/CD、シークレット管理を含む。
 
 関連ドキュメント:
-- [dsn-infrastructure.md](./dsn-infrastructure.md) - インフラ全体構成
-- [dsn-load-management.md](./dsn-load-management.md) - 負荷対策設計
+- [dsn-infrastructure.md](dsn-infrastructure.md) - インフラ全体構成
+- [dsn-load-management.md](dsn-load-management.md) - 負荷対策設計
 
 ---
 
@@ -473,5 +473,5 @@ jobs:
 
 ## 関連ドキュメント
 
-- [dsn-infrastructure.md](./dsn-infrastructure.md) - インフラ全体構成
-- [dsn-load-management.md](./dsn-load-management.md) - 負荷対策設計
+- [dsn-infrastructure.md](dsn-infrastructure.md) - インフラ全体構成
+- [dsn-load-management.md](dsn-load-management.md) - 負荷対策設計

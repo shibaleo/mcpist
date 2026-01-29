@@ -5,9 +5,9 @@
 Stripe Checkoutを使用した課金システム。MCPサーバーと独立して動作する。
 
 関連ドキュメント:
-- [adr-b2c-focus.md](./adr-b2c-focus.md) - B2Cフォーカスに関するADR
-- [dsn-infrastructure.md](./dsn-infrastructure.md) - インフラストラクチャ設計
-- [dsn-permission-system.md](./dsn-permission-system.md) - 権限システム設計
+- [adr-b2c-focus.md](adr-b2c-focus.md) - B2Cフォーカスに関するADR
+- [dsn-infrastructure.md](dsn-infrastructure.md) - インフラストラクチャ設計
+- [dsn-permission-system.md](dsn-permission-system.md) - 権限システム設計
 
 ---
 
@@ -386,6 +386,6 @@ const event = stripe.webhooks.constructEvent(
 
 ## 関連ドキュメント
 
-- [dsn-infrastructure.md](./dsn-infrastructure.md) - インフラストラクチャ設計
-- [dsn-permission-system.md](./dsn-permission-system.md) - 権限システム設計
-- [adr-b2c-focus.md](./adr-b2c-focus.md) - B2Cフォーカスに関するADR
+- [dsn-infrastructure.md](dsn-infrastructure.md) - インフラストラクチャ設計
+- [dsn-permission-system.md](dsn-permission-system.md) - 権限システム設計
+- [adr-b2c-focus.md](adr-b2c-focus.md) - B2Cフォーカスに関するADR
