@@ -1,4 +1,4 @@
-# External Auth Server インタラクション仕様書（itr-EAS）
+﻿# External Auth Server インタラクション仕様書（itr-EAS）
 
 ## ドキュメント管理情報
 
@@ -20,11 +20,11 @@ External Service API（EXT）と同一サービス内で連携する。
 
 ---
 
-## 連携サマリー
+## 連携サマリー（dtl-itrまとめ）
 
-| 相手 | 方向 | やり取り | 詳細 |
-|------|------|----------|------|
-| User Console | EAS ← CON | 認可フロー受付 | [dtl-itr-CON-EAS.md](./dtl-itr-CON-EAS.md) |
+### CON
+- [dtl-itr-CON-EAS.md](./dtl-itr-CON-EAS.md)
+  - 認可フロー
 
 ---
 
@@ -53,3 +53,7 @@ External Service API（EXT）と同一サービス内で連携する。
 | [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
 | [itr-EXT.md](./itr-EXT.md) | External Service API詳細仕様 |
+
+
+
+

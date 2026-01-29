@@ -1,4 +1,4 @@
-# MCP Client (OAuth2.0) インタラクション仕様書（itr-CLO）
+﻿# MCP Client (OAuth2.0) インタラクション仕様書（itr-CLO）
 
 ## ドキュメント管理情報
 
@@ -18,12 +18,15 @@ MCP Client (OAuth2.0)（略号: CLO）は、LLM Host（Claude Code, Cursor等）
 
 ---
 
-## 連携サマリー
+## 連携サマリー（dtl-itrまとめ）
 
-| 相手 | 方向 | やり取り | 詳細 |
-|------|------|----------|------|
-| API Gateway | CLO → GWY | MCP通信（JSON-RPC over SSE） | [dtl-itr-CLO-GWY.md](./dtl-itr-CLO-GWY.md) |
-| Auth Server | CLO → AUS | OAuth 2.1認証フロー | [dtl-itr-AUS-CLO.md](./dtl-itr-AUS-CLO.md) |
+### AUS
+- [dtl-itr-AUS-CLO.md](./dtl-itr-AUS-CLO.md)
+  - OAuth認可
+
+### GWY
+- [dtl-itr-CLO-GWY.md](./dtl-itr-CLO-GWY.md)
+  - MCP通信
 
 ---
 
@@ -66,3 +69,7 @@ MCP Client (OAuth2.0)（略号: CLO）は、LLM Host（Claude Code, Cursor等）
 | [itr-GWY.md](./itr-GWY.md) | API Gateway詳細仕様 |
 | [itr-AUS.md](./itr-AUS.md) | Auth Server詳細仕様 |
 | [itr-CLK.md](./itr-CLK.md) | MCP Client (API KEY)詳細仕様 |
+
+
+
+

@@ -1,4 +1,4 @@
-# Token Vault インタラクション仕様書（itr-TVL）
+﻿# Token Vault インタラクション仕様書（itr-TVL）
 
 ## ドキュメント管理情報
 
@@ -21,13 +21,19 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 
 ---
 
-## 連携サマリー
+## 連携サマリー（dtl-itrまとめ）
 
-| 相手 | 方向 | やり取り | 詳細 |
-|------|------|----------|------|
-| User Console | TVL ← CON | トークン登録 | [dtl-itr-CON-TVL.md](./dtl-itr-CON-TVL.md) |
-| Modules | TVL → MOD | トークン提供 | [dtl-itr-MOD-TVL.md](./dtl-itr-MOD-TVL.md) |
-| Data Store | TVL ← DST | ユーザー紐付け | [dtl-itr-DST-TVL.md](./dtl-itr-DST-TVL.md) |
+### CON
+- [dtl-itr-CON-TVL.md](./dtl-itr-CON-TVL.md)
+  - 外部サービストークン登録・管理
+
+### DST
+- [dtl-itr-DST-TVL.md](./dtl-itr-DST-TVL.md)
+  - トークン管理のためのユーザー紐付け
+
+### MOD
+- [dtl-itr-MOD-TVL.md](./dtl-itr-MOD-TVL.md)
+  - トークン取得・保存
 
 ---
 
@@ -69,3 +75,7 @@ Token Vault（TVL）は、外部サービスのOAuthトークン・API KEYを安
 | [itr-CON.md](./itr-CON.md) | User Console詳細仕様 |
 | [itr-MOD.md](./itr-MOD.md) | Modules詳細仕様 |
 | [itr-DST.md](./itr-DST.md) | Data Store詳細仕様 |
+
+
+
+

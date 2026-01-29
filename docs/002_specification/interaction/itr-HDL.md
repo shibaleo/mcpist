@@ -1,4 +1,4 @@
-# MCP Handler インタラクション仕様書（itr-HDL）
+﻿# MCP Handler インタラクション仕様書（itr-HDL）
 
 ## ドキュメント管理情報
 
@@ -31,13 +31,23 @@ MCP Handler（HDL）は、MCPプロトコルを解釈し、モジュールを管
 
 ---
 
-## 連携サマリー
+## 連携サマリー（dtl-itrまとめ）
 
-| 相手 | 方向 | やり取り | 詳細 |
-|------|------|----------|------|
-| Auth Middleware | HDL ← AMW | 認証済みリクエスト受信 | [dtl-itr-AMW-HDL.md](./dtl-itr-AMW-HDL.md) |
-| Data Store | HDL → DST | ユーザー設定取得 | [dtl-itr-DST-HDL.md](./dtl-itr-DST-HDL.md) |
-| Modules | HDL → MOD | プリミティブ操作委譲 | [dtl-itr-HDL-MOD.md](./dtl-itr-HDL-MOD.md) |
+### AMW
+- [dtl-itr-AMW-HDL.md](./dtl-itr-AMW-HDL.md)
+  - 認証済みリクエスト
+
+### DST
+- [dtl-itr-DST-HDL.md](./dtl-itr-DST-HDL.md)
+  - ユーザーコンテキスト取得、クレジット消費
+
+### MOD
+- [dtl-itr-HDL-MOD.md](./dtl-itr-HDL-MOD.md)
+  - ツール実行委譲
+
+### OBS
+- [dtl-itr-HDL-OBS.md](./dtl-itr-HDL-OBS.md)
+  - ツール実行ログ・セキュリティイベント送信
 
 ---
 
@@ -68,4 +78,8 @@ MCP Handler（HDL）は、MCPプロトコルを解釈し、モジュールを管
 | [itr-AMW.md](./itr-AMW.md)                  | Auth Middleware詳細仕様 |
 | [itr-DST.md](./itr-DST.md)                  | Data Store詳細仕様      |
 | [itr-MOD.md](./itr-MOD.md)                  | Modules詳細仕様         |
+
+
+
+
 
