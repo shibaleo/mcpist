@@ -20,7 +20,9 @@ export interface Database {
           free_credits: number
           paid_credits: number
           enabled_modules: string[]
-          disabled_tools: Json
+          enabled_tools: Json
+          language: string
+          module_descriptions: Json
         }[]
       }
       list_service_connections: {
@@ -174,7 +176,7 @@ export interface Database {
         }
         Returns: {
           module_name: string
-          tool_name: string
+          tool_id: string
           enabled: boolean
         }[]
       }
@@ -183,6 +185,32 @@ export interface Database {
           p_module_name: string
           p_enabled_tools: string[]
           p_disabled_tools: string[]
+        }
+        Returns: Json
+      }
+      get_my_module_descriptions: {
+        Args: Record<string, never>
+        Returns: {
+          module_name: string
+          description: string
+        }[]
+      }
+      upsert_my_module_description: {
+        Args: {
+          p_module_name: string
+          p_description: string
+        }
+        Returns: Json
+      }
+      get_my_preferences: {
+        Args: Record<string, never>
+        Returns: {
+          language: string
+        }[]
+      }
+      upsert_my_preferences: {
+        Args: {
+          p_language?: string | null
         }
         Returns: Json
       }
