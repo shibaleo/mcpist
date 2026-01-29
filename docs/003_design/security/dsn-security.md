@@ -5,9 +5,9 @@
 MCPistのセキュリティリスクと対策。多層防御の設計思想に基づく。
 
 関連ドキュメント:
-- [dsn-permission-system.md](./dsn-permission-system.md) - 権限システム設計
+- [dsn-permission-system.md](dsn-permission-system.md) - 権限システム設計
 - [dsn-infrastructure.md](./dsn-infrastructure.md) - インフラ構成
-- [dsn-subscription.md](./dsn-subscription.md) - Rate Limit設計
+- [dsn-subscription.md](dsn-subscription.md) - Rate Limit設計
 
 ---
 
@@ -80,7 +80,7 @@ MCPクライアント
 - TTLで自動期限切れ。アクティブユーザー分のみメモリ保持
 - 課金変更時は即時キャッシュ無効化
 
-詳細は [dsn-permission-system.md](./dsn-permission-system.md) を参照。
+詳細は [dsn-permission-system.md](dsn-permission-system.md) を参照。
 
 ---
 
@@ -185,7 +185,7 @@ Rate Limit: Origin側（メモリ + DB同期）
 
 **判断**: 10分DB同期で最大100%誤差を許容。厳密な保証（Redis）は技術的負債であり、Phase 1-2では導入しない。
 
-詳細は [dsn-subscription.md](./dsn-subscription.md) を参照。
+詳細は [dsn-subscription.md](dsn-subscription.md) を参照。
 
 ---
 
@@ -267,7 +267,7 @@ CI/CDに組み込み、結果をバッジで公開:
 
 ## 関連ドキュメント
 
-- [dsn-permission-system.md](./dsn-permission-system.md) - 権限システム設計
+- [dsn-permission-system.md](dsn-permission-system.md) - 権限システム設計
 - [dsn-infrastructure.md](./dsn-infrastructure.md) - インフラ構成
-- [dsn-subscription.md](./dsn-subscription.md) - Rate Limit設計
-- [dsn-load-management.md](./dsn-load-management.md) - 負荷対策設計
+- [dsn-subscription.md](dsn-subscription.md) - Rate Limit設計
+- [dsn-load-management.md](dsn-load-management.md) - 負荷対策設計

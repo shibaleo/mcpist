@@ -5,8 +5,8 @@
 MCPサーバーにおけるツール権限管理の詳細設計。
 
 関連ドキュメント:
-- [adr-permission-naming.md](./adr-permission-naming.md) - 命名に関するADR
-- [adr-b2c-focus.md](./adr-b2c-focus.md) - B2Cフォーカスに関するADR
+- [adr-permission-naming.md](adr-permission-naming.md) - 命名に関するADR
+- [adr-b2c-focus.md](adr-b2c-focus.md) - B2Cフォーカスに関するADR
 - [dsn-tool-sieve.md](./dsn-tool-sieve.md) - 認証・認可アーキテクチャ全体
 
 ---
@@ -28,7 +28,7 @@ MCPist（ベンダー）
 - 組織管理者によるツール制御
 - SSO、監査ログ等のエンタープライズ機能
 
-詳細は [adr-b2c-focus.md](./adr-b2c-focus.md) を参照。
+詳細は [adr-b2c-focus.md](adr-b2c-focus.md) を参照。
 
 ---
 
@@ -647,7 +647,7 @@ func (h *Handler) handleBatch(ctx context.Context, req *BatchRequest) (*BatchRes
 | Quota | `usage` | 月間使用量カウント |
 | Credit | `credits`, `credit_transactions` | クレジット残高、消費履歴 |
 
-詳細は [dsn-subscription.md](./dsn-subscription.md) を参照。
+詳細は [dsn-subscription.md](dsn-subscription.md) を参照。
 
 ---
 

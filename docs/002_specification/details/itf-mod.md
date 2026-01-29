@@ -95,4 +95,4 @@
 | ドキュメント | 内容 |
 |-------------|------|
 | [itr-mod.md](../interaction/itr-mod.md) | Modules インタラクション仕様 |
-| [dsn-err.md](../../003_design/dsn-err.md) | エラーハンドリング設計書 |
+| [dsn-err.md](dsn-err.md) | エラーハンドリング設計書 |

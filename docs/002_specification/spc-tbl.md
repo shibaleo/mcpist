@@ -265,7 +265,7 @@ auth.users (Supabase Auth)
 | [spc-sys.md](./spc-sys.md) | システム仕様書 |
 | [spc-itr.md](spc-itr.md) | インタラクション仕様書 |
 | [itr-dst.md](./interaction/itr-dst.md) | Data Store インタラクション仕様 |
-| [dtl-spc-credit-model.md](./dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
-| [itf-tvl.md](./dtl-spc/itf-tvl.md) | Token Vault API仕様 |
+| [dtl-spc-credit-model.md](dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
+| [itf-tvl.md](itf-tvl.md) | Token Vault API仕様 |
 | [dsn-tbl.md](../003_design/dsn-tbl.md) | テーブル設計書 |
 | [dtl-dsn-tbl.md](../003_design/dtl-dsn-tbl.md) | テーブル詳細設計書 |

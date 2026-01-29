@@ -7,10 +7,10 @@
 **このドキュメントはオリジン（ビジネスロジック層）の責務をカバーする。**
 
 関連ドキュメント:
-- [adr-usage-control-architecture.md](./adr-usage-control-architecture.md) - 使用量制御アーキテクチャに関するADR
-- [dsn-load-management.md](./dsn-load-management.md) - 負荷対策設計（**Burst制限はこちら**）
-- [dsn-permission-system.md](./dsn-permission-system.md) - 権限システム設計
-- [dsn-billing.md](./dsn-billing.md) - 課金システム設計
+- [adr-usage-control-architecture.md](adr-usage-control-architecture.md) - 使用量制御アーキテクチャに関するADR
+- [dsn-load-management.md](dsn-load-management.md) - 負荷対策設計（**Burst制限はこちら**）
+- [dsn-permission-system.md](dsn-permission-system.md) - 権限システム設計
+- [dsn-billing.md](dsn-billing.md) - 課金システム設計
 
 ---
 
@@ -924,7 +924,7 @@ const (
 | `quota_exceeded` | 月間上限に達しました | プランアップグレード |
 | `insufficient_credits` | クレジット不足 | クレジットチャージ |
 
-**注**: `burst_exceeded` はWorker側で返却。詳細は [dsn-load-management.md](./dsn-load-management.md) を参照。
+**注**: `burst_exceeded` はWorker側で返却。詳細は [dsn-load-management.md](dsn-load-management.md) を参照。
 
 ---
 
@@ -946,13 +946,13 @@ const (
 - Quota: -1（無制限）、使用量は記録（統計用）
 - Credit: チェックしない
 
-**注**: Burstは Worker 側で 5 req/s を有効化。詳細は [dsn-load-management.md](./dsn-load-management.md) を参照。
+**注**: Burstは Worker 側で 5 req/s を有効化。詳細は [dsn-load-management.md](dsn-load-management.md) を参照。
 
 ---
 
 ## 関連ドキュメント
 
-- [adr-usage-control-architecture.md](./adr-usage-control-architecture.md) - 使用量制御アーキテクチャ
-- [dsn-permission-system.md](./dsn-permission-system.md) - 権限システム設計
-- [dsn-billing.md](./dsn-billing.md) - 課金システム設計
-- [dsn-load-management.md](./dsn-load-management.md) - 負荷対策設計
+- [adr-usage-control-architecture.md](adr-usage-control-architecture.md) - 使用量制御アーキテクチャ
+- [dsn-permission-system.md](dsn-permission-system.md) - 権限システム設計
+- [dsn-billing.md](dsn-billing.md) - 課金システム設計
+- [dsn-load-management.md](dsn-load-management.md) - 負荷対策設計
