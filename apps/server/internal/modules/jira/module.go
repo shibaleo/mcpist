@@ -32,9 +32,20 @@ func (m *JiraModule) Name() string {
 	return "jira"
 }
 
-// Description returns the module description
-func (m *JiraModule) Description() string {
-	return "Jira API - Issue/Project operations (search, create, update, comment, transition)"
+// moduleDescriptions holds multilingual module descriptions
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
+	"ja-JP": "Jira API - Issue/Project操作（検索、作成、更新、コメント、遷移）",
+}
+
+// Descriptions returns multilingual module descriptions
+func (m *JiraModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *JiraModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Jira API version
@@ -133,8 +144,12 @@ func baseURL(ctx context.Context) string {
 
 var toolDefinitions = []modules.Tool{
 	{
-		Name:        "get_myself",
-		Description: "Get information about the current Jira user (myself).",
+		ID:   "jira:get_myself",
+		Name: "get_myself",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get information about the current Jira user (myself).",
+			"ja-JP": "現在のJiraユーザー（自分自身）の情報を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -142,8 +157,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "list_projects",
-		Description: "List all Jira projects accessible to the current user.",
+		ID:   "jira:list_projects",
+		Name: "list_projects",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all Jira projects accessible to the current user.",
+			"ja-JP": "現在のユーザーがアクセス可能なすべてのJiraプロジェクトを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -154,8 +173,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_project",
-		Description: "Get details of a specific Jira project.",
+		ID:   "jira:get_project",
+		Name: "get_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific Jira project.",
+			"ja-JP": "特定のJiraプロジェクトの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -166,8 +189,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "search",
-		Description: "Search for Jira issues using JQL (Jira Query Language). Example JQL: 'project = PROJ AND status = \"In Progress\"'",
+		ID:   "jira:search",
+		Name: "search",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search for Jira issues using JQL (Jira Query Language). Example JQL: 'project = PROJ AND status = \"In Progress\"'",
+			"ja-JP": "JQL（Jira Query Language）を使用してJira課題を検索します。JQL例：'project = PROJ AND status = \"In Progress\"'",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -181,8 +208,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_issue",
-		Description: "Get details of a specific Jira issue by key or ID.",
+		ID:   "jira:get_issue",
+		Name: "get_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific Jira issue by key or ID.",
+			"ja-JP": "キーまたはIDで特定のJira課題の詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -194,8 +225,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_issue",
-		Description: "Create a new Jira issue.",
+		ID:   "jira:create_issue",
+		Name: "create_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new Jira issue.",
+			"ja-JP": "新しいJira課題を作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -213,8 +248,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update_issue",
-		Description: "Update an existing Jira issue.",
+		ID:   "jira:update_issue",
+		Name: "update_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing Jira issue.",
+			"ja-JP": "既存のJira課題を更新します。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -230,8 +269,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_transitions",
-		Description: "Get available transitions for an issue. Use this to find valid transition IDs before changing issue status.",
+		ID:   "jira:get_transitions",
+		Name: "get_transitions",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get available transitions for an issue. Use this to find valid transition IDs before changing issue status.",
+			"ja-JP": "課題で利用可能なトランジションを取得します。課題のステータスを変更する前に有効なトランジションIDを見つけるために使用します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -242,8 +285,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "transition_issue",
-		Description: "Transition an issue to a new status. Use get_transitions first to get valid transition IDs.",
+		ID:   "jira:transition_issue",
+		Name: "transition_issue",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Transition an issue to a new status. Use get_transitions first to get valid transition IDs.",
+			"ja-JP": "課題を新しいステータスに遷移させます。最初にget_transitionsを使用して有効なトランジションIDを取得してください。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -256,8 +303,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_comments",
-		Description: "Get comments on a Jira issue.",
+		ID:   "jira:get_comments",
+		Name: "get_comments",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get comments on a Jira issue.",
+			"ja-JP": "Jira課題のコメントを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -270,8 +321,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "add_comment",
-		Description: "Add a comment to a Jira issue.",
+		ID:   "jira:add_comment",
+		Name: "add_comment",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Add a comment to a Jira issue.",
+			"ja-JP": "Jira課題にコメントを追加します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",

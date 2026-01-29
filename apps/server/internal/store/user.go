@@ -20,11 +20,13 @@ type UserStore struct {
 
 // UserContext represents the user's context from get_user_context RPC
 type UserContext struct {
-	AccountStatus  string              `json:"account_status"`
-	FreeCredits    int                 `json:"free_credits"`
-	PaidCredits    int                 `json:"paid_credits"`
-	EnabledModules []string            `json:"enabled_modules"`
-	DisabledTools  map[string][]string `json:"disabled_tools"` // module -> []tool
+	AccountStatus      string              `json:"account_status"`
+	FreeCredits        int                 `json:"free_credits"`
+	PaidCredits        int                 `json:"paid_credits"`
+	EnabledModules     []string            `json:"enabled_modules"`
+	EnabledTools       map[string][]string `json:"enabled_tools"`       // module -> []tool_id (whitelist)
+	Language           string              `json:"language"`            // BCP47 language code (e.g., "en-US", "ja-JP")
+	ModuleDescriptions ModuleDescriptions  `json:"module_descriptions"` // module -> custom description
 }
 
 // TotalCredits returns the sum of free and paid credits
@@ -32,7 +34,7 @@ func (uc *UserContext) TotalCredits() int {
 	return uc.FreeCredits + uc.PaidCredits
 }
 
-// IsModuleEnabled checks if a module is enabled for the user
+// IsModuleEnabled checks if a module is enabled for the user.
 func (uc *UserContext) IsModuleEnabled(module string) bool {
 	for _, m := range uc.EnabledModules {
 		if m == module {
@@ -43,17 +45,18 @@ func (uc *UserContext) IsModuleEnabled(module string) bool {
 }
 
 // IsToolEnabled checks if a tool is enabled for the user
+// Uses whitelist approach: tool must be in EnabledTools to be enabled
 func (uc *UserContext) IsToolEnabled(module, tool string) bool {
-	disabledTools, ok := uc.DisabledTools[module]
+	enabledTools, ok := uc.EnabledTools[module]
 	if !ok {
-		return true // Module has no disabled tools
+		return false // Module has no enabled tools
 	}
-	for _, t := range disabledTools {
+	for _, t := range enabledTools {
 		if t == tool {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 // ConsumeResult represents the result of consume_credit RPC
@@ -115,12 +118,15 @@ func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	if s.serviceKey == "" {
 		// Return default context for development without service key
+		// All tools enabled for all modules (dev mode)
 		return &UserContext{
-			AccountStatus:  "active",
-			FreeCredits:    100,
-			PaidCredits:    0,
-			EnabledModules: []string{"notion", "github", "jira", "confluence", "supabase", "google_calendar", "microsoft_todo", "rag"},
-			DisabledTools:  map[string][]string{},
+			AccountStatus:      "active",
+			FreeCredits:        100,
+			PaidCredits:        0,
+			EnabledModules:     []string{"notion", "github", "jira", "confluence", "supabase", "airtable", "google_calendar", "microsoft_todo", "rag"},
+			EnabledTools:       map[string][]string{}, // Empty means check disabled (dev mode fallback)
+			Language:           "en-US",
+			ModuleDescriptions: ModuleDescriptions{},
 		}, nil
 	}
 
@@ -150,11 +156,13 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 
 	// RPC returns a table, so we get an array
 	var results []struct {
-		AccountStatus  string          `json:"account_status"`
-		FreeCredits    int             `json:"free_credits"`
-		PaidCredits    int             `json:"paid_credits"`
-		EnabledModules []string        `json:"enabled_modules"`
-		DisabledTools  json.RawMessage `json:"disabled_tools"`
+		AccountStatus      string          `json:"account_status"`
+		FreeCredits        int             `json:"free_credits"`
+		PaidCredits        int             `json:"paid_credits"`
+		EnabledModules     []string        `json:"enabled_modules"`
+		EnabledTools       json.RawMessage `json:"enabled_tools"`
+		Language           string          `json:"language"`
+		ModuleDescriptions json.RawMessage `json:"module_descriptions"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
@@ -167,21 +175,38 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 
 	r := results[0]
 
-	// Parse disabled_tools JSONB
-	disabledTools := make(map[string][]string)
-	if len(r.DisabledTools) > 0 && string(r.DisabledTools) != "{}" {
-		if err := json.Unmarshal(r.DisabledTools, &disabledTools); err != nil {
+	// Parse enabled_tools JSONB (whitelist)
+	enabledTools := make(map[string][]string)
+	if len(r.EnabledTools) > 0 && string(r.EnabledTools) != "{}" {
+		if err := json.Unmarshal(r.EnabledTools, &enabledTools); err != nil {
 			// Log but don't fail - just use empty map
-			disabledTools = map[string][]string{}
+			enabledTools = map[string][]string{}
 		}
 	}
 
+	// Parse module_descriptions JSONB
+	moduleDescriptions := make(ModuleDescriptions)
+	if len(r.ModuleDescriptions) > 0 && string(r.ModuleDescriptions) != "{}" {
+		if err := json.Unmarshal(r.ModuleDescriptions, &moduleDescriptions); err != nil {
+			// Log but don't fail - just use empty map
+			moduleDescriptions = ModuleDescriptions{}
+		}
+	}
+
+	// Default to en-US if language is empty
+	language := r.Language
+	if language == "" {
+		language = "en-US"
+	}
+
 	return &UserContext{
-		AccountStatus:  r.AccountStatus,
-		FreeCredits:    r.FreeCredits,
-		PaidCredits:    r.PaidCredits,
-		EnabledModules: r.EnabledModules,
-		DisabledTools:  disabledTools,
+		AccountStatus:      r.AccountStatus,
+		FreeCredits:        r.FreeCredits,
+		PaidCredits:        r.PaidCredits,
+		EnabledModules:     r.EnabledModules,
+		EnabledTools:       enabledTools,
+		Language:           language,
+		ModuleDescriptions: moduleDescriptions,
 	}, nil
 }
 
@@ -248,6 +273,9 @@ func (s *UserStore) ConsumeCredit(userID, module, tool string, amount int, reque
 func (s *UserStore) InvalidateCache(userID string) {
 	s.cache.delete(userID)
 }
+
+// ModuleDescriptions maps module_name -> custom_description
+type ModuleDescriptions map[string]string
 
 // Cache methods
 

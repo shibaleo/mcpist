@@ -3,49 +3,67 @@
     {
       "id": "airtable",
       "name": "Airtable",
-      "description": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+      "descriptions": {
+        "en-US": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+        "ja-JP": "Airtable API - ベース、テーブル、レコード操作（検索・集計機能付き）"
+      },
       "apiVersion": "v0",
       "tools": [
         {
-          "id": "list_bases",
+          "id": "airtable:list_bases",
           "name": "list_bases",
-          "description": "List all accessible Airtable bases with their names, IDs, and permission levels",
+          "descriptions": {
+            "en-US": "List all accessible Airtable bases with their names, IDs, and permission levels",
+            "ja-JP": "アクセス可能なすべてのAirtableベースをその名前、ID、権限レベルとともに一覧表示します"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "describe",
+          "id": "airtable:describe",
           "name": "describe",
-          "description": "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
+          "descriptions": {
+            "en-US": "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
+            "ja-JP": "Airtableのベースまたはテーブルスキーマを説明します。detailLevelを使用してコンテキストを最適化：tableIdentifiersOnly（最小限）、identifiersOnly（IDと名前）、full（フィールドタイプを含む完全な詳細）"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "query",
+          "id": "airtable:query",
           "name": "query",
-          "description": "Query Airtable records with filtering, sorting, and pagination",
+          "descriptions": {
+            "en-US": "Query Airtable records with filtering, sorting, and pagination",
+            "ja-JP": "フィルタリング、ソート、ページネーションを使用してAirtableレコードをクエリします"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_record",
+          "id": "airtable:get_record",
           "name": "get_record",
-          "description": "Retrieve a single record by ID",
+          "descriptions": {
+            "en-US": "Retrieve a single record by ID",
+            "ja-JP": "IDで単一のレコードを取得します"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create",
+          "id": "airtable:create",
           "name": "create",
-          "description": "Create new records in a table. Supports batch creation (up to 10 records per request)",
+          "descriptions": {
+            "en-US": "Create new records in a table. Supports batch creation (up to 10 records per request)",
+            "ja-JP": "テーブルに新しいレコードを作成します。バッチ作成をサポート（リクエストごとに最大10レコード）"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -54,9 +72,12 @@
           }
         },
         {
-          "id": "update",
+          "id": "airtable:update",
           "name": "update",
-          "description": "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
+          "descriptions": {
+            "en-US": "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
+            "ja-JP": "既存のレコードを更新します。バッチ更新をサポート（リクエストごとに最大10レコード）。PATCH（部分更新）を使用"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -65,9 +86,12 @@
           }
         },
         {
-          "id": "delete",
+          "id": "airtable:delete",
           "name": "delete",
-          "description": "Delete records from a table. Supports batch deletion (up to 10 records per request)",
+          "descriptions": {
+            "en-US": "Delete records from a table. Supports batch deletion (up to 10 records per request)",
+            "ja-JP": "テーブルからレコードを削除します。バッチ削除をサポート（リクエストごとに最大10レコード）"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -76,27 +100,36 @@
           }
         },
         {
-          "id": "search_records",
+          "id": "airtable:search_records",
           "name": "search_records",
-          "description": "Search for records containing specific text across specified fields or all text fields",
+          "descriptions": {
+            "en-US": "Search for records containing specific text across specified fields or all text fields",
+            "ja-JP": "指定されたフィールドまたはすべてのテキストフィールドで特定のテキストを含むレコードを検索します"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "aggregate_records",
+          "id": "airtable:aggregate_records",
           "name": "aggregate_records",
-          "description": "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
+          "descriptions": {
+            "en-US": "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
+            "ja-JP": "オプションのグループ化を使用してレコードに対して集計操作（sum、count、avg、min、max）を実行します"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_table",
+          "id": "airtable:create_table",
           "name": "create_table",
-          "description": "Create a new table in a base with specified fields",
+          "descriptions": {
+            "en-US": "Create a new table in a base with specified fields",
+            "ja-JP": "指定されたフィールドでベースに新しいテーブルを作成します"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -105,9 +138,12 @@
           }
         },
         {
-          "id": "update_table",
+          "id": "airtable:update_table",
           "name": "update_table",
-          "description": "Update table metadata (name and/or description)",
+          "descriptions": {
+            "en-US": "Update table metadata (name and/or description)",
+            "ja-JP": "テーブルのメタデータ（名前および/または説明）を更新します"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -120,49 +156,67 @@
     {
       "id": "confluence",
       "name": "Confluence",
-      "description": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
+      "descriptions": {
+        "en-US": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
+        "ja-JP": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）"
+      },
       "apiVersion": "v2",
       "tools": [
         {
-          "id": "list_spaces",
+          "id": "confluence:list_spaces",
           "name": "list_spaces",
-          "description": "List all Confluence spaces accessible to the current user.",
+          "descriptions": {
+            "en-US": "List all Confluence spaces accessible to the current user.",
+            "ja-JP": "現在のユーザーがアクセス可能なすべてのConfluenceスペースを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_space",
+          "id": "confluence:get_space",
           "name": "get_space",
-          "description": "Get details of a specific Confluence space by ID or key.",
+          "descriptions": {
+            "en-US": "Get details of a specific Confluence space by ID or key.",
+            "ja-JP": "IDまたはキーで特定のConfluenceスペースの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_pages",
+          "id": "confluence:get_pages",
           "name": "get_pages",
-          "description": "List pages in a Confluence space.",
+          "descriptions": {
+            "en-US": "List pages in a Confluence space.",
+            "ja-JP": "Confluenceスペース内のページを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_page",
+          "id": "confluence:get_page",
           "name": "get_page",
-          "description": "Get a Confluence page by ID with its content.",
+          "descriptions": {
+            "en-US": "Get a Confluence page by ID with its content.",
+            "ja-JP": "IDでConfluenceページとそのコンテンツを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_page",
+          "id": "confluence:create_page",
           "name": "create_page",
-          "description": "Create a new Confluence page.",
+          "descriptions": {
+            "en-US": "Create a new Confluence page.",
+            "ja-JP": "新しいConfluenceページを作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -171,9 +225,12 @@
           }
         },
         {
-          "id": "update_page",
+          "id": "confluence:update_page",
           "name": "update_page",
-          "description": "Update an existing Confluence page.",
+          "descriptions": {
+            "en-US": "Update an existing Confluence page.",
+            "ja-JP": "既存のConfluenceページを更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -182,9 +239,12 @@
           }
         },
         {
-          "id": "delete_page",
+          "id": "confluence:delete_page",
           "name": "delete_page",
-          "description": "Delete a Confluence page.",
+          "descriptions": {
+            "en-US": "Delete a Confluence page.",
+            "ja-JP": "Confluenceページを削除します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -193,27 +253,36 @@
           }
         },
         {
-          "id": "search",
+          "id": "confluence:search",
           "name": "search",
-          "description": "Search Confluence content using CQL (Confluence Query Language). Example: 'type=page AND space=MYSPACE AND text~\"keyword\"'",
+          "descriptions": {
+            "en-US": "Search Confluence content using CQL (Confluence Query Language). Example: 'type=page AND space=MYSPACE AND text~\"keyword\"'",
+            "ja-JP": "CQL（Confluence Query Language）を使用してConfluenceコンテンツを検索します。例：'type=page AND space=MYSPACE AND text~\"keyword\"'"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_page_comments",
+          "id": "confluence:get_page_comments",
           "name": "get_page_comments",
-          "description": "Get comments on a Confluence page.",
+          "descriptions": {
+            "en-US": "Get comments on a Confluence page.",
+            "ja-JP": "Confluenceページのコメントを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "add_page_comment",
+          "id": "confluence:add_page_comment",
           "name": "add_page_comment",
-          "description": "Add a comment to a Confluence page.",
+          "descriptions": {
+            "en-US": "Add a comment to a Confluence page.",
+            "ja-JP": "Confluenceページにコメントを追加します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -222,18 +291,24 @@
           }
         },
         {
-          "id": "get_page_labels",
+          "id": "confluence:get_page_labels",
           "name": "get_page_labels",
-          "description": "Get labels on a Confluence page.",
+          "descriptions": {
+            "en-US": "Get labels on a Confluence page.",
+            "ja-JP": "Confluenceページのラベルを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "add_page_label",
+          "id": "confluence:add_page_label",
           "name": "add_page_label",
-          "description": "Add a label to a Confluence page.",
+          "descriptions": {
+            "en-US": "Add a label to a Confluence page.",
+            "ja-JP": "Confluenceページにラベルを追加します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -246,85 +321,115 @@
     {
       "id": "github",
       "name": "GitHub",
-      "description": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
+      "descriptions": {
+        "en-US": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
+        "ja-JP": "GitHub API - リポジトリ、Issue、PR、Actions、検索操作"
+      },
       "apiVersion": "2022-11-28",
       "tools": [
         {
-          "id": "get_user",
+          "id": "github:get_user",
           "name": "get_user",
-          "description": "Get information about the authenticated GitHub user.",
+          "descriptions": {
+            "en-US": "Get information about the authenticated GitHub user.",
+            "ja-JP": "認証済みGitHubユーザーの情報を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_repos",
+          "id": "github:list_repos",
           "name": "list_repos",
-          "description": "List repositories for the authenticated user.",
+          "descriptions": {
+            "en-US": "List repositories for the authenticated user.",
+            "ja-JP": "認証済みユーザーのリポジトリを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_repo",
+          "id": "github:get_repo",
           "name": "get_repo",
-          "description": "Get details of a specific repository.",
+          "descriptions": {
+            "en-US": "Get details of a specific repository.",
+            "ja-JP": "特定のリポジトリの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_branches",
+          "id": "github:list_branches",
           "name": "list_branches",
-          "description": "List branches in a repository.",
+          "descriptions": {
+            "en-US": "List branches in a repository.",
+            "ja-JP": "リポジトリ内のブランチを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_commits",
+          "id": "github:list_commits",
           "name": "list_commits",
-          "description": "List commits in a repository.",
+          "descriptions": {
+            "en-US": "List commits in a repository.",
+            "ja-JP": "リポジトリ内のコミットを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_file_content",
+          "id": "github:get_file_content",
           "name": "get_file_content",
-          "description": "Get the content of a file in a repository.",
+          "descriptions": {
+            "en-US": "Get the content of a file in a repository.",
+            "ja-JP": "リポジトリ内のファイルの内容を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_issues",
+          "id": "github:list_issues",
           "name": "list_issues",
-          "description": "List issues in a repository.",
+          "descriptions": {
+            "en-US": "List issues in a repository.",
+            "ja-JP": "リポジトリ内のIssueを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_issue",
+          "id": "github:get_issue",
           "name": "get_issue",
-          "description": "Get details of a specific issue.",
+          "descriptions": {
+            "en-US": "Get details of a specific issue.",
+            "ja-JP": "特定のIssueの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_issue",
+          "id": "github:create_issue",
           "name": "create_issue",
-          "description": "Create a new issue in a repository.",
+          "descriptions": {
+            "en-US": "Create a new issue in a repository.",
+            "ja-JP": "リポジトリに新しいIssueを作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -333,9 +438,12 @@
           }
         },
         {
-          "id": "update_issue",
+          "id": "github:update_issue",
           "name": "update_issue",
-          "description": "Update an existing issue.",
+          "descriptions": {
+            "en-US": "Update an existing issue.",
+            "ja-JP": "既存のIssueを更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -344,9 +452,12 @@
           }
         },
         {
-          "id": "add_issue_comment",
+          "id": "github:add_issue_comment",
           "name": "add_issue_comment",
-          "description": "Add a comment to an issue.",
+          "descriptions": {
+            "en-US": "Add a comment to an issue.",
+            "ja-JP": "Issueにコメントを追加します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -355,27 +466,36 @@
           }
         },
         {
-          "id": "list_prs",
+          "id": "github:list_prs",
           "name": "list_prs",
-          "description": "List pull requests in a repository.",
+          "descriptions": {
+            "en-US": "List pull requests in a repository.",
+            "ja-JP": "リポジトリ内のプルリクエストを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_pr",
+          "id": "github:get_pr",
           "name": "get_pr",
-          "description": "Get details of a specific pull request.",
+          "descriptions": {
+            "en-US": "Get details of a specific pull request.",
+            "ja-JP": "特定のプルリクエストの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_pr",
+          "id": "github:create_pr",
           "name": "create_pr",
-          "description": "Create a new pull request.",
+          "descriptions": {
+            "en-US": "Create a new pull request.",
+            "ja-JP": "新しいプルリクエストを作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -384,54 +504,72 @@
           }
         },
         {
-          "id": "list_pr_files",
+          "id": "github:list_pr_files",
           "name": "list_pr_files",
-          "description": "List files changed in a pull request.",
+          "descriptions": {
+            "en-US": "List files changed in a pull request.",
+            "ja-JP": "プルリクエストで変更されたファイルを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "search_repos",
+          "id": "github:search_repos",
           "name": "search_repos",
-          "description": "Search for repositories.",
+          "descriptions": {
+            "en-US": "Search for repositories.",
+            "ja-JP": "リポジトリを検索します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "search_code",
+          "id": "github:search_code",
           "name": "search_code",
-          "description": "Search for code across repositories.",
+          "descriptions": {
+            "en-US": "Search for code across repositories.",
+            "ja-JP": "リポジトリ全体でコードを検索します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "search_issues",
+          "id": "github:search_issues",
           "name": "search_issues",
-          "description": "Search for issues and pull requests.",
+          "descriptions": {
+            "en-US": "Search for issues and pull requests.",
+            "ja-JP": "Issueとプルリクエストを検索します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_workflows",
+          "id": "github:list_workflows",
           "name": "list_workflows",
-          "description": "List workflows in a repository.",
+          "descriptions": {
+            "en-US": "List workflows in a repository.",
+            "ja-JP": "リポジトリ内のワークフローを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_workflow_runs",
+          "id": "github:list_workflow_runs",
           "name": "list_workflow_runs",
-          "description": "List workflow runs in a repository.",
+          "descriptions": {
+            "en-US": "List workflow runs in a repository.",
+            "ja-JP": "リポジトリ内のワークフロー実行を一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
@@ -442,49 +580,67 @@
     {
       "id": "google_calendar",
       "name": "Google Calendar",
-      "description": "Google Calendar API - List, create, update, and delete events",
+      "descriptions": {
+        "en-US": "Google Calendar API - List, create, update, and delete events",
+        "ja-JP": "Google Calendar API - イベントの一覧表示、作成、更新、削除"
+      },
       "apiVersion": "v3",
       "tools": [
         {
-          "id": "list_calendars",
+          "id": "google_calendar:list_calendars",
           "name": "list_calendars",
-          "description": "List all calendars accessible to the user.",
+          "descriptions": {
+            "en-US": "List all calendars accessible to the user.",
+            "ja-JP": "ユーザーがアクセス可能なすべてのカレンダーを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_calendar",
+          "id": "google_calendar:get_calendar",
           "name": "get_calendar",
-          "description": "Get details of a specific calendar.",
+          "descriptions": {
+            "en-US": "Get details of a specific calendar.",
+            "ja-JP": "特定のカレンダーの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_events",
+          "id": "google_calendar:list_events",
           "name": "list_events",
-          "description": "List events from a calendar within a time range.",
+          "descriptions": {
+            "en-US": "List events from a calendar within a time range.",
+            "ja-JP": "時間範囲内のカレンダーからイベントを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_event",
+          "id": "google_calendar:get_event",
           "name": "get_event",
-          "description": "Get details of a specific event.",
+          "descriptions": {
+            "en-US": "Get details of a specific event.",
+            "ja-JP": "特定のイベントの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_event",
+          "id": "google_calendar:create_event",
           "name": "create_event",
-          "description": "Create a new event in a calendar.",
+          "descriptions": {
+            "en-US": "Create a new event in a calendar.",
+            "ja-JP": "カレンダーに新しいイベントを作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -493,9 +649,12 @@
           }
         },
         {
-          "id": "update_event",
+          "id": "google_calendar:update_event",
           "name": "update_event",
-          "description": "Update an existing event.",
+          "descriptions": {
+            "en-US": "Update an existing event.",
+            "ja-JP": "既存のイベントを更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -504,9 +663,12 @@
           }
         },
         {
-          "id": "delete_event",
+          "id": "google_calendar:delete_event",
           "name": "delete_event",
-          "description": "Delete an event from a calendar.",
+          "descriptions": {
+            "en-US": "Delete an event from a calendar.",
+            "ja-JP": "カレンダーからイベントを削除します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -515,9 +677,12 @@
           }
         },
         {
-          "id": "quick_add",
+          "id": "google_calendar:quick_add",
           "name": "quick_add",
-          "description": "Create an event based on a simple text string (e.g., 'Meeting with John tomorrow at 3pm').",
+          "descriptions": {
+            "en-US": "Create an event based on a simple text string (e.g., 'Meeting with John tomorrow at 3pm').",
+            "ja-JP": "シンプルなテキスト文字列に基づいてイベントを作成します（例：'明日午後3時にJohnとミーティング'）。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -530,58 +695,79 @@
     {
       "id": "jira",
       "name": "Jira",
-      "description": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
+      "descriptions": {
+        "en-US": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
+        "ja-JP": "Jira API - Issue/Project操作（検索、作成、更新、コメント、遷移）"
+      },
       "apiVersion": "3",
       "tools": [
         {
-          "id": "get_myself",
+          "id": "jira:get_myself",
           "name": "get_myself",
-          "description": "Get information about the current Jira user (myself).",
+          "descriptions": {
+            "en-US": "Get information about the current Jira user (myself).",
+            "ja-JP": "現在のJiraユーザー（自分自身）の情報を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_projects",
+          "id": "jira:list_projects",
           "name": "list_projects",
-          "description": "List all Jira projects accessible to the current user.",
+          "descriptions": {
+            "en-US": "List all Jira projects accessible to the current user.",
+            "ja-JP": "現在のユーザーがアクセス可能なすべてのJiraプロジェクトを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_project",
+          "id": "jira:get_project",
           "name": "get_project",
-          "description": "Get details of a specific Jira project.",
+          "descriptions": {
+            "en-US": "Get details of a specific Jira project.",
+            "ja-JP": "特定のJiraプロジェクトの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "search",
+          "id": "jira:search",
           "name": "search",
-          "description": "Search for Jira issues using JQL (Jira Query Language). Example JQL: 'project = PROJ AND status = \"In Progress\"'",
+          "descriptions": {
+            "en-US": "Search for Jira issues using JQL (Jira Query Language). Example JQL: 'project = PROJ AND status = \"In Progress\"'",
+            "ja-JP": "JQL（Jira Query Language）を使用してJira課題を検索します。JQL例：'project = PROJ AND status = \"In Progress\"'"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_issue",
+          "id": "jira:get_issue",
           "name": "get_issue",
-          "description": "Get details of a specific Jira issue by key or ID.",
+          "descriptions": {
+            "en-US": "Get details of a specific Jira issue by key or ID.",
+            "ja-JP": "キーまたはIDで特定のJira課題の詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_issue",
+          "id": "jira:create_issue",
           "name": "create_issue",
-          "description": "Create a new Jira issue.",
+          "descriptions": {
+            "en-US": "Create a new Jira issue.",
+            "ja-JP": "新しいJira課題を作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -590,9 +776,12 @@
           }
         },
         {
-          "id": "update_issue",
+          "id": "jira:update_issue",
           "name": "update_issue",
-          "description": "Update an existing Jira issue.",
+          "descriptions": {
+            "en-US": "Update an existing Jira issue.",
+            "ja-JP": "既存のJira課題を更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -601,18 +790,24 @@
           }
         },
         {
-          "id": "get_transitions",
+          "id": "jira:get_transitions",
           "name": "get_transitions",
-          "description": "Get available transitions for an issue. Use this to find valid transition IDs before changing issue status.",
+          "descriptions": {
+            "en-US": "Get available transitions for an issue. Use this to find valid transition IDs before changing issue status.",
+            "ja-JP": "課題で利用可能なトランジションを取得します。課題のステータスを変更する前に有効なトランジションIDを見つけるために使用します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "transition_issue",
+          "id": "jira:transition_issue",
           "name": "transition_issue",
-          "description": "Transition an issue to a new status. Use get_transitions first to get valid transition IDs.",
+          "descriptions": {
+            "en-US": "Transition an issue to a new status. Use get_transitions first to get valid transition IDs.",
+            "ja-JP": "課題を新しいステータスに遷移させます。最初にget_transitionsを使用して有効なトランジションIDを取得してください。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -621,18 +816,24 @@
           }
         },
         {
-          "id": "get_comments",
+          "id": "jira:get_comments",
           "name": "get_comments",
-          "description": "Get comments on a Jira issue.",
+          "descriptions": {
+            "en-US": "Get comments on a Jira issue.",
+            "ja-JP": "Jira課題のコメントを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "add_comment",
+          "id": "jira:add_comment",
           "name": "add_comment",
-          "description": "Add a comment to a Jira issue.",
+          "descriptions": {
+            "en-US": "Add a comment to a Jira issue.",
+            "ja-JP": "Jira課題にコメントを追加します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -645,31 +846,43 @@
     {
       "id": "microsoft_todo",
       "name": "Microsoft To Do",
-      "description": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
+      "descriptions": {
+        "en-US": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
+        "ja-JP": "Microsoft To Do API - タスクとタスクリストの一覧表示、作成、更新、削除"
+      },
       "apiVersion": "v1.0",
       "tools": [
         {
-          "id": "list_lists",
+          "id": "microsoft_todo:list_lists",
           "name": "list_lists",
-          "description": "Get all task lists for the user.",
+          "descriptions": {
+            "en-US": "Get all task lists for the user.",
+            "ja-JP": "ユーザーのすべてのタスクリストを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_list",
+          "id": "microsoft_todo:get_list",
           "name": "get_list",
-          "description": "Get a specific task list by ID.",
+          "descriptions": {
+            "en-US": "Get a specific task list by ID.",
+            "ja-JP": "IDで特定のタスクリストを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_list",
+          "id": "microsoft_todo:create_list",
           "name": "create_list",
-          "description": "Create a new task list.",
+          "descriptions": {
+            "en-US": "Create a new task list.",
+            "ja-JP": "新しいタスクリストを作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -678,9 +891,12 @@
           }
         },
         {
-          "id": "update_list",
+          "id": "microsoft_todo:update_list",
           "name": "update_list",
-          "description": "Update an existing task list.",
+          "descriptions": {
+            "en-US": "Update an existing task list.",
+            "ja-JP": "既存のタスクリストを更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -689,9 +905,12 @@
           }
         },
         {
-          "id": "delete_list",
+          "id": "microsoft_todo:delete_list",
           "name": "delete_list",
-          "description": "Delete a task list.",
+          "descriptions": {
+            "en-US": "Delete a task list.",
+            "ja-JP": "タスクリストを削除します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -700,27 +919,36 @@
           }
         },
         {
-          "id": "list_tasks",
+          "id": "microsoft_todo:list_tasks",
           "name": "list_tasks",
-          "description": "Get all tasks in a task list.",
+          "descriptions": {
+            "en-US": "Get all tasks in a task list.",
+            "ja-JP": "タスクリスト内のすべてのタスクを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_task",
+          "id": "microsoft_todo:get_task",
           "name": "get_task",
-          "description": "Get a specific task by ID.",
+          "descriptions": {
+            "en-US": "Get a specific task by ID.",
+            "ja-JP": "IDで特定のタスクを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_task",
+          "id": "microsoft_todo:create_task",
           "name": "create_task",
-          "description": "Create a new task in a task list.",
+          "descriptions": {
+            "en-US": "Create a new task in a task list.",
+            "ja-JP": "タスクリストに新しいタスクを作成します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -729,9 +957,12 @@
           }
         },
         {
-          "id": "update_task",
+          "id": "microsoft_todo:update_task",
           "name": "update_task",
-          "description": "Update an existing task.",
+          "descriptions": {
+            "en-US": "Update an existing task.",
+            "ja-JP": "既存のタスクを更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -740,9 +971,12 @@
           }
         },
         {
-          "id": "complete_task",
+          "id": "microsoft_todo:complete_task",
           "name": "complete_task",
-          "description": "Mark a task as completed.",
+          "descriptions": {
+            "en-US": "Mark a task as completed.",
+            "ja-JP": "タスクを完了としてマークします。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -751,9 +985,12 @@
           }
         },
         {
-          "id": "delete_task",
+          "id": "microsoft_todo:delete_task",
           "name": "delete_task",
-          "description": "Delete a task.",
+          "descriptions": {
+            "en-US": "Delete a task.",
+            "ja-JP": "タスクを削除します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -766,40 +1003,55 @@
     {
       "id": "notion",
       "name": "Notion",
-      "description": "Notion API - Page, Database, Block, Comment, and User operations",
+      "descriptions": {
+        "en-US": "Notion API - Page, Database, Block, Comment, and User operations",
+        "ja-JP": "Notion API - ページ、データベース、ブロック、コメント、ユーザー操作"
+      },
       "apiVersion": "2022-06-28",
       "tools": [
         {
-          "id": "search",
+          "id": "notion:search",
           "name": "search",
-          "description": "Search pages and databases in Notion by title. Returns pages and databases shared with the integration.",
+          "descriptions": {
+            "en-US": "Search pages and databases in Notion by title. Returns pages and databases shared with the integration.",
+            "ja-JP": "Notionのページとデータベースをタイトルで検索します。インテグレーションと共有されているページとデータベースを返します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_page",
+          "id": "notion:get_page",
           "name": "get_page",
-          "description": "Retrieve a Notion page by ID. Returns page properties and metadata.",
+          "descriptions": {
+            "en-US": "Retrieve a Notion page by ID. Returns page properties and metadata.",
+            "ja-JP": "IDでNotionページを取得します。ページのプロパティとメタデータを返します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_page_content",
+          "id": "notion:get_page_content",
           "name": "get_page_content",
-          "description": "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
+          "descriptions": {
+            "en-US": "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
+            "ja-JP": "Notionページのコンテンツ（ブロック）を取得します。実際のテキストコンテンツを読み取るために使用します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "create_page",
+          "id": "notion:create_page",
           "name": "create_page",
-          "description": "Create a new page in Notion. Can create as a child of another page or in a database.",
+          "descriptions": {
+            "en-US": "Create a new page in Notion. Can create as a child of another page or in a database.",
+            "ja-JP": "Notionに新しいページを作成します。別のページの子として、またはデータベース内に作成できます。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -808,9 +1060,12 @@
           }
         },
         {
-          "id": "update_page",
+          "id": "notion:update_page",
           "name": "update_page",
-          "description": "Update a Notion page's properties.",
+          "descriptions": {
+            "en-US": "Update a Notion page's properties.",
+            "ja-JP": "Notionページのプロパティを更新します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -819,27 +1074,36 @@
           }
         },
         {
-          "id": "get_database",
+          "id": "notion:get_database",
           "name": "get_database",
-          "description": "Retrieve a Notion database schema and metadata.",
+          "descriptions": {
+            "en-US": "Retrieve a Notion database schema and metadata.",
+            "ja-JP": "Notionデータベースのスキーマとメタデータを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "query_database",
+          "id": "notion:query_database",
           "name": "query_database",
-          "description": "Query a Notion database with optional filters and sorts. Returns pages in the database.",
+          "descriptions": {
+            "en-US": "Query a Notion database with optional filters and sorts. Returns pages in the database.",
+            "ja-JP": "オプションのフィルターとソートでNotionデータベースをクエリします。データベース内のページを返します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "append_blocks",
+          "id": "notion:append_blocks",
           "name": "append_blocks",
-          "description": "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
+          "descriptions": {
+            "en-US": "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
+            "ja-JP": "ページまたはブロックにコンテンツブロックを追加します。テキスト、見出し、リストなどを追加するために使用します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -848,9 +1112,12 @@
           }
         },
         {
-          "id": "delete_block",
+          "id": "notion:delete_block",
           "name": "delete_block",
-          "description": "Delete a block from Notion. This also deletes all children of the block.",
+          "descriptions": {
+            "en-US": "Delete a block from Notion. This also deletes all children of the block.",
+            "ja-JP": "Notionからブロックを削除します。ブロックのすべての子も削除されます。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -859,18 +1126,24 @@
           }
         },
         {
-          "id": "list_comments",
+          "id": "notion:list_comments",
           "name": "list_comments",
-          "description": "List comments on a Notion page or block.",
+          "descriptions": {
+            "en-US": "List comments on a Notion page or block.",
+            "ja-JP": "Notionページまたはブロックのコメントを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "add_comment",
+          "id": "notion:add_comment",
           "name": "add_comment",
-          "description": "Add a comment to a Notion page.",
+          "descriptions": {
+            "en-US": "Add a comment to a Notion page.",
+            "ja-JP": "Notionページにコメントを追加します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": false,
@@ -879,27 +1152,36 @@
           }
         },
         {
-          "id": "list_users",
+          "id": "notion:list_users",
           "name": "list_users",
-          "description": "List all users in the Notion workspace.",
+          "descriptions": {
+            "en-US": "List all users in the Notion workspace.",
+            "ja-JP": "Notionワークスペース内のすべてのユーザーを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_user",
+          "id": "notion:get_user",
           "name": "get_user",
-          "description": "Get information about a Notion user.",
+          "descriptions": {
+            "en-US": "Get information about a Notion user.",
+            "ja-JP": "Notionユーザーの情報を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_bot_user",
+          "id": "notion:get_bot_user",
           "name": "get_bot_user",
-          "description": "Get information about the current integration bot user.",
+          "descriptions": {
+            "en-US": "Get information about the current integration bot user.",
+            "ja-JP": "現在のインテグレーションボットユーザーの情報を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
@@ -910,49 +1192,67 @@
     {
       "id": "supabase",
       "name": "Supabase",
-      "description": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
+      "descriptions": {
+        "en-US": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
+        "ja-JP": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ"
+      },
       "apiVersion": "v1",
       "tools": [
         {
-          "id": "list_organizations",
+          "id": "supabase:list_organizations",
           "name": "list_organizations",
-          "description": "List all organizations you have access to.",
+          "descriptions": {
+            "en-US": "List all organizations you have access to.",
+            "ja-JP": "アクセス可能なすべての組織を一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_projects",
+          "id": "supabase:list_projects",
           "name": "list_projects",
-          "description": "List all Supabase projects you have access to. Use this first to get project_ref for other operations.",
+          "descriptions": {
+            "en-US": "List all Supabase projects you have access to. Use this first to get project_ref for other operations.",
+            "ja-JP": "アクセス可能なすべてのSupabaseプロジェクトを一覧表示します。他の操作のためにproject_refを取得するために最初に使用してください。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_project",
+          "id": "supabase:get_project",
           "name": "get_project",
-          "description": "Get details of a specific project.",
+          "descriptions": {
+            "en-US": "Get details of a specific project.",
+            "ja-JP": "特定のプロジェクトの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_tables",
+          "id": "supabase:list_tables",
           "name": "list_tables",
-          "description": "List all tables in the database with their schemas. Returns table names and column counts.",
+          "descriptions": {
+            "en-US": "List all tables in the database with their schemas. Returns table names and column counts.",
+            "ja-JP": "データベース内のすべてのテーブルをスキーマとともに一覧表示します。テーブル名とカラム数を返します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "run_query",
+          "id": "supabase:run_query",
           "name": "run_query",
-          "description": "Execute a SQL query against the database. Supports both read and write operations.",
+          "descriptions": {
+            "en-US": "Execute a SQL query against the database. Supports both read and write operations.",
+            "ja-JP": "データベースに対してSQLクエリを実行します。読み取りと書き込みの両方の操作をサポートします。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -961,18 +1261,24 @@
           }
         },
         {
-          "id": "list_migrations",
+          "id": "supabase:list_migrations",
           "name": "list_migrations",
-          "description": "List all database migrations that have been applied.",
+          "descriptions": {
+            "en-US": "List all database migrations that have been applied.",
+            "ja-JP": "適用されたすべてのデータベースマイグレーションを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "apply_migration",
+          "id": "supabase:apply_migration",
           "name": "apply_migration",
-          "description": "Apply a new database migration. Use for DDL operations like CREATE TABLE, ALTER TABLE, etc.",
+          "descriptions": {
+            "en-US": "Apply a new database migration. Use for DDL operations like CREATE TABLE, ALTER TABLE, etc.",
+            "ja-JP": "新しいデータベースマイグレーションを適用します。CREATE TABLE、ALTER TABLEなどのDDL操作に使用します。"
+          },
           "annotations": {
             "readOnlyHint": false,
             "destructiveHint": true,
@@ -981,90 +1287,120 @@
           }
         },
         {
-          "id": "get_logs",
+          "id": "supabase:get_logs",
           "name": "get_logs",
-          "description": "Get logs for a specific service. Available services: api, postgres, edge-function, auth, storage, realtime.",
+          "descriptions": {
+            "en-US": "Get logs for a specific service. Available services: api, postgres, edge-function, auth, storage, realtime.",
+            "ja-JP": "特定のサービスのログを取得します。利用可能なサービス：api、postgres、edge-function、auth、storage、realtime。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_security_advisors",
+          "id": "supabase:get_security_advisors",
           "name": "get_security_advisors",
-          "description": "Get security recommendations and potential issues for the project.",
+          "descriptions": {
+            "en-US": "Get security recommendations and potential issues for the project.",
+            "ja-JP": "プロジェクトのセキュリティ推奨事項と潜在的な問題を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_performance_advisors",
+          "id": "supabase:get_performance_advisors",
           "name": "get_performance_advisors",
-          "description": "Get performance recommendations and potential issues for the project.",
+          "descriptions": {
+            "en-US": "Get performance recommendations and potential issues for the project.",
+            "ja-JP": "プロジェクトのパフォーマンス推奨事項と潜在的な問題を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_project_url",
+          "id": "supabase:get_project_url",
           "name": "get_project_url",
-          "description": "Get the base URL for a Supabase project.",
+          "descriptions": {
+            "en-US": "Get the base URL for a Supabase project.",
+            "ja-JP": "SupabaseプロジェクトのベースURLを取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_api_keys",
+          "id": "supabase:get_api_keys",
           "name": "get_api_keys",
-          "description": "Get the API keys for the project (anon key and service role key).",
+          "descriptions": {
+            "en-US": "Get the API keys for the project (anon key and service role key).",
+            "ja-JP": "プロジェクトのAPIキー（匿名キーとサービスロールキー）を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "generate_typescript_types",
+          "id": "supabase:generate_typescript_types",
           "name": "generate_typescript_types",
-          "description": "Generate TypeScript type definitions from the database schema.",
+          "descriptions": {
+            "en-US": "Generate TypeScript type definitions from the database schema.",
+            "ja-JP": "データベーススキーマからTypeScript型定義を生成します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_edge_functions",
+          "id": "supabase:list_edge_functions",
           "name": "list_edge_functions",
-          "description": "List all Edge Functions deployed in the project.",
+          "descriptions": {
+            "en-US": "List all Edge Functions deployed in the project.",
+            "ja-JP": "プロジェクトにデプロイされたすべてのEdge Functionsを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_edge_function",
+          "id": "supabase:get_edge_function",
           "name": "get_edge_function",
-          "description": "Get details of a specific Edge Function.",
+          "descriptions": {
+            "en-US": "Get details of a specific Edge Function.",
+            "ja-JP": "特定のEdge Functionの詳細を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "list_storage_buckets",
+          "id": "supabase:list_storage_buckets",
           "name": "list_storage_buckets",
-          "description": "List all storage buckets in the project.",
+          "descriptions": {
+            "en-US": "List all storage buckets in the project.",
+            "ja-JP": "プロジェクト内のすべてのストレージバケットを一覧表示します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false
           }
         },
         {
-          "id": "get_storage_config",
+          "id": "supabase:get_storage_config",
           "name": "get_storage_config",
-          "description": "Get storage configuration for the project including file size limits and features.",
+          "descriptions": {
+            "en-US": "Get storage configuration for the project including file size limits and features.",
+            "ja-JP": "ファイルサイズ制限や機能を含むプロジェクトのストレージ設定を取得します。"
+          },
           "annotations": {
             "readOnlyHint": true,
             "openWorldHint": false

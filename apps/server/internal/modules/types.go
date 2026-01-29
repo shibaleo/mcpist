@@ -3,6 +3,25 @@ package modules
 import "context"
 
 // =============================================================================
+// Localization
+// =============================================================================
+
+// LocalizedText holds multilingual text.
+// key: BCP47 language code (en-US, ja-JP)
+type LocalizedText map[string]string
+
+// GetLocalizedText returns text for the specified language, falling back to en-US.
+func GetLocalizedText(texts LocalizedText, lang string) string {
+	if text, ok := texts[lang]; ok && text != "" {
+		return text
+	}
+	if text, ok := texts["en-US"]; ok {
+		return text
+	}
+	return ""
+}
+
+// =============================================================================
 // Module Interface
 // =============================================================================
 
@@ -11,7 +30,8 @@ import "context"
 type Module interface {
 	// Metadata
 	Name() string
-	Description() string
+	Descriptions() LocalizedText         // Multilingual descriptions
+	Description(lang string) string      // Get description for specific language
 	APIVersion() string
 
 	// Tools - LLM executes, has side effects
@@ -89,10 +109,12 @@ var (
 
 // Tool represents an MCP tool definition
 type Tool struct {
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	InputSchema InputSchema      `json:"inputSchema"`
-	Annotations *ToolAnnotations `json:"annotations,omitempty"`
+	ID           string           `json:"id,omitempty"`            // Stable ID (e.g., "notion:search")
+	Name         string           `json:"name"`                    // Display name / execution key
+	Description  string           `json:"description"`             // Runtime description (after language selection)
+	Descriptions LocalizedText    `json:"descriptions,omitempty"`  // Multilingual descriptions (for export)
+	InputSchema  InputSchema      `json:"inputSchema"`
+	Annotations  *ToolAnnotations `json:"annotations,omitempty"`
 }
 
 // InputSchema defines the input parameters for a tool

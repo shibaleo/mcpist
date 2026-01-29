@@ -29,14 +29,25 @@ func New() *ConfluenceModule {
 	return &ConfluenceModule{}
 }
 
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
+	"ja-JP": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",
+}
+
 // Name returns the module name
 func (m *ConfluenceModule) Name() string {
 	return "confluence"
 }
 
-// Description returns the module description
-func (m *ConfluenceModule) Description() string {
-	return "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)"
+// Descriptions returns the module descriptions in all languages
+func (m *ConfluenceModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *ConfluenceModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Confluence API version
@@ -147,8 +158,12 @@ func baseURLV1(ctx context.Context) string {
 
 var toolDefinitions = []modules.Tool{
 	{
-		Name:        "list_spaces",
-		Description: "List all Confluence spaces accessible to the current user.",
+		ID:   "confluence:list_spaces",
+		Name: "list_spaces",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all Confluence spaces accessible to the current user.",
+			"ja-JP": "現在のユーザーがアクセス可能なすべてのConfluenceスペースを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -159,8 +174,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_space",
-		Description: "Get details of a specific Confluence space by ID or key.",
+		ID:   "confluence:get_space",
+		Name: "get_space",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific Confluence space by ID or key.",
+			"ja-JP": "IDまたはキーで特定のConfluenceスペースの詳細を取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -171,8 +190,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_pages",
-		Description: "List pages in a Confluence space.",
+		ID:   "confluence:get_pages",
+		Name: "get_pages",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List pages in a Confluence space.",
+			"ja-JP": "Confluenceスペース内のページを一覧表示します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -185,8 +208,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_page",
-		Description: "Get a Confluence page by ID with its content.",
+		ID:   "confluence:get_page",
+		Name: "get_page",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get a Confluence page by ID with its content.",
+			"ja-JP": "IDでConfluenceページとそのコンテンツを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -198,8 +225,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_page",
-		Description: "Create a new Confluence page.",
+		ID:   "confluence:create_page",
+		Name: "create_page",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new Confluence page.",
+			"ja-JP": "新しいConfluenceページを作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -213,8 +244,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update_page",
-		Description: "Update an existing Confluence page.",
+		ID:   "confluence:update_page",
+		Name: "update_page",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing Confluence page.",
+			"ja-JP": "既存のConfluenceページを更新します。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -228,8 +263,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "delete_page",
-		Description: "Delete a Confluence page.",
+		ID:   "confluence:delete_page",
+		Name: "delete_page",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete a Confluence page.",
+			"ja-JP": "Confluenceページを削除します。",
+		},
 		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -240,8 +279,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "search",
-		Description: "Search Confluence content using CQL (Confluence Query Language). Example: 'type=page AND space=MYSPACE AND text~\"keyword\"'",
+		ID:   "confluence:search",
+		Name: "search",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search Confluence content using CQL (Confluence Query Language). Example: 'type=page AND space=MYSPACE AND text~\"keyword\"'",
+			"ja-JP": "CQL（Confluence Query Language）を使用してConfluenceコンテンツを検索します。例：'type=page AND space=MYSPACE AND text~\"keyword\"'",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -254,8 +297,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_page_comments",
-		Description: "Get comments on a Confluence page.",
+		ID:   "confluence:get_page_comments",
+		Name: "get_page_comments",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get comments on a Confluence page.",
+			"ja-JP": "Confluenceページのコメントを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -268,8 +315,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "add_page_comment",
-		Description: "Add a comment to a Confluence page.",
+		ID:   "confluence:add_page_comment",
+		Name: "add_page_comment",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Add a comment to a Confluence page.",
+			"ja-JP": "Confluenceページにコメントを追加します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -281,8 +332,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_page_labels",
-		Description: "Get labels on a Confluence page.",
+		ID:   "confluence:get_page_labels",
+		Name: "get_page_labels",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get labels on a Confluence page.",
+			"ja-JP": "Confluenceページのラベルを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -293,8 +348,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "add_page_label",
-		Description: "Add a label to a Confluence page.",
+		ID:   "confluence:add_page_label",
+		Name: "add_page_label",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Add a label to a Confluence page.",
+			"ja-JP": "Confluenceページにラベルを追加します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",

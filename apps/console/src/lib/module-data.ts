@@ -12,11 +12,15 @@ export interface ToolAnnotations {
   openWorldHint?: boolean   // default: true  - true if tool interacts with external entities
 }
 
+// LocalizedText holds multilingual text
+// key: BCP47 language code (en-US, ja-JP)
+export type LocalizedText = Record<string, string>
+
 // Types from tools.json
 export interface ToolDef {
   id: string
   name: string
-  description: string
+  descriptions: LocalizedText
   annotations: ToolAnnotations
 }
 
@@ -34,7 +38,7 @@ export function isDangerous(tool: ToolDef): boolean {
 export interface ModuleDef {
   id: string
   name: string
-  description: string
+  descriptions: LocalizedText
   apiVersion: string
   tools: ToolDef[]
 }
@@ -47,7 +51,7 @@ export interface ToolsExport {
 export interface ServiceDef {
   id: string
   name: string
-  description: string
+  descriptions: LocalizedText
   apiVersion: string
 }
 
@@ -58,6 +62,50 @@ export interface ServicesExport {
 // Export typed data
 export const modules: ModuleDef[] = (toolsData as ToolsExport).modules
 export const services: ServiceDef[] = (servicesData as ServicesExport).services
+
+// Localization helpers
+const DEFAULT_LANG = "ja-JP"
+const FALLBACK_LANG = "en-US"
+
+/**
+ * Get localized text for a given language, falling back to en-US if not found
+ */
+export function getLocalizedText(
+  texts: LocalizedText,
+  lang: string = DEFAULT_LANG
+): string {
+  return texts[lang] ?? texts[FALLBACK_LANG] ?? ""
+}
+
+/**
+ * Get module description for a specific language
+ */
+export function getModuleDescription(
+  mod: ModuleDef,
+  lang: string = DEFAULT_LANG
+): string {
+  return getLocalizedText(mod.descriptions, lang)
+}
+
+/**
+ * Get service description for a specific language
+ */
+export function getServiceDescription(
+  service: ServiceDef,
+  lang: string = DEFAULT_LANG
+): string {
+  return getLocalizedText(service.descriptions, lang)
+}
+
+/**
+ * Get tool description for a specific language
+ */
+export function getToolDescription(
+  tool: ToolDef,
+  lang: string = DEFAULT_LANG
+): string {
+  return getLocalizedText(tool.descriptions, lang)
+}
 
 // Helper functions
 export function getModule(moduleId: string): ModuleDef | undefined {

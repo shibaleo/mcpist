@@ -25,13 +25,15 @@ const (
 
 // AuthContext contains user authentication and authorization info
 type AuthContext struct {
-	UserID         string
-	AuthType       string // "jwt" or "api_key"
-	AccountStatus  string
-	FreeCredits    int
-	PaidCredits    int
-	EnabledModules []string
-	DisabledTools  map[string][]string // module -> []tool
+	UserID             string
+	AuthType           string // "jwt" or "api_key"
+	AccountStatus      string
+	FreeCredits        int
+	PaidCredits        int
+	EnabledModules     []string            // Modules with at least one enabled tool (derived by RPC)
+	EnabledTools       map[string][]string // module -> []tool_id (whitelist)
+	Language           string              // BCP47 language code (e.g., "en-US", "ja-JP")
+	ModuleDescriptions store.ModuleDescriptions
 }
 
 // TotalCredits returns the sum of free and paid credits
@@ -129,15 +131,17 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		}
 	}
 
-	// Build auth context
+	// Build auth context (EnabledModules derived from EnabledTools keys by RPC)
 	authCtx := &AuthContext{
-		UserID:         userID,
-		AuthType:       authType,
-		AccountStatus:  userContext.AccountStatus,
-		FreeCredits:    userContext.FreeCredits,
-		PaidCredits:    userContext.PaidCredits,
-		EnabledModules: userContext.EnabledModules,
-		DisabledTools:  userContext.DisabledTools,
+		UserID:             userID,
+		AuthType:           authType,
+		AccountStatus:      userContext.AccountStatus,
+		FreeCredits:        userContext.FreeCredits,
+		PaidCredits:        userContext.PaidCredits,
+		EnabledModules:     userContext.EnabledModules,
+		EnabledTools:       userContext.EnabledTools,
+		Language:           userContext.Language,
+		ModuleDescriptions: userContext.ModuleDescriptions,
 	}
 
 	log.Printf("Authorization: user=%s credits=free:%d+paid:%d modules=%d",
@@ -146,15 +150,13 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 	return authCtx, nil
 }
 
-// CanAccessModule checks if the user can access a specific module
+// CanAccessModule checks if the user can access a specific module.
 func (ctx *AuthContext) CanAccessModule(moduleName string) error {
-	// Check if module is enabled for this user
 	for _, m := range ctx.EnabledModules {
 		if m == moduleName {
 			return nil
 		}
 	}
-
 	return &AuthError{
 		Code:    "MODULE_NOT_ENABLED",
 		Message: fmt.Sprintf("Module '%s' is not enabled for your account", moduleName),
@@ -162,23 +164,36 @@ func (ctx *AuthContext) CanAccessModule(moduleName string) error {
 	}
 }
 
-// CanAccessTool checks if the user can access a specific tool
+// CanAccessTool checks if the user can access a specific tool.
+// Optimized: single map lookup + slice search (no separate module check needed).
 func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, creditCost int) error {
-	// 1. Check module access
-	if err := ctx.CanAccessModule(moduleName); err != nil {
-		return err
+	toolID := moduleName + ":" + toolName
+
+	// 1. Check if tool is enabled (whitelist approach)
+	//    This implicitly checks module access (module must have enabled tools)
+	enabledTools, ok := ctx.EnabledTools[moduleName]
+	if !ok {
+		// Module not in EnabledTools = no enabled tools for this module
+		return &AuthError{
+			Code:    "MODULE_NOT_ENABLED",
+			Message: fmt.Sprintf("Module '%s' is not enabled for your account", moduleName),
+			Status:  http.StatusForbidden,
+		}
 	}
 
-	// 2. Check if tool is disabled
-	if disabledTools, ok := ctx.DisabledTools[moduleName]; ok {
-		for _, t := range disabledTools {
-			if t == toolName {
-				return &AuthError{
-					Code:    "TOOL_DISABLED",
-					Message: fmt.Sprintf("Tool '%s/%s' is disabled for your account", moduleName, toolName),
-					Status:  http.StatusForbidden,
-				}
-			}
+	// 2. Check if specific tool is enabled
+	toolEnabled := false
+	for _, t := range enabledTools {
+		if t == toolID {
+			toolEnabled = true
+			break
+		}
+	}
+	if !toolEnabled {
+		return &AuthError{
+			Code:    "TOOL_DISABLED",
+			Message: fmt.Sprintf("Tool '%s' is not enabled for your account", toolID),
+			Status:  http.StatusForbidden,
 		}
 	}
 

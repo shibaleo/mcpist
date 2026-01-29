@@ -8,9 +8,18 @@ import { getModule, isDefaultEnabled } from "./module-data"
 // ツール設定の型
 export interface ToolSetting {
   module_name: string
-  tool_name: string
+  tool_id: string  // Format: {module}:{tool_name} (e.g., "notion:search")
   enabled: boolean
 }
+
+// モジュール説明の型
+export interface ModuleDescription {
+  module_name: string
+  description: string
+}
+
+// モジュールごとの説明マップ
+export type ModuleDescriptionsMap = Record<string, string>
 
 // モジュールごとのツール設定マップ
 export type ToolSettingsMap = Record<string, Record<string, boolean>>
@@ -48,7 +57,7 @@ export async function getMyToolSettings(moduleName?: string): Promise<ToolSettin
 /**
  * ツール設定をマップ形式に変換
  * @param settings ツール設定配列
- * @returns { moduleName: { toolName: enabled } }
+ * @returns { moduleName: { toolId: enabled } }
  */
 export function toToolSettingsMap(settings: ToolSetting[]): ToolSettingsMap {
   const map: ToolSettingsMap = {}
@@ -57,7 +66,7 @@ export function toToolSettingsMap(settings: ToolSetting[]): ToolSettingsMap {
     if (!map[setting.module_name]) {
       map[setting.module_name] = {}
     }
-    map[setting.module_name][setting.tool_name] = setting.enabled
+    map[setting.module_name][setting.tool_id] = setting.enabled
   }
 
   return map
@@ -172,4 +181,68 @@ export async function saveDefaultToolSettings(
     console.error(`[tool-settings] Failed to save default settings for ${moduleName}:`, error)
     // エラーは投げない（トークン保存は成功しているので）
   }
+}
+
+// =============================================================================
+// Module Description API
+// =============================================================================
+
+/**
+ * 現在のユーザーのモジュール説明を全て取得
+ */
+export async function getMyModuleDescriptions(): Promise<ModuleDescription[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc("get_my_module_descriptions")
+
+  if (error) {
+    console.error("Failed to get module descriptions:", error)
+    throw new ToolSettingsError(error.message, error.code)
+  }
+
+  return data || []
+}
+
+/**
+ * モジュール説明をマップ形式に変換
+ * @param descriptions モジュール説明配列
+ * @returns { moduleName: description }
+ */
+export function toModuleDescriptionsMap(descriptions: ModuleDescription[]): ModuleDescriptionsMap {
+  const map: ModuleDescriptionsMap = {}
+
+  for (const desc of descriptions) {
+    map[desc.module_name] = desc.description
+  }
+
+  return map
+}
+
+/**
+ * モジュールの説明を更新
+ * @param moduleName モジュール名
+ * @param description 説明（空文字で削除）
+ */
+export async function updateModuleDescription(
+  moduleName: string,
+  description: string
+): Promise<{ success: boolean }> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc("upsert_my_module_description", {
+    p_module_name: moduleName,
+    p_description: description,
+  })
+
+  if (error) {
+    console.error("Failed to update module description:", error)
+    throw new ToolSettingsError(error.message, error.code)
+  }
+
+  const result = data as Record<string, unknown> | null
+  if (result?.error) {
+    throw new ToolSettingsError(String(result.error))
+  }
+
+  return { success: true }
 }

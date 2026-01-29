@@ -44,43 +44,40 @@ func ListModules() []string {
 // Tool Filtering
 // =============================================================================
 
-// filterTools returns tools excluding disabled ones for a given module.
-// If disabledTools is nil (no auth context), all tools are returned.
-func filterTools(moduleName string, tools []Tool, disabledTools map[string][]string) []Tool {
-	if disabledTools == nil {
+// filterTools returns tools that are enabled for a given module (whitelist approach).
+// If enabledTools is nil (no auth context), all tools are returned.
+func filterTools(moduleName string, tools []Tool, enabledTools map[string][]string) []Tool {
+	if enabledTools == nil {
 		return tools
 	}
-	disabled, ok := disabledTools[moduleName]
+	enabled, ok := enabledTools[moduleName]
 	if !ok {
-		return tools
+		return nil // No tools enabled for this module
 	}
-	disabledSet := make(map[string]bool, len(disabled))
-	for _, t := range disabled {
-		disabledSet[t] = true
+	enabledSet := make(map[string]bool, len(enabled))
+	for _, t := range enabled {
+		enabledSet[t] = true
 	}
 	var filtered []Tool
 	for _, tool := range tools {
-		if !disabledSet[tool.Name] {
+		// Check both tool.ID (new format: module:tool_name) and tool.Name (legacy)
+		if enabledSet[tool.ID] || enabledSet[moduleName+":"+tool.Name] {
 			filtered = append(filtered, tool)
 		}
 	}
 	return filtered
 }
 
-// availableModuleNames returns module names that are enabled and have at least one active tool.
+// availableModuleNames returns module names that are enabled and registered in the server.
 // If enabledModules is nil (no auth context), all registered modules are returned.
-func availableModuleNames(enabledModules []string, disabledTools map[string][]string) []string {
+func availableModuleNames(enabledModules []string) []string {
 	if enabledModules == nil {
 		return ListModules()
 	}
 	var available []string
 	for _, name := range enabledModules {
-		m, ok := registry[name]
-		if !ok {
-			continue
-		}
-		filtered := filterTools(name, m.Tools(), disabledTools)
-		if len(filtered) > 0 {
+		// Only include if module is registered in the server
+		if _, ok := registry[name]; ok {
 			available = append(available, name)
 		}
 	}
@@ -91,10 +88,10 @@ func availableModuleNames(enabledModules []string, disabledTools map[string][]st
 // Meta Tools
 // =============================================================================
 
-// DynamicMetaTools returns meta tools with dynamic module lists based on user's enabled modules and tool settings.
-// If enabledModules is nil, all modules are listed (backward-compatible).
-func DynamicMetaTools(enabledModules []string, disabledTools map[string][]string) []Tool {
-	available := availableModuleNames(enabledModules, disabledTools)
+// DynamicMetaTools returns meta tools with dynamic module lists based on user's enabled modules.
+// If enabledModules is nil, all modules are listed.
+func DynamicMetaTools(enabledModules []string, lang string) []Tool {
+	available := availableModuleNames(enabledModules)
 	moduleList := strings.Join(available, ", ")
 
 	// Build module description lines for run tool
@@ -104,58 +101,65 @@ func DynamicMetaTools(enabledModules []string, disabledTools map[string][]string
 		if !ok {
 			continue
 		}
-		moduleLines = append(moduleLines, fmt.Sprintf("- %s: %s", name, m.Description()))
+		moduleLines = append(moduleLines, fmt.Sprintf("- %s: %s", name, m.Description(lang)))
 	}
 	moduleDesc := strings.Join(moduleLines, "\n")
 
-	return []Tool{
-		{
-			Name:        "get_module_schema",
-			Description: "Get tool definitions for modules. Important: Call only once per module per session. Schemas are cached in conversation history, so use run directly for subsequent calls to the same module.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]Property{
-					"module": {
-						Type:        "array",
-						Description: fmt.Sprintf("Array of module names (e.g. [\"notion\", \"jira\"]). Available: %s", moduleList),
-						Items:       &Property{Type: "string"},
-					},
-				},
-				Required: []string{"module"},
-			},
-		},
-		{
-			Name: "run",
-			Description: fmt.Sprintf(`Execute a single module tool.
+	// Localized descriptions for meta tools
+	var getSchemaDesc, getSchemaModuleDesc string
+	var runDesc string
+	var batchDesc, batchCommandsDesc string
+
+	if lang == "ja-JP" {
+		getSchemaDesc = "モジュールのツール定義を取得します。重要: 各モジュールにつきセッション中1回のみ呼び出してください。スキーマは会話履歴にキャッシュされるため、2回目以降は直接runを使用してください。"
+		getSchemaModuleDesc = fmt.Sprintf("モジュール名の配列（例: [\"notion\", \"jira\"]）。利用可能: %s", moduleList)
+		runDesc = fmt.Sprintf(`単一のモジュールツールを実行します。
+
+[利用可能なモジュール]
+%s
+
+[使い方]
+1. get_module_schema(module) で利用可能なツールとパラメータを確認
+2. run(module, tool, params) で実行`, moduleDesc)
+		batchDesc = `複数のツールをバッチ実行します（JSONL形式、依存関係と並列実行をサポート）。
+
+[フィールド]
+- id (必須): タスク識別子
+- module (必須): モジュール名
+- tool (必須): ツール名
+- params: パラメータ
+- after: 依存タスクIDの配列（これらの完了を待ってから実行）
+- output: trueの場合、TOON/MD形式で結果を返す
+- raw_output: trueの場合、JSON形式で結果を返す（outputより優先）
+
+[変数参照] JSONPathでアクセス: ${id.results[index].field}
+
+[例1: 並列取得]
+{"id":"tasks","module":"microsoft_todo","tool":"list_tasks","params":{"listId":"AQMk..."},"output":true}
+{"id":"daily","module":"microsoft_todo","tool":"list_tasks","params":{"listId":"AQMk..."},"output":true}
+
+[例2: 連鎖処理]
+{"id":"search","module":"notion","tool":"search","params":{"query":"design"}}
+{"id":"page","module":"notion","tool":"get_page_content","params":{"page_id":"${search.results[0].id}"},"after":["search"],"output":true}
+
+[実行ルール]
+- afterなし -> goroutineによる並列実行
+- afterあり -> 依存タスク完了後に実行
+- 循環依存 -> エラー
+- 依存タスク失敗 -> 依存先はスキップ`
+		batchCommandsDesc = "JSONL形式のコマンド"
+	} else {
+		getSchemaDesc = "Get tool definitions for modules. Important: Call only once per module per session. Schemas are cached in conversation history, so use run directly for subsequent calls to the same module."
+		getSchemaModuleDesc = fmt.Sprintf("Array of module names (e.g. [\"notion\", \"jira\"]). Available: %s", moduleList)
+		runDesc = fmt.Sprintf(`Execute a single module tool.
 
 [Available Modules]
 %s
 
 [Usage]
 1. get_module_schema(module) to check available tools and parameters
-2. run(module, tool, params) to execute`, moduleDesc),
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]Property{
-					"module": {
-						Type:        "string",
-						Description: "Module name",
-					},
-					"tool": {
-						Type:        "string",
-						Description: "Tool name",
-					},
-					"params": {
-						Type:        "object",
-						Description: "Tool parameters",
-					},
-				},
-				Required: []string{"module", "tool"},
-			},
-		},
-		{
-			Name: "batch",
-			Description: `Execute multiple tools in batch (JSONL format, with dependency and parallel execution support).
+2. run(module, tool, params) to execute`, moduleDesc)
+		batchDesc = `Execute multiple tools in batch (JSONL format, with dependency and parallel execution support).
 
 [Fields]
 - id (required): Task identifier
@@ -180,13 +184,57 @@ func DynamicMetaTools(enabledModules []string, disabledTools map[string][]string
 - No after -> parallel execution via goroutines
 - With after -> executes after dependent tasks complete
 - Circular dependency -> error
-- Dependent task failure -> dependents are skipped`,
+- Dependent task failure -> dependents are skipped`
+		batchCommandsDesc = "Commands in JSONL format"
+	}
+
+	return []Tool{
+		{
+			Name:        "get_module_schema",
+			Description: getSchemaDesc,
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]Property{
+					"module": {
+						Type:        "array",
+						Description: getSchemaModuleDesc,
+						Items:       &Property{Type: "string"},
+					},
+				},
+				Required: []string{"module"},
+			},
+		},
+		{
+			Name:        "run",
+			Description: runDesc,
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]Property{
+					"module": {
+						Type:        "string",
+						Description: "Module name",
+					},
+					"tool": {
+						Type:        "string",
+						Description: "Tool name",
+					},
+					"params": {
+						Type:        "object",
+						Description: "Tool parameters",
+					},
+				},
+				Required: []string{"module", "tool"},
+			},
+		},
+		{
+			Name:        "batch",
+			Description: batchDesc,
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]Property{
 					"commands": {
 						Type:        "string",
-						Description: "Commands in JSONL format",
+						Description: batchCommandsDesc,
 					},
 				},
 				Required: []string{"commands"},
@@ -221,7 +269,7 @@ func GetModuleSchema(moduleName string) (*ToolCallResult, error) {
 
 	schema := ModuleSchema{
 		Module:      m.Name(),
-		Description: m.Description(),
+		Description: m.Description("en-US"),
 		APIVersion:  m.APIVersion(),
 		Tools:       m.Tools(),
 		Resources:   m.Resources(),
@@ -241,9 +289,12 @@ func GetModuleSchema(moduleName string) (*ToolCallResult, error) {
 // GetModuleSchemas returns schemas for multiple modules with tool filtering.
 // Modules with zero enabled tools are treated as unknown (not exposed to client).
 // Unknown module names are reported as errors in the response but don't prevent other modules from returning.
-func GetModuleSchemas(moduleNames []string, enabledModules []string, disabledTools map[string][]string) (*ToolCallResult, error) {
+// lang specifies the BCP47 language code for tool descriptions (e.g., "en-US", "ja-JP").
+// moduleDescriptions is a map of module_name -> custom description to prepend to schema output.
+func GetModuleSchemas(moduleNames []string, enabledModules []string, enabledTools map[string][]string, lang string, moduleDescriptions map[string]string) (*ToolCallResult, error) {
 	var schemas []ModuleSchema
 	var errors []string
+	var userNotes []string
 
 	for _, name := range moduleNames {
 		m, ok := registry[name]
@@ -252,16 +303,30 @@ func GetModuleSchemas(moduleNames []string, enabledModules []string, disabledToo
 			continue
 		}
 
-		tools := filterTools(name, m.Tools(), disabledTools)
+		tools := filterTools(name, m.Tools(), enabledTools)
 		if len(tools) == 0 {
 			errors = append(errors, fmt.Sprintf("Unknown module: %s", name))
 			continue
 		}
+
+		// Collect module-level custom description for header
+		if customDesc, ok := moduleDescriptions[name]; ok && customDesc != "" {
+			userNotes = append(userNotes, fmt.Sprintf("[%s] %s", name, customDesc))
+		}
+
+		// Apply language to tool descriptions
+		localizedTools := make([]Tool, len(tools))
+		for i, t := range tools {
+			localizedTools[i] = t
+			localizedTools[i].Description = GetLocalizedText(t.Descriptions, lang)
+			localizedTools[i].Descriptions = nil // Don't expose all languages to client
+		}
+
 		schemas = append(schemas, ModuleSchema{
 			Module:      m.Name(),
-			Description: m.Description(),
+			Description: m.Description(lang),
 			APIVersion:  m.APIVersion(),
-			Tools:       tools,
+			Tools:       localizedTools,
 			Resources:   m.Resources(),
 			Prompts:     m.Prompts(),
 		})
@@ -269,7 +334,7 @@ func GetModuleSchemas(moduleNames []string, enabledModules []string, disabledToo
 
 	// If all modules were unknown or had no enabled tools, return error with available list
 	if len(schemas) == 0 && len(errors) > 0 {
-		available := availableModuleNames(enabledModules, disabledTools)
+		available := availableModuleNames(enabledModules)
 		return &ToolCallResult{
 			Content: []ContentBlock{{Type: "text", Text: strings.Join(errors, "; ") + fmt.Sprintf(". Available: %v", available)}},
 			IsError: true,
@@ -281,13 +346,18 @@ func GetModuleSchemas(moduleNames []string, enabledModules []string, disabledToo
 		return nil, err
 	}
 
-	text := string(jsonBytes)
+	// Build output text with user notes at the beginning
+	var textParts []string
 	if len(errors) > 0 {
-		text = fmt.Sprintf("⚠ %s\n\n%s", strings.Join(errors, "; "), text)
+		textParts = append(textParts, fmt.Sprintf("⚠ %s", strings.Join(errors, "; ")))
 	}
+	if len(userNotes) > 0 {
+		textParts = append(textParts, "[User Note]\n"+strings.Join(userNotes, "\n"))
+	}
+	textParts = append(textParts, string(jsonBytes))
 
 	return &ToolCallResult{
-		Content: []ContentBlock{{Type: "text", Text: text}},
+		Content: []ContentBlock{{Type: "text", Text: strings.Join(textParts, "\n\n")}},
 	}, nil
 }
 

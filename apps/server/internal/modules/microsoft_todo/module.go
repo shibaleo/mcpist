@@ -33,14 +33,25 @@ func New() *MicrosoftTodoModule {
 	return &MicrosoftTodoModule{}
 }
 
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
+	"ja-JP": "Microsoft To Do API - タスクとタスクリストの一覧表示、作成、更新、削除",
+}
+
 // Name returns the module name
 func (m *MicrosoftTodoModule) Name() string {
 	return "microsoft_todo"
 }
 
-// Description returns the module description
-func (m *MicrosoftTodoModule) Description() string {
-	return "Microsoft To Do API - List, create, update, and delete tasks and task lists"
+// Descriptions returns the module descriptions in all languages
+func (m *MicrosoftTodoModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *MicrosoftTodoModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
 
 // APIVersion returns the Microsoft Graph API version
@@ -221,8 +232,12 @@ func headers(ctx context.Context) map[string]string {
 var toolDefinitions = []modules.Tool{
 	// Lists
 	{
-		Name:        "list_lists",
-		Description: "Get all task lists for the user.",
+		ID:   "microsoft_todo:list_lists",
+		Name: "list_lists",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get all task lists for the user.",
+			"ja-JP": "ユーザーのすべてのタスクリストを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type:       "object",
@@ -230,8 +245,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_list",
-		Description: "Get a specific task list by ID.",
+		ID:   "microsoft_todo:get_list",
+		Name: "get_list",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get a specific task list by ID.",
+			"ja-JP": "IDで特定のタスクリストを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -242,8 +261,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_list",
-		Description: "Create a new task list.",
+		ID:   "microsoft_todo:create_list",
+		Name: "create_list",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new task list.",
+			"ja-JP": "新しいタスクリストを作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -254,8 +277,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update_list",
-		Description: "Update an existing task list.",
+		ID:   "microsoft_todo:update_list",
+		Name: "update_list",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing task list.",
+			"ja-JP": "既存のタスクリストを更新します。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -267,8 +294,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "delete_list",
-		Description: "Delete a task list.",
+		ID:   "microsoft_todo:delete_list",
+		Name: "delete_list",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete a task list.",
+			"ja-JP": "タスクリストを削除します。",
+		},
 		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -280,8 +311,12 @@ var toolDefinitions = []modules.Tool{
 	},
 	// Tasks
 	{
-		Name:        "list_tasks",
-		Description: "Get all tasks in a task list.",
+		ID:   "microsoft_todo:list_tasks",
+		Name: "list_tasks",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get all tasks in a task list.",
+			"ja-JP": "タスクリスト内のすべてのタスクを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -294,8 +329,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "get_task",
-		Description: "Get a specific task by ID.",
+		ID:   "microsoft_todo:get_task",
+		Name: "get_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get a specific task by ID.",
+			"ja-JP": "IDで特定のタスクを取得します。",
+		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -307,8 +346,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "create_task",
-		Description: "Create a new task in a task list.",
+		ID:   "microsoft_todo:create_task",
+		Name: "create_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new task in a task list.",
+			"ja-JP": "タスクリストに新しいタスクを作成します。",
+		},
 		Annotations: modules.AnnotateCreate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -324,8 +367,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "update_task",
-		Description: "Update an existing task.",
+		ID:   "microsoft_todo:update_task",
+		Name: "update_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing task.",
+			"ja-JP": "既存のタスクを更新します。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -343,8 +390,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "complete_task",
-		Description: "Mark a task as completed.",
+		ID:   "microsoft_todo:complete_task",
+		Name: "complete_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Mark a task as completed.",
+			"ja-JP": "タスクを完了としてマークします。",
+		},
 		Annotations: modules.AnnotateUpdate,
 		InputSchema: modules.InputSchema{
 			Type: "object",
@@ -356,8 +407,12 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
-		Name:        "delete_task",
-		Description: "Delete a task.",
+		ID:   "microsoft_todo:delete_task",
+		Name: "delete_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete a task.",
+			"ja-JP": "タスクを削除します。",
+		},
 		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
 			Type: "object",

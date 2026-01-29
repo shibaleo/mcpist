@@ -3,49 +3,73 @@
     {
       "id": "airtable",
       "name": "Airtable",
-      "description": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+      "descriptions": {
+        "en-US": "Airtable API - Bases, Tables, Records operations with search and aggregation",
+        "ja-JP": "Airtable API - ベース、テーブル、レコード操作（検索・集計機能付き）"
+      },
       "apiVersion": "v0"
     },
     {
       "id": "confluence",
       "name": "Confluence",
-      "description": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
+      "descriptions": {
+        "en-US": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
+        "ja-JP": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）"
+      },
       "apiVersion": "v2"
     },
     {
       "id": "github",
       "name": "GitHub",
-      "description": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
+      "descriptions": {
+        "en-US": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
+        "ja-JP": "GitHub API - リポジトリ、Issue、PR、Actions、検索操作"
+      },
       "apiVersion": "2022-11-28"
     },
     {
       "id": "google_calendar",
       "name": "Google Calendar",
-      "description": "Google Calendar API - List, create, update, and delete events",
+      "descriptions": {
+        "en-US": "Google Calendar API - List, create, update, and delete events",
+        "ja-JP": "Google Calendar API - イベントの一覧表示、作成、更新、削除"
+      },
       "apiVersion": "v3"
     },
     {
       "id": "jira",
       "name": "Jira",
-      "description": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
+      "descriptions": {
+        "en-US": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
+        "ja-JP": "Jira API - Issue/Project操作（検索、作成、更新、コメント、遷移）"
+      },
       "apiVersion": "3"
     },
     {
       "id": "microsoft_todo",
       "name": "Microsoft To Do",
-      "description": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
+      "descriptions": {
+        "en-US": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
+        "ja-JP": "Microsoft To Do API - タスクとタスクリストの一覧表示、作成、更新、削除"
+      },
       "apiVersion": "v1.0"
     },
     {
       "id": "notion",
       "name": "Notion",
-      "description": "Notion API - Page, Database, Block, Comment, and User operations",
+      "descriptions": {
+        "en-US": "Notion API - Page, Database, Block, Comment, and User operations",
+        "ja-JP": "Notion API - ページ、データベース、ブロック、コメント、ユーザー操作"
+      },
       "apiVersion": "2022-06-28"
     },
     {
       "id": "supabase",
       "name": "Supabase",
-      "description": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
+      "descriptions": {
+        "en-US": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
+        "ja-JP": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ"
+      },
       "apiVersion": "v1"
     }
   ]

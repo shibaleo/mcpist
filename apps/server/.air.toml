@@ -11,6 +11,13 @@ include_ext = ["go"]
 exclude_dir = ["tmp", "vendor", "test"]
 delay = 1000
 
+[misc]
+clean_on_exit = true
+
+[env]
+# Load environment variables from .env.dev
+include_file = "../../.env.dev"
+
 [log]
 time = false
 

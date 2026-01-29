@@ -224,7 +224,7 @@ func (h *Handler) handleToolsList(ctx context.Context) (*ToolsListResult, *Error
 	if authCtx == nil {
 		return nil, &Error{Code: InternalError, Message: "auth context missing"}
 	}
-	return &ToolsListResult{Tools: modules.DynamicMetaTools(authCtx.EnabledModules, authCtx.DisabledTools)}, nil
+	return &ToolsListResult{Tools: modules.DynamicMetaTools(authCtx.EnabledModules, authCtx.Language)}, nil
 }
 
 func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallResult, *Error) {
@@ -279,7 +279,7 @@ func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]int
 		return nil, &Error{Code: InternalError, Message: "auth context missing"}
 	}
 
-	result, err := modules.GetModuleSchemas(moduleNames, authCtx.EnabledModules, authCtx.DisabledTools)
+	result, err := modules.GetModuleSchemas(moduleNames, authCtx.EnabledModules, authCtx.EnabledTools, authCtx.Language, authCtx.ModuleDescriptions)
 	if err != nil {
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}

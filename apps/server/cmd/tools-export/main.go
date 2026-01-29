@@ -22,10 +22,10 @@ import (
 // Service represents a service definition for services.json
 // Only contains information available from Module interface (get_module_schema)
 type Service struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	APIVersion  string `json:"apiVersion"`
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Descriptions map[string]string `json:"descriptions"`
+	APIVersion   string            `json:"apiVersion"`
 }
 
 // ServiceExport represents the services.json structure
@@ -43,19 +43,19 @@ type ToolAnnotations struct {
 
 // ToolDef represents a tool definition for tools.json
 type ToolDef struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Annotations *ToolAnnotations `json:"annotations,omitempty"`
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Descriptions map[string]string `json:"descriptions"`
+	Annotations  *ToolAnnotations  `json:"annotations,omitempty"`
 }
 
 // ModuleDef represents a module definition for tools.json
 type ModuleDef struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	APIVersion  string    `json:"apiVersion"`
-	Tools       []ToolDef `json:"tools"`
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Descriptions map[string]string `json:"descriptions"`
+	APIVersion   string            `json:"apiVersion"`
+	Tools        []ToolDef         `json:"tools"`
 }
 
 // ToolExport represents the tools.json structure
@@ -122,10 +122,10 @@ func exportServices(moduleNames []string, outputDir string) {
 		}
 
 		service := Service{
-			ID:          name,
-			Name:        displayName,
-			Description: m.Description(),
-			APIVersion:  m.APIVersion(),
+			ID:           name,
+			Name:         displayName,
+			Descriptions: m.Descriptions(),
+			APIVersion:   m.APIVersion(),
 		}
 
 		export.Services = append(export.Services, service)
@@ -162,18 +162,18 @@ func exportTools(moduleNames []string, outputDir string) {
 		}
 
 		moduleDef := ModuleDef{
-			ID:          name,
-			Name:        displayName,
-			Description: m.Description(),
-			APIVersion:  m.APIVersion(),
-			Tools:       make([]ToolDef, 0),
+			ID:           name,
+			Name:         displayName,
+			Descriptions: m.Descriptions(),
+			APIVersion:   m.APIVersion(),
+			Tools:        make([]ToolDef, 0),
 		}
 
 		for _, tool := range m.Tools() {
 			toolDef := ToolDef{
-				ID:          tool.Name,
-				Name:        tool.Name,
-				Description: tool.Description,
+				ID:           tool.ID,
+				Name:         tool.Name,
+				Descriptions: tool.Descriptions,
 			}
 			if tool.Annotations != nil {
 				toolDef.Annotations = &ToolAnnotations{
