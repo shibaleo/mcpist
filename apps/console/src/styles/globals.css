@@ -142,3 +142,17 @@
     height: 0;
   }
 }
+
+/* Pulse border animation for onboarding highlight */
+@keyframes pulse-border {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--primary), 0 10px 25px -5px rgba(var(--primary), 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--primary), 0 10px 25px -5px rgba(var(--primary), 0.3);
+  }
+}
+
+.animate-pulse-border {
+  animation: pulse-border 2s ease-in-out infinite;
+}
