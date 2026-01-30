@@ -26,7 +26,6 @@ GRANT SELECT ON TABLES TO anon, authenticated;
 -- -----------------------------------------------------------------------------
 
 CREATE TYPE mcpist.account_status AS ENUM (
-    'pre_active',  -- オンボーディング待ち（サインアップ直後）
     'active',      -- アクティブ
     'suspended',   -- 一時停止
     'disabled'     -- 無効化
@@ -44,8 +43,7 @@ CREATE TYPE mcpist.module_status AS ENUM (
 CREATE TYPE mcpist.credit_transaction_type AS ENUM (
     'consume',       -- クレジット消費
     'purchase',      -- クレジット購入
-    'monthly_reset', -- 月次リセット
-    'bonus'          -- ボーナス付与（サインアップボーナス等）
+    'monthly_reset'  -- 月次リセット
 );
 
 -- -----------------------------------------------------------------------------

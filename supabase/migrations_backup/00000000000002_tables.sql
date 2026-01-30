@@ -10,9 +10,8 @@
 -- 6. tool_settings
 -- 7. prompts
 -- 8. api_keys
--- 9. processed_webhook_events
---
--- Note: service_tokens table removed (replaced by user_credentials with pgsodium TCE)
+-- 9. service_tokens
+-- 10. processed_webhook_events
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -21,10 +20,8 @@
 
 CREATE TABLE mcpist.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    account_status mcpist.account_status NOT NULL DEFAULT 'pre_active',
-    display_name TEXT,
-    avatar_url TEXT,
-    settings JSONB DEFAULT '{}',
+    account_status mcpist.account_status NOT NULL DEFAULT 'active',
+    preferences JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -42,7 +39,7 @@ CREATE TRIGGER set_users_updated_at
 
 CREATE TABLE mcpist.credits (
     user_id UUID PRIMARY KEY REFERENCES mcpist.users(id) ON DELETE CASCADE,
-    free_credits INTEGER NOT NULL DEFAULT 0 CHECK (free_credits >= 0 AND free_credits <= 1000),
+    free_credits INTEGER NOT NULL DEFAULT 1000 CHECK (free_credits >= 0 AND free_credits <= 1000),
     paid_credits INTEGER NOT NULL DEFAULT 0 CHECK (paid_credits >= 0),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -100,12 +97,9 @@ CREATE TABLE mcpist.module_settings (
     user_id UUID NOT NULL REFERENCES mcpist.users(id) ON DELETE CASCADE,
     module_id UUID NOT NULL REFERENCES mcpist.modules(id) ON DELETE RESTRICT,
     enabled BOOLEAN NOT NULL DEFAULT true,
-    description TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, module_id)
 );
-
-COMMENT ON COLUMN mcpist.module_settings.description IS 'User-defined additional description for the module';
 
 CREATE INDEX idx_module_settings_user_id ON mcpist.module_settings(user_id);
 
@@ -116,13 +110,11 @@ CREATE INDEX idx_module_settings_user_id ON mcpist.module_settings(user_id);
 CREATE TABLE mcpist.tool_settings (
     user_id UUID NOT NULL REFERENCES mcpist.users(id) ON DELETE CASCADE,
     module_id UUID NOT NULL REFERENCES mcpist.modules(id) ON DELETE RESTRICT,
-    tool_id TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, module_id, tool_id)
+    PRIMARY KEY (user_id, module_id, tool_name)
 );
-
-COMMENT ON COLUMN mcpist.tool_settings.tool_id IS 'Tool ID in format: {module}:{tool_name} (e.g., notion:search)';
 
 CREATE INDEX idx_tool_settings_user_module ON mcpist.tool_settings(user_id, module_id);
 
@@ -168,6 +160,27 @@ CREATE TABLE mcpist.api_keys (
 CREATE INDEX idx_api_keys_user_id ON mcpist.api_keys(user_id);
 CREATE INDEX idx_api_keys_key_hash ON mcpist.api_keys(key_hash) WHERE revoked_at IS NULL;
 CREATE INDEX idx_api_keys_expires_at ON mcpist.api_keys(expires_at) WHERE expires_at IS NOT NULL;
+
+-- -----------------------------------------------------------------------------
+-- Service Tokens Table
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE mcpist.service_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES mcpist.users(id) ON DELETE CASCADE,
+    service TEXT NOT NULL,
+    credentials_secret_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, service)
+);
+
+CREATE INDEX idx_service_tokens_user_id ON mcpist.service_tokens(user_id);
+
+CREATE TRIGGER set_service_tokens_updated_at
+    BEFORE UPDATE ON mcpist.service_tokens
+    FOR EACH ROW
+    EXECUTE FUNCTION mcpist.trigger_set_updated_at();
 
 -- -----------------------------------------------------------------------------
 -- Processed Webhook Events Table
