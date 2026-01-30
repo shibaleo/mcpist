@@ -85,6 +85,14 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border py-6">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <div className="flex justify-center gap-4 mb-2">
+            <Link href="/terms" className="hover:text-foreground">
+              利用規約
+            </Link>
+            <Link href="/privacy" className="hover:text-foreground">
+              プライバシーポリシー
+            </Link>
+          </div>
           &copy; 2026 MCPist. All rights reserved.
         </div>
       </footer>

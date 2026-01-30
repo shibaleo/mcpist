@@ -80,7 +80,8 @@ function LoginContent() {
       if (error) {
         setError(error.message)
       } else {
-        window.location.href = returnTo || "/dashboard"
+        // Use callback route to check onboarding status
+        window.location.href = `/auth/callback?next=${encodeURIComponent(returnTo || "/dashboard")}`
       }
     }
     setLoading(null)
@@ -221,11 +222,11 @@ function LoginContent() {
         <CardFooter className="flex flex-col gap-4 pt-6">
           <div className="text-center text-xs text-muted-foreground">
             ログインすることで、
-            <Link href="#" className="text-primary hover:underline">
+            <Link href="/terms" className="text-primary hover:underline">
               利用規約
             </Link>
             および
-            <Link href="#" className="text-primary hover:underline">
+            <Link href="/privacy" className="text-primary hover:underline">
               プライバシーポリシー
             </Link>
             に同意したものとみなされます。

@@ -46,15 +46,15 @@ export async function GET(request: Request) {
   // エラーチェック
   if (error) {
     const errorDescription = url.searchParams.get("error_description") || error
-    return NextResponse.redirect(
-      new URL(`${returnTo}?error=${encodeURIComponent(errorDescription)}`, request.url)
-    )
+    const errorUrl = new URL(returnTo, request.url)
+    errorUrl.searchParams.set("error", errorDescription)
+    return NextResponse.redirect(errorUrl)
   }
 
   if (!code) {
-    return NextResponse.redirect(
-      new URL(`${returnTo}?error=No authorization code received`, request.url)
-    )
+    const errorUrl = new URL(returnTo, request.url)
+    errorUrl.searchParams.set("error", "No authorization code received")
+    return NextResponse.redirect(errorUrl)
   }
 
   try {
@@ -66,9 +66,9 @@ export async function GET(request: Request) {
 
     if (credError || !credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credError || credentials?.message)
-      return NextResponse.redirect(
-        new URL(`${returnTo}?error=OAuth credentials not configured`, request.url)
-      )
+      const errorUrl = new URL(returnTo, request.url)
+      errorUrl.searchParams.set("error", "OAuth credentials not configured")
+      return NextResponse.redirect(errorUrl)
     }
 
     // 認証コードをアクセストークンに交換
@@ -89,17 +89,17 @@ export async function GET(request: Request) {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text()
       console.error("Token exchange failed:", errorText)
-      return NextResponse.redirect(
-        new URL(`${returnTo}?error=${encodeURIComponent("Failed to exchange token")}`, request.url)
-      )
+      const errorUrl = new URL(returnTo, request.url)
+      errorUrl.searchParams.set("error", "Failed to exchange token")
+      return NextResponse.redirect(errorUrl)
     }
 
     const tokenData = await tokenResponse.json()
 
     if (!tokenData.access_token) {
-      return NextResponse.redirect(
-        new URL(`${returnTo}?error=No access token received`, request.url)
-      )
+      const errorUrl = new URL(returnTo, request.url)
+      errorUrl.searchParams.set("error", "No access token received")
+      return NextResponse.redirect(errorUrl)
     }
 
     // トークン情報を保存
@@ -122,22 +122,22 @@ export async function GET(request: Request) {
 
     if (saveError) {
       console.error("Failed to save token:", saveError)
-      return NextResponse.redirect(
-        new URL(`${returnTo}?error=${encodeURIComponent("Failed to save token")}`, request.url)
-      )
+      const errorUrl = new URL(returnTo, request.url)
+      errorUrl.searchParams.set("error", "Failed to save token")
+      return NextResponse.redirect(errorUrl)
     }
 
     // デフォルトツール設定を保存
     await saveDefaultToolSettings(supabase, "google_calendar")
 
     // 成功時はreturnToにリダイレクト
-    return NextResponse.redirect(
-      new URL(`${returnTo}?success=Google Calendar connected successfully`, request.url)
-    )
+    const redirectUrl = new URL(returnTo, request.url)
+    redirectUrl.searchParams.set("success", "Google Calendar connected successfully")
+    return NextResponse.redirect(redirectUrl)
   } catch (err) {
     console.error("OAuth callback error:", err)
-    return NextResponse.redirect(
-      new URL(`${returnTo}?error=${encodeURIComponent("OAuth callback failed")}`, request.url)
-    )
+    const errorUrl = new URL(returnTo, request.url)
+    errorUrl.searchParams.set("error", "OAuth callback failed")
+    return NextResponse.redirect(errorUrl)
   }
 }

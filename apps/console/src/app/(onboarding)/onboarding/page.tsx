@@ -15,7 +15,7 @@ import {
   Link2,
   PartyPopper,
   Loader2,
-  ExternalLink,
+  Gift,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -23,8 +23,8 @@ import { useAuth } from "@/lib/auth-context"
 import { getMyConnections, type ServiceConnection } from "@/lib/token-vault"
 
 const steps = [
-  { id: 1, title: "ようこそ" },
-  { id: 2, title: "サービス連携" },
+  { id: 1, title: "サービス連携" },
+  { id: 2, title: "特典を受け取る" },
   { id: 3, title: "準備完了" },
 ]
 
@@ -79,11 +79,11 @@ export default function OnboardingPage() {
       if (data.success) {
         setCreditsGranted(true)
         toast.success("100クレジットを受け取りました！")
-        setCurrentStep(2)
+        setCurrentStep(3)
       } else if (data.error === "already_granted") {
         // 既に付与済みの場合はスキップ
         setCreditsGranted(true)
-        setCurrentStep(2)
+        setCurrentStep(3)
       } else {
         toast.error(data.message || "クレジットの付与に失敗しました")
       }
@@ -106,7 +106,7 @@ export default function OnboardingPage() {
     setConnectingService(serviceId)
     try {
       // returnToでオンボーディングに戻る
-      const authUrl = await getOAuthAuthorizationUrl(providerId, "/onboarding?step=3")
+      const authUrl = await getOAuthAuthorizationUrl(providerId, "/onboarding")
       window.location.href = authUrl
     } catch (error) {
       if (error instanceof OAuthAppError) {
@@ -120,9 +120,9 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     if (currentStep === 1) {
+      setCurrentStep(2)
+    } else if (currentStep === 2) {
       handleGrantCredits()
-    } else if (currentStep < 3) {
-      setCurrentStep(currentStep + 1)
     } else {
       router.push("/dashboard")
     }
@@ -130,11 +130,11 @@ export default function OnboardingPage() {
 
   const handleSkip = () => {
     if (currentStep === 1) {
-      // Step 1はスキップ不可（利用規約同意必須）
+      // サービス連携をスキップして特典受け取りへ
+      setCurrentStep(2)
+    } else if (currentStep === 2) {
+      // 特典受け取りはスキップ不可（利用規約同意必須）
       return
-    }
-    if (currentStep === 2) {
-      setCurrentStep(3)
     } else {
       router.push("/dashboard")
     }
@@ -144,92 +144,27 @@ export default function OnboardingPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const step = params.get("step")
-    if (step === "3") {
-      setCurrentStep(3)
-      setCreditsGranted(true) // OAuth後はクレジット付与済みと仮定
+    if (step) {
+      const stepNum = parseInt(step)
+      if (stepNum >= 1 && stepNum <= 3) {
+        setCurrentStep(stepNum)
+      }
     }
   }, [])
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Step 1: ようこそ + 利用規約同意 */}
+        {/* Step 1: サービス連携 */}
         {currentStep === 1 && (
-          <div className="text-center space-y-6">
-            <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center">
-                <Sparkles className="h-10 w-10 text-primary-foreground" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">MCPistへようこそ</h1>
-              <p className="text-muted-foreground mt-3 text-lg">
-                AIアシスタントと外部サービスを連携し、
-                <br />
-                作業を効率化しましょう
-              </p>
-            </div>
-            <div className="space-y-3 text-left bg-card p-6 rounded-xl border border-border">
-              <div className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground">複数サービスを一元管理</p>
-                  <p className="text-sm text-muted-foreground">
-                    GoogleカレンダーやNotionなど、様々なサービスを接続
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground">安全なアクセス制御</p>
-                  <p className="text-sm text-muted-foreground">
-                    必要な権限のみを付与し、セキュアに運用
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-foreground">100クレジットをプレゼント</p>
-                  <p className="text-sm text-muted-foreground">
-                    利用規約に同意すると、すぐに使える100クレジットを受け取れます
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 利用規約同意 */}
-            <div className="flex items-start gap-3 p-4 bg-secondary/50 rounded-lg text-left">
-              <Checkbox
-                id="terms"
-                checked={agreedToTerms}
-                onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-              />
-              <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
-                <a href="/terms" target="_blank" className="text-primary hover:underline">
-                  利用規約
-                </a>
-                および
-                <a href="/privacy" target="_blank" className="text-primary hover:underline">
-                  プライバシーポリシー
-                </a>
-                に同意し、100クレジットを受け取ります
-              </label>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: サービス連携 */}
-        {currentStep === 2 && (
           <div className="space-y-6">
             <div className="text-center">
-              <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-4">
-                <Link2 className="h-8 w-8 text-foreground" />
+              <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
+                <Link2 className="h-8 w-8 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl font-bold text-foreground">最初のサービスを連携</h1>
+              <h1 className="text-2xl font-bold text-foreground">MCPistへようこそ</h1>
               <p className="text-muted-foreground mt-2">
-                1つ以上のサービスを連携すると、すぐにMCPを使い始められます
+                まずはサービスを連携しましょう
               </p>
             </div>
 
@@ -343,6 +278,64 @@ export default function OnboardingPage() {
           </div>
         )}
 
+        {/* Step 2: 利用規約同意 + クレジット受け取り */}
+        {currentStep === 2 && (
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center">
+                <Gift className="h-10 w-10 text-primary" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">特典を受け取る</h1>
+              <p className="text-muted-foreground mt-3 text-lg">
+                利用規約に同意すると
+                <br />
+                <span className="text-primary font-semibold">100クレジット</span>をプレゼント
+              </p>
+            </div>
+            <div className="space-y-3 text-left bg-card p-6 rounded-xl border border-border">
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">すぐに使える100クレジット</p>
+                  <p className="text-sm text-muted-foreground">
+                    サインアップ特典として無料でプレゼント
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                <div>
+                  <p className="font-medium text-foreground">追加クレジットも購入可能</p>
+                  <p className="text-sm text-muted-foreground">
+                    必要に応じていつでもクレジットを追加できます
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 利用規約同意 */}
+            <div className="flex items-start gap-3 p-4 bg-secondary/50 rounded-lg text-left">
+              <Checkbox
+                id="terms"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+              />
+              <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
+                <a href="/terms" target="_blank" className="text-primary hover:underline">
+                  利用規約
+                </a>
+                および
+                <a href="/privacy" target="_blank" className="text-primary hover:underline">
+                  プライバシーポリシー
+                </a>
+                に同意し、100クレジットを受け取ります
+              </label>
+            </div>
+          </div>
+        )}
+
         {/* Step 3: 準備完了 */}
         {currentStep === 3 && (
           <div className="text-center space-y-6">
@@ -385,7 +378,7 @@ export default function OnboardingPage() {
             className="w-full h-12"
             onClick={handleNext}
             disabled={
-              (currentStep === 1 && (!agreedToTerms || grantingCredits)) ||
+              (currentStep === 2 && (!agreedToTerms || grantingCredits)) ||
               connectingService !== null
             }
           >
@@ -395,26 +388,30 @@ export default function OnboardingPage() {
                 クレジットを付与中...
               </>
             ) : currentStep === 1 ? (
+              hasAnyConnection ? (
+                <>
+                  次へ
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  スキップして次へ
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )
+            ) : currentStep === 2 ? (
               <>
                 同意して100クレジットを受け取る
                 <ArrowRight className="h-4 w-4 ml-2" />
               </>
-            ) : currentStep === 3 ? (
-              "ダッシュボードへ"
             ) : (
-              <>
-                次へ
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </>
+              "ダッシュボードへ"
             )}
           </Button>
-          {currentStep === 2 && (
-            <button
-              onClick={handleSkip}
-              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              後で設定する
-            </button>
+          {currentStep === 1 && !hasAnyConnection && (
+            <p className="text-xs text-muted-foreground text-center">
+              サービス連携は後からでも設定できます
+            </p>
           )}
         </div>
 
