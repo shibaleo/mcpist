@@ -244,3 +244,92 @@
 8. `/billing` で「初回クレジットを受け取る」カードが光る
 9. 100クレジット付与後、account_status が active に遷移
 10. 以降は残高50以下でアラート表示
+
+---
+
+## 作業記録（追加3：RPC設計・マイグレーション統合）
+
+| 時刻 | タスク ID | 内容 | 備考 |
+|------|-----------|------|------|
+|  | Migration-001 | マイグレーション統合（36→9ファイル） | 再設計に伴う統合 |
+|  | RPC-001 | RPC命名規則統一 | `_my_`=Console(User), `_user_`=Router/API Server |
+|  | RPC-002 | `consume_credits` → `consume_user_credits` | API Server 呼び出し |
+|  | RPC-003 | `add_credits` → `add_user_credits` | Console Router 呼び出し |
+|  | RPC-004 | `complete_onboarding` → `complete_user_onboarding` | Console Router 呼び出し |
+|  | RPC-005 | `lookup_user_by_key_hash` 呼び出し元を Gateway に変更 | API Server → Gateway |
+|  | RPC-006 | `list_modules` 呼び出し元を Console (Router) に変更 | |
+|  | RPC-007 | OAuth Apps RPCの呼び出し元を Console (Router) に変更 | Admin → Router |
+|  | RPC-008 | `preferences` → `settings` 統一 | カラム名・RPC名変更 |
+|  | Table-001 | users テーブルに `display_name`, `avatar_url` 追加 | |
+|  | Prompts-001 | prompts テーブル用 RPC マイグレーション作成 | 00000000000010_rpc_prompts.sql |
+|  | Canvas-001 | grh-rpc-design.canvas 更新 | 全変更をCanvas図に反映 |
+
+---
+
+## 完了タスク（追加3）
+
+- [x] マイグレーション統合・再設計
+  - 36ファイル → 9ファイルに統合
+  - RPC命名規則の統一（`_my_` / `_user_` プレフィックス）
+  - 呼び出し元の整理（Console User/Router、API Server、Gateway）
+
+- [x] RPC名変更
+  - `consume_credits` → `consume_user_credits`
+  - `add_credits` → `add_user_credits`
+  - `complete_onboarding` → `complete_user_onboarding`
+  - `get_my_preferences` → `get_my_settings`
+  - `update_my_preferences` → `update_my_settings`
+
+- [x] 呼び出し元変更
+  - `lookup_user_by_key_hash`: API Server → Gateway
+  - `list_modules`: API Server / Console (User) → Console (Router)
+  - OAuth Apps RPC: Console (Admin) → Console (Router)
+
+- [x] テーブル変更
+  - users: `display_name`, `avatar_url` カラム追加
+  - users: `preferences` → `settings` 統一
+
+- [x] prompts RPC 作成
+  - `list_my_prompts` - プロンプト一覧取得
+  - `get_my_prompt` - プロンプト詳細取得
+  - `upsert_my_prompt` - プロンプト作成/更新
+  - `delete_my_prompt` - プロンプト削除
+
+- [x] Canvas 更新
+  - grh-rpc-design.canvas に全変更を反映
+  - prompts グループ・テーブル・RPC追加
+
+---
+
+## 変更ファイル概要（追加3）
+
+| カテゴリ | ファイル | 主な変更 |
+|----------|----------|----------|
+| DB Migration | 00000000000002_tables.sql | users に display_name, avatar_url 追加 |
+| DB Migration | 00000000000006_rpc_mcp_server.sql | consume_credits → consume_user_credits |
+| DB Migration | 00000000000007_rpc_console.sql | preferences → settings |
+| DB Migration | 00000000000009_stripe_integration.sql | add_credits → add_user_credits, complete_onboarding → complete_user_onboarding |
+| DB Migration | 00000000000010_rpc_prompts.sql | 新規作成（prompts CRUD RPC） |
+| Docs | grh-rpc-design.canvas | 全変更反映、prompts追加 |
+
+---
+
+## RPC命名規則
+
+| プレフィックス | 呼び出し元 | 認証方式 | ユーザー特定 |
+|---|---|---|---|
+| `_my_` | Console (User) | `auth.uid()` | 自分自身のみ |
+| `_user_` | Console (Router) / API Server | `service_role` | `p_user_id` で指定 |
+| なし | 公開 / Trigger | 状況による | - |
+
+---
+
+## 呼び出し元一覧
+
+| 呼び出し元 | 説明 | 認証 |
+|---|---|---|
+| Console (User) | ユーザー自身の操作 | authenticated role |
+| Console (Router) | サーバーサイドAPI Route | service_role |
+| API Server | MCP Server | service_role |
+| Gateway | 認証ゲートウェイ | service_role |
+| Trigger | DB トリガー | - |

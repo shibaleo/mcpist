@@ -77,17 +77,17 @@ Sprint-004 で作成した仕様書群を現在の実装に合わせて更新す
 ## 完了条件
 
 ### Phase 1: Stripe 連携
-- [ ] サインアップ時に free_credits=1000 が自動付与される
-- [ ] Stripe Checkout でクレジット購入ができる
-- [ ] Webhook で決済完了 → paid_credits に反映される（冪等）
-- [ ] Billing ページで残高と取引履歴が確認できる
-- [ ] ツール実行 → クレジット消費 → 不足時拒否の一連フローが動作する
+- [x] サインアップ時に free_credits=1000 が自動付与される → **pre_active 状態で0、オンボーディング完了時に100クレジット付与に変更**
+- [x] Stripe Checkout でクレジット購入ができる → **Phase 1: $0 Checkout で無料クレジット付与**
+- [x] Webhook で決済完了 → paid_credits に反映される（冪等） → **free_credits として付与**
+- [x] Billing ページで残高と取引履歴が確認できる
+- [x] ツール実行 → クレジット消費 → 不足時拒否の一連フローが動作する
 
 ### Phase 2: 仕様書更新
 - [ ] BL-010〜014 の5項目が全て resolved（修正 or「将来実装予定」明記）
 - [ ] Observability 設計書が存在する
 - [ ] spec-impl-compare.md の未解決項目がゼロ
-- [ ] dtl-itr-XXX-YYY.md 全25件が reviewed
+- [x] dtl-itr-XXX-YYY.md 全25件が reviewed
 
 ---
 
@@ -121,6 +121,67 @@ dtl-itr-DST-GWY, DST-PSP, DST-SSM, DST-TVL, GWY-OBS
 - Notionモジュールのリフレッシュ未実装（google_calendar/microsoft_todoは実装済み）
 - oauth1/custom_header は定数定義のみ（使用モジュールなし）
 - → 実装フェーズの問題であり仕様としては正しい
+
+### 2026-01-29 (DAY018)
+
+#### tool_id + 多言語対応
+
+| タスク | 状態 |
+|--------|------|
+| MCP Server: tool_id 実装 | ✅ 完了 |
+| MCP Server: 多言語対応（en-US/ja-JP） | ✅ 完了 |
+| Console: 言語設定UI | ✅ 完了 |
+| database.types.ts 更新 | ✅ 完了 |
+| E2Eテスト | ✅ 完了 |
+
+#### dtl-itr レビュー完了
+
+残り5件（DST-GWY, DST-PSP, DST-SSM, DST-TVL, GWY-OBS）をレビュー完了。全25件 reviewed。
+
+### 2026-01-30 (DAY019)
+
+#### Stripe Phase 1 完了
+
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| S6-001 | ✅ 完了 | Stripe Product/Price ($0) 作成 |
+| S6-002 | ✅ 完了 | サインアップ時 free_credits=0、オンボーディング完了時に100付与に変更 |
+| S6-003 | ✅ 完了 | `/api/stripe/checkout` 実装 |
+| S6-004 | ✅ 完了 | `/api/stripe/webhook` 実装（冪等性保証） |
+| S6-005 | ✅ 完了 | Billing ページ更新（Signup Bonus カード追加） |
+| S6-006 | ✅ 完了 | E2Eテスト完了 |
+
+#### オンボーディングフロー改善
+
+- tools step 削除（サービス選択のみに簡素化）
+- 残高アラート追加（pre_active 時、残高50以下時）
+- Signup Bonus 受け取りカード追加
+
+#### RPC設計・マイグレーション統合
+
+| 変更 | 内容 |
+|------|------|
+| マイグレーション統合 | 36ファイル → 9ファイル |
+| RPC命名規則統一 | `_my_`=Console(User), `_user_`=Router/API Server |
+| RPC名変更 | `consume_credits` → `consume_user_credits` 他 |
+| 呼び出し元整理 | Gateway, Console Router, API Server の分類 |
+| prompts RPC 作成 | `list_my_prompts`, `upsert_my_prompt`, `delete_my_prompt` |
+| Canvas 更新 | grh-rpc-design.canvas に全変更反映 |
+
+#### 教訓（day019-review.md）
+
+- テーブル設計とRPC設計で命名規則・抽象度を揃えるのが困難
+- RPC設計時に「誰が呼ぶのか」を最初に決めないとカオス化する
+- 呼び出し元に応じた命名規則: `_my_` (Console User) / `_user_` (Router/API Server)
+
+### 2026-01-31 (DAY020) - 予定
+
+| タスク | 優先度 | 備考 |
+|--------|--------|------|
+| database.types.ts 再生成 | 高 | 新RPC反映 |
+| Console/MCP Server RPC名変更対応 | 高 | コード修正 |
+| BL-011〜014 解消 | 高 | spc-itf.md 更新 |
+| Observability 設計書作成 | 中 | dsn-observability.md |
 
 ---
 
