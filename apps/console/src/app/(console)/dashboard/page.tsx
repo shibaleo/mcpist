@@ -4,31 +4,24 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link2, Coins, Receipt, Loader2, Settings2, ChevronRight } from "lucide-react"
-import { getUserCredits, getServiceConnections, type UserCredits, type ServiceConnection } from "@/lib/credits"
+import { getUserContext, getServiceConnections, type UserCredits, type ServiceConnection } from "@/lib/credits"
 import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 // オンボーディングステップの判定
-type OnboardingStep = "connections" | "tools" | "billing" | "complete"
+type OnboardingStep = "connections" | "billing" | "complete"
 
 function getOnboardingStep(
   connections: ServiceConnection[],
-  toolSettings: ToolSetting[],
-  credits: UserCredits | null
+  accountStatus: string | null
 ): OnboardingStep {
   // 1. サービス未連携
   if (connections.length === 0) {
     return "connections"
   }
-  // 2. ツール未設定（全て無効）
-  const enabledTools = toolSettings.filter((t) => t.enabled)
-  if (enabledTools.length === 0) {
-    return "tools"
-  }
-  // 3. クレジット残高が少ない（50以下）
-  const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
-  if (totalCredits <= 50) {
+  // 2. 初回クレジット未取得（pre_active）
+  if (accountStatus === "pre_active") {
     return "billing"
   }
   // 全て完了
@@ -69,6 +62,7 @@ function HighlightCard({
 export default function DashboardPage() {
   const { user } = useAuth()
   const [credits, setCredits] = useState<UserCredits | null>(null)
+  const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [connections, setConnections] = useState<ServiceConnection[]>([])
   const [toolSettings, setToolSettings] = useState<ToolSetting[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,12 +71,17 @@ export default function DashboardPage() {
     async function fetchData() {
       setLoading(true)
       try {
-        const [creditsData, connectionsData, toolSettingsData] = await Promise.all([
-          getUserCredits(),
+        const [contextData, connectionsData, toolSettingsData] = await Promise.all([
+          getUserContext(),
           getServiceConnections(),
           getMyToolSettings(),
         ])
-        setCredits(creditsData)
+        setAccountStatus(contextData?.account_status ?? null)
+        setCredits(contextData ? {
+          free_credits: contextData.free_credits,
+          paid_credits: contextData.paid_credits,
+          updated_at: new Date().toISOString(),
+        } : null)
         setConnections(connectionsData)
         setToolSettings(toolSettingsData)
       } catch (error) {
@@ -98,13 +97,16 @@ export default function DashboardPage() {
   const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
   const enabledToolCount = toolSettings.filter((t) => t.enabled).length
   const totalToolCount = toolSettings.length
-  const onboardingStep = getOnboardingStep(connections, toolSettings, credits)
+  const onboardingStep = getOnboardingStep(connections, accountStatus)
+
+  // 残高アラート（active ユーザーで残高50以下）
+  const LOW_CREDIT_THRESHOLD = 50
+  const showLowCreditAlert = accountStatus === "active" && totalCredits <= LOW_CREDIT_THRESHOLD
 
   // オンボーディングメッセージ
   const onboardingMessages: Record<OnboardingStep, string> = {
     connections: "まずはサービスを連携しましょう",
-    tools: "使用するツールを設定しましょう",
-    billing: "クレジットを追加しましょう",
+    billing: "初回クレジットを受け取りましょう",
     complete: "",
   }
 
@@ -126,6 +128,19 @@ export default function DashboardPage() {
           <div>
             <p className="font-medium text-foreground">セットアップを続けましょう</p>
             <p className="text-sm text-muted-foreground">{onboardingMessages[onboardingStep]}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 残高アラート（オンボーディング完了後、残高が少ない場合） */}
+      {!loading && onboardingStep === "complete" && showLowCreditAlert && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+            <Coins className="h-4 w-4 text-yellow-500" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">クレジット残高が少なくなっています</p>
+            <p className="text-sm text-muted-foreground">クレジットを追加して、引き続きMCPistをご利用ください</p>
           </div>
         </div>
       )}
@@ -155,10 +170,7 @@ export default function DashboardPage() {
         </HighlightCard>
 
         {/* Enabled Tools */}
-        <HighlightCard
-          href="/tools"
-          highlight={onboardingStep === "tools"}
-        >
+        <HighlightCard href="/tools">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
@@ -180,7 +192,7 @@ export default function DashboardPage() {
         {/* Credit Balance */}
         <HighlightCard
           href="/billing"
-          highlight={onboardingStep === "billing"}
+          highlight={onboardingStep === "billing" || showLowCreditAlert}
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">

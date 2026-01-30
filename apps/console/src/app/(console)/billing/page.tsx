@@ -219,16 +219,16 @@ export default function BillingPage() {
         </Card>
       )}
 
-      {/* 無料クレジット取得（active のみ） */}
+      {/* テスト用クレジット取得（active のみ） */}
       {accountStatus === "active" && (
         <Card className="border-dashed border-2 border-primary/30">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Gift className="h-5 w-5 text-primary" />
-              無料クレジットを取得
+              テスト用クレジットを取得
             </CardTitle>
             <CardDescription>
-              100クレジットを無料で取得できます
+              テスト期間中は何度でも取得できます
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -236,9 +236,9 @@ export default function BillingPage() {
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">スタータークレジット</p>
+                    <p className="font-medium">テストクレジット</p>
                     <p className="text-sm text-muted-foreground">
-                      MCPistを試すための100クレジット
+                      100クレジット（無料）
                     </p>
                   </div>
                   <div className="text-right">
@@ -261,12 +261,12 @@ export default function BillingPage() {
                 ) : (
                   <>
                     <Gift className="h-4 w-4 mr-2" />
-                    無料クレジットを取得
+                    テストクレジットを取得
                   </>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Stripeの安全な決済ページに移動します（支払いは発生しません）
+                テスト期間中のため支払いは発生しません
               </p>
             </div>
           </CardContent>
