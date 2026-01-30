@@ -214,6 +214,46 @@ export interface Database {
         }
         Returns: Json
       }
+      // Stripe integration
+      get_stripe_customer_id: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: {
+          stripe_customer_id: string | null
+        }
+      }
+      link_stripe_customer: {
+        Args: {
+          p_user_id: string
+          p_stripe_customer_id: string
+        }
+        Returns: {
+          success: boolean
+          stripe_customer_id?: string
+          error?: string
+        }
+      }
+      add_paid_credits: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_event_id: string
+        }
+        Returns: {
+          success: boolean
+          paid_credits?: number
+          added?: number
+          error?: string
+          message?: string
+        }
+      }
+      get_user_by_stripe_customer: {
+        Args: {
+          p_stripe_customer_id: string
+        }
+        Returns: string | null
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
