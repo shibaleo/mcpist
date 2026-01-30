@@ -67,6 +67,11 @@ import {
 } from "@/lib/tool-settings"
 import { getUserSettings, type Language } from "@/lib/user-settings"
 
+// User preferences type
+interface UserPreferences {
+  preferred_services?: string[]
+  language?: Language
+}
 
 // 認証方法の設定
 interface AuthConfigField {
@@ -167,6 +172,9 @@ export default function ToolsPage() {
   // Language setting
   const [language, setLanguage] = useState<Language>("ja-JP")
 
+  // User preferences (preferred services from onboarding)
+  const [preferredServices, setPreferredServices] = useState<string[]>([])
+
   // Dialog states
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
   const [disconnectDialog, setDisconnectDialog] = useState<string | null>(null)
@@ -187,19 +195,25 @@ export default function ToolsPage() {
     }
   }, [])
 
-  // ツール設定を取得
+  // ツール設定とpreferencesを取得
   const loadToolSettings = useCallback(async () => {
     try {
-      const [settings, descriptions, userSettings] = await Promise.all([
+      const [settings, descriptions, userSettings, prefsResponse] = await Promise.all([
         getMyToolSettings(),
         getMyModuleDescriptions(),
         getUserSettings(),
+        fetch("/api/user/preferences").then(res => res.json()).catch(() => ({})),
       ])
       const settingsMap = toToolSettingsMap(settings)
       setToolSettings(settingsMap)
       setLocalToolSettings(settingsMap)
       setModuleDescriptions(toModuleDescriptionsMap(descriptions))
       setLanguage(userSettings.language)
+      // preferred_services を設定
+      const prefs = prefsResponse as UserPreferences
+      if (prefs?.preferred_services && Array.isArray(prefs.preferred_services)) {
+        setPreferredServices(prefs.preferred_services)
+      }
     } catch (error) {
       if (error instanceof ToolSettingsError) {
         console.error("Failed to load tool settings:", error.message)
@@ -580,9 +594,18 @@ export default function ToolsPage() {
           className="flex gap-4 overflow-x-auto scrollbar-hide py-4 px-2"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {services.map((service) => {
+          {/* preferredServicesで優先ソート */}
+          {[...services].sort((a, b) => {
+            const aPreferred = preferredServices.includes(a.id)
+            const bPreferred = preferredServices.includes(b.id)
+            if (aPreferred && !bPreferred) return -1
+            if (!aPreferred && bPreferred) return 1
+            // 同じ優先度なら元の順序を維持
+            return preferredServices.indexOf(a.id) - preferredServices.indexOf(b.id)
+          }).map((service) => {
             const isConnected = connectedServiceIds.has(service.id)
             const isSelected = selectedServiceId === service.id
+            const isPreferred = preferredServices.includes(service.id) && !isConnected
             const mod = modules.find((m) => m.id === service.id)
             const enabledCount = getEnabledToolCount(service.id)
             const totalCount = mod?.tools.length || 0
@@ -597,7 +620,9 @@ export default function ToolsPage() {
                     ? "border-primary bg-primary/10 shadow-primary/20"
                     : isConnected
                       ? "border-border bg-card hover:border-primary/50"
-                      : "border-dashed border-muted-foreground/30 bg-muted/30 hover:border-muted-foreground/50"
+                      : isPreferred
+                        ? "animate-pulse-border border-primary bg-primary/5"
+                        : "border-dashed border-muted-foreground/30 bg-muted/30 hover:border-muted-foreground/50"
                 )}
               >
                 <div className="flex flex-col items-center gap-2">
