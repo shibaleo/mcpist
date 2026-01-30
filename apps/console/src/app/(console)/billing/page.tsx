@@ -1,212 +1,209 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { useAuth } from "@/lib/auth-context"
-import { Download, CreditCard, Calendar, Receipt } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { getUserCredits, type UserCredits } from "@/lib/credits"
+import { Coins, Gift, Loader2, CheckCircle } from "lucide-react"
+import { toast } from "sonner"
 
 export const dynamic = "force-dynamic"
 
-// 購読中のサービス（モック）
-const activeSubscriptions = [
-  { serviceId: "jira", serviceName: "Jira", price: 500, startedAt: "2026-01-10" },
-  { serviceId: "confluence", serviceName: "Confluence", price: 500, startedAt: "2026-01-10" },
-]
-
-// 請求履歴（モック）
-const billingHistory = [
-  { id: "1", date: "2026-01-15", description: "Jira + Confluence", amount: 1000, status: "paid" as const },
-  { id: "2", date: "2025-12-15", description: "Jira", amount: 500, status: "paid" as const },
-]
-
 export default function BillingPage() {
-  const { user } = useAuth()
-  const [paymentDialog, setPaymentDialog] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const searchParams = useSearchParams()
+  const [credits, setCredits] = useState<UserCredits | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [purchasing, setPurchasing] = useState(false)
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(price)
+  // Handle success/cancel from Stripe Checkout
+  useEffect(() => {
+    const success = searchParams.get("success")
+    const canceled = searchParams.get("canceled")
+
+    if (success === "true") {
+      toast.success("クレジットを取得しました！", {
+        description: "100クレジットがアカウントに追加されました。",
+      })
+      // Clear URL params
+      window.history.replaceState({}, "", "/billing")
+    } else if (canceled === "true") {
+      toast.error("購入がキャンセルされました", {
+        description: "クレジットは追加されませんでした。",
+      })
+      window.history.replaceState({}, "", "/billing")
+    }
+  }, [searchParams])
+
+  // Fetch credits
+  useEffect(() => {
+    async function fetchCredits() {
+      setLoading(true)
+      try {
+        const data = await getUserCredits()
+        setCredits(data)
+      } catch (error) {
+        console.error("Failed to fetch credits:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchCredits()
+  }, [searchParams]) // Refetch when returning from Stripe
+
+  const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
+
+  const handleGetFreeCredits = async () => {
+    setPurchasing(true)
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create checkout session")
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      console.error("Checkout error:", error)
+      toast.error("エラーが発生しました", {
+        description: "しばらくしてからもう一度お試しください。",
+      })
+      setPurchasing(false)
+    }
   }
-
-  const totalMonthly = activeSubscriptions.reduce((sum, sub) => sum + sub.price, 0)
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">請求情報</h1>
-        <p className="text-muted-foreground mt-1">支払い情報と請求履歴を確認</p>
+        <h1 className="text-2xl font-bold text-foreground">クレジット</h1>
+        <p className="text-muted-foreground mt-1">クレジット残高の確認と購入</p>
       </div>
 
-      {/* 月額合計 */}
+      {/* クレジット残高 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            月額利用料
+            <Coins className="h-5 w-5" />
+            クレジット残高
           </CardTitle>
+          <CardDescription>
+            MCPツールの実行に使用されます
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{formatPrice(totalMonthly)}</span>
-            <span className="text-muted-foreground">/月</span>
-          </div>
-          {activeSubscriptions.length > 0 ? (
-            <div className="mt-4 space-y-2">
-              <p className="text-sm text-muted-foreground">利用中の有料サービス:</p>
-              <ul className="space-y-1">
-                {activeSubscriptions.map((sub) => (
-                  <li key={sub.serviceId} className="flex items-center justify-between text-sm">
-                    <span>{sub.serviceName}</span>
-                    <span className="text-muted-foreground">{formatPrice(sub.price)}/月</span>
-                  </li>
-                ))}
-              </ul>
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground">読み込み中...</span>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground mt-2">
-              有料サービスを利用していません
-            </p>
+            <div className="space-y-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold">{totalCredits.toLocaleString()}</span>
+                <span className="text-muted-foreground">クレジット</span>
+              </div>
+              <div className="flex gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-blue-500/20 text-blue-400">
+                    無料
+                  </Badge>
+                  <span>{credits?.free_credits.toLocaleString() ?? 0}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-green-500/20 text-green-400">
+                    有料
+                  </Badge>
+                  <span>{credits?.paid_credits.toLocaleString() ?? 0}</span>
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* 支払い方法 */}
-      <Card>
+      {/* 無料クレジット取得 */}
+      <Card className="border-dashed border-2 border-primary/30">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            支払い方法
+            <Gift className="h-5 w-5 text-primary" />
+            無料クレジットを取得
           </CardTitle>
+          <CardDescription>
+            100クレジットを無料で取得できます
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <span>•••• •••• •••• 4242</span>
+          <div className="space-y-4">
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">スタータークレジット</p>
+                  <p className="text-sm text-muted-foreground">
+                    MCPistを試すための100クレジット
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">無料</p>
+                  <p className="text-sm text-muted-foreground">100クレジット</p>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">有効期限: 12/2028</p>
             </div>
-            <Button variant="outline" onClick={() => setPaymentDialog(true)}>
-              変更する
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleGetFreeCredits}
+              disabled={purchasing}
+            >
+              {purchasing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  処理中...
+                </>
+              ) : (
+                <>
+                  <Gift className="h-4 w-4 mr-2" />
+                  無料クレジットを取得
+                </>
+              )}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 次回請求日 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            次回請求
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-lg font-medium">2026年2月15日</p>
-              <p className="text-sm text-muted-foreground">
-                請求予定額: {formatPrice(totalMonthly)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 請求履歴 */}
-      {billingHistory.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">請求履歴</CardTitle>
-            <CardDescription>過去の請求と支払い状況</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>日付</TableHead>
-                  <TableHead>内容</TableHead>
-                  <TableHead>金額</TableHead>
-                  <TableHead>ステータス</TableHead>
-                  <TableHead className="text-right">請求書</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {billingHistory.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>{formatPrice(item.amount)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          item.status === "paid" && "bg-green-500/20 text-green-400 border-green-500/30",
-                        )}
-                      >
-                        {item.status === "paid" ? "支払済" : "保留中"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Payment Method Dialog */}
-      <Dialog open={paymentDialog} onOpenChange={setPaymentDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>支払い方法の変更</DialogTitle>
-            <DialogDescription>新しいクレジットカード情報を入力してください</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Stripe決済フォームがここに表示されます（デモ）
+            <p className="text-xs text-muted-foreground text-center">
+              Stripeの安全な決済ページに移動します（支払いは発生しません）
             </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentDialog(false)}>
-              キャンセル
-            </Button>
-            <Button
-              onClick={() => {
-                setPaymentDialog(false)
-                setSaved(true)
-                setTimeout(() => setSaved(false), 2000)
-              }}
-            >
-              保存
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
 
-      {saved && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg">
-          変更を保存しました
-        </div>
-      )}
+      {/* クレジットの使い方 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">クレジットについて</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              <span>MCPツールの実行ごとに1クレジットを消費します</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              <span>無料クレジットが優先的に消費されます</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              <span>有料クレジットに有効期限はありません</span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   )
 }
