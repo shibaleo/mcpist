@@ -3,9 +3,68 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Link2, Coins, Receipt, Loader2, Settings2 } from "lucide-react"
+import { Link2, Coins, Receipt, Loader2, Settings2, ChevronRight } from "lucide-react"
 import { getUserCredits, getServiceConnections, type UserCredits, type ServiceConnection } from "@/lib/credits"
 import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
+
+// オンボーディングステップの判定
+type OnboardingStep = "connections" | "tools" | "billing" | "complete"
+
+function getOnboardingStep(
+  connections: ServiceConnection[],
+  toolSettings: ToolSetting[],
+  credits: UserCredits | null
+): OnboardingStep {
+  // 1. サービス未連携
+  if (connections.length === 0) {
+    return "connections"
+  }
+  // 2. ツール未設定（全て無効）
+  const enabledTools = toolSettings.filter((t) => t.enabled)
+  if (enabledTools.length === 0) {
+    return "tools"
+  }
+  // 3. クレジット残高が少ない（50以下）
+  const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
+  if (totalCredits <= 50) {
+    return "billing"
+  }
+  // 全て完了
+  return "complete"
+}
+
+// ハイライトカードのラッパー
+function HighlightCard({
+  children,
+  href,
+  highlight,
+  className,
+}: {
+  children: React.ReactNode
+  href: string
+  highlight?: boolean
+  className?: string
+}) {
+  return (
+    <Link href={href} className="block group">
+      <Card
+        className={cn(
+          "relative transition-all duration-300 cursor-pointer h-full",
+          "hover:border-primary/50 hover:shadow-md",
+          highlight && "animate-pulse-border border-primary shadow-lg shadow-primary/20",
+          className
+        )}
+      >
+        {children}
+        <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </Card>
+    </Link>
+  )
+}
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -39,6 +98,15 @@ export default function DashboardPage() {
   const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
   const enabledToolCount = toolSettings.filter((t) => t.enabled).length
   const totalToolCount = toolSettings.length
+  const onboardingStep = getOnboardingStep(connections, toolSettings, credits)
+
+  // オンボーディングメッセージ
+  const onboardingMessages: Record<OnboardingStep, string> = {
+    connections: "まずはサービスを連携しましょう",
+    tools: "使用するツールを設定しましょう",
+    billing: "クレジットを追加しましょう",
+    complete: "",
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -49,9 +117,25 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* オンボーディングガイド */}
+      {!loading && onboardingStep !== "complete" && (
+        <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            <span className="text-primary font-bold text-sm">!</span>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">セットアップを続けましょう</p>
+            <p className="text-sm text-muted-foreground">{onboardingMessages[onboardingStep]}</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Connected Services */}
-        <Card>
+        <HighlightCard
+          href="/connections"
+          highlight={onboardingStep === "connections"}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Link2 className="h-4 w-4" />
@@ -68,10 +152,13 @@ export default function DashboardPage() {
               </>
             )}
           </CardContent>
-        </Card>
+        </HighlightCard>
 
-        {/* Enabled Tools (Mock) */}
-        <Card>
+        {/* Enabled Tools */}
+        <HighlightCard
+          href="/tools"
+          highlight={onboardingStep === "tools"}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
@@ -88,10 +175,13 @@ export default function DashboardPage() {
               </>
             )}
           </CardContent>
-        </Card>
+        </HighlightCard>
 
         {/* Credit Balance */}
-        <Card>
+        <HighlightCard
+          href="/billing"
+          highlight={onboardingStep === "billing"}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Coins className="h-4 w-4" />
@@ -110,10 +200,10 @@ export default function DashboardPage() {
               </>
             )}
           </CardContent>
-        </Card>
+        </HighlightCard>
 
         {/* Usage This Month */}
-        <Card>
+        <HighlightCard href="/billing">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Receipt className="h-4 w-4" />
@@ -130,7 +220,7 @@ export default function DashboardPage() {
               </>
             )}
           </CardContent>
-        </Card>
+        </HighlightCard>
       </div>
     </div>
   )
