@@ -13,6 +13,12 @@ export interface ServiceConnection {
   updated_at: string
 }
 
+export interface UserContext {
+  account_status: string
+  free_credits: number
+  paid_credits: number
+}
+
 /**
  * Get the current user's credit balance
  * Uses get_user_context RPC since mcpist schema is not exposed
@@ -67,4 +73,38 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
     connected_at: item.created_at,
     updated_at: item.updated_at
   }))
+}
+
+/**
+ * Get the current user's context including account status and credits
+ * Uses get_user_context RPC since mcpist schema is not exposed
+ */
+export async function getUserContext(): Promise<UserContext | null> {
+  const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return null
+  }
+
+  const { data, error } = await supabase.rpc('get_user_context', {
+    p_user_id: user.id
+  })
+
+  if (error) {
+    console.error('Failed to fetch user context:', error)
+    return null
+  }
+
+  // get_user_context returns an array, take first result
+  const context = Array.isArray(data) ? data[0] : data
+  if (!context) {
+    return null
+  }
+
+  return {
+    account_status: context.account_status,
+    free_credits: context.free_credits,
+    paid_credits: context.paid_credits,
+  }
 }

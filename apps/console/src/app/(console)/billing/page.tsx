@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { getUserCredits, type UserCredits } from "@/lib/credits"
-import { Coins, Gift, Loader2, CheckCircle } from "lucide-react"
+import { getUserContext, type UserCredits } from "@/lib/credits"
+import { Coins, Gift, Loader2, CheckCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
 export const dynamic = "force-dynamic"
@@ -14,8 +14,10 @@ export const dynamic = "force-dynamic"
 export default function BillingPage() {
   const searchParams = useSearchParams()
   const [credits, setCredits] = useState<UserCredits | null>(null)
+  const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
+  const [claiming, setClaiming] = useState(false)
 
   // Handle success/cancel from Stripe Checkout
   useEffect(() => {
@@ -36,23 +38,59 @@ export default function BillingPage() {
     }
   }, [searchParams])
 
-  // Fetch credits
-  useEffect(() => {
-    async function fetchCredits() {
-      setLoading(true)
-      try {
-        const data = await getUserCredits()
-        setCredits(data)
-      } catch (error) {
-        console.error("Failed to fetch credits:", error)
-      } finally {
-        setLoading(false)
-      }
+  // Fetch user context (account status and credits)
+  const fetchUserContext = async () => {
+    setLoading(true)
+    try {
+      const context = await getUserContext()
+      setAccountStatus(context?.account_status ?? null)
+      setCredits(context ? {
+        free_credits: context.free_credits,
+        paid_credits: context.paid_credits,
+        updated_at: new Date().toISOString(),
+      } : null)
+    } catch (error) {
+      console.error("Failed to fetch user context:", error)
+    } finally {
+      setLoading(false)
     }
-    fetchCredits()
+  }
+
+  useEffect(() => {
+    fetchUserContext()
   }, [searchParams]) // Refetch when returning from Stripe
 
   const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
+
+  const handleClaimSignupBonus = async () => {
+    setClaiming(true)
+    try {
+      const response = await fetch("/api/credits/grant-signup-bonus", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("クレジットを受け取りました！", {
+          description: "100クレジットがアカウントに追加されました。",
+        })
+        // Refetch user context
+        await fetchUserContext()
+      } else if (data.error === "already_granted") {
+        toast.info("既にクレジットを受け取っています")
+        setAccountStatus("active")
+      } else {
+        throw new Error(data.message || "Failed to claim bonus")
+      }
+    } catch (error) {
+      console.error("Claim error:", error)
+      toast.error("エラーが発生しました", {
+        description: "しばらくしてからもう一度お試しください。",
+      })
+    } finally {
+      setClaiming(false)
+    }
+  }
 
   const handleGetFreeCredits = async () => {
     setPurchasing(true)
@@ -130,57 +168,110 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* 無料クレジット取得 */}
-      <Card className="border-dashed border-2 border-primary/30">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Gift className="h-5 w-5 text-primary" />
-            無料クレジットを取得
-          </CardTitle>
-          <CardDescription>
-            100クレジットを無料で取得できます
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">スタータークレジット</p>
-                  <p className="text-sm text-muted-foreground">
-                    MCPistを試すための100クレジット
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">無料</p>
-                  <p className="text-sm text-muted-foreground">100クレジット</p>
+      {/* 初回クレジット取得（pre_active のみ） */}
+      {accountStatus === "pre_active" && (
+        <Card className="animate-pulse-border border-primary shadow-lg shadow-primary/20">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              ようこそ！初回クレジットを受け取る
+            </CardTitle>
+            <CardDescription>
+              MCPistを始めるための100クレジットをプレゼント
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-primary/10 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">スタートボーナス</p>
+                    <p className="text-sm text-muted-foreground">
+                      今すぐ受け取れます
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">100</p>
+                    <p className="text-sm text-muted-foreground">クレジット</p>
+                  </div>
                 </div>
               </div>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleClaimSignupBonus}
+                disabled={claiming}
+              >
+                {claiming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    処理中...
+                  </>
+                ) : (
+                  <>
+                    <Gift className="h-4 w-4 mr-2" />
+                    100クレジットを受け取る
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleGetFreeCredits}
-              disabled={purchasing}
-            >
-              {purchasing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  処理中...
-                </>
-              ) : (
-                <>
-                  <Gift className="h-4 w-4 mr-2" />
-                  無料クレジットを取得
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Stripeの安全な決済ページに移動します（支払いは発生しません）
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 無料クレジット取得（active のみ） */}
+      {accountStatus === "active" && (
+        <Card className="border-dashed border-2 border-primary/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              無料クレジットを取得
+            </CardTitle>
+            <CardDescription>
+              100クレジットを無料で取得できます
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">スタータークレジット</p>
+                    <p className="text-sm text-muted-foreground">
+                      MCPistを試すための100クレジット
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">無料</p>
+                    <p className="text-sm text-muted-foreground">100クレジット</p>
+                  </div>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleGetFreeCredits}
+                disabled={purchasing}
+              >
+                {purchasing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    処理中...
+                  </>
+                ) : (
+                  <>
+                    <Gift className="h-4 w-4 mr-2" />
+                    無料クレジットを取得
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Stripeの安全な決済ページに移動します（支払いは発生しません）
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* クレジットの使い方 */}
       <Card>
