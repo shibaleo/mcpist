@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -440,9 +441,14 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 	// To support per-tool pricing, replace toolCount with a sum of
 	// per-tool costs (e.g. modules.CreditCost(module, tool)) accumulated in the loop above.
 	if authCtx.TotalCredits() < toolCount {
+		consoleURL := os.Getenv("CONSOLE_URL")
+		billingURL := ""
+		if consoleURL != "" {
+			billingURL = fmt.Sprintf(" Add credits at: %s/billing", consoleURL)
+		}
 		return &Error{
 			Code:    InvalidRequest,
-			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d", toolCount, authCtx.TotalCredits()),
+			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d.%s", toolCount, authCtx.TotalCredits(), billingURL),
 		}
 	}
 

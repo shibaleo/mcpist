@@ -199,9 +199,14 @@ func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, creditCost in
 
 	// 3. Check credit balance
 	if ctx.TotalCredits() < creditCost {
+		consoleURL := os.Getenv("CONSOLE_URL")
+		billingURL := ""
+		if consoleURL != "" {
+			billingURL = fmt.Sprintf(" Add credits at: %s/billing", consoleURL)
+		}
 		return &AuthError{
 			Code:    "INSUFFICIENT_CREDITS",
-			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d", creditCost, ctx.TotalCredits()),
+			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d.%s", creditCost, ctx.TotalCredits(), billingURL),
 			Status:  http.StatusPaymentRequired,
 		}
 	}

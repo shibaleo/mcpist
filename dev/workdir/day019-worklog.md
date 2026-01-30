@@ -186,3 +186,61 @@
 - public スキーマラッパーは Supabase JS クライアントが public スキーマをデフォルトで参照するため必要
 - `animate-pulse-border` はOKLCHカラーと互換性を持たせるため `var(--primary)` を直接使用
 - オンボーディングのプロダクトツアー部分は未実装（TODO）
+
+---
+
+## 作業記録（追加2）
+
+| 時刻 | タスク ID | 内容 | 備考 |
+|------|-----------|------|------|
+|  | Bonus-001 | 初回クレジット付与UI実装 | billing ページに `pre_active` ユーザー向けカード |
+|  | Bonus-002 | テストクレジットカードUI更新 | `active` ユーザー向け、テスト期間中は何度でも取得可能 |
+|  | Dashboard-004 | オンボーディングステップからtools削除 | サービス接続後にデフォルトツールが有効化されるため不要 |
+|  | Dashboard-005 | オンボーディング条件を pre_active ベースに変更 | クレジット数ではなく account_status で判定 |
+|  | Dashboard-006 | 残高アラート実装 | active ユーザーで残高50以下の時に警告バナー表示 |
+|  | MCP-001 | クレジット不足エラーにbilling URL追加 | authz.go, handler.go |
+
+---
+
+## 完了タスク（追加2）
+
+- [x] 初回クレジット付与（Signup Bonus）
+  - billing ページに `pre_active` ユーザー向け初回クレジットカード
+  - 「100クレジットを受け取る」ボタンで grant-signup-bonus API 呼び出し
+  - 付与後 account_status が active に遷移
+
+- [x] ダッシュボードオンボーディング改善
+  - オンボーディングステップから tools 削除（connections → billing → complete）
+  - オンボーディング条件を account_status ベースに変更
+  - 残高アラート追加（active ユーザー、残高50以下で警告）
+
+- [x] MCPサーバー改善
+  - クレジット不足エラーメッセージに billing URL 追加
+  - 単一ツール実行（authz.go）とバッチ実行（handler.go）両方対応
+
+---
+
+## 変更ファイル概要（追加2）
+
+| カテゴリ | ファイル | 主な変更 |
+|----------|----------|----------|
+| Console | billing/page.tsx | pre_active 向け初回クレジットカード、テストクレジットカードUI更新 |
+| Console | dashboard/page.tsx | tools step 削除、pre_active 条件、残高アラート |
+| Console | credits.ts | UserContext 型、getUserContext() 関数 |
+| Server | authz.go | INSUFFICIENT_CREDITS エラーに billing URL 追加 |
+| Server | handler.go | バッチ実行のクレジット不足エラーに billing URL 追加 |
+
+---
+
+## オンボーディングフロー（更新版）
+
+1. ログイン（Google/Microsoft OAuth）
+2. `/onboarding` でサービス選択（6サービスから複数選択可）
+3. 選択結果を `mcpist.users.preferences.preferred_services` に保存
+4. `/dashboard` にリダイレクト
+5. ダッシュボードで「連携中のサービス」カードが光る（connections = 0 の場合）
+6. `/tools` で選択したサービスが先頭に表示され、未接続なら光る
+7. サービス接続後、「クレジット残高」カードが光る（pre_active の場合）
+8. `/billing` で「初回クレジットを受け取る」カードが光る
+9. 100クレジット付与後、account_status が active に遷移
+10. 以降は残高50以下でアラート表示
