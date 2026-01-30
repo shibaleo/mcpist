@@ -91,8 +91,98 @@
 
 ---
 
+## 作業記録（追加）
+
+| 時刻 | タスク ID | 内容 | 備考 |
+|------|-----------|------|------|
+|  | Onboard-001 | オンボーディングフロー改善 | サービス連携→クレジット付与の順序変更 |
+|  | Onboard-002 | OAuth callback URL バグ修正 | `?step=3?success=` → `searchParams.set()` で修正 |
+|  | Onboard-003 | 利用規約・プライバシーポリシーページ作成 | `/terms`, `/privacy` |
+|  | Onboard-004 | DBマイグレーション 035-036 作成 | credit_transaction_type 型キャスト修正、bonus enum追加 |
+|  | Dashboard-001 | ダッシュボードカードをクリック可能に | `/connections`, `/tools`, `/billing` へリンク |
+|  | Dashboard-002 | オンボーディングステップ検出機能 | connections → tools → billing の順で誘導 |
+|  | Dashboard-003 | カード光るアニメーション実装 | `animate-pulse-border` CSS keyframes |
+|  | Onboard-005 | オンボーディングページ簡素化 | プロダクトツアー用プレースホルダーに変更 |
+|  | Onboard-006 | サービス選択チェックボックス実装 | 6サービス選択可能 |
+|  | Onboard-007 | preferences API 作成 | `/api/user/preferences` GET/POST |
+|  | Tools-001 | カルーセル優先ソート実装 | `preferred_services` で先頭に配置 |
+|  | Tools-002 | 優先サービスカード光る機能 | 未接続の優先サービスに pulse-border 適用 |
+
+---
+
+## 完了タスク（追加）
+
+- [x] オンボーディングUX改善
+  - オンボーディングページ簡素化（プロダクトツアー用プレースホルダー）
+  - サービス選択チェックボックス追加（6サービス）
+  - preferences API 作成
+  - /tools カルーセル優先ソート
+  - 優先サービスカードのハイライトアニメーション
+
+- [x] ダッシュボード改善
+  - カードをクリック可能に（/tools, /billing へリンク）
+  - オンボーディングステップ検出（connections → tools → billing）
+  - 次のアクションカードを光らせるアニメーション
+  - セットアップ進捗バナー表示
+
+- [x] 法的ページ追加
+  - 利用規約ページ `/terms`
+  - プライバシーポリシーページ `/privacy`
+  - LP フッター、ログインページからリンク
+
+- [x] バグ修正
+  - OAuth callback URL の query param 重複問題修正
+  - credit_transaction_type 型キャストエラー修正
+  - bonus enum 値追加
+
+---
+
+## 変更ファイル概要（追加）
+
+| カテゴリ | ファイル数 | 主な変更 |
+|----------|------------|----------|
+| DB Migration | 2 | 035: type cast fix, 036: bonus enum |
+| Console Pages | 4 | onboarding, dashboard, terms, privacy |
+| Console API | 3 | oauth/google/callback, oauth/microsoft/callback, user/preferences |
+| Console CSS | 1 | globals.css (pulse-border animation) |
+
+---
+
+## DBマイグレーション詳細（追加）
+
+| ファイル | 内容 |
+|----------|------|
+| 00000000000035_fix_add_credits_type_cast.sql | `credit_transaction_type` 型への明示的キャスト |
+| 00000000000036_add_bonus_transaction_type.sql | `bonus` enum 値追加 |
+
+---
+
+## 新規作成ファイル
+
+| ファイル | 内容 |
+|----------|------|
+| `apps/console/src/app/terms/page.tsx` | 利用規約ページ |
+| `apps/console/src/app/privacy/page.tsx` | プライバシーポリシーページ |
+| `apps/console/src/app/api/user/preferences/route.ts` | ユーザー設定 API |
+
+---
+
+## オンボーディングフロー
+
+1. ログイン（Google/Microsoft OAuth）
+2. `/onboarding` でサービス選択（6サービスから複数選択可）
+3. 選択結果を `mcpist.users.preferences.preferred_services` に保存
+4. `/dashboard` にリダイレクト
+5. ダッシュボードで「連携中のサービス」カードが光る
+6. `/tools` で選択したサービスが先頭に表示され、未接続なら光る
+7. サービス接続後、「有効なツール」→「クレジット残高」と順に誘導
+
+---
+
 ## メモ
 
 - Stripe サンドボックスモード使用（本番移行時は prod キーに切替）
 - Webhook 冪等性: `processed_webhook_events` テーブルで event_id 重複チェック
 - public スキーマラッパーは Supabase JS クライアントが public スキーマをデフォルトで参照するため必要
+- `animate-pulse-border` はOKLCHカラーと互換性を持たせるため `var(--primary)` を直接使用
+- オンボーディングのプロダクトツアー部分は未実装（TODO）
