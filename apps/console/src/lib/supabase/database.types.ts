@@ -214,6 +214,21 @@ export interface Database {
         }
         Returns: Json
       }
+      // Onboarding
+      complete_onboarding: {
+        Args: {
+          p_user_id: string
+          p_event_id: string
+        }
+        Returns: {
+          success: boolean
+          already_completed?: boolean
+          credits_granted?: number
+          status?: string
+          error?: string
+          message?: string
+        }
+      }
       // Stripe integration
       get_stripe_customer_id: {
         Args: {
@@ -234,14 +249,17 @@ export interface Database {
           error?: string
         }
       }
-      add_paid_credits: {
+      add_credits: {
         Args: {
           p_user_id: string
           p_amount: number
+          p_credit_type: string  // 'free' or 'paid'
           p_event_id: string
         }
         Returns: {
           success: boolean
+          credit_type?: string
+          free_credits?: number
           paid_credits?: number
           added?: number
           error?: string

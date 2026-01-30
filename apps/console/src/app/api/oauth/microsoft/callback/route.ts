@@ -20,7 +20,20 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get("code")
   const error = url.searchParams.get("error")
-  // state param is for CSRF protection (currently not validated)
+  const stateParam = url.searchParams.get("state")
+
+  // state から returnTo を取り出す
+  let returnTo = "/connections"
+  if (stateParam) {
+    try {
+      const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
+      if (stateData.returnTo) {
+        returnTo = stateData.returnTo
+      }
+    } catch {
+      // state のパースに失敗した場合はデフォルトのリダイレクト先を使用
+    }
+  }
 
   // 認証チェック
   const supabase = await createClient()
@@ -34,13 +47,13 @@ export async function GET(request: Request) {
   if (error) {
     const errorDescription = url.searchParams.get("error_description") || error
     return NextResponse.redirect(
-      new URL(`/connections?error=${encodeURIComponent(errorDescription)}`, request.url)
+      new URL(`${returnTo}?error=${encodeURIComponent(errorDescription)}`, request.url)
     )
   }
 
   if (!code) {
     return NextResponse.redirect(
-      new URL("/connections?error=No authorization code received", request.url)
+      new URL(`${returnTo}?error=No authorization code received`, request.url)
     )
   }
 
@@ -54,7 +67,7 @@ export async function GET(request: Request) {
     if (credError || !credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credError || credentials?.message)
       return NextResponse.redirect(
-        new URL("/connections?error=OAuth credentials not configured", request.url)
+        new URL(`${returnTo}?error=OAuth credentials not configured`, request.url)
       )
     }
 
@@ -78,7 +91,7 @@ export async function GET(request: Request) {
       const errorText = await tokenResponse.text()
       console.error("Token exchange failed:", errorText)
       return NextResponse.redirect(
-        new URL(`/connections?error=${encodeURIComponent("Failed to exchange token")}`, request.url)
+        new URL(`${returnTo}?error=${encodeURIComponent("Failed to exchange token")}`, request.url)
       )
     }
 
@@ -86,7 +99,7 @@ export async function GET(request: Request) {
 
     if (!tokenData.access_token) {
       return NextResponse.redirect(
-        new URL("/connections?error=No access token received", request.url)
+        new URL(`${returnTo}?error=No access token received`, request.url)
       )
     }
 
@@ -111,21 +124,21 @@ export async function GET(request: Request) {
     if (saveError) {
       console.error("Failed to save token:", saveError)
       return NextResponse.redirect(
-        new URL(`/connections?error=${encodeURIComponent("Failed to save token")}`, request.url)
+        new URL(`${returnTo}?error=${encodeURIComponent("Failed to save token")}`, request.url)
       )
     }
 
     // デフォルトツール設定を保存
     await saveDefaultToolSettings(supabase, "microsoft_todo")
 
-    // 成功時はconnectionsページにリダイレクト
+    // 成功時はreturnToにリダイレクト
     return NextResponse.redirect(
-      new URL("/connections?success=Microsoft To Do connected successfully", request.url)
+      new URL(`${returnTo}?success=Microsoft To Do connected successfully`, request.url)
     )
   } catch (err) {
     console.error("OAuth callback error:", err)
     return NextResponse.redirect(
-      new URL(`/connections?error=${encodeURIComponent("OAuth callback failed")}`, request.url)
+      new URL(`${returnTo}?error=${encodeURIComponent("OAuth callback failed")}`, request.url)
     )
   }
 }
