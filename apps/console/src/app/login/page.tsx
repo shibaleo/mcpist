@@ -80,7 +80,6 @@ function LoginContent() {
       if (error) {
         setError(error.message)
       } else {
-        // Redirect to returnTo or dashboard
         window.location.href = returnTo || "/dashboard"
       }
     }

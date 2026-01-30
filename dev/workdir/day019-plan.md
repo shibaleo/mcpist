@@ -25,9 +25,9 @@ Sprint-006 3日目。DAY018で tool_id + 多言語対応の実装・デプロイ
 
 | タスク | 状態 | 備考 |
 |--------|------|------|
-| BL-011〜014 解消 | **本日実施** | spc-itf.md 更新 |
-| Observability 設計書作成 | **本日実施** | dsn-observability.md |
-| Stripe Phase 1 | DAY020 以降 | 仕様書整備完了後に着手 |
+| BL-011〜014 解消 | 未着手 | spc-itf.md 更新 |
+| Observability 設計書作成 | 未着手 | dsn-observability.md |
+| Stripe Phase 1 | ✅ **完了** | 本日実装・E2Eテスト完了 |
 
 ---
 
@@ -68,22 +68,22 @@ $0 の Stripe Checkout で 100 クレジットを付与するフロー。
 
 ### 事前準備
 
-- [ ] Stripe アカウント作成
-- [ ] テストモード API キー取得（`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`）
-- [ ] Product/Price 作成（$0, metadata: credits=100）
+- [x] Stripe アカウント作成
+- [x] テストモード API キー取得（`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`）
+- [x] Product/Price 作成（$0, metadata: credits=100）
 
 ### 実装タスク
 
-| # | タスク | 見積もり | 備考 |
-|---|--------|----------|------|
-| 1 | Stripe Product/Price 作成 | 0.5h | Dashboard or API |
-| 2 | DB マイグレーション | 0.5h | `stripe_customer_id`, `processed_webhook_events` |
-| 3 | Checkout Session 作成 API | 1h | `/api/stripe/checkout` |
-| 4 | Webhook 処理 | 1.5h | `/api/stripe/webhook` → クレジット付与 |
-| 5 | Console UI | 1h | 購入ボタン、成功/キャンセルページ |
-| 6 | テスト | 0.5h | テストモードで E2E |
+| # | タスク | 見積もり | 状態 | 備考 |
+|---|--------|----------|------|------|
+| 1 | Stripe Product/Price 作成 | 0.5h | ✅ | Dashboard で作成 |
+| 2 | DB マイグレーション | 0.5h | ✅ | 029-031: `stripe_customer_id`, RPC関数 |
+| 3 | Checkout Session 作成 API | 1h | ✅ | `/api/stripe/checkout` |
+| 4 | Webhook 処理 | 1.5h | ✅ | `/api/stripe/webhook` → クレジット付与 |
+| 5 | Console UI | 1h | ✅ | billing ページ更新 |
+| 6 | テスト | 0.5h | ✅ | E2E: 100クレジット付与確認 |
 
-**合計: 5h**
+**合計: 5h → 完了**
 
 ### 環境変数（追加予定）
 
@@ -111,6 +111,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 - [ ] BL-011〜014 が resolved
 - [ ] dsn-observability.md 作成完了
 - [ ] spec-impl-compare.md の Phase 2 関連項目がゼロ
+- [x] Stripe Phase 1 実装完了
 
 ---
 

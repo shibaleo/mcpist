@@ -72,9 +72,10 @@ async function handleCheckoutCompleted(
   }
 
   // Add credits using RPC (handles idempotency)
-  const { data, error } = await adminClient.rpc("add_paid_credits", {
+  const { data, error } = await adminClient.rpc("add_credits", {
     p_user_id: userId,
     p_amount: credits,
+    p_credit_type: "paid",
     p_event_id: eventId,
   })
 

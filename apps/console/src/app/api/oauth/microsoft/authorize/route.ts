@@ -19,7 +19,7 @@ function getAdminClient() {
   })
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   // 認証チェック（ユーザーセッション確認）
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,6 +27,10 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  // returnTo パラメータを取得
+  const url = new URL(request.url)
+  const returnTo = url.searchParams.get("returnTo") || "/tools"
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
@@ -43,8 +47,12 @@ export async function GET() {
       )
     }
 
-    // state パラメータを生成（CSRF対策）
-    const state = crypto.randomUUID()
+    // state パラメータを生成（CSRF対策 + returnTo情報）
+    const stateData = {
+      nonce: crypto.randomUUID(),
+      returnTo,
+    }
+    const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
 
     // 認可URLを構築
     const params = new URLSearchParams({

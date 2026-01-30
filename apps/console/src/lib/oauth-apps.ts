@@ -150,8 +150,17 @@ export function getOAuthProviderForService(serviceId: string): string | null {
 }
 
 // OAuth認可URLを取得するAPI Route経由
-export async function getOAuthAuthorizationUrl(provider: string): Promise<string> {
-  const response = await fetch(`/api/oauth/${provider}/authorize`, {
+export async function getOAuthAuthorizationUrl(
+  provider: string,
+  returnTo?: string
+): Promise<string> {
+  const params = new URLSearchParams()
+  if (returnTo) {
+    params.set("returnTo", returnTo)
+  }
+
+  const url = `/api/oauth/${provider}/authorize${params.toString() ? `?${params.toString()}` : ""}`
+  const response = await fetch(url, {
     method: "GET",
     credentials: "include",
   })
