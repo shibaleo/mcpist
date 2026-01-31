@@ -115,8 +115,8 @@ export async function GET(request: Request) {
         : null,
     }
 
-    const { error: saveError } = await supabase.rpc("upsert_service_token", {
-      p_service: "google_calendar",
+    const { error: saveError } = await supabase.rpc("upsert_my_credential", {
+      p_module: "google_calendar",
       p_credentials: tokenCredentials,
     })
 

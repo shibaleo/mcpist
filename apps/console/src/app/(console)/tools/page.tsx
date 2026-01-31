@@ -17,16 +17,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ServiceIcon } from "@/components/service-icon"
+import { ModuleIcon } from "@/components/module-icon"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
 import {
   modules,
-  services,
-  getServiceIcon,
+  getModuleIcon,
   isDefaultEnabled,
   isDangerous,
-  getServiceDescription,
+  getModuleDescription,
   getToolDescription,
 } from "@/lib/module-data"
 import {
@@ -69,7 +68,7 @@ import { getUserSettings, type Language } from "@/lib/user-settings"
 
 // User preferences type
 interface UserPreferences {
-  preferred_services?: string[]
+  preferred_modules?: string[]
   language?: Language
 }
 
@@ -160,7 +159,7 @@ export default function ToolsPage() {
   const [savingModules, setSavingModules] = useState<Record<string, boolean>>({})
   const [connections, setConnections] = useState<ServiceConnection[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
 
   // Module description state
@@ -172,8 +171,8 @@ export default function ToolsPage() {
   // Language setting
   const [language, setLanguage] = useState<Language>("ja-JP")
 
-  // User preferences (preferred services from onboarding)
-  const [preferredServices, setPreferredServices] = useState<string[]>([])
+  // User preferences (preferred modules from onboarding)
+  const [preferredModules, setPreferredModules] = useState<string[]>([])
 
   // Dialog states
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
@@ -209,10 +208,10 @@ export default function ToolsPage() {
       setLocalToolSettings(settingsMap)
       setModuleDescriptions(toModuleDescriptionsMap(descriptions))
       setLanguage(userSettings.language)
-      // preferred_services を設定
+      // preferred_modules を設定
       const prefs = prefsResponse as UserPreferences
-      if (prefs?.preferred_services && Array.isArray(prefs.preferred_services)) {
-        setPreferredServices(prefs.preferred_services)
+      if (prefs?.preferred_modules && Array.isArray(prefs.preferred_modules)) {
+        setPreferredModules(prefs.preferred_modules)
       }
     } catch (error) {
       if (error instanceof ToolSettingsError) {
@@ -266,36 +265,35 @@ export default function ToolsPage() {
     [localToolSettings]
   )
 
-  // 接続済みサービスのIDセット
-  const connectedServiceIds = new Set(connections.map((c) => c.service))
+  // 接続済みモジュールのIDセット
+  const connectedModuleIds = new Set(connections.map((c) => c.module))
 
-  // サービスの接続状態を取得
-  const getConnectionForService = (serviceId: string) => {
-    return connections.find((c) => c.service === serviceId)
+  // モジュールの接続状態を取得
+  const getConnectionForModule = (moduleId: string) => {
+    return connections.find((c) => c.module === moduleId)
   }
 
-  // 選択中のサービス情報
-  const selectedService = services.find((s) => s.id === selectedServiceId)
-  const selectedModule = modules.find((m) => m.id === selectedServiceId)
-  const isSelectedConnected = selectedServiceId ? connectedServiceIds.has(selectedServiceId) : false
+  // 選択中のモジュール情報
+  const selectedModule = modules.find((m) => m.id === selectedModuleId)
+  const isSelectedConnected = selectedModuleId ? connectedModuleIds.has(selectedModuleId) : false
 
-  // 初回ロード時に最初の接続済みサービスを選択
+  // 初回ロード時に最初の接続済みモジュールを選択
   useEffect(() => {
-    if (!loading && !selectedServiceId) {
-      const firstConnected = services.find((s) => connectedServiceIds.has(s.id))
+    if (!loading && !selectedModuleId) {
+      const firstConnected = modules.find((m) => connectedModuleIds.has(m.id))
       if (firstConnected) {
-        setSelectedServiceId(firstConnected.id)
-      } else if (services.length > 0) {
-        setSelectedServiceId(services[0].id)
+        setSelectedModuleId(firstConnected.id)
+      } else if (modules.length > 0) {
+        setSelectedModuleId(modules[0].id)
       }
     }
-  }, [loading, selectedServiceId, connectedServiceIds])
+  }, [loading, selectedModuleId, connectedModuleIds])
 
-  // サービス切り替え時に編集状態をリセット
+  // モジュール切り替え時に編集状態をリセット
   useEffect(() => {
     setEditingModuleId(null)
     setEditingDescription("")
-  }, [selectedServiceId])
+  }, [selectedModuleId])
 
   // カルーセルナビゲーション
   const scrollCarousel = (direction: "left" | "right") => {
@@ -399,14 +397,14 @@ export default function ToolsPage() {
     }
   }
 
-  // モジュール説明関連
-  const getModuleDescription = (moduleId: string): string | undefined => {
+  // モジュール説明関連（ユーザーが設定したカスタム説明）
+  const getUserModuleDescription = (moduleId: string): string | undefined => {
     return moduleDescriptions[moduleId]
   }
 
   const handleEditModuleDescription = (moduleId: string) => {
     setEditingModuleId(moduleId)
-    setEditingDescription(getModuleDescription(moduleId) || "")
+    setEditingDescription(getUserModuleDescription(moduleId) || "")
   }
 
   const handleCancelEdit = () => {
@@ -555,7 +553,7 @@ export default function ToolsPage() {
     }
   }
 
-  const dialogService = connectDialog ? services.find((s) => s.id === connectDialog) : null
+  const dialogModule = connectDialog ? modules.find((m) => m.id === connectDialog) : null
   const dialogAuthConfig = connectDialog ? authConfig[connectDialog] : null
 
   if (loading) {
@@ -594,26 +592,31 @@ export default function ToolsPage() {
           className="flex gap-4 overflow-x-auto scrollbar-hide py-4 px-2"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {/* preferredServicesで優先ソート */}
-          {[...services].sort((a, b) => {
-            const aPreferred = preferredServices.includes(a.id)
-            const bPreferred = preferredServices.includes(b.id)
+          {/* preferredModulesで優先ソート */}
+          {[...modules].sort((a, b) => {
+            const aPreferred = preferredModules.includes(a.id)
+            const bPreferred = preferredModules.includes(b.id)
             if (aPreferred && !bPreferred) return -1
             if (!aPreferred && bPreferred) return 1
             // 同じ優先度なら元の順序を維持
-            return preferredServices.indexOf(a.id) - preferredServices.indexOf(b.id)
-          }).map((service) => {
-            const isConnected = connectedServiceIds.has(service.id)
-            const isSelected = selectedServiceId === service.id
-            const isPreferred = preferredServices.includes(service.id) && !isConnected
-            const mod = modules.find((m) => m.id === service.id)
-            const enabledCount = getEnabledToolCount(service.id)
-            const totalCount = mod?.tools.length || 0
+            return preferredModules.indexOf(a.id) - preferredModules.indexOf(b.id)
+          }).map((module) => {
+            const isConnected = connectedModuleIds.has(module.id)
+            const isSelected = selectedModuleId === module.id
+            const isPreferred = preferredModules.includes(module.id) && !isConnected
+            const moduleDef = modules.find((m) => m.id === module.id)
+            const enabledCount = getEnabledToolCount(module.id)
+            const totalCount = moduleDef?.tools.length || 0
 
             return (
               <div
-                key={service.id}
-                onClick={() => setSelectedServiceId(service.id)}
+                key={module.id}
+                onClick={() => {
+                  setSelectedModuleId(module.id)
+                  if (!isConnected) {
+                    handleConnect(module.id)
+                  }
+                }}
                 className={cn(
                   "flex-shrink-0 w-48 p-4 rounded-xl border-2 transition-all shadow-sm hover:shadow-md cursor-pointer",
                   isSelected
@@ -632,14 +635,14 @@ export default function ToolsPage() {
                       isConnected ? "bg-secondary" : "bg-muted"
                     )}
                   >
-                    <ServiceIcon
-                      icon={getServiceIcon(service.id)}
+                    <ModuleIcon
+                      icon={getModuleIcon(module.id)}
                       className={cn("h-6 w-6", isConnected ? "text-foreground" : "text-muted-foreground")}
                     />
                   </div>
                   <div className="text-center w-full">
                     <div className={cn("font-semibold text-sm", !isConnected && "text-muted-foreground")}>
-                      {service.name}
+                      {module.name}
                     </div>
                     {isConnected ? (
                       <div className="flex items-center justify-center gap-1 mt-0.5">
@@ -663,7 +666,7 @@ export default function ToolsPage() {
                         className="w-full h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setDisconnectDialog(service.id)
+                          setDisconnectDialog(module.id)
                         }}
                       >
                         <Unlink className="h-3 w-3 mr-1" />
@@ -675,7 +678,7 @@ export default function ToolsPage() {
                         className="w-full h-7 text-xs"
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleConnect(service.id)
+                          handleConnect(module.id)
                         }}
                       >
                         <Link2 className="h-3 w-3 mr-1" />
@@ -698,18 +701,18 @@ export default function ToolsPage() {
         </Button>
       </div>
 
-      {/* 選択されたサービスの詳細 */}
-      {selectedService && (
+      {/* 選択されたモジュールの詳細 */}
+      {selectedModule && (
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
-                  <ServiceIcon icon={getServiceIcon(selectedService.id)} className="h-6 w-6 text-foreground" />
+                  <ModuleIcon icon={getModuleIcon(selectedModule.id)} className="h-6 w-6 text-foreground" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{selectedService.name}</CardTitle>
+                    <CardTitle className="text-lg">{selectedModule.name}</CardTitle>
                     {isSelectedConnected && (
                       <Badge
                         style={{
@@ -723,23 +726,23 @@ export default function ToolsPage() {
                       </Badge>
                     )}
                   </div>
-                  <CardDescription>{getServiceDescription(selectedService, language)}</CardDescription>
+                  <CardDescription>{getModuleDescription(selectedModule, language)}</CardDescription>
                 </div>
               </div>
               <div className="flex gap-2">
                 {isSelectedConnected ? (
                   <>
-                    <Button variant="outline" size="sm" onClick={() => handleConnect(selectedService.id)}>
+                    <Button variant="outline" size="sm" onClick={() => handleConnect(selectedModule.id)}>
                       <Link2 className="h-4 w-4 mr-1" />
                       更新
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setDisconnectDialog(selectedService.id)}>
+                    <Button variant="outline" size="sm" onClick={() => setDisconnectDialog(selectedModule.id)}>
                       <Unlink className="h-4 w-4 mr-1" />
                       切断
                     </Button>
                   </>
                 ) : (
-                  <Button onClick={() => handleConnect(selectedService.id)}>
+                  <Button onClick={() => handleConnect(selectedModule.id)}>
                     <Link2 className="h-4 w-4 mr-2" />
                     接続する
                   </Button>
@@ -755,11 +758,11 @@ export default function ToolsPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium text-sm text-foreground">カスタム説明</h3>
                   <span className="text-xs text-muted-foreground">
-                    {(editingModuleId === selectedModule.id ? editingDescription : getModuleDescription(selectedModule.id) || "").length}/256
+                    {(editingModuleId === selectedModule.id ? editingDescription : getUserModuleDescription(selectedModule.id) || "").length}/256
                   </span>
                 </div>
                 <Textarea
-                  value={editingModuleId === selectedModule.id ? editingDescription : getModuleDescription(selectedModule.id) || ""}
+                  value={editingModuleId === selectedModule.id ? editingDescription : getUserModuleDescription(selectedModule.id) || ""}
                   onChange={(e) => {
                     if (editingModuleId !== selectedModule.id) {
                       setEditingModuleId(selectedModule.id)
@@ -769,7 +772,7 @@ export default function ToolsPage() {
                   onFocus={() => {
                     if (editingModuleId !== selectedModule.id) {
                       setEditingModuleId(selectedModule.id)
-                      setEditingDescription(getModuleDescription(selectedModule.id) || "")
+                      setEditingDescription(getUserModuleDescription(selectedModule.id) || "")
                     }
                   }}
                   placeholder="このモジュールの使い方や注意点を記述してください（AIへの追加コンテキストとして使用されます）"
@@ -914,13 +917,13 @@ export default function ToolsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              {dialogService && (
+              {dialogModule && (
                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                  <ServiceIcon icon={getServiceIcon(dialogService.id)} className="h-5 w-5 text-foreground" />
+                  <ModuleIcon icon={getModuleIcon(dialogModule.id)} className="h-5 w-5 text-foreground" />
                 </div>
               )}
               <div>
-                <DialogTitle>{dialogService?.name}に接続</DialogTitle>
+                <DialogTitle>{dialogModule?.name}に接続</DialogTitle>
                 <DialogDescription>認証情報を入力してください</DialogDescription>
               </div>
             </div>
@@ -1032,7 +1035,7 @@ export default function ToolsPage() {
           <DialogHeader>
             <DialogTitle>接続を解除しますか？</DialogTitle>
             <DialogDescription>
-              {disconnectDialog && services.find((s) => s.id === disconnectDialog)?.name}
+              {disconnectDialog && modules.find((m) => m.id === disconnectDialog)?.name}
               との接続を解除します。この操作は取り消せません。
             </DialogDescription>
           </DialogHeader>

@@ -2,10 +2,9 @@ import { createClient } from './supabase/client'
 import { validateToken } from './token-validator'
 import { saveDefaultToolSettings } from './tool-settings'
 
-// RPC: list_service_connections の戻り値に対応
+// RPC: list_my_credentials の戻り値に対応
 export interface ServiceConnection {
-  id: string
-  service: string
+  module: string
   created_at: string
   updated_at: string
 }
@@ -29,11 +28,11 @@ export class TokenVaultError extends Error {
   }
 }
 
-// RPC: list_service_connections を呼び出し
+// RPC: list_my_credentials を呼び出し
 export async function getMyConnections(): Promise<ServiceConnection[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('list_service_connections')
+  const { data, error } = await supabase.rpc('list_my_credentials')
 
   if (error) {
     throw new TokenVaultError(error.message, error.code)
@@ -126,14 +125,14 @@ export async function upsertTokenWithVerification(
   }
 
   // Step 2: Vaultへ登録（最低1秒表示）
-  // RPC: upsert_service_token(p_service, p_credentials)
+  // RPC: upsert_my_credential(p_module, p_credentials)
   onProgress({ step: 'saving', message: 'トークンを保存中...' })
 
   const credentials = buildCredentials(params)
 
   const { error } = await withMinDelay(
-    supabase.rpc('upsert_service_token', {
-      p_service: params.service,
+    supabase.rpc('upsert_my_credential', {
+      p_module: params.service,
       p_credentials: credentials as unknown as Record<string, never>,
     }),
     1000
@@ -144,11 +143,11 @@ export async function upsertTokenWithVerification(
   }
 
   // Step 3: Vaultから取得して検証（最低1秒表示）
-  // RPC: list_service_connections
+  // RPC: list_my_credentials
   onProgress({ step: 'verifying', message: '接続を確認中...' })
 
   const { data: connections, error: verifyError } = await withMinDelay(
-    supabase.rpc('list_service_connections'),
+    supabase.rpc('list_my_credentials'),
     1000
   )
 
@@ -156,7 +155,7 @@ export async function upsertTokenWithVerification(
     throw new TokenVaultError(verifyError.message, verifyError.code)
   }
 
-  const savedConnection = connections?.find((c: ServiceConnection) => c.service === params.service)
+  const savedConnection = connections?.find((c: ServiceConnection) => c.module === params.service)
   if (!savedConnection) {
     throw new TokenVaultError('接続の確認に失敗しました')
   }
@@ -168,14 +167,14 @@ export async function upsertTokenWithVerification(
   onProgress({ step: 'completed', message: '接続完了' })
 }
 
-// RPC: upsert_service_token(p_service, p_credentials)
+// RPC: upsert_my_credential(p_module, p_credentials)
 export async function upsertToken(params: UpsertTokenParams): Promise<void> {
   const supabase = createClient()
 
   const credentials = buildCredentials(params)
 
-  const { error } = await supabase.rpc('upsert_service_token', {
-    p_service: params.service,
+  const { error } = await supabase.rpc('upsert_my_credential', {
+    p_module: params.service,
     p_credentials: credentials as unknown as Record<string, never>,
   })
 
@@ -184,17 +183,17 @@ export async function upsertToken(params: UpsertTokenParams): Promise<void> {
   }
 }
 
-// RPC: delete_service_token(p_service)
+// RPC: delete_my_credential(p_module)
 export async function deleteToken(service: string): Promise<boolean> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('delete_service_token', {
-    p_service: service,
+  const { data, error } = await supabase.rpc('delete_my_credential', {
+    p_module: service,
   })
 
   if (error) {
     throw new TokenVaultError(error.message, error.code)
   }
 
-  return data?.deleted ?? false
+  return (data as { deleted?: boolean } | null)?.deleted ?? false
 }

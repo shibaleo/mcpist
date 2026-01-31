@@ -6,274 +6,878 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
-  public: {
-    Tables: Record<string, never>
-    Views: Record<string, never>
-    Functions: {
-      get_user_context: {
-        Args: {
-          p_user_id: string
-        }
-        Returns: {
-          account_status: string
-          free_credits: number
-          paid_credits: number
-          enabled_modules: string[]
-          enabled_tools: Json
-          language: string
-          module_descriptions: Json
-        }[]
-      }
-      list_service_connections: {
-        Args: Record<string, never>
-        Returns: {
-          id: string
-          service: string
+export type Database = {
+  mcpist: {
+    Tables: {
+      api_keys: {
+        Row: {
           created_at: string
-          updated_at: string
-        }[]
-      }
-      upsert_service_token: {
-        Args: {
-          p_service: string
-          p_credentials: Json
-        }
-        Returns: void
-      }
-      delete_service_token: {
-        Args: {
-          p_service: string
-        }
-        Returns: {
-          deleted: boolean
-        }
-      }
-      get_user_role: {
-        Args: Record<string, never>
-        Returns: string
-      }
-      list_api_keys: {
-        Args: Record<string, never>
-        Returns: {
+          expires_at: string | null
           id: string
-          name: string
+          key_hash: string
           key_prefix: string
           last_used_at: string | null
-          expires_at: string | null
-          created_at: string
-          is_expired: boolean
-        }[]
-      }
-      generate_api_key: {
-        Args: {
-          p_name: string
-          p_expires_in_days?: number | null
+          name: string
+          revoked_at: string | null
+          user_id: string
         }
-        Returns: {
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          credit_type: string | null
+          id: string
+          module: string | null
+          request_id: string | null
+          task_id: string | null
+          tool: string | null
+          type: Database["mcpist"]["Enums"]["credit_transaction_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credit_type?: string | null
+          id?: string
+          module?: string | null
+          request_id?: string | null
+          task_id?: string | null
+          tool?: string | null
+          type: Database["mcpist"]["Enums"]["credit_transaction_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credit_type?: string | null
+          id?: string
+          module?: string | null
+          request_id?: string | null
+          task_id?: string | null
+          tool?: string | null
+          type?: Database["mcpist"]["Enums"]["credit_transaction_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credits: {
+        Row: {
+          free_credits: number
+          paid_credits: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          free_credits?: number
+          paid_credits?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          free_credits?: number
+          paid_credits?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_settings: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          module_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          module_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          module_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_settings_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules: {
+        Row: {
+          created_at: string
           id: string
           name: string
-          key: string
-          key_prefix: string
-          expires_at: string | null
+          status: Database["mcpist"]["Enums"]["module_status"]
         }
-      }
-      revoke_api_key: {
-        Args: {
-          p_key_id: string
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status?: Database["mcpist"]["Enums"]["module_status"]
         }
-        Returns: void
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: Database["mcpist"]["Enums"]["module_status"]
+        }
+        Relationships: []
       }
-      get_service_token: {
+      oauth_apps: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          provider: string
+          redirect_uri: string
+          secret_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          provider: string
+          redirect_uri: string
+          secret_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          provider?: string
+          redirect_uri?: string
+          secret_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      processed_webhook_events: {
+        Row: {
+          event_id: string
+          processed_at: string
+          user_id: string
+        }
+        Insert: {
+          event_id: string
+          processed_at?: string
+          user_id: string
+        }
+        Update: {
+          event_id?: string
+          processed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processed_webhook_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          module_id: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          module_id?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          module_id?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompts_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tool_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          module_id: string
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          module_id: string
+          tool_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          module_id?: string
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_settings_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_credentials: {
+        Row: {
+          created_at: string
+          credentials: string
+          id: string
+          module: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credentials: string
+          id?: string
+          module: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credentials?: string
+          id?: string
+          module?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_credentials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          account_status: Database["mcpist"]["Enums"]["account_status"]
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          settings: Json | null
+          stripe_customer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_status?: Database["mcpist"]["Enums"]["account_status"]
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          settings?: Json | null
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_status?: Database["mcpist"]["Enums"]["account_status"]
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          settings?: Json | null
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      add_user_credits: {
         Args: {
-          p_service: string
+          p_amount: number
+          p_credit_type: string
+          p_event_id: string
+          p_user_id: string
         }
         Returns: Json
       }
-      list_oauth_consents: {
-        Args: Record<string, never>
-        Returns: {
-          id: string
-          client_id: string
-          client_name: string | null
-          scopes: string
-          granted_at: string
-        }[]
+      complete_user_onboarding: {
+        Args: { p_event_id: string; p_user_id: string }
+        Returns: Json
       }
-      revoke_oauth_consent: {
+      consume_user_credits: {
         Args: {
-          p_consent_id: string
+          p_amount: number
+          p_module: string
+          p_request_id: string
+          p_task_id?: string
+          p_tool: string
+          p_user_id: string
         }
-        Returns: {
-          revoked: boolean
-        }
+        Returns: Json
       }
-      list_all_oauth_consents: {
-        Args: Record<string, never>
+      delete_my_prompt: { Args: { p_prompt_id: string }; Returns: Json }
+      delete_oauth_app: { Args: { p_provider: string }; Returns: Json }
+      get_my_module_descriptions: {
+        Args: never
         Returns: {
-          id: string
-          user_id: string
-          user_email: string | null
-          client_id: string
-          client_name: string | null
-          scopes: string
-          granted_at: string
+          description: string
+          module_name: string
         }[]
       }
-      list_oauth_apps: {
-        Args: Record<string, never>
+      get_my_prompt: { Args: { p_prompt_id: string }; Returns: Json }
+      get_my_settings: { Args: never; Returns: Json }
+      get_my_tool_settings: {
+        Args: { p_module_name?: string }
         Returns: {
-          provider: string
-          redirect_uri: string
           enabled: boolean
-          has_credentials: boolean
-          client_id: string | null
+          module_name: string
+          tool_id: string
+        }[]
+      }
+      get_oauth_app_credentials: { Args: { p_provider: string }; Returns: Json }
+      get_stripe_customer_id: { Args: { p_user_id: string }; Returns: string }
+      get_user_by_stripe_customer: {
+        Args: { p_stripe_customer_id: string }
+        Returns: string
+      }
+      get_user_context: {
+        Args: { p_user_id: string }
+        Returns: {
+          account_status: string
+          enabled_modules: string[]
+          enabled_tools: Json
+          free_credits: number
+          language: string
+          module_descriptions: Json
+          paid_credits: number
+        }[]
+      }
+      get_user_credential: {
+        Args: { p_module: string; p_user_id: string }
+        Returns: Json
+      }
+      link_stripe_customer: {
+        Args: { p_stripe_customer_id: string; p_user_id: string }
+        Returns: Json
+      }
+      list_my_prompts: {
+        Args: { p_module_name?: string }
+        Returns: {
+          content: string
           created_at: string
+          id: string
+          module_name: string
+          name: string
           updated_at: string
         }[]
       }
-      upsert_oauth_app: {
-        Args: {
-          p_provider: string
-          p_client_id: string
-          p_client_secret: string
-          p_redirect_uri: string
-          p_enabled?: boolean
-        }
-        Returns: {
-          success: boolean
-          action: string
-          provider: string
-        }
+      list_oauth_apps: { Args: never; Returns: Json }
+      lookup_user_by_key_hash: { Args: { p_key_hash: string }; Returns: Json }
+      update_my_settings: { Args: { p_settings: Json }; Returns: Json }
+      upsert_my_module_description: {
+        Args: { p_description: string; p_module_name: string }
+        Returns: Json
       }
-      delete_oauth_app: {
+      upsert_my_prompt: {
         Args: {
-          p_provider: string
+          p_content: string
+          p_module_name?: string
+          p_name: string
+          p_prompt_id?: string
         }
-        Returns: {
-          success: boolean
-          provider?: string
-          error?: string
-          message?: string
-        }
-      }
-      get_oauth_app_credentials: {
-        Args: {
-          p_provider: string
-        }
-        Returns: {
-          provider?: string
-          client_id?: string
-          client_secret?: string
-          redirect_uri?: string
-          error?: string
-          message?: string
-        }
-      }
-      get_my_tool_settings: {
-        Args: {
-          p_module_name?: string | null
-        }
-        Returns: {
-          module_name: string
-          tool_id: string
-          enabled: boolean
-        }[]
+        Returns: Json
       }
       upsert_my_tool_settings: {
         Args: {
-          p_module_name: string
-          p_enabled_tools: string[]
           p_disabled_tools: string[]
+          p_enabled_tools: string[]
+          p_module_name: string
         }
+        Returns: Json
+      }
+      upsert_oauth_app: {
+        Args: {
+          p_client_id: string
+          p_client_secret: string
+          p_enabled?: boolean
+          p_provider: string
+          p_redirect_uri: string
+        }
+        Returns: Json
+      }
+      upsert_user_credential: {
+        Args: { p_credentials: Json; p_module: string; p_user_id: string }
+        Returns: Json
+      }
+    }
+    Enums: {
+      account_status: "pre_active" | "active" | "suspended" | "disabled"
+      credit_transaction_type:
+        | "consume"
+        | "purchase"
+        | "monthly_reset"
+        | "bonus"
+      module_status:
+        | "active"
+        | "coming_soon"
+        | "maintenance"
+        | "beta"
+        | "deprecated"
+        | "disabled"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      add_user_credits: {
+        Args: {
+          p_amount: number
+          p_credit_type: string
+          p_event_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      complete_user_onboarding: {
+        Args: { p_event_id: string; p_user_id: string }
+        Returns: Json
+      }
+      consume_user_credits: {
+        Args: {
+          p_amount: number
+          p_module: string
+          p_request_id: string
+          p_task_id?: string
+          p_tool: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      delete_my_credential: { Args: { p_module: string }; Returns: Json }
+      delete_my_prompt: { Args: { p_prompt_id: string }; Returns: Json }
+      delete_oauth_app: { Args: { p_provider: string }; Returns: Json }
+      generate_my_api_key: {
+        Args: { p_display_name: string; p_expires_at?: string }
         Returns: Json
       }
       get_my_module_descriptions: {
-        Args: Record<string, never>
+        Args: never
         Returns: {
-          module_name: string
           description: string
+          module_name: string
         }[]
       }
-      upsert_my_module_description: {
-        Args: {
-          p_module_name: string
-          p_description: string
-        }
-        Returns: Json
-      }
-      get_my_preferences: {
-        Args: Record<string, never>
+      get_my_prompt: { Args: { p_prompt_id: string }; Returns: Json }
+      get_my_role: { Args: never; Returns: Json }
+      get_my_settings: { Args: never; Returns: Json }
+      get_my_tool_settings: {
+        Args: { p_module_name?: string }
         Returns: {
+          enabled: boolean
+          module_name: string
+          tool_id: string
+        }[]
+      }
+      get_oauth_app_credentials: { Args: { p_provider: string }; Returns: Json }
+      get_stripe_customer_id: { Args: { p_user_id: string }; Returns: string }
+      get_user_by_stripe_customer: {
+        Args: { p_stripe_customer_id: string }
+        Returns: string
+      }
+      get_user_context: {
+        Args: { p_user_id: string }
+        Returns: {
+          account_status: string
+          enabled_modules: string[]
+          enabled_tools: Json
+          free_credits: number
           language: string
+          module_descriptions: Json
+          paid_credits: number
         }[]
       }
-      upsert_my_preferences: {
-        Args: {
-          p_language?: string | null
-        }
+      get_user_credential: {
+        Args: { p_module: string; p_user_id: string }
         Returns: Json
-      }
-      // Onboarding
-      complete_onboarding: {
-        Args: {
-          p_user_id: string
-          p_event_id: string
-        }
-        Returns: {
-          success: boolean
-          already_completed?: boolean
-          credits_granted?: number
-          status?: string
-          error?: string
-          message?: string
-        }
-      }
-      // Stripe integration
-      get_stripe_customer_id: {
-        Args: {
-          p_user_id: string
-        }
-        Returns: {
-          stripe_customer_id: string | null
-        }
       }
       link_stripe_customer: {
-        Args: {
-          p_user_id: string
-          p_stripe_customer_id: string
-        }
-        Returns: {
-          success: boolean
-          stripe_customer_id?: string
-          error?: string
-        }
+        Args: { p_stripe_customer_id: string; p_user_id: string }
+        Returns: Json
       }
-      add_credits: {
-        Args: {
-          p_user_id: string
-          p_amount: number
-          p_credit_type: string  // 'free' or 'paid'
-          p_event_id: string
-        }
+      list_all_oauth_consents: {
+        Args: never
         Returns: {
-          success: boolean
-          credit_type?: string
-          free_credits?: number
-          paid_credits?: number
-          added?: number
-          error?: string
-          message?: string
-        }
+          client_id: string
+          client_name: string
+          granted_at: string
+          id: string
+          scopes: string
+          user_email: string
+          user_id: string
+        }[]
       }
-      get_user_by_stripe_customer: {
+      list_modules: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }[]
+      }
+      list_my_api_keys: {
+        Args: never
+        Returns: {
+          display_name: string
+          expires_at: string
+          id: string
+          key_prefix: string
+          last_used_at: string
+          revoked_at: string
+        }[]
+      }
+      list_my_credentials: {
+        Args: never
+        Returns: {
+          created_at: string
+          module: string
+          updated_at: string
+        }[]
+      }
+      list_my_oauth_consents: {
+        Args: never
+        Returns: {
+          client_id: string
+          client_name: string
+          granted_at: string
+          id: string
+          scopes: string
+        }[]
+      }
+      list_my_prompts: {
+        Args: { p_module_name?: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          module_name: string
+          name: string
+          updated_at: string
+        }[]
+      }
+      list_oauth_apps: { Args: never; Returns: Json }
+      lookup_user_by_key_hash: { Args: { p_key_hash: string }; Returns: Json }
+      revoke_my_api_key: { Args: { p_key_id: string }; Returns: Json }
+      revoke_my_oauth_consent: { Args: { p_consent_id: string }; Returns: Json }
+      sync_modules: { Args: { p_modules: string[] }; Returns: Json }
+      update_my_settings: { Args: { p_settings: Json }; Returns: Json }
+      upsert_my_credential: {
+        Args: { p_credentials: Json; p_module: string }
+        Returns: Json
+      }
+      upsert_my_module_description: {
+        Args: { p_description: string; p_module_name: string }
+        Returns: Json
+      }
+      upsert_my_prompt: {
         Args: {
-          p_stripe_customer_id: string
+          p_content: string
+          p_module_name?: string
+          p_name: string
+          p_prompt_id?: string
         }
-        Returns: string | null
+        Returns: Json
+      }
+      upsert_my_tool_settings: {
+        Args: {
+          p_disabled_tools: string[]
+          p_enabled_tools: string[]
+          p_module_name: string
+        }
+        Returns: Json
+      }
+      upsert_oauth_app: {
+        Args: {
+          p_client_id: string
+          p_client_secret: string
+          p_enabled?: boolean
+          p_provider: string
+          p_redirect_uri: string
+        }
+        Returns: Json
+      }
+      upsert_user_credential: {
+        Args: { p_credentials: Json; p_module: string; p_user_id: string }
+        Returns: Json
       }
     }
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  mcpist: {
+    Enums: {
+      account_status: ["pre_active", "active", "suspended", "disabled"],
+      credit_transaction_type: [
+        "consume",
+        "purchase",
+        "monthly_reset",
+        "bonus",
+      ],
+      module_status: [
+        "active",
+        "coming_soon",
+        "maintenance",
+        "beta",
+        "deprecated",
+        "disabled",
+      ],
+    },
+  },
+  public: {
+    Enums: {},
+  },
+} as const
+

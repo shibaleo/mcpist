@@ -59,7 +59,7 @@ export async function getUserCredits(): Promise<UserCredits | null> {
 export async function getServiceConnections(): Promise<ServiceConnection[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('list_service_connections')
+  const { data, error } = await supabase.rpc('list_my_credentials')
 
   if (error) {
     console.error('Failed to fetch service connections:', error)
@@ -67,9 +67,9 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
   }
 
   // Map RPC response to ServiceConnection interface
-  return (data || []).map((item: { id: string; service: string; created_at: string; updated_at: string }) => ({
-    id: item.id,
-    service: item.service,
+  return (data || []).map((item: { module: string; created_at: string; updated_at: string }) => ({
+    id: item.module,
+    service: item.module,
     connected_at: item.created_at,
     updated_at: item.updated_at
   }))

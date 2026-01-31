@@ -28,7 +28,9 @@ async function verifyAdmin(): Promise<{ isAdmin: boolean; userId?: string }> {
     return { isAdmin: false }
   }
 
-  const { data: role } = await supabase.rpc("get_user_role")
+  const { data } = await supabase.rpc("get_my_role")
+  // RPC returns { role: "user" | "admin" }
+  const role = (data as { role: string } | null)?.role
   return { isAdmin: role === "admin", userId: user.id }
 }
 

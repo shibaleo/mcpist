@@ -13,8 +13,8 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     // preferences を更新
-    const { data, error } = await supabase.rpc("update_my_preferences", {
-      p_preferences: body,
+    const { data, error } = await supabase.rpc("update_my_settings", {
+      p_settings: body,
     })
 
     if (error) {
@@ -44,7 +44,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data, error } = await supabase.rpc("get_my_preferences")
+    const { data, error } = await supabase.rpc("get_my_settings")
 
     if (error) {
       console.error("Failed to get preferences:", error)

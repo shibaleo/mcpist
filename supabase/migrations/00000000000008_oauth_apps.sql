@@ -124,9 +124,14 @@ SET search_path = mcpist, vault, public
 AS $$
 DECLARE
     v_existing_secret_id UUID;
+    v_orphan_secret_id UUID;
     v_new_secret_id UUID;
-    v_credentials JSONB;
+    v_credentials TEXT;
+    v_secret_name TEXT;
 BEGIN
+    v_secret_name := 'oauth_app_' || p_provider;
+
+    -- oauth_apps テーブルから既存レコードを検索
     SELECT oa.secret_id INTO v_existing_secret_id
     FROM mcpist.oauth_apps oa
     WHERE oa.provider = p_provider;
@@ -134,13 +139,17 @@ BEGIN
     v_credentials := jsonb_build_object(
         'client_id', p_client_id,
         'client_secret', p_client_secret
-    );
+    )::TEXT;
 
     IF v_existing_secret_id IS NOT NULL THEN
-        UPDATE vault.secrets
-        SET secret = v_credentials::TEXT,
-            updated_at = NOW()
-        WHERE id = v_existing_secret_id;
+        -- 既存シークレットを更新（vault.update_secret を使用）
+        PERFORM vault.update_secret(
+            v_existing_secret_id,
+            v_credentials,
+            NULL,  -- scope (not changed)
+            v_secret_name,
+            'OAuth client credentials for ' || p_provider
+        );
 
         UPDATE mcpist.oauth_apps
         SET redirect_uri = p_redirect_uri,
@@ -154,13 +163,29 @@ BEGIN
             'provider', p_provider
         );
     ELSE
-        INSERT INTO vault.secrets (secret, name, description)
-        VALUES (
-            v_credentials::TEXT,
-            'oauth_app_' || p_provider,
-            'OAuth client credentials for ' || p_provider
-        )
-        RETURNING id INTO v_new_secret_id;
+        -- 孤立したシークレット（oauth_appsに紐づいていないが同名のもの）を検索
+        SELECT id INTO v_orphan_secret_id
+        FROM vault.secrets
+        WHERE name = v_secret_name;
+
+        IF v_orphan_secret_id IS NOT NULL THEN
+            -- 孤立したシークレットを更新して再利用
+            PERFORM vault.update_secret(
+                v_orphan_secret_id,
+                v_credentials,
+                NULL,
+                v_secret_name,
+                'OAuth client credentials for ' || p_provider
+            );
+            v_new_secret_id := v_orphan_secret_id;
+        ELSE
+            -- 新規シークレットを作成（vault.create_secret を使用）
+            v_new_secret_id := vault.create_secret(
+                v_credentials,
+                v_secret_name,
+                'OAuth client credentials for ' || p_provider
+            );
+        END IF;
 
         INSERT INTO mcpist.oauth_apps (provider, secret_id, redirect_uri, enabled)
         VALUES (p_provider, v_new_secret_id, p_redirect_uri, p_enabled);
@@ -265,7 +290,9 @@ BEGIN
     END IF;
 
     DELETE FROM mcpist.oauth_apps WHERE provider = p_provider;
-    DELETE FROM vault.secrets WHERE id = v_secret_id;
+
+    -- vault.delete_secret を使用してシークレットを削除
+    PERFORM vault.delete_secret(v_secret_id);
 
     RETURN jsonb_build_object(
         'success', true,

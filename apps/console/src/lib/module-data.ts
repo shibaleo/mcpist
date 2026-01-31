@@ -1,8 +1,7 @@
-// Module and Service data from Go server definitions
-// This file provides type-safe access to tools.json and services.json
+// Module data from Go server definitions
+// This file provides type-safe access to tools.json
 
 import toolsData from "./tools.json"
-import servicesData from "./services.json"
 
 // MCP Tool Annotations (MCP spec 2025-11-25)
 export interface ToolAnnotations {
@@ -47,21 +46,8 @@ export interface ToolsExport {
   modules: ModuleDef[]
 }
 
-// Types from services.json (same as get_module_schema output)
-export interface ServiceDef {
-  id: string
-  name: string
-  descriptions: LocalizedText
-  apiVersion: string
-}
-
-export interface ServicesExport {
-  services: ServiceDef[]
-}
-
 // Export typed data
 export const modules: ModuleDef[] = (toolsData as ToolsExport).modules
-export const services: ServiceDef[] = (servicesData as ServicesExport).services
 
 // Localization helpers
 const DEFAULT_LANG = "ja-JP"
@@ -88,16 +74,6 @@ export function getModuleDescription(
 }
 
 /**
- * Get service description for a specific language
- */
-export function getServiceDescription(
-  service: ServiceDef,
-  lang: string = DEFAULT_LANG
-): string {
-  return getLocalizedText(service.descriptions, lang)
-}
-
-/**
  * Get tool description for a specific language
  */
 export function getToolDescription(
@@ -112,16 +88,12 @@ export function getModule(moduleId: string): ModuleDef | undefined {
   return modules.find((m) => m.id === moduleId)
 }
 
-export function getService(serviceId: string): ServiceDef | undefined {
-  return services.find((s) => s.id === serviceId)
-}
-
 export function getModuleTools(moduleId: string): ToolDef[] {
   return getModule(moduleId)?.tools || []
 }
 
-// Map service ID to icon name for UI
-export const serviceIcons: Record<string, string> = {
+// Map module ID to icon name for UI
+export const moduleIcons: Record<string, string> = {
   notion: "file-text",
   github: "github",
   jira: "kanban",
@@ -132,6 +104,6 @@ export const serviceIcons: Record<string, string> = {
   microsoft_todo: "check-square",
 }
 
-export function getServiceIcon(serviceId: string): string {
-  return serviceIcons[serviceId] || "box"
+export function getModuleIcon(moduleId: string): string {
+  return moduleIcons[moduleId] || "box"
 }

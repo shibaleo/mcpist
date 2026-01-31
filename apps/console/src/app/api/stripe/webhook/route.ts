@@ -72,7 +72,7 @@ async function handleCheckoutCompleted(
   }
 
   // Add credits using RPC (handles idempotency)
-  const { data, error } = await adminClient.rpc("add_credits", {
+  const { data, error } = await adminClient.rpc("add_user_credits", {
     p_user_id: userId,
     p_amount: credits,
     p_credit_type: "paid",
@@ -84,13 +84,19 @@ async function handleCheckoutCompleted(
     return
   }
 
-  if (data?.success) {
+  const result = data as {
+    success: boolean
+    paid_credits?: number
+    error?: string
+  } | null
+
+  if (result?.success) {
     console.log(
-      `[stripe/webhook] Added ${credits} credits to user ${userId}. New balance: ${data.paid_credits}`
+      `[stripe/webhook] Added ${credits} credits to user ${userId}. New balance: ${result.paid_credits}`
     )
-  } else if (data?.error === "event_already_processed") {
+  } else if (result?.error === "event_already_processed") {
     console.log(`[stripe/webhook] Event ${eventId} already processed, skipping`)
   } else {
-    console.error("[stripe/webhook] Failed to add credits:", data)
+    console.error("[stripe/webhook] Failed to add credits:", result)
   }
 }

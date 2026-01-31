@@ -25,7 +25,7 @@ export async function POST() {
 
     // Complete onboarding (grant credits + set status to active)
     const eventId = `onboarding:${user.id}`
-    const { data, error } = await adminClient.rpc("complete_onboarding", {
+    const { data, error } = await adminClient.rpc("complete_user_onboarding", {
       p_user_id: user.id,
       p_event_id: eventId,
     })
@@ -38,8 +38,17 @@ export async function POST() {
       )
     }
 
-    if (data?.success) {
-      if (data.already_completed) {
+    const result = data as {
+      success: boolean
+      already_completed?: boolean
+      credits_granted?: number
+      status?: string
+      error?: string
+      message?: string
+    } | null
+
+    if (result?.success) {
+      if (result.already_completed) {
         console.log(
           `[api/credits/grant-signup-bonus] Onboarding already completed for ${user.id}`
         )
@@ -50,17 +59,17 @@ export async function POST() {
         })
       }
       console.log(
-        `[api/credits/grant-signup-bonus] Onboarding completed for user ${user.id}, granted ${data.credits_granted} credits`
+        `[api/credits/grant-signup-bonus] Onboarding completed for user ${user.id}, granted ${result.credits_granted} credits`
       )
       return NextResponse.json({
         success: true,
-        credits_granted: data.credits_granted,
-        status: data.status,
+        credits_granted: result.credits_granted,
+        status: result.status,
       })
     } else {
-      console.error("[api/credits/grant-signup-bonus] Unexpected response:", data)
+      console.error("[api/credits/grant-signup-bonus] Unexpected response:", result)
       return NextResponse.json(
-        { success: false, error: data?.error || "unexpected", message: data?.message || "予期せぬエラー" },
+        { success: false, error: result?.error || "unexpected", message: result?.message || "予期せぬエラー" },
         { status: 500 }
       )
     }

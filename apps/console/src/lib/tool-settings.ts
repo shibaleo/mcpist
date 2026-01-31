@@ -43,7 +43,7 @@ export async function getMyToolSettings(moduleName?: string): Promise<ToolSettin
   const supabase = createClient()
 
   const { data, error } = await supabase.rpc("get_my_tool_settings", {
-    p_module_name: moduleName ?? null,
+    p_module_name: moduleName,
   })
 
   if (error) {

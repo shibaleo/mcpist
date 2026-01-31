@@ -59,7 +59,7 @@ func (uc *UserContext) IsToolEnabled(module, tool string) bool {
 	return false
 }
 
-// ConsumeResult represents the result of consume_credit RPC
+// ConsumeResult represents the result of consume_user_credits RPC
 type ConsumeResult struct {
 	Success          bool   `json:"success"`
 	FreeCredits      int    `json:"free_credits"`
@@ -237,7 +237,7 @@ func (s *UserStore) ConsumeCredit(userID, module, tool string, amount int, reque
 
 	req, err := http.NewRequest(
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/consume_credit",
+		s.supabaseURL+"/rest/v1/rpc/consume_user_credits",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -250,12 +250,12 @@ func (s *UserStore) ConsumeCredit(userID, module, tool string, amount int, reque
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call consume_credit: %w", err)
+		return nil, fmt.Errorf("failed to call consume_user_credits: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("consume_credit failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("consume_user_credits failed: status %d", resp.StatusCode)
 	}
 
 	var result ConsumeResult

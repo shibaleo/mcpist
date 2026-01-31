@@ -30,12 +30,12 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "trending-up": TrendingUp,
 }
 
-interface ServiceIconProps {
+interface ModuleIconProps {
   icon: string
   className?: string
 }
 
-export function ServiceIcon({ icon, className }: ServiceIconProps) {
+export function ModuleIcon({ icon, className }: ModuleIconProps) {
   const Icon = iconMap[icon] || Wrench
   return <Icon className={className} />
 }
