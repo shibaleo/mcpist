@@ -2,35 +2,24 @@
 
 ## 日付
 
-2026-01-31
+2026-01-31（更新: 2026-02-01）
 
 ---
 
-## バックログ概要
-
-| カテゴリ | 件数 | 優先度: 高 | 優先度: 中 | 優先度: 低 |
-|----------|------|------------|------------|------------|
-| RPC変更対応 | 5 | 3 | 2 | 0 |
-| 仕様書整備 | 4 | 4 | 0 | 0 |
-| 設計書作成 | 2 | 1 | 1 | 0 |
-| 機能実装 | 5 | 0 | 2 | 3 |
-| 開発基盤 | 3 | 0 | 1 | 2 |
-| UI/UX | 5 | 0 | 0 | 5 |
-| **合計** | **24** | **8** | **6** | **10** |
-
----
-
-## 優先度: 高（本日対応）
-
-### RPC変更に伴うコード更新
+## DAY020 完了タスク
 
 | ID | 内容 | 備考 |
 |----|------|------|
-| BL-087 | Console: RPC名変更対応 | `add_user_credits`, `complete_user_onboarding` |
-| BL-088 | MCP Server: RPC名変更対応 | `consume_user_credits` |
-| BL-089 | database.types.ts 再生成 | 新RPC（prompts系）のシグネチャ追加 |
+| D20-001 | database.types.ts 再生成 | Supabase CLI で型生成 |
+| D20-002 | Console ビルド確認 | RPC名変更後の型チェック通過 |
+| E2E-001 | Claude Web E2E テスト | Notion search + get_page_content 成功、クレジット消費確認 |
+| ERD-001 | Liam ERD セットアップ | `pnpm erd:build`, `pnpm erd:serve` 追加 |
 
-### 仕様書整備（spc-itf.md）
+---
+
+## DAY020 やり残し（day020-plan.md より）
+
+### Phase 2: 仕様書整備（未着手）
 
 | ID | 内容 | 備考 |
 |----|------|------|
@@ -39,7 +28,7 @@
 | BL-013 | Console API 設計更新 | REST API → Supabase RPC 方式 |
 | BL-014 | PSP Webhook 仕様整理 | Phase 1 実装に合わせて更新 |
 
-### 設計書作成
+### Phase 3: 設計書作成（未着手）
 
 | ID | 内容 | 備考 |
 |----|------|------|
@@ -47,14 +36,43 @@
 
 ---
 
-## 優先度: 中
+## MCP Primitives 実装（day020-plan-mcp-primitives.md より）
 
-### RPC変更対応
+→ **詳細**: [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md)
+
+### 完了条件（コア機能）
+
+| ID | 項目 | 説明 | 状態 |
+|----|------|------|------|
+| CORE-001 | Google Tasks MCP実装 | google_tasks モジュール追加 | ❌ |
+| CORE-002 | prompts MCP実装 | `prompts/list`, `prompts/get` ハンドラ | ❌ |
+| CORE-003 | Console プロンプト管理UI | ユーザーがカスタムプロンプトを定義可能 | ❌ |
+| CORE-004 | チャットUIからテンプレ実行 | Claude Web等でプロンプト選択・実行 | ❌ |
+| CORE-005 | resources MCP実装 | `resources/list`, `resources/read` ハンドラ | ❌ |
+| CORE-006 | resources/list 動作確認 | Grafana or サーバーログで呼び出し確認 | ❌ |
+| CORE-007 | profile リソース実装 | `mcpist://profile` - ユーザープロフィール | ❌ |
+| CORE-008 | tasks リソース実装 | `mcpist://tasks` - タスク一覧（MS Todo + Google Tasks） | ❌ |
+| CORE-009 | Claude Code E2E | ユーザーが `@` でリソース選択・実行 | ❌ |
+
+---
+
+## 既存バックログ（backlog-open-tasks.md より引き継ぎ）
+
+### 仕様書整備
 
 | ID | 内容 | 備考 |
 |----|------|------|
-| BL-090 | Prompts管理UI実装 | `list_my_prompts`, `upsert_my_prompt`, `delete_my_prompt` |
-| BL-091 | Gateway: lookup_user_by_key_hash 確認 | 呼び出し元がGatewayであることを確認 |
+| BL-010 | Rate Limit記述の更新 | 実装では削除済み。「将来実装予定」に変更 |
+
+### 機能実装
+
+| ID | 内容 | 備考 |
+|----|------|------|
+| BL-015 | enabled_modules 参照API実装 | Console ツール設定で一部実装済み |
+| BL-016 | user_prompts 管理UI実装 | CORE-003 と統合 |
+| BL-017 | usage_stats 参照API実装 | |
+| BL-019 | ツール実行ログにuser_id追加 | |
+| BL-020 | invalid_gateway_secretログ実装 | |
 
 ### 設計書作成
 
@@ -66,33 +84,9 @@
 
 | ID | 内容 | 備考 |
 |----|------|------|
-| BL-086 | 環境変数の Supabase Vault 移行 | 運営シークレット（Stripe API Key等）を Vault で管理 |
-
-### 機能実装
-
-| ID | 内容 | 備考 |
-|----|------|------|
-| BL-016 | user_prompts 管理UI実装 | BL-090 と統合可 |
-| BL-017 | usage_stats 参照API実装 | |
-
----
-
-## 優先度: 低（バックログ）
-
-### 機能実装
-
-| ID | 内容 | 備考 |
-|----|------|------|
-| BL-015 | enabled_modules 参照API実装 | Console ツール設定で一部実装済み |
-| BL-019 | ツール実行ログにuser_id追加 | |
-| BL-020 | invalid_gateway_secretログ実装 | |
-
-### 開発基盤
-
-| ID | 内容 | 備考 |
-|----|------|------|
 | BL-070 | database.types.ts 自動生成フロー整備 | CI/CD組み込み検討 |
-| BL-085 | ユーザートークン保管方式の見直し | Supabase Vault は運営用。ユーザートークンは別検討 |
+| BL-085 | ユーザートークン保管方式の見直し | Supabase Vault は運営用 |
+| BL-086 | 環境変数の Supabase Vault 移行 | 運営シークレット（Stripe API Key等） |
 
 ### UI/UX
 
@@ -101,7 +95,7 @@
 | BL-081 | UX研究 | ユーザーフロー最適化 |
 | BL-082 | UI研究 | デザインシステム検討 |
 | BL-083 | ブランディング・ロゴ作成 | |
-| BL-084 | ソーシャルログイン拡充 | GitHub, Apple など追加検討 |
+| BL-084 | ソーシャルログイン拡充 | GitHub, Apple など |
 
 ### Sprint-005 残タスク
 
@@ -112,32 +106,21 @@
 | S5-062 | 画面遷移図作成 | 認証後のナビゲーション |
 | S5-076 | CIにtools.json検証追加 | |
 | S5-077 | 未使用Goモジュール削除 | |
+| D16-002 | 仕様書の実装追従更新 | spec-impl-compare.md の差分を仕様書に反映 |
+| D16-006 | E2Eテスト設計 | OAuth認可フロー等 |
 
 ### 将来検討
 
 | ID | 内容 | 備考 |
 |----|------|------|
 | BL-060 | RFC 8707 Resource Indicators 対応 | OAuth 2.0 拡張 |
-
----
-
-## DAY019 完了タスク（参考）
-
-| ID | 内容 | 備考 |
-|----|------|------|
-| D19-Stripe | Stripe Phase 1 完了 | Checkout + Webhook + billing UI |
-| D19-Bonus | 初回クレジット付与（Signup Bonus） | pre_active → active 遷移 |
-| D19-Onboarding | オンボーディングフロー改善 | tools step 削除、残高アラート追加 |
-| D19-MCP | MCPサーバーエラーメッセージ改善 | billing URL 追加 |
-| D19-RPC | RPC設計・マイグレーション統合 | Canvas更新、RPCリネーム、prompts RPC作成 |
-| BL-018 | クレジット付与機能（CON→DST） | ✅ 完了 |
-| BL-061 | クレジット初期化をDBトリガーからアプリ層へ移行 | ✅ 完了 |
+| BL-NEW | 管理者画面でツールバッジ表示期間/対象の管理 | tools.jsonではなく管理側で制御 |
 
 ---
 
 ## 参考
 
-- [day020-plan.md](./day020-plan.md) - 計画
+- [day020-plan.md](./day020-plan.md) - 本日計画
+- [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md) - MCP Primitives 調査・計画
 - [day019-backlog.md](./day019-backlog.md) - 前日バックログ
-- [day019-worklog.md](./day019-worklog.md) - 前日作業ログ
-- [day019-review.md](./day019-review.md) - 前日レビュー
+- [backlog-open-tasks.md](./backlog-open-tasks.md) - 全体バックログ

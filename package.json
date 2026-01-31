@@ -17,12 +17,16 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "clean": "turbo clean && rm -rf node_modules",
-    "env:sync": "node scripts/sync-env.js"
+    "env:sync": "node scripts/sync-env.js",
+    "erd:build": "liam erd build --format postgres --input schema.sql",
+    "erd:serve": "serve dist"
   },
   "devDependencies": {
+    "@liam-hq/cli": "^0.7.24",
     "@stoplight/prism-cli": "^5.14.2",
     "concurrently": "^9.2.1",
     "dotenv-cli": "^8.0.0",
+    "serve": "^14.2.5",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3"
   }
