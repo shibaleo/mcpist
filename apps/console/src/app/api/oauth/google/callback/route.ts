@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     // トークン情報を保存
     // expires_at は Unix timestamp (秒) で保存 - dtl-itr-MOD-TVL.md 仕様準拠
     const tokenCredentials = {
-      _auth_type: "oauth2",  // Go Server側でBearer認証として使用するために必要
+      auth_type: "oauth2",
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token || null,
       token_type: tokenData.token_type || "Bearer",

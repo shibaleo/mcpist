@@ -68,7 +68,7 @@ function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
   }
 
   const credentials: Record<string, unknown> = {
-    _auth_type: authType,
+    auth_type: authType,
   }
 
   if (authType === 'basic') {
@@ -76,7 +76,7 @@ function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
     credentials.username = params.username
     credentials.password = params.accessToken
     if (params.metadata) {
-      credentials._metadata = params.metadata
+      credentials.metadata = params.metadata
     }
   } else {
     // OAuth2 / API Key
@@ -91,7 +91,7 @@ function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
       credentials.scope = params.scope
     }
     if (params.expiresAt) {
-      credentials._expires_at = params.expiresAt.toISOString()
+      credentials.expires_at = Math.floor(params.expiresAt.getTime() / 1000) // Unix timestamp
     }
   }
 

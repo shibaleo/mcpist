@@ -45,12 +45,15 @@ const (
 // Supports multiple authentication types as defined in dtl-itr-MOD-TVL.md
 type Credentials struct {
 	// Common fields
-	AuthType string `json:"auth_type"` // oauth2, oauth1, api_key, basic, custom_header
+	// Note: Console saves as "_auth_type", so we support both
+	AuthType  string `json:"auth_type,omitempty"`  // Standard field
+	AuthType2 string `json:"_auth_type,omitempty"` // Legacy field from Console
 
 	// OAuth 2.0 (with refresh support)
 	AccessToken  string `json:"access_token,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"`
-	ExpiresAt    int64  `json:"expires_at,omitempty"` // Unix timestamp
+	ExpiresAt    int64  `json:"expires_at,omitempty"`   // Unix timestamp (int)
+	ExpiresAtStr string `json:"_expires_at,omitempty"` // ISO string from Console
 
 	// OAuth 1.0a
 	ConsumerKey       string `json:"consumer_key,omitempty"`
@@ -69,12 +72,29 @@ type Credentials struct {
 	HeaderName string `json:"header_name,omitempty"`
 
 	// Additional metadata (e.g., domain for Atlassian)
-	Metadata map[string]string `json:"metadata,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Metadata2 map[string]string `json:"_metadata,omitempty"` // Legacy field from Console
 }
 
-// TokenResult represents the result of get_module_token RPC
-// Matches the TVL response format from dtl-itr-MOD-TVL.md
-type TokenResult struct {
+// GetAuthType returns the auth type, checking both standard and legacy fields
+func (c *Credentials) GetAuthType() string {
+	if c.AuthType != "" {
+		return c.AuthType
+	}
+	return c.AuthType2
+}
+
+// GetMetadata returns metadata, checking both standard and legacy fields
+func (c *Credentials) GetMetadata() map[string]string {
+	if c.Metadata != nil {
+		return c.Metadata
+	}
+	return c.Metadata2
+}
+
+// CredentialResult represents the result of get_user_credential RPC
+type CredentialResult struct {
+	Found       bool              `json:"found"`
 	UserID      string            `json:"user_id"`
 	Service     string            `json:"service"`
 	AuthType    string            `json:"auth_type"`
@@ -86,7 +106,7 @@ type TokenResult struct {
 // NewTokenStore creates a new token store
 func NewTokenStore() *TokenStore {
 	// Use SUPABASE_PUBLISHABLE_KEY (anon key) for RPC calls
-	// The get_module_token RPC is SECURITY DEFINER, so anon key works
+	// The get_user_credential RPC is SECURITY DEFINER, so anon key works
 	serviceKey := os.Getenv("SUPABASE_PUBLISHABLE_KEY")
 	if serviceKey == "" {
 		// Fallback to SUPABASE_SECRET_KEY for backwards compatibility
@@ -118,7 +138,7 @@ func (s *TokenStore) GetModuleToken(ctx context.Context, userID, module string) 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/get_module_token",
+		s.supabaseURL+"/rest/v1/rpc/get_user_credential",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -131,36 +151,40 @@ func (s *TokenStore) GetModuleToken(ctx context.Context, userID, module string) 
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call get_module_token: %w", err)
+		return nil, fmt.Errorf("failed to call get_user_credential: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get_module_token failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("get_user_credential failed: status %d", resp.StatusCode)
 	}
 
-	var result TokenResult
+	var result CredentialResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	if result.Error != "" {
-		return nil, fmt.Errorf("token error: %s", result.Error)
+		return nil, fmt.Errorf("credential error: %s", result.Error)
 	}
 
-	if result.Credentials == nil {
-		return nil, fmt.Errorf("no token configured for user: %s, service: %s", userID, module)
+	if !result.Found || result.Credentials == nil {
+		return nil, fmt.Errorf("no credential configured for user: %s, module: %s", userID, module)
 	}
 
-	// Copy auth_type from result to credentials if not set
-	if result.Credentials.AuthType == "" {
-		result.Credentials.AuthType = result.AuthType
+	// Normalize auth_type: use GetAuthType() to check both fields
+	authType := result.Credentials.GetAuthType()
+	if authType == "" {
+		authType = result.AuthType
 	}
+	result.Credentials.AuthType = authType
 
-	// Copy metadata from result to credentials (for Basic auth like Jira/Confluence)
-	if result.Metadata != nil && result.Credentials.Metadata == nil {
-		result.Credentials.Metadata = result.Metadata
+	// Normalize metadata: use GetMetadata() to check both fields
+	metadata := result.Credentials.GetMetadata()
+	if metadata == nil && result.Metadata != nil {
+		metadata = result.Metadata
 	}
+	result.Credentials.Metadata = metadata
 
 	return result.Credentials, nil
 }
@@ -233,10 +257,10 @@ func (s *TokenStore) UpdateModuleToken(ctx context.Context, userID, module strin
 		return nil
 	}
 
-	// Need service_role key for update_module_token (writes to Vault)
+	// Need service_role key for upsert_user_credential (writes to Vault)
 	secretKey := os.Getenv("SUPABASE_SECRET_KEY")
 	if secretKey == "" {
-		return fmt.Errorf("SUPABASE_SECRET_KEY required for token update")
+		return fmt.Errorf("SUPABASE_SECRET_KEY required for credential update")
 	}
 
 	credJSON, err := json.Marshal(credentials)
@@ -252,7 +276,7 @@ func (s *TokenStore) UpdateModuleToken(ctx context.Context, userID, module strin
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/update_module_token",
+		s.supabaseURL+"/rest/v1/rpc/upsert_user_credential",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -265,12 +289,12 @@ func (s *TokenStore) UpdateModuleToken(ctx context.Context, userID, module strin
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to call update_module_token: %w", err)
+		return fmt.Errorf("failed to call upsert_user_credential: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("update_module_token failed: status %d", resp.StatusCode)
+		return fmt.Errorf("upsert_user_credential failed: status %d", resp.StatusCode)
 	}
 
 	var result struct {
@@ -282,7 +306,7 @@ func (s *TokenStore) UpdateModuleToken(ctx context.Context, userID, module strin
 	}
 
 	if !result.Success {
-		return fmt.Errorf("update_module_token failed: %s", result.Error)
+		return fmt.Errorf("upsert_user_credential failed: %s", result.Error)
 	}
 
 	return nil
