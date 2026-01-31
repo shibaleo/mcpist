@@ -602,6 +602,7 @@ export default function McpConnectionPage() {
 {`{
   "mcpServers": {
     "mcpist": {
+      "type": "http",
       "url": "${endpoint}",
       "headers": {
         "Authorization": "Bearer `}<Input
