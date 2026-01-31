@@ -86,7 +86,7 @@ export default function McpConnectionPage() {
   const [keysLoading, setKeysLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deleteDialogKey, setDeleteDialogKey] = useState<ApiKey | null>(null)
-  const [createdKey, setCreatedKey] = useState<GenerateApiKeyResult | null>(null)
+  const [createdKey, setCreatedKey] = useState<(GenerateApiKeyResult & { display_name: string }) | null>(null)
   const [keyCopied, setKeyCopied] = useState(false)
 
   // Create form state
@@ -176,7 +176,7 @@ export default function McpConnectionPage() {
               : 365
 
       const result = await generateApiKey(keyName.trim(), expiresInDays)
-      setCreatedKey(result)
+      setCreatedKey({ ...result, display_name: keyName.trim() })
       await loadApiKeys()
       setCreateDialogOpen(false)
       setKeyName("")
@@ -504,12 +504,15 @@ export default function McpConnectionPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {apiKeys.map((apiKey) => (
+              {apiKeys.map((apiKey) => {
+                const isExpired = apiKey.expires_at && new Date(apiKey.expires_at) < new Date()
+                const isRevoked = !!apiKey.revoked_at
+                return (
                 <div
                   key={apiKey.id}
                   className={cn(
                     "flex items-center justify-between p-3 rounded-lg border",
-                    apiKey.is_expired && "border-warning/50 bg-warning/5"
+                    (isExpired || isRevoked) && "border-warning/50 bg-warning/5"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -518,8 +521,8 @@ export default function McpConnectionPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{apiKey.name}</span>
-                        {apiKey.is_expired && (
+                        <span className="font-medium text-sm">{apiKey.display_name}</span>
+                        {isExpired && (
                           <Badge
                             variant="outline"
                             className="bg-warning/20 text-warning border-warning/30 text-xs"
@@ -528,10 +531,18 @@ export default function McpConnectionPage() {
                             期限切れ
                           </Badge>
                         )}
+                        {isRevoked && (
+                          <Badge
+                            variant="outline"
+                            className="bg-destructive/20 text-destructive border-destructive/30 text-xs"
+                          >
+                            無効化済み
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs font-mono text-muted-foreground">{apiKey.key_prefix}</p>
                       <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                        <span>作成: {formatDate(apiKey.created_at)}</span>
+                        {apiKey.expires_at && <span>有効期限: {formatDate(apiKey.expires_at)}</span>}
                         <span>最終使用: {formatLastUsed(apiKey.last_used_at)}</span>
                       </div>
                     </div>
@@ -545,7 +556,8 @@ export default function McpConnectionPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
+              )})}
+
             </div>
           )}
         </CardContent>
@@ -913,16 +925,16 @@ export default function McpConnectionPage() {
           <div className="py-4">
             <div className="space-y-2">
               <Label>キー名</Label>
-              <p className="text-foreground font-medium">{createdKey?.name}</p>
+              <p className="text-foreground font-medium">{createdKey?.display_name}</p>
             </div>
             <div className="space-y-2 mt-4">
               <Label>APIキー</Label>
               <div className="flex items-center gap-2">
-                <Input value={createdKey?.key || ""} readOnly className="font-mono text-sm" />
+                <Input value={createdKey?.api_key || ""} readOnly className="font-mono text-sm" />
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => createdKey && handleCopyKey(createdKey.key)}
+                  onClick={() => createdKey && handleCopyKey(createdKey.api_key)}
                 >
                   {keyCopied ? (
                     <Check className="h-4 w-4 text-green-500" />
@@ -954,7 +966,7 @@ export default function McpConnectionPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>APIキーを削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
-              「{deleteDialogKey?.name}」を削除します。このキーを使用しているアプリケーションは
+              「{deleteDialogKey?.display_name}」を削除します。このキーを使用しているアプリケーションは
               MCPist に接続できなくなります。この操作は取り消せません。
             </AlertDialogDescription>
           </AlertDialogHeader>

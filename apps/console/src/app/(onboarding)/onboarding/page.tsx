@@ -4,77 +4,58 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ServiceIcon } from "@/components/service-icon"
+import { ModuleIcon } from "@/components/module-icon"
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { modules, getModuleIcon } from "@/lib/module-data"
 
 // TODO: プロダクトツアーを実装
 // - ステップ1: MCPistとは何か、何ができるかの説明
 // - ステップ2: サービス連携 → ツール設定 → AIが使えるようになる流れをアニメーションで視覚的に説明
 // - ステップ3: ダッシュボードへの誘導
 
-// オンボーディングで選択可能なサービス
-const selectableServices = [
-  {
-    id: "google_calendar",
-    name: "Google Calendar",
-    icon: "google-calendar",
-    description: "予定の確認・作成",
-  },
-  {
-    id: "github",
-    name: "GitHub",
-    icon: "github",
-    description: "リポジトリ・Issue管理",
-  },
-  {
-    id: "notion",
-    name: "Notion",
-    icon: "notion",
-    description: "ドキュメント・DB操作",
-  },
-  {
-    id: "jira",
-    name: "Jira",
-    icon: "jira",
-    description: "チケット管理",
-  },
-  {
-    id: "microsoft_todo",
-    name: "Microsoft To Do",
-    icon: "microsoft-todo",
-    description: "タスク管理",
-  },
-  {
-    id: "supabase",
-    name: "Supabase",
-    icon: "supabase",
-    description: "データベース操作",
-  },
+// オンボーディングで選択可能なモジュール（UIでの表示名と説明）
+const moduleDisplayInfo: Record<string, { description: string }> = {
+  google_calendar: { description: "予定の確認・作成" },
+  github: { description: "リポジトリ・Issue管理" },
+  notion: { description: "ドキュメント・DB操作" },
+  jira: { description: "チケット管理" },
+  microsoft_todo: { description: "タスク管理" },
+  supabase: { description: "データベース操作" },
+}
+
+// 表示するモジュールのID順序
+const selectableModuleIds = [
+  "google_calendar",
+  "github",
+  "notion",
+  "jira",
+  "microsoft_todo",
+  "supabase",
 ]
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const [selectedServices, setSelectedServices] = useState<string[]>([])
+  const [selectedModules, setSelectedModules] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
-  const toggleService = (serviceId: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(serviceId)
-        ? prev.filter((id) => id !== serviceId)
-        : [...prev, serviceId]
+  const toggleModule = (moduleId: string) => {
+    setSelectedModules((prev) =>
+      prev.includes(moduleId)
+        ? prev.filter((id) => id !== moduleId)
+        : [...prev, moduleId]
     )
   }
 
   const handleContinue = async () => {
     setSaving(true)
     try {
-      // preferences に preferred_services を保存
+      // preferences に preferred_modules を保存
       const response = await fetch("/api/user/preferences", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preferred_services: selectedServices }),
+        body: JSON.stringify({ preferred_modules: selectedModules }),
       })
 
       if (!response.ok) {
@@ -95,6 +76,11 @@ export default function OnboardingPage() {
   const handleSkip = () => {
     router.push("/dashboard")
   }
+
+  // modules から選択可能なモジュールをフィルタリング
+  const selectableModules = selectableModuleIds
+    .map((id) => modules.find((m) => m.id === id))
+    .filter((m): m is NonNullable<typeof m> => m !== undefined)
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -117,14 +103,15 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        {/* サービス選択グリッド */}
+        {/* モジュール選択グリッド */}
         <div className="grid grid-cols-2 gap-3">
-          {selectableServices.map((service) => {
-            const isSelected = selectedServices.includes(service.id)
+          {selectableModules.map((module) => {
+            const isSelected = selectedModules.includes(module.id)
+            const displayInfo = moduleDisplayInfo[module.id]
             return (
               <div
-                key={service.id}
-                onClick={() => toggleService(service.id)}
+                key={module.id}
+                onClick={() => toggleModule(module.id)}
                 className={cn(
                   "relative p-4 rounded-xl border-2 cursor-pointer transition-all",
                   "hover:border-primary/50 hover:bg-primary/5",
@@ -137,7 +124,7 @@ export default function OnboardingPage() {
                 <div className="absolute top-2 right-2">
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => toggleService(service.id)}
+                    onCheckedChange={() => toggleModule(module.id)}
                     className="pointer-events-none"
                   />
                 </div>
@@ -149,8 +136,8 @@ export default function OnboardingPage() {
                       isSelected ? "bg-primary/20" : "bg-secondary"
                     )}
                   >
-                    <ServiceIcon
-                      icon={service.icon}
+                    <ModuleIcon
+                      icon={getModuleIcon(module.id)}
                       className={cn(
                         "h-6 w-6",
                         isSelected ? "text-primary" : "text-muted-foreground"
@@ -164,10 +151,10 @@ export default function OnboardingPage() {
                         isSelected ? "text-foreground" : "text-muted-foreground"
                       )}
                     >
-                      {service.name}
+                      {module.name}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {service.description}
+                      {displayInfo?.description}
                     </p>
                   </div>
                 </div>
@@ -188,9 +175,9 @@ export default function OnboardingPage() {
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 保存中...
               </>
-            ) : selectedServices.length > 0 ? (
+            ) : selectedModules.length > 0 ? (
               <>
-                {selectedServices.length}個のサービスを選択して続ける
+                {selectedModules.length}個のサービスを選択して続ける
                 <ArrowRight className="h-4 w-4 ml-2" />
               </>
             ) : (
@@ -201,7 +188,7 @@ export default function OnboardingPage() {
             )}
           </Button>
 
-          {selectedServices.length > 0 && (
+          {selectedModules.length > 0 && (
             <Button
               variant="ghost"
               className="w-full"

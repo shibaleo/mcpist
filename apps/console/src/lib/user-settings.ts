@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 export async function getUserSettings(): Promise<UserSettings> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase.rpc("get_my_preferences")
+  const { data, error } = await supabase.rpc("get_my_settings")
 
   if (error || !data) {
     console.error("Failed to get user settings:", error)
@@ -39,8 +39,8 @@ export async function updateUserSettings(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase.rpc("update_my_preferences", {
-    p_preferences: settings,
+  const { data, error } = await supabase.rpc("update_my_settings", {
+    p_settings: settings,
   })
 
   if (error) {

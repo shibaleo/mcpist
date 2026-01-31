@@ -116,8 +116,8 @@ export async function GET(request: Request) {
         : null,
     }
 
-    const { error: saveError } = await supabase.rpc("upsert_service_token", {
-      p_service: "microsoft_todo",
+    const { error: saveError } = await supabase.rpc("upsert_my_credential", {
+      p_module: "microsoft_todo",
       p_credentials: tokenCredentials,
     })
 

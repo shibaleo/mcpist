@@ -107,7 +107,7 @@ BEGIN
         request_id
     ) VALUES (
         p_user_id,
-        CASE WHEN p_credit_type = 'free' THEN 'bonus' ELSE 'purchase' END,
+        (CASE WHEN p_credit_type = 'free' THEN 'bonus' ELSE 'purchase' END)::mcpist.credit_transaction_type,
         p_amount,
         p_credit_type,
         p_event_id
@@ -252,7 +252,19 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.link_stripe_customer(
+    p_user_id UUID,
+    p_stripe_customer_id TEXT
+)
+RETURNS JSONB
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT mcpist.link_stripe_customer(p_user_id, p_stripe_customer_id);
+$$;
+
 GRANT EXECUTE ON FUNCTION mcpist.link_stripe_customer(UUID, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.link_stripe_customer(UUID, TEXT) TO service_role;
 
 -- -----------------------------------------------------------------------------
 -- get_user_by_stripe_customer RPC
@@ -277,7 +289,16 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_user_by_stripe_customer(p_stripe_customer_id TEXT)
+RETURNS UUID
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT mcpist.get_user_by_stripe_customer(p_stripe_customer_id);
+$$;
+
 GRANT EXECUTE ON FUNCTION mcpist.get_user_by_stripe_customer(TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_user_by_stripe_customer(TEXT) TO service_role;
 
 -- -----------------------------------------------------------------------------
 -- get_stripe_customer_id RPC

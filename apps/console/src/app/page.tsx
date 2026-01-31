@@ -1,8 +1,26 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Shield, Link2 } from "lucide-react";
+"use client"
 
-export default function LandingPage() {
+import { useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { ArrowRight, Zap, Shield, Link2 } from "lucide-react"
+import { Suspense } from "react"
+
+function LandingPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // OAuth callback fallback: if ?code= is present, redirect to /auth/callback
+    const code = searchParams.get("code")
+    if (code) {
+      const params = new URLSearchParams(searchParams.toString())
+      router.replace(`/auth/callback?${params.toString()}`)
+      return
+    }
+  }, [searchParams, router])
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -97,5 +115,13 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-  );
+  )
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <LandingPageContent />
+    </Suspense>
+  )
 }

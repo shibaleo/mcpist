@@ -2,20 +2,16 @@ import { createClient } from './supabase/client'
 
 export interface ApiKey {
   id: string
-  name: string
+  display_name: string
   key_prefix: string
   last_used_at: string | null
   expires_at: string | null
-  created_at: string
-  is_expired: boolean
+  revoked_at: string | null
 }
 
 export interface GenerateApiKeyResult {
-  id: string
-  name: string
-  key: string
+  api_key: string
   key_prefix: string
-  expires_at: string | null
 }
 
 export class ApiKeyError extends Error {
@@ -28,7 +24,7 @@ export class ApiKeyError extends Error {
 export async function listApiKeys(): Promise<ApiKey[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('list_api_keys')
+  const { data, error } = await supabase.rpc('list_my_api_keys')
 
   if (error) {
     throw new ApiKeyError(error.message, error.code)
@@ -43,9 +39,9 @@ export async function generateApiKey(
 ): Promise<GenerateApiKeyResult> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('generate_api_key', {
-    p_name: name,
-    p_expires_in_days: expiresInDays ?? undefined,
+  const { data, error } = await supabase.rpc('generate_my_api_key', {
+    p_display_name: name,
+    p_expires_at: expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString() : undefined,
   })
 
   if (error) {

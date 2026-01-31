@@ -26,7 +26,7 @@ export class OAuthConsentError extends Error {
 export async function listOAuthConsents(): Promise<OAuthConsent[]> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('list_oauth_consents')
+  const { data, error } = await supabase.rpc('list_my_oauth_consents')
 
   if (error) {
     throw new OAuthConsentError(error.message, error.code)
@@ -41,7 +41,7 @@ export async function listOAuthConsents(): Promise<OAuthConsent[]> {
 export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
   const supabase = createClient()
 
-  const { data, error } = await supabase.rpc('revoke_oauth_consent', {
+  const { data, error } = await supabase.rpc('revoke_my_oauth_consent', {
     p_consent_id: consentId,
   })
 
@@ -49,7 +49,7 @@ export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
     throw new OAuthConsentError(error.message, error.code)
   }
 
-  return data?.revoked ?? false
+  return (data as { revoked?: boolean } | null)?.revoked ?? false
 }
 
 /**
