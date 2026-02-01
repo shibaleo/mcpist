@@ -129,6 +129,13 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     ],
     serviceId: "google_calendar",
   },
+  "google-tasks": {
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    scopes: [
+      "https://www.googleapis.com/auth/tasks",
+    ],
+    serviceId: "google_tasks",
+  },
   microsoft: {
     authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     scopes: [

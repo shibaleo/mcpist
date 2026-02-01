@@ -101,6 +101,7 @@ export const moduleIcons: Record<string, string> = {
   supabase: "database",
   airtable: "table",
   google_calendar: "calendar",
+  google_tasks: "list-todo",
   microsoft_todo: "check-square",
 }
 
