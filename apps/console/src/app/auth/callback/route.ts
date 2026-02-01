@@ -5,13 +5,27 @@ import { NextResponse } from "next/server"
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
+  const errorParam = searchParams.get("error")
+  const errorDescription = searchParams.get("error_description")
+
   // Support both 'next' and 'returnTo' params
   const returnTo =
     searchParams.get("returnTo") || searchParams.get("next") || "/dashboard"
 
+  // Log OAuth error from provider if present
+  if (errorParam) {
+    console.error("[Auth Callback] OAuth error from provider:", errorParam, errorDescription)
+    return NextResponse.redirect(`${origin}/login?error=${errorParam}&error_description=${encodeURIComponent(errorDescription || '')}`)
+  }
+
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (error) {
+      console.error("[Auth Callback] exchangeCodeForSession error:", error.message, error)
+    }
+
     if (!error) {
       // ユーザー情報を取得してオンボーディング済みか確認
       const { data: { user } } = await supabase.auth.getUser()
@@ -40,5 +54,6 @@ export async function GET(request: Request) {
   }
 
   // エラー時はログインページにリダイレクト
+  console.error("[Auth Callback] Redirecting to login with error. code present:", !!code)
   return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
 }
