@@ -203,6 +203,34 @@ OAuth App: "google" (client_id/client_secret) - 共有
 
 ---
 
+### Phase 5: Console テーマ改善 ✅
+
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| Liam ERD風ダークテーマ適用 | ✅ | ドットグリッド、温かいアイボリー文字色 |
+| アクセントカラー調整 | ✅ | 黒と混ぜた落ち着いたトーン（6色） |
+| デフォルトアクセントをオレンジに変更 | ✅ | |
+| ロゴをアクセント非依存に | ✅ | foreground色を使用 |
+| カード透明度調整 | ✅ | 50% → 70% |
+| /services ページ分離 | ✅ | ツール設定から接続管理を分離 |
+| カスタムアクセントカラー設定削除 | ✅ | |
+| 背景色プリセット機能削除 | ✅ | slate/zinc/custom を削除、常に black |
+| PKCE認証エラー修正 | ✅ | skipBrowserRedirect で確実にクッキー設定 |
+
+---
+
+## コミット履歴（追加分）
+
+| コミット | 内容 |
+|----------|------|
+| a349efa | feat(console): apply Liam ERD-inspired calm dark theme |
+| 3845743 | refactor(console): separate services page and refine color palette |
+| 97cfe22 | fix(auth): resolve PKCE code verifier not found error on first login |
+| d32fad9 | refactor(console): remove background color preset feature |
+| (staged) | fix(console): remove custom filter from accent color list |
+
+---
+
 ## 未完了タスク
 
 | ID | タスク | 状態 |
@@ -215,3 +243,4 @@ OAuth App: "google" (client_id/client_secret) - 共有
 
 1. 仕様書整備（JWT aud チェック、MCP エラーコード）
 2. resources MCP 実装の検討
+3. ライトモード用の色定義見直し（現在はダーク基調のまま）
