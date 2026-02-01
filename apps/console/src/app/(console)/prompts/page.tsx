@@ -327,15 +327,15 @@ export default function PromptsPage() {
             <div className="space-y-2">
               <Label htmlFor="prompt-module">対象モジュール（オプション）</Label>
               <Select
-                value={editForm.moduleName}
-                onValueChange={(value) => setEditForm((prev) => ({ ...prev, moduleName: value }))}
+                value={editForm.moduleName || "__all__"}
+                onValueChange={(value) => setEditForm((prev) => ({ ...prev, moduleName: value === "__all__" ? "" : value }))}
                 disabled={submitting}
               >
                 <SelectTrigger id="prompt-module">
                   <SelectValue placeholder="全モジュール共通" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全モジュール共通</SelectItem>
+                  <SelectItem value="__all__">全モジュール共通</SelectItem>
                   {modules.map((mod) => (
                     <SelectItem key={mod.id} value={mod.id}>
                       {mod.name}
