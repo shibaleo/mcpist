@@ -36,12 +36,24 @@ function LoginContent() {
     setLoading(provider)
     const supabase = createClient()
 
-    await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: getRedirectUrl(),
+        skipBrowserRedirect: true,
       },
     })
+
+    if (error) {
+      console.error("OAuth error:", error)
+      setLoading(null)
+      return
+    }
+
+    // クッキーが設定された後にリダイレクト
+    if (data?.url) {
+      window.location.href = data.url
+    }
   }
 
   return (
