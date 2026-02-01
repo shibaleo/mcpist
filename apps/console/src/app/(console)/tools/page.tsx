@@ -136,6 +136,11 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Googleアカウントでログインして、カレンダーへのアクセスを許可します",
     authType: "oauth",
   },
+  google_tasks: {
+    authLabel: "Google OAuth",
+    helpText: "Googleアカウントでログインして、タスクへのアクセスを許可します",
+    authType: "oauth",
+  },
   microsoft_todo: {
     authLabel: "Microsoft OAuth",
     helpText: "Microsoftアカウントでログインして、タスクへのアクセスを許可します",
