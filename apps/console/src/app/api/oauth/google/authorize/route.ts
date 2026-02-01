@@ -3,10 +3,17 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar",
-  "https://www.googleapis.com/auth/calendar.events",
-]
+
+// モジュールごとのスコープ定義
+const MODULE_SCOPES: Record<string, string[]> = {
+  google_calendar: [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events",
+  ],
+  google_tasks: [
+    "https://www.googleapis.com/auth/tasks",
+  ],
+}
 
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -28,9 +35,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // returnTo パラメータを取得
+  // パラメータを取得
   const url = new URL(request.url)
   const returnTo = url.searchParams.get("returnTo") || "/tools"
+  const module = url.searchParams.get("module") || "google_calendar"
+
+  // スコープの取得（未知のモジュールはエラー）
+  const scopes = MODULE_SCOPES[module]
+  if (!scopes) {
+    return NextResponse.json(
+      { error: `Unknown module: ${module}` },
+      { status: 400 }
+    )
+  }
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
@@ -47,10 +64,11 @@ export async function GET(request: Request) {
       )
     }
 
-    // state パラメータを生成（CSRF対策 + returnTo情報）
+    // state パラメータを生成（CSRF対策 + returnTo情報 + モジュール識別）
     const stateData = {
       nonce: crypto.randomUUID(),
       returnTo,
+      module,
     }
     const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
 
@@ -59,7 +77,7 @@ export async function GET(request: Request) {
       client_id: credentials.client_id,
       redirect_uri: credentials.redirect_uri,
       response_type: "code",
-      scope: GOOGLE_SCOPES.join(" "),
+      scope: scopes.join(" "),
       access_type: "offline",  // refresh_token を取得
       prompt: "consent",  // 毎回同意画面を表示（refresh_token取得のため）
       state,
