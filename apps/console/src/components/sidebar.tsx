@@ -27,6 +27,7 @@ import {
   Shield,
   HelpCircle,
   KeyRound,
+  MessageSquareText,
 } from "lucide-react"
 
 const MIN_WIDTH = 150
@@ -40,6 +41,7 @@ const navItems = {
   mcp: [
     { href: "/connections", label: "MCP接続", icon: Server },
     { href: "/tools", label: "サービス & ツール", icon: Link2 },
+    { href: "/prompts", label: "プロンプト", icon: MessageSquareText },
   ],
   general: [
     { href: "/billing", label: "請求", icon: CreditCard },

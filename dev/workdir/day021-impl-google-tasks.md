@@ -139,15 +139,22 @@ Base URL: `https://tasks.googleapis.com`
 
 ### Console (Next.js) - ✅ 完了
 
+**注意:** 当初計画の google-tasks 専用エンドポイントは作成せず、共有コールバック方式に変更
+
 | ファイル | 変更内容 | 状態 |
 |----------|----------|------|
-| `apps/console/src/app/api/oauth/google-tasks/authorize/route.ts` | OAuth認証開始エンドポイント（scope: tasks） | ✅ |
-| `apps/console/src/app/api/oauth/google-tasks/callback/route.ts` | OAuth callbackエンドポイント | ✅ |
-| `apps/console/src/lib/oauth-apps.ts` | google_tasks のOAuth設定追加 | ✅ |
-| `apps/console/src/lib/module-data.ts` | google_tasks のアイコンマッピング追加 | ✅ |
-| `apps/console/src/lib/tools.json` | tools-export で再生成 | ✅ |
+| `apps/console/src/app/api/oauth/google/authorize/route.ts` | module パラメータ対応、モジュール別スコープ定義 | ✅ |
+| `apps/console/src/app/api/oauth/google/callback/route.ts` | state から module を取り出し、適切なモジュールにトークン保存 | ✅ |
+| `apps/console/src/lib/oauth-apps.ts` | google-tasks を google authorize にルーティング | ✅ |
+| `apps/console/src/app/(console)/tools/page.tsx` | google_tasks の authConfig 追加 | ✅ |
 
-## Console OAuth 実装詳細
+### Database - ✅ 完了
+
+| ファイル | 変更内容 | 状態 |
+|----------|----------|------|
+| `supabase/migrations/00000000000013_fix_oauth_apps_vault_update.sql` | vault.update_secret → delete+create パターンに修正 | ✅ |
+
+## Console OAuth 実装詳細（実績）
 
 ### OAuth scope
 
@@ -155,17 +162,20 @@ Base URL: `https://tasks.googleapis.com`
 https://www.googleapis.com/auth/tasks
 ```
 
-### authorize/route.ts（認証開始）
+### 共有コールバック方式
 
-- `google` プロバイダーの OAuth App 認証情報を共有
-- redirect_uri を `/google-tasks/callback` に変更
-- scope: `https://www.googleapis.com/auth/tasks`
+**理由:** Google Cloud Console に登録済みの redirect_uri は `/api/oauth/google/callback` のみ
 
-### callback/route.ts（コールバック）
+**実装:**
+1. `authorize/route.ts` で `module` パラメータを受け取り、モジュール別スコープを使用
+2. state パラメータに `module` を含める（base64url エンコード）
+3. `callback/route.ts` で state から `module` を取り出し、適切なモジュールにトークン保存
 
-- code → token 交換
-- `upsert_my_credential` RPC でトークン保存（module: "google_tasks"）
-- `saveDefaultToolSettings` でツール設定保存
+### clear_completed の挙動修正
+
+**問題:** Google Tasks API の `/clear` エンドポイントは `hidden=true` を設定するだけで、UI からタスクが消えない
+
+**解決:** 完了タスクを取得して各々を DELETE する実装に変更
 
 ## 検証方法
 
