@@ -72,13 +72,3 @@ func (m *NotionModule) Resources() []modules.Resource {
 func (m *NotionModule) ReadResource(ctx context.Context, uri string) (string, error) {
 	return readResource(ctx, uri)
 }
-
-// Prompts returns all available prompts
-func (m *NotionModule) Prompts() []modules.Prompt {
-	return promptDefinitions()
-}
-
-// GetPrompt generates a prompt with arguments
-func (m *NotionModule) GetPrompt(ctx context.Context, name string, args map[string]any) (string, error) {
-	return getPrompt(ctx, name, args)
-}

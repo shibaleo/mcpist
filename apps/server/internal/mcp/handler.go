@@ -202,6 +202,10 @@ func (h *Handler) processRequest(ctx context.Context, req *Request) (interface{}
 		return h.handleToolsList(ctx)
 	case "tools/call":
 		return h.handleToolCall(ctx, req)
+	case "prompts/list":
+		return h.handlePromptsList(ctx)
+	case "prompts/get":
+		return h.handlePromptsGet(ctx, req)
 	default:
 		return nil, &Error{Code: MethodNotFound, Message: "Method not found"}
 	}
@@ -211,13 +215,87 @@ func (h *Handler) handleInitialize(req *Request) *InitializeResult {
 	return &InitializeResult{
 		ProtocolVersion: "2025-03-26",
 		Capabilities: ServerCapabilities{
-			Tools: &ToolsCapability{},
+			Tools:   &ToolsCapability{},
+			Prompts: &PromptsCapability{},
 		},
 		ServerInfo: ServerInfo{
 			Name:    "mcpist",
 			Version: "0.1.0",
 		},
 	}
+}
+
+func (h *Handler) handlePromptsList(ctx context.Context) (*PromptsListResult, *Error) {
+	authCtx := middleware.GetAuthContext(ctx)
+	if authCtx == nil {
+		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+	}
+
+	prompts, err := h.userStore.GetUserPrompts(authCtx.UserID)
+	if err != nil {
+		log.Printf("Failed to get user prompts: %v", err)
+		return &PromptsListResult{Prompts: []PromptInfo{}}, nil
+	}
+
+	var promptInfos []PromptInfo
+	for _, p := range prompts {
+		desc := ""
+		if p.Description != nil {
+			desc = *p.Description
+		}
+		promptInfos = append(promptInfos, PromptInfo{
+			Name:        p.Name,
+			Description: desc,
+		})
+	}
+
+	if promptInfos == nil {
+		promptInfos = []PromptInfo{}
+	}
+
+	return &PromptsListResult{Prompts: promptInfos}, nil
+}
+
+func (h *Handler) handlePromptsGet(ctx context.Context, req *Request) (*PromptsGetResult, *Error) {
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		return nil, &Error{Code: InvalidParams, Message: "Invalid params"}
+	}
+
+	var params PromptsGetParams
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		return nil, &Error{Code: InvalidParams, Message: "Invalid params structure"}
+	}
+
+	if params.Name == "" {
+		return nil, &Error{Code: InvalidParams, Message: "name is required"}
+	}
+
+	authCtx := middleware.GetAuthContext(ctx)
+	if authCtx == nil {
+		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+	}
+
+	prompt, err := h.userStore.GetUserPromptByName(authCtx.UserID, params.Name)
+	if err != nil {
+		return nil, &Error{Code: InternalError, Message: fmt.Sprintf("failed to get prompt: %v", err)}
+	}
+
+	if prompt == nil {
+		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("prompt not found: %s", params.Name)}
+	}
+
+	return &PromptsGetResult{
+		Messages: []PromptMessage{
+			{
+				Role: "user",
+				Content: PromptContent{
+					Type: "text",
+					Text: prompt.Content,
+				},
+			},
+		},
+	}, nil
 }
 
 func (h *Handler) handleToolsList(ctx context.Context) (*ToolsListResult, *Error) {

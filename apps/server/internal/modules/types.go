@@ -26,7 +26,8 @@ func GetLocalizedText(texts LocalizedText, lang string) string {
 // =============================================================================
 
 // Module defines the interface that all modules must implement.
-// Each module provides Tools, Resources, and Prompts (MCP 3 primitives).
+// Each module provides Tools and Resources (MCP primitives).
+// Note: Prompts are managed at user level, not per-module.
 type Module interface {
 	// Metadata
 	Name() string
@@ -41,10 +42,6 @@ type Module interface {
 	// Resources - LLM reads, no side effects
 	Resources() []Resource
 	ReadResource(ctx context.Context, uri string) (string, error)
-
-	// Prompts - Templates/workflows
-	Prompts() []Prompt
-	GetPrompt(ctx context.Context, name string, args map[string]any) (string, error)
 }
 
 // CompactConverter provides optional compact format conversion (TOON/Markdown)
@@ -141,24 +138,6 @@ type Resource struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 	MimeType    string `json:"mimeType,omitempty"`
-}
-
-// =============================================================================
-// Prompt Definition
-// =============================================================================
-
-// Prompt represents an MCP prompt template
-type Prompt struct {
-	Name        string           `json:"name"`
-	Description string           `json:"description,omitempty"`
-	Arguments   []PromptArgument `json:"arguments,omitempty"`
-}
-
-// PromptArgument defines an argument for a prompt
-type PromptArgument struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Required    bool   `json:"required,omitempty"`
 }
 
 // =============================================================================

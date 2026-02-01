@@ -79,16 +79,6 @@ func (m *ConfluenceModule) ReadResource(ctx context.Context, uri string) (string
 	return "", fmt.Errorf("resources not supported")
 }
 
-// Prompts returns all available prompts (none for Confluence)
-func (m *ConfluenceModule) Prompts() []modules.Prompt {
-	return nil
-}
-
-// GetPrompt generates a prompt with arguments (not implemented)
-func (m *ConfluenceModule) GetPrompt(ctx context.Context, name string, args map[string]any) (string, error) {
-	return "", fmt.Errorf("prompts not supported")
-}
-
 // =============================================================================
 // Token and Headers
 // =============================================================================

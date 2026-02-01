@@ -4,7 +4,8 @@ export interface Prompt {
   id: string
   module_name: string | null
   name: string
-  content: string
+  description: string | null  // Short description for prompts/list (MCP spec)
+  content: string             // Full content for prompts/get
   enabled: boolean
   created_at: string
   updated_at: string
@@ -45,6 +46,7 @@ interface GetPromptResponse {
   id?: string
   module_name?: string | null
   name?: string
+  description?: string | null
   content?: string
   enabled?: boolean
   created_at?: string
@@ -76,6 +78,7 @@ export async function getPrompt(promptId: string): Promise<Prompt | null> {
     id: response.id!,
     module_name: response.module_name ?? null,
     name: response.name!,
+    description: response.description ?? null,
     content: response.content!,
     enabled: response.enabled!,
     created_at: response.created_at!,
@@ -91,7 +94,8 @@ export async function upsertPrompt(
   content: string,
   moduleName?: string,
   promptId?: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  description?: string
 ): Promise<UpsertPromptResult> {
   const supabase = createClient()
 
@@ -100,7 +104,8 @@ export async function upsertPrompt(
     p_content: content,
     p_module_name: moduleName,
     p_prompt_id: promptId,
-    p_enabled: enabled
+    p_enabled: enabled,
+    p_description: description
   })
 
   if (error) {
