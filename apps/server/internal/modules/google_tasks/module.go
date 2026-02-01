@@ -370,8 +370,8 @@ var toolDefinitions = []modules.Tool{
 		ID:   "google_tasks:clear_completed",
 		Name: "clear_completed",
 		Descriptions: modules.LocalizedText{
-			"en-US": "Clear all completed tasks from a task list.",
-			"ja-JP": "タスクリストからすべての完了済みタスクを削除します。",
+			"en-US": "Delete all completed tasks from a task list permanently.",
+			"ja-JP": "タスクリストの完了済みタスクをすべて完全に削除します。",
 		},
 		Annotations: modules.AnnotateDelete,
 		InputSchema: modules.InputSchema{
@@ -615,17 +615,48 @@ func completeTask(ctx context.Context, params map[string]any) (string, error) {
 func clearCompleted(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 
-	endpoint := fmt.Sprintf("%s/lists/%s/clear", googleTasksAPIBase, url.PathEscape(taskListID))
-
-	// POST to clear completed tasks - returns 204 No Content on success
-	_, err := client.DoJSON("POST", endpoint, headers(ctx), nil)
+	// First, list all completed tasks
+	listEndpoint := fmt.Sprintf("%s/lists/%s/tasks?showCompleted=true&showHidden=false", googleTasksAPIBase, url.PathEscape(taskListID))
+	respBody, err := client.DoJSON("GET", listEndpoint, headers(ctx), nil)
 	if err != nil {
-		// Check if it's a 204 No Content (success)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "Completed tasks cleared"}`, nil
-		}
 		return "", err
 	}
 
-	return `{"success": true, "message": "Completed tasks cleared"}`, nil
+	var taskList struct {
+		Items []struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(respBody, &taskList); err != nil {
+		return "", fmt.Errorf("failed to parse task list: %w", err)
+	}
+
+	// Delete each completed task
+	deletedCount := 0
+	for _, task := range taskList.Items {
+		if task.Status == "completed" {
+			deleteEndpoint := fmt.Sprintf("%s/lists/%s/tasks/%s", googleTasksAPIBase, url.PathEscape(taskListID), url.PathEscape(task.ID))
+			_, err := client.DoJSON("DELETE", deleteEndpoint, headers(ctx), nil)
+			if err != nil {
+				// Check if it's a 204 No Content (success)
+				if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
+					deletedCount++
+					continue
+				}
+				// Log error but continue deleting other tasks
+				log.Printf("[google_tasks] Failed to delete task %s: %v", task.ID, err)
+				continue
+			}
+			deletedCount++
+		}
+	}
+
+	result := map[string]interface{}{
+		"success":       true,
+		"deleted_count": deletedCount,
+		"message":       fmt.Sprintf("Deleted %d completed tasks", deletedCount),
+	}
+	resultBytes, _ := json.Marshal(result)
+	return httpclient.PrettyJSON(resultBytes), nil
 }
