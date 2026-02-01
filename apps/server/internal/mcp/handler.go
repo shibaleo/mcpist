@@ -285,6 +285,11 @@ func (h *Handler) handlePromptsGet(ctx context.Context, req *Request) (*PromptsG
 		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("prompt not found: %s", params.Name)}
 	}
 
+	// Check if prompt is enabled
+	if !prompt.Enabled {
+		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("prompt is disabled: %s", params.Name)}
+	}
+
 	return &PromptsGetResult{
 		Messages: []PromptMessage{
 			{
