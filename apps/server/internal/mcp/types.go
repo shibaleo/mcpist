@@ -64,10 +64,15 @@ type InitializeResult struct {
 }
 
 type ServerCapabilities struct {
-	Tools *ToolsCapability `json:"tools,omitempty"`
+	Tools   *ToolsCapability   `json:"tools,omitempty"`
+	Prompts *PromptsCapability `json:"prompts,omitempty"`
 }
 
 type ToolsCapability struct {
+	ListChanged bool `json:"listChanged,omitempty"`
+}
+
+type PromptsCapability struct {
 	ListChanged bool `json:"listChanged,omitempty"`
 }
 
@@ -88,3 +93,52 @@ type ToolCallParams struct {
 // Use modules types
 type ToolCallResult = modules.ToolCallResult
 type ContentBlock = modules.ContentBlock
+
+// =============================================================================
+// Prompts Types (MCP 2025-11-25)
+// =============================================================================
+
+// PromptsListResult represents the result of prompts/list
+type PromptsListResult struct {
+	Prompts    []PromptInfo `json:"prompts"`
+	NextCursor string       `json:"nextCursor,omitempty"`
+}
+
+// PromptInfo represents a prompt in the list
+type PromptInfo struct {
+	Name        string           `json:"name"`
+	Title       string           `json:"title,omitempty"`
+	Description string           `json:"description,omitempty"`
+	Arguments   []PromptArgument `json:"arguments,omitempty"`
+}
+
+// PromptArgument defines an argument for a prompt
+type PromptArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Required    bool   `json:"required,omitempty"`
+}
+
+// PromptsGetParams represents the parameters for prompts/get
+type PromptsGetParams struct {
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments,omitempty"`
+}
+
+// PromptsGetResult represents the result of prompts/get
+type PromptsGetResult struct {
+	Description string          `json:"description,omitempty"`
+	Messages    []PromptMessage `json:"messages"`
+}
+
+// PromptMessage represents a message in the prompt result
+type PromptMessage struct {
+	Role    string        `json:"role"`
+	Content PromptContent `json:"content"`
+}
+
+// PromptContent represents the content of a prompt message
+type PromptContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}

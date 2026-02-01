@@ -56,6 +56,7 @@ export default function PromptsPage() {
   }>({ open: false, prompt: null })
   const [editForm, setEditForm] = useState({
     name: "",
+    description: "",
     content: "",
   })
   const [submitting, setSubmitting] = useState(false)
@@ -89,6 +90,7 @@ export default function PromptsPage() {
   const handleEdit = (prompt: Prompt) => {
     setEditForm({
       name: prompt.name,
+      description: prompt.description || "",
       content: prompt.content,
     })
     setEditDialog({ open: true, prompt })
@@ -98,6 +100,7 @@ export default function PromptsPage() {
   const handleCreate = () => {
     setEditForm({
       name: "",
+      description: "",
       content: "",
     })
     setEditDialog({ open: true, prompt: null })
@@ -121,7 +124,8 @@ export default function PromptsPage() {
         editForm.content.trim(),
         undefined, // moduleName is not used
         editDialog.prompt?.id,
-        editDialog.prompt?.enabled ?? true
+        editDialog.prompt?.enabled ?? true,
+        editForm.description.trim() || undefined
       )
 
       if (result.success) {
@@ -152,7 +156,8 @@ export default function PromptsPage() {
         prompt.content,
         undefined,
         prompt.id,
-        !prompt.enabled
+        !prompt.enabled,
+        prompt.description || undefined
       )
 
       if (!result.success) {
@@ -257,7 +262,7 @@ export default function PromptsPage() {
                         </CardDescription>
                       </div>
                       <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
-                        {prompt.content.replace(/\n/g, " ")}
+                        {prompt.description || prompt.content.replace(/\n/g, " ")}
                       </p>
                     </div>
                   </div>
@@ -319,6 +324,20 @@ export default function PromptsPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="prompt-description">説明（任意）</Label>
+              <Input
+                id="prompt-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="今日のタスクを取得します"
+                disabled={submitting}
+              />
+              <p className="text-xs text-muted-foreground">
+                MCPクライアントに表示される短い説明文です
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="prompt-content">内容</Label>
               <Textarea
                 id="prompt-content"
@@ -328,6 +347,9 @@ export default function PromptsPage() {
                 className="min-h-[200px] font-mono"
                 disabled={submitting}
               />
+              <p className="text-xs text-muted-foreground">
+                実際にAIに渡されるプロンプトの内容です
+              </p>
             </div>
           </div>
 

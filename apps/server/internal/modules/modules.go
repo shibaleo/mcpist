@@ -254,7 +254,6 @@ type ModuleSchema struct {
 	APIVersion  string     `json:"api_version"`
 	Tools       []Tool     `json:"tools"`
 	Resources   []Resource `json:"resources,omitempty"`
-	Prompts     []Prompt   `json:"prompts,omitempty"`
 }
 
 // GetModuleSchema returns the schema for a module
@@ -273,7 +272,6 @@ func GetModuleSchema(moduleName string) (*ToolCallResult, error) {
 		APIVersion:  m.APIVersion(),
 		Tools:       m.Tools(),
 		Resources:   m.Resources(),
-		Prompts:     m.Prompts(),
 	}
 
 	jsonBytes, err := json.MarshalIndent(schema, "", "  ")
@@ -328,7 +326,6 @@ func GetModuleSchemas(moduleNames []string, enabledModules []string, enabledTool
 			APIVersion:  m.APIVersion(),
 			Tools:       localizedTools,
 			Resources:   m.Resources(),
-			Prompts:     m.Prompts(),
 		})
 	}
 

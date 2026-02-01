@@ -123,7 +123,7 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 			AccountStatus:      "active",
 			FreeCredits:        100,
 			PaidCredits:        0,
-			EnabledModules:     []string{"notion", "github", "jira", "confluence", "supabase", "airtable", "google_calendar", "microsoft_todo", "rag"},
+			EnabledModules:     []string{"notion", "github", "jira", "confluence", "supabase", "airtable", "google_calendar", "microsoft_todo", "google_tasks"},
 			EnabledTools:       map[string][]string{}, // Empty means check disabled (dev mode fallback)
 			Language:           "en-US",
 			ModuleDescriptions: ModuleDescriptions{},
@@ -310,4 +310,99 @@ func (c *userCache) delete(userID string) {
 	defer c.mu.Unlock()
 
 	delete(c.items, userID)
+}
+
+// =============================================================================
+// User Prompts (Templates)
+// =============================================================================
+
+// UserPrompt represents a user's saved prompt template
+type UserPrompt struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"` // Short description for prompts/list (MCP spec)
+	Content     string  `json:"content"`     // Full content for prompts/get
+	Enabled     bool    `json:"enabled"`
+}
+
+// GetUserPrompts retrieves all enabled prompts for a user
+func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
+	if s.serviceKey == "" {
+		// Return empty list in development without service key
+		return []UserPrompt{}, nil
+	}
+
+	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_enabled_only": true}`, userID)
+	req, err := http.NewRequest(
+		"POST",
+		s.supabaseURL+"/rest/v1/rpc/list_user_prompts",
+		strings.NewReader(reqBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", s.serviceKey)
+	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call list_user_prompts: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("list_user_prompts failed: status %d", resp.StatusCode)
+	}
+
+	var prompts []UserPrompt
+	if err := json.NewDecoder(resp.Body).Decode(&prompts); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return prompts, nil
+}
+
+// GetUserPromptByName retrieves a specific prompt by name for a user
+func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt, error) {
+	if s.serviceKey == "" {
+		// Return nil in development without service key
+		return nil, nil
+	}
+
+	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_prompt_name": "%s"}`, userID, promptName)
+	req, err := http.NewRequest(
+		"POST",
+		s.supabaseURL+"/rest/v1/rpc/get_user_prompt_by_name",
+		strings.NewReader(reqBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", s.serviceKey)
+	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call get_user_prompt_by_name: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("get_user_prompt_by_name failed: status %d", resp.StatusCode)
+	}
+
+	var results []UserPrompt
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(results) == 0 {
+		return nil, nil // Not found
+	}
+
+	return &results[0], nil
 }
