@@ -118,17 +118,100 @@ OAuth App: "google" (client_id/client_secret) - 共有
 
 ---
 
-## 未完了タスク（Phase 2以降）
+### Phase 2: prompts MCP 実装 ✅
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D21-006 | `list_user_prompts` RPC 作成 | ✅ | サーバー用（p_user_id 引数） |
+| D21-007 | `get_user_prompt_by_name` RPC 作成 | ✅ | サーバー用（単体取得） |
+| D21-008 | handler.go に prompts/list 追加 | ✅ | description のみ返却 |
+| D21-009 | handler.go に prompts/get 追加 | ✅ | content を messages で返却 |
+| D21-010 | Capability 宣言更新 | ✅ | prompts サポート宣言済み |
+
+**追加タスク:**
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| prompts テーブルに description カラム追加 | ✅ | MCP 仕様対応（list で description、get で content） |
+| prompts/get で無効プロンプト拒否 | ✅ | enabled=false のプロンプトはエラー |
+
+### Phase 3: Console プロンプト管理 UI ✅
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D21-011 | /prompts ページ作成 | ✅ | 既存実装を活用 |
+| D21-012 | description フィールド追加 | ✅ | MCP クライアントに表示される短い説明文 |
+| D21-013 | 有効/無効トグル楽観的更新 | ✅ | 即座に保存、失敗時は元に戻す |
+
+### Phase 4: Console ツール設定改善
+
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| ツール設定に楽観的更新パターン適用 | ✅ | トグル/全選択/全解除/デフォルト復元 |
+| 保存ボタン削除 | ✅ | 即座に保存されるため不要 |
+
+---
+
+## 追加の作業詳細
+
+### 5. prompts MCP 実装
+
+**MCP仕様準拠:**
+- `prompts/list`: name + description（短い説明文）のみ
+- `prompts/get`: content を messages 配列で返却
+
+**マイグレーション:**
+- `00000000000015_rpc_user_prompts.sql` - サーバー用 RPC 追加
+- `00000000000016_prompts_description.sql` - description カラム追加、RPC 更新
+
+**Go サーバー変更:**
+- `store/user.go` - UserPrompt 構造体に Description 追加
+- `mcp/handler.go` - prompts/list, prompts/get ハンドラ更新、無効プロンプト拒否
+
+### 6. Console UI 改善
+
+**prompts ページ:**
+- description フィールド追加（編集ダイアログ）
+- リスト表示で description を優先表示
+- 有効/無効トグル楽観的更新
+
+**tools ページ:**
+- handleToggleTool, handleSelectAll, handleDeselectAll, handleSelectDefault を楽観的更新に変更
+- 保存ボタンと関連状態 (savedModules, savingModules) 削除
+
+### 7. 認証エラーデバッグ
+
+**問題:** 本番環境でログインできない（auth_callback_error）
+
+**対応:**
+- `auth/callback/route.ts` にエラーログ追加
+- OAuth プロバイダーからのエラーパラメータをログ出力
+- 設定確認後、正常にログイン可能に
+
+---
+
+## コミット履歴
+
+| コミット | 内容 |
+|----------|------|
+| 3df724e | feat(google_tasks): add Google Tasks MCP module with OAuth support |
+| 392c1a0 | fix(google_tasks): add missing authConfig for OAuth flow |
+| 42dc427 | refactor(oauth): unify Google OAuth callback for calendar and tasks |
+| b243898 | fix(google_tasks): change clear_completed to actually delete tasks |
+| ba5b52d | feat(prompts): separate description and content per MCP spec |
+| 9bfe31e | fix(console): debug login issue |
+| (staged) | refactor: optimistic update for tool settings, reject disabled prompts |
+
+---
+
+## 未完了タスク
 
 | ID | タスク | 状態 |
 |----|--------|------|
-| D21-006〜010 | prompts MCP 実装 | 未着手 |
-| D21-011〜013 | Console プロンプト管理 UI | 未着手 |
 | D21-014〜015 | 仕様書整備 | 未着手 |
 
 ---
 
 ## 次回の作業
 
-1. prompts MCP 実装（Phase 2）
-2. Console プロンプト管理 UI（Phase 3）
+1. 仕様書整備（JWT aud チェック、MCP エラーコード）
+2. resources MCP 実装の検討
