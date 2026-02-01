@@ -188,12 +188,12 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            {accentColors.filter(c => c.id !== "custom").map((color) => {
+            {accentColors.map((color) => {
               const isSelected = accentColor === color.id
               return (
                 <button
                   key={color.id}
-                  onClick={() => setAccentColor(color.id as AccentColorId)}
+                  onClick={() => setAccentColor(color.id)}
                   className={cn(
                     "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
                     isSelected
