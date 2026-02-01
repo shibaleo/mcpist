@@ -160,8 +160,6 @@ export default function ToolsPage() {
   // Tool settings state (loaded from DB)
   const [toolSettings, setToolSettings] = useState<ToolSettingsMap>({})
   const [localToolSettings, setLocalToolSettings] = useState<ToolSettingsMap>({})
-  const [savedModules, setSavedModules] = useState<Record<string, boolean>>({})
-  const [savingModules, setSavingModules] = useState<Record<string, boolean>>({})
   const [connections, setConnections] = useState<ServiceConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
@@ -310,60 +308,137 @@ export default function ToolsPage() {
     })
   }
 
-  // ツール設定関連
-  const handleToggleTool = (moduleId: string, toolId: string) => {
-    setLocalToolSettings((prev) => {
-      const current = getModuleToolSettings(moduleId)
-      return {
+  // ツール設定関連（楽観的更新パターン）
+  const handleToggleTool = async (moduleId: string, toolId: string) => {
+    const current = getModuleToolSettings(moduleId)
+    const newValue = !current[toolId]
+    const newSettings = {
+      ...current,
+      [toolId]: newValue,
+    }
+
+    // Optimistic update - 先にUIを更新
+    setLocalToolSettings((prev) => ({
+      ...prev,
+      [moduleId]: newSettings,
+    }))
+
+    try {
+      // サーバーに保存
+      await saveModuleToolSettings(moduleId, newSettings)
+      // 保存成功後、DBの値も更新
+      setToolSettings((prev) => ({
         ...prev,
-        [moduleId]: {
-          ...current,
-          [toolId]: !current[toolId],
-        },
+        [moduleId]: newSettings,
+      }))
+    } catch (error) {
+      // Revert on failure - 失敗した場合は元に戻す
+      setLocalToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: current,
+      }))
+      if (error instanceof ToolSettingsError) {
+        toast.error(`保存に失敗しました: ${error.message}`)
+      } else {
+        toast.error("ツール設定の保存に失敗しました")
       }
-    })
+    }
   }
 
-  const handleSelectAll = (moduleId: string) => {
+  const handleSelectAll = async (moduleId: string) => {
     const mod = modules.find((m) => m.id === moduleId)
     if (!mod) return
 
+    const current = getModuleToolSettings(moduleId)
     const allEnabled: Record<string, boolean> = {}
     mod.tools.forEach((t) => {
       allEnabled[t.id] = true
     })
+
+    // Optimistic update
     setLocalToolSettings((prev) => ({
       ...prev,
       [moduleId]: allEnabled,
     }))
+
+    try {
+      await saveModuleToolSettings(moduleId, allEnabled)
+      setToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: allEnabled,
+      }))
+    } catch (error) {
+      // Revert on failure
+      setLocalToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: current,
+      }))
+      toast.error("ツール設定の保存に失敗しました")
+    }
   }
 
-  const handleDeselectAll = (moduleId: string) => {
+  const handleDeselectAll = async (moduleId: string) => {
     const mod = modules.find((m) => m.id === moduleId)
     if (!mod) return
 
+    const current = getModuleToolSettings(moduleId)
     const allDisabled: Record<string, boolean> = {}
     mod.tools.forEach((t) => {
       allDisabled[t.id] = false
     })
+
+    // Optimistic update
     setLocalToolSettings((prev) => ({
       ...prev,
       [moduleId]: allDisabled,
     }))
+
+    try {
+      await saveModuleToolSettings(moduleId, allDisabled)
+      setToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: allDisabled,
+      }))
+    } catch (error) {
+      // Revert on failure
+      setLocalToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: current,
+      }))
+      toast.error("ツール設定の保存に失敗しました")
+    }
   }
 
-  const handleSelectDefault = (moduleId: string) => {
+  const handleSelectDefault = async (moduleId: string) => {
     const mod = modules.find((m) => m.id === moduleId)
     if (!mod) return
 
+    const current = getModuleToolSettings(moduleId)
     const defaults: Record<string, boolean> = {}
     mod.tools.forEach((t) => {
       defaults[t.id] = isDefaultEnabled(t)
     })
+
+    // Optimistic update
     setLocalToolSettings((prev) => ({
       ...prev,
       [moduleId]: defaults,
     }))
+
+    try {
+      await saveModuleToolSettings(moduleId, defaults)
+      setToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: defaults,
+      }))
+    } catch (error) {
+      // Revert on failure
+      setLocalToolSettings((prev) => ({
+        ...prev,
+        [moduleId]: current,
+      }))
+      toast.error("ツール設定の保存に失敗しました")
+    }
   }
 
   const isToolEnabled = (moduleId: string, toolId: string) => {
@@ -374,32 +449,6 @@ export default function ToolsPage() {
   const getEnabledToolCount = (moduleId: string): number => {
     const settings = getModuleToolSettings(moduleId)
     return Object.values(settings).filter(Boolean).length
-  }
-
-  const handleSave = async (moduleId: string) => {
-    const settings = getModuleToolSettings(moduleId)
-    setSavingModules((prev) => ({ ...prev, [moduleId]: true }))
-
-    try {
-      await saveModuleToolSettings(moduleId, settings)
-      // 保存成功後、DBの値も更新
-      setToolSettings((prev) => ({
-        ...prev,
-        [moduleId]: settings,
-      }))
-      setSavedModules((prev) => ({ ...prev, [moduleId]: true }))
-      setTimeout(() => {
-        setSavedModules((prev) => ({ ...prev, [moduleId]: false }))
-      }, 2000)
-    } catch (error) {
-      if (error instanceof ToolSettingsError) {
-        toast.error(`保存に失敗しました: ${error.message}`)
-      } else {
-        toast.error("保存に失敗しました")
-      }
-    } finally {
-      setSavingModules((prev) => ({ ...prev, [moduleId]: false }))
-    }
   }
 
   // モジュール説明関連（ユーザーが設定したカスタム説明）
@@ -880,28 +929,6 @@ export default function ToolsPage() {
                   </div>
                 )
               })}
-              <div className="flex justify-end items-center gap-2 pt-2">
-                {savedModules[selectedModule.id] && (
-                  <span className="text-sm text-green-500 flex items-center gap-1">
-                    <Check className="h-4 w-4" />
-                    保存しました
-                  </span>
-                )}
-                <Button
-                  size="sm"
-                  onClick={() => handleSave(selectedModule.id)}
-                  disabled={savingModules[selectedModule.id]}
-                >
-                  {savingModules[selectedModule.id] ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      保存中...
-                    </>
-                  ) : (
-                    "設定を保存"
-                  )}
-                </Button>
-              </div>
             </CardContent>
           )}
 
