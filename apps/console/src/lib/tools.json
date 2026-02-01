@@ -693,6 +693,135 @@
       ]
     },
     {
+      "id": "google_tasks",
+      "name": "Google Tasks",
+      "descriptions": {
+        "en-US": "Google Tasks API - List, create, update, and delete tasks",
+        "ja-JP": "Google Tasks API - タスクの一覧表示、作成、更新、削除"
+      },
+      "apiVersion": "v1",
+      "tools": [
+        {
+          "id": "google_tasks:list_task_lists",
+          "name": "list_task_lists",
+          "descriptions": {
+            "en-US": "List all task lists for the user.",
+            "ja-JP": "ユーザーのすべてのタスクリストを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:get_task_list",
+          "name": "get_task_list",
+          "descriptions": {
+            "en-US": "Get details of a specific task list.",
+            "ja-JP": "特定のタスクリストの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:list_tasks",
+          "name": "list_tasks",
+          "descriptions": {
+            "en-US": "List tasks from a task list.",
+            "ja-JP": "タスクリストからタスクを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:get_task",
+          "name": "get_task",
+          "descriptions": {
+            "en-US": "Get details of a specific task.",
+            "ja-JP": "特定のタスクの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:create_task",
+          "name": "create_task",
+          "descriptions": {
+            "en-US": "Create a new task in a task list.",
+            "ja-JP": "タスクリストに新しいタスクを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:update_task",
+          "name": "update_task",
+          "descriptions": {
+            "en-US": "Update an existing task.",
+            "ja-JP": "既存のタスクを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:delete_task",
+          "name": "delete_task",
+          "descriptions": {
+            "en-US": "Delete a task from a task list.",
+            "ja-JP": "タスクリストからタスクを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:complete_task",
+          "name": "complete_task",
+          "descriptions": {
+            "en-US": "Mark a task as completed or uncompleted.",
+            "ja-JP": "タスクを完了または未完了としてマークします。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_tasks:clear_completed",
+          "name": "clear_completed",
+          "descriptions": {
+            "en-US": "Clear all completed tasks from a task list.",
+            "ja-JP": "タスクリストからすべての完了済みタスクを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "jira",
       "name": "Jira",
       "descriptions": {

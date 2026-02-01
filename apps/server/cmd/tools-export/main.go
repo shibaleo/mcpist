@@ -13,25 +13,12 @@ import (
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/google_calendar"
+	"mcpist/server/internal/modules/google_tasks"
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
 )
-
-// Service represents a service definition for services.json
-// Only contains information available from Module interface (get_module_schema)
-type Service struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	Descriptions map[string]string `json:"descriptions"`
-	APIVersion   string            `json:"apiVersion"`
-}
-
-// ServiceExport represents the services.json structure
-type ServiceExport struct {
-	Services []Service `json:"services"`
-}
 
 // ToolAnnotations mirrors modules.ToolAnnotations for JSON export
 type ToolAnnotations struct {
@@ -72,6 +59,7 @@ var serviceDisplayNames = map[string]string{
 	"supabase":        "Supabase",
 	"airtable":        "Airtable",
 	"google_calendar": "Google Calendar",
+	"google_tasks":    "Google Tasks",
 	"microsoft_todo":  "Microsoft To Do",
 }
 
@@ -84,69 +72,18 @@ func init() {
 	modules.RegisterModule(supabase.New())
 	modules.RegisterModule(airtable.New())
 	modules.RegisterModule(google_calendar.New())
+	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
 }
 
 func main() {
 	outputDir := flag.String("output", "../console/src/lib", "Output directory for JSON files (default: ../console/src/lib)")
-	format := flag.String("format", "both", "Output format: services, tools, or both")
 	flag.Parse()
 
 	moduleNames := modules.ListModules()
 	sort.Strings(moduleNames)
 
-	switch *format {
-	case "services":
-		exportServices(moduleNames, *outputDir)
-	case "tools":
-		exportTools(moduleNames, *outputDir)
-	case "both":
-		exportServices(moduleNames, *outputDir)
-		exportTools(moduleNames, *outputDir)
-	default:
-		fmt.Fprintf(os.Stderr, "Unknown format: %s\n", *format)
-		os.Exit(1)
-	}
-}
-
-func exportServices(moduleNames []string, outputDir string) {
-	export := ServiceExport{
-		Services: make([]Service, 0, len(moduleNames)),
-	}
-
-	for _, name := range moduleNames {
-		m, _ := modules.GetModule(name)
-		displayName := serviceDisplayNames[name]
-		if displayName == "" {
-			displayName = name
-		}
-
-		service := Service{
-			ID:           name,
-			Name:         displayName,
-			Descriptions: m.Descriptions(),
-			APIVersion:   m.APIVersion(),
-		}
-
-		export.Services = append(export.Services, service)
-	}
-
-	output, err := json.MarshalIndent(export, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to marshal services: %v\n", err)
-		os.Exit(1)
-	}
-
-	if outputDir == "" {
-		fmt.Println(string(output))
-	} else {
-		path := filepath.Join(outputDir, "services.json")
-		if err := os.WriteFile(path, output, 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to write %s: %v\n", path, err)
-			os.Exit(1)
-		}
-		fmt.Fprintf(os.Stderr, "Written: %s\n", path)
-	}
+	exportTools(moduleNames, *outputDir)
 }
 
 func exportTools(moduleNames []string, outputDir string) {
