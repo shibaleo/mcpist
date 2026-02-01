@@ -109,69 +109,6 @@
 }
 
 /* =============================================================================
-   背景色プリセット（data-bg-color属性で切り替え）
-   ============================================================================= */
-
-/* slate: 薄い青灰色 / 青灰色 */
-[data-bg-color="slate"] {
-  --background: oklch(0.97 0.01 250);
-  --card: oklch(0.97 0.01 250);
-  --popover: oklch(0.97 0.01 250);
-  --secondary: oklch(0.94 0.01 250);
-  --muted: oklch(0.94 0.01 250);
-  --accent: oklch(0.94 0.01 250);
-  --border: oklch(0.88 0.01 250);
-  --input: oklch(0.88 0.01 250);
-}
-[data-bg-color="slate"].dark,
-.dark[data-bg-color="slate"] {
-  --background: oklch(0.178 0.014 256);
-  --card: oklch(0.178 0.014 256);
-  --popover: oklch(0.178 0.014 256);
-  --secondary: oklch(0.22 0.014 256);
-  --muted: oklch(0.22 0.014 256);
-  --accent: oklch(0.22 0.014 256);
-  --border: oklch(0.30 0.014 256);
-  --input: oklch(0.30 0.014 256);
-}
-
-/* zinc: 薄いグレー / グレー */
-[data-bg-color="zinc"] {
-  --background: oklch(0.97 0 0);
-  --card: oklch(0.97 0 0);
-  --popover: oklch(0.97 0 0);
-  --secondary: oklch(0.94 0 0);
-  --muted: oklch(0.94 0 0);
-  --accent: oklch(0.94 0 0);
-  --border: oklch(0.88 0 0);
-  --input: oklch(0.88 0 0);
-}
-[data-bg-color="zinc"].dark,
-.dark[data-bg-color="zinc"] {
-  --background: oklch(0.18 0 0);
-  --card: oklch(0.18 0 0);
-  --popover: oklch(0.18 0 0);
-  --secondary: oklch(0.22 0 0);
-  --muted: oklch(0.22 0 0);
-  --accent: oklch(0.22 0 0);
-  --border: oklch(0.30 0 0);
-  --input: oklch(0.30 0 0);
-}
-
-/* カスタム色（ユーザーがカラーピッカーで選択） */
-[data-bg-color="custom"] {
-  --background: var(--custom-bg-light, oklch(0.97 0 0));
-  --card: var(--custom-bg-light, oklch(0.97 0 0));
-  --popover: var(--custom-bg-light, oklch(0.97 0 0));
-}
-[data-bg-color="custom"].dark,
-.dark[data-bg-color="custom"] {
-  --background: var(--custom-bg-dark, oklch(0.18 0 0));
-  --card: var(--custom-bg-dark, oklch(0.18 0 0));
-  --popover: var(--custom-bg-dark, oklch(0.18 0 0));
-}
-
-/* =============================================================================
    アクセントカラープリセット（data-accent-color属性で切り替え）
    ============================================================================= */
 
@@ -198,10 +135,6 @@
 
 [data-accent-color="yellow"] {
   --accent-value: #b8a050;
-}
-
-[data-accent-color="custom"] {
-  --accent-value: var(--custom-accent, #d07850);
 }
 
 /* =============================================================================
