@@ -11,12 +11,10 @@ import {
 import { Button } from "@/components/ui/button"
 import {
   useAppearance,
-  backgroundColors,
   accentColors,
-  type BackgroundColorId,
   type AccentColorId,
 } from "@/lib/appearance-context"
-import { Sun, Moon, Monitor, Check, Globe, Loader2, Palette } from "lucide-react"
+import { Sun, Moon, Monitor, Check, Globe, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect, useState, useTransition } from "react"
 import {
@@ -35,12 +33,8 @@ const languageOptions = [
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const {
-    backgroundColor,
     accentColor,
-    customColors,
-    setBackgroundColor,
     setAccentColor,
-    setCustomColors,
   } = useAppearance()
   const [mounted, setMounted] = useState(false)
   const [language, setLanguage] = useState<Language>("en-US")
@@ -51,11 +45,6 @@ export default function SettingsPage() {
     text: string
   } | null>(null)
 
-  // カスタム色の一時的な入力値
-  const [customBgLight, setCustomBgLight] = useState(customColors.bgLight || "#f5f5f5")
-  const [customBgDark, setCustomBgDark] = useState(customColors.bgDark || "#1a1a1a")
-  const [customAccent, setCustomAccent] = useState(customColors.accent || "#22c55e")
-
   useEffect(() => {
     setMounted(true)
     // Load user settings
@@ -64,13 +53,6 @@ export default function SettingsPage() {
       setOriginalLanguage(settings.language)
     })
   }, [])
-
-  // カスタム色が変更されたら反映
-  useEffect(() => {
-    if (customColors.bgLight) setCustomBgLight(customColors.bgLight)
-    if (customColors.bgDark) setCustomBgDark(customColors.bgDark)
-    if (customColors.accent) setCustomAccent(customColors.accent)
-  }, [customColors])
 
   const hasChanges = language !== originalLanguage
 
@@ -86,21 +68,6 @@ export default function SettingsPage() {
       // Clear message after 3 seconds
       setTimeout(() => setSaveMessage(null), 3000)
     })
-  }
-
-  const handleCustomBgColorChange = () => {
-    setCustomColors({
-      bgLight: customBgLight,
-      bgDark: customBgDark,
-    })
-    setBackgroundColor("custom")
-  }
-
-  const handleCustomAccentColorChange = () => {
-    setCustomColors({
-      accent: customAccent,
-    })
-    setAccentColor("custom")
   }
 
   if (!mounted) {
@@ -213,95 +180,14 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* 背景色設定 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">背景色</CardTitle>
-          <CardDescription>アプリの背景色を選択</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-4 gap-3">
-            {backgroundColors.filter(c => c.id !== "custom").map((color) => {
-              const isSelected = backgroundColor === color.id
-              return (
-                <button
-                  key={color.id}
-                  onClick={() => setBackgroundColor(color.id as BackgroundColorId)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
-                    isSelected
-                      ? "border-success"
-                      : "border-border hover:border-muted-foreground"
-                  )}
-                >
-                  <div
-                    className="w-10 h-10 rounded-full border border-border"
-                    style={{ backgroundColor: color.preview || "#888" }}
-                  />
-                  <span className="text-xs font-medium">{color.name}</span>
-                  {isSelected && (
-                    <div className="absolute top-1 right-1">
-                      <Check className="h-4 w-4 text-success" />
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* カスタム背景色 */}
-          <div className={cn(
-            "p-4 rounded-lg border-2 transition-all",
-            backgroundColor === "custom"
-              ? "border-success bg-success/5"
-              : "border-border"
-          )}>
-            <div className="flex items-center gap-2 mb-3">
-              <Palette className="h-4 w-4" />
-              <span className="text-sm font-medium">カスタム背景色</span>
-              {backgroundColor === "custom" && (
-                <Check className="h-4 w-4 text-success ml-auto" />
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">ライト:</label>
-                <input
-                  type="color"
-                  value={customBgLight}
-                  onChange={(e) => setCustomBgLight(e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">ダーク:</label>
-                <input
-                  type="color"
-                  value={customBgDark}
-                  onChange={(e) => setCustomBgDark(e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer"
-                />
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCustomBgColorChange}
-              >
-                適用
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* アクセントカラー設定 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">アクセントカラー</CardTitle>
           <CardDescription>ボタンやリンクの色を選択</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-6 gap-3">
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
             {accentColors.filter(c => c.id !== "custom").map((color) => {
               const isSelected = accentColor === color.id
               return (
@@ -316,7 +202,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <div
-                    className="w-10 h-10 rounded-full"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
                     style={{ backgroundColor: color.preview || "#888" }}
                   />
                   <span className="text-xs font-medium">{color.name}</span>
@@ -329,40 +215,6 @@ export default function SettingsPage() {
               )
             })}
           </div>
-
-          {/* カスタムアクセントカラー */}
-          <div className={cn(
-            "p-4 rounded-lg border-2 transition-all",
-            accentColor === "custom"
-              ? "border-success bg-success/5"
-              : "border-border"
-          )}>
-            <div className="flex items-center gap-2 mb-3">
-              <Palette className="h-4 w-4" />
-              <span className="text-sm font-medium">カスタムアクセントカラー</span>
-              {accentColor === "custom" && (
-                <Check className="h-4 w-4 text-success ml-auto" />
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">色:</label>
-                <input
-                  type="color"
-                  value={customAccent}
-                  onChange={(e) => setCustomAccent(e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer"
-                />
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCustomAccentColorChange}
-              >
-                適用
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
@@ -373,7 +225,6 @@ export default function SettingsPage() {
             現在の設定:{" "}
             {languageOptions.find((l) => l.id === language)?.nativeName || "English"} /{" "}
             {themeOptions.find((t) => t.id === theme)?.name || "ダーク"}モード /{" "}
-            {backgroundColors.find((c) => c.id === backgroundColor)?.name || "ブラック"}背景 /{" "}
             {accentColors.find((c) => c.id === accentColor)?.name || "グリーン"}アクセント
           </p>
         </CardContent>

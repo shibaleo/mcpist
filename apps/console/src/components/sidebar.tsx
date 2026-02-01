@@ -28,6 +28,7 @@ import {
   HelpCircle,
   KeyRound,
   MessageSquareText,
+  Wrench,
 } from "lucide-react"
 
 const MIN_WIDTH = 150
@@ -40,7 +41,8 @@ const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
     { href: "/connections", label: "MCP接続", icon: Server },
-    { href: "/tools", label: "サービス & ツール", icon: Link2 },
+    { href: "/services", label: "サービス接続", icon: Link2 },
+    { href: "/tools", label: "ツール設定", icon: Wrench },
     { href: "/prompts", label: "テンプレート", icon: MessageSquareText },
   ],
   general: [
@@ -161,7 +163,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
     <aside
       ref={sidebarRef}
       className={cn(
-        "relative flex flex-col h-full bg-sidebar border-r border-sidebar-border overflow-hidden transition-all duration-300",
+        "relative flex flex-col h-full glass-sidebar border-r border-sidebar-border overflow-hidden transition-all duration-300",
         isResizing && "select-none transition-none"
       )}
       style={{ width: sidebarWidth }}
@@ -175,11 +177,11 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
             toggleSidebar()
           }}
         >
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <Zap className="h-4 w-4 text-foreground" />
           </div>
           <span className={cn(
-            "font-semibold text-brand transition-opacity duration-300 whitespace-nowrap",
+            "font-semibold text-foreground transition-opacity duration-300 whitespace-nowrap",
             collapsed ? "opacity-0" : "opacity-100"
           )}>MCPist</span>
         </div>

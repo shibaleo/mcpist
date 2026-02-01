@@ -10,14 +10,14 @@ export const backgroundColors = [
   { id: "custom", name: "カスタム", preview: null }, // カスタム色用
 ] as const
 
-// アクセントカラープリセット
+// アクセントカラープリセット（落ち着いたトーン）
 export const accentColors = [
-  { id: "green", name: "グリーン", preview: "#22c55e" },
-  { id: "blue", name: "ブルー", preview: "#3b82f6" },
-  { id: "purple", name: "パープル", preview: "#a855f7" },
-  { id: "pink", name: "ピンク", preview: "#ec4899" },
-  { id: "orange", name: "オレンジ", preview: "#f97316" },
-  { id: "yellow", name: "イエロー", preview: "#eab308" },
+  { id: "green", name: "グリーン", preview: "#4da872" },
+  { id: "blue", name: "ブルー", preview: "#5a8fc8" },
+  { id: "purple", name: "パープル", preview: "#a070c0" },
+  { id: "pink", name: "ピンク", preview: "#c46a88" },
+  { id: "orange", name: "オレンジ", preview: "#d07850" },
+  { id: "yellow", name: "イエロー", preview: "#b8a050" },
   { id: "custom", name: "カスタム", preview: null }, // カスタム色用
 ] as const
 
@@ -48,7 +48,7 @@ const STORAGE_KEY_CUSTOM = "mcpist-custom-colors"
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [backgroundColor, setBackgroundColorState] = useState<BackgroundColorId>("black")
-  const [accentColor, setAccentColorState] = useState<AccentColorId>("green")
+  const [accentColor, setAccentColorState] = useState<AccentColorId>("orange")
   const [customColors, setCustomColorsState] = useState<CustomColors>({})
   const [mounted, setMounted] = useState(false)
 
