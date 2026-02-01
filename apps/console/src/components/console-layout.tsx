@@ -46,14 +46,17 @@ export function ConsoleLayout({ children }: ConsoleLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background relative">
+      {/* Retro Grid Overlay */}
+      <div className="absolute inset-0 retro-grid pointer-events-none" />
+
       {/* Desktop/Tablet Sidebar */}
-      <div className="hidden md:block">
+      <div className="hidden md:block relative z-10">
         <Sidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         {/* Mobile Header */}
         <MobileHeader />
 

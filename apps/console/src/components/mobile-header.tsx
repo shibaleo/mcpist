@@ -11,7 +11,7 @@ export function MobileHeader() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="flex items-center h-14 px-4 border-b border-border bg-background md:hidden">
+    <header className="flex items-center h-14 px-4 border-b border-border bg-sidebar md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="mr-3">
@@ -30,7 +30,7 @@ export function MobileHeader() {
         <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="font-semibold">MCPist</span>
+        <span className="font-semibold text-brand">MCPist</span>
       </div>
     </header>
   )

@@ -621,7 +621,7 @@ export default function McpConnectionPage() {
           {/* Result Badge */}
           {verifySteps.length === 2 && verifySteps.every((step) => step.status === "success") && (
             <div className="flex justify-center">
-              <Badge className="bg-green-500/20 text-green-600 border-green-500/30 gap-1.5 py-1.5 px-4">
+              <Badge className="bg-success/20 text-success border-success/30 gap-1.5 py-1.5 px-4">
                 <CheckCircle2 className="h-4 w-4" />
                 利用可能
               </Badge>
@@ -660,7 +660,7 @@ export default function McpConnectionPage() {
                     <div
                       className={cn(
                         "flex items-center gap-2 p-2 rounded-lg text-sm",
-                        step.status === "success" && "bg-green-500/10",
+                        step.status === "success" && "bg-success/10",
                         step.status === "error" && "bg-destructive/10",
                         step.status === "running" && "bg-primary/10"
                       )}
@@ -672,7 +672,7 @@ export default function McpConnectionPage() {
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       )}
                       {step.status === "success" && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <CheckCircle2 className="h-4 w-4 text-success" />
                       )}
                       {step.status === "error" && <XCircle className="h-4 w-4 text-destructive" />}
                       <span className="flex-1">{step.name}</span>
@@ -763,7 +763,7 @@ export default function McpConnectionPage() {
                   onClick={() => handleCopy(endpoint, "oauth-endpoint")}
                 >
                   {copied === "oauth-endpoint" ? (
-                    <Check className="h-4 w-4 text-green-500" />
+                    <Check className="h-4 w-4 text-success" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
@@ -815,7 +815,7 @@ export default function McpConnectionPage() {
                             <span className="font-medium text-sm">
                               {consent.client_name || "Unknown Client"}
                             </span>
-                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/30">
+                            <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
                               認可済み
                             </Badge>
                           </div>
@@ -916,7 +916,7 @@ export default function McpConnectionPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-success" />
               APIキーを作成しました
             </DialogTitle>
             <DialogDescription>
@@ -938,7 +938,7 @@ export default function McpConnectionPage() {
                   onClick={() => createdKey && handleCopyKey(createdKey.api_key)}
                 >
                   {keyCopied ? (
-                    <Check className="h-4 w-4 text-green-500" />
+                    <Check className="h-4 w-4 text-success" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
