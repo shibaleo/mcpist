@@ -894,7 +894,7 @@ export default function ToolsPage() {
                     key={tool.id}
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border",
-                      dangerous && "border-yellow-500/30 bg-yellow-500/5"
+                      dangerous && "border-warning/30 bg-warning/5"
                     )}
                   >
                     <Switch
@@ -905,13 +905,13 @@ export default function ToolsPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm font-mono">{tool.name}</span>
                         {readOnly ? (
-                          <Badge variant="outline" className="text-blue-500 border-blue-500/50 text-xs">
+                          <Badge variant="outline" className="text-info border-info/50 text-xs">
                             ReadOnly
                           </Badge>
                         ) : (
                           <>
                             {destructive && (
-                              <Badge variant="outline" className="text-yellow-500 border-yellow-500/50 text-xs">
+                              <Badge variant="outline" className="text-warning border-warning/50 text-xs">
                                 <AlertTriangle className="h-3 w-3 mr-1" />
                                 Destructive
                               </Badge>
@@ -964,7 +964,7 @@ export default function ToolsPage() {
           {connectionProgress ? (
             <div className="py-8 flex flex-col items-center justify-center space-y-4">
               {connectionProgress.step === "completed" ? (
-                <CheckCircle2 className="h-12 w-12 text-green-500" />
+                <CheckCircle2 className="h-12 w-12 text-success" />
               ) : connectionProgress.step === "error" ? (
                 <XCircle className="h-12 w-12 text-destructive" />
               ) : (
@@ -973,7 +973,7 @@ export default function ToolsPage() {
               <p
                 className={cn(
                   "text-lg font-medium text-center",
-                  connectionProgress.step === "completed" && "text-green-500",
+                  connectionProgress.step === "completed" && "text-success",
                   connectionProgress.step === "error" && "text-destructive"
                 )}
               >

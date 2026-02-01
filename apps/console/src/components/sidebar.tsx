@@ -179,7 +179,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
             <Zap className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className={cn(
-            "font-semibold text-sidebar-foreground transition-opacity duration-300 whitespace-nowrap",
+            "font-semibold text-brand transition-opacity duration-300 whitespace-nowrap",
             collapsed ? "opacity-0" : "opacity-100"
           )}>MCPist</span>
         </div>

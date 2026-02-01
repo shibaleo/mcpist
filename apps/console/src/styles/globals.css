@@ -2,67 +2,221 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  /* カスタム変数（デフォルト値） */
-  --background-custom: oklch(1 0 0);
-  --background-custom-light: oklch(1 0 0);
-  --accent-custom: oklch(0.627 0.194 149.214);
+/* =============================================================================
+   ライトテーマ（デフォルト）
+   ============================================================================= */
 
-  --background: var(--background-custom-light);
-  --foreground: oklch(0.145 0 0);
-  --card: var(--background-custom-light);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: var(--background-custom-light);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --success: var(--accent-custom);
-  --warning: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
+:root {
+  /* アクセントカラー（デフォルト: 落ち着いたグリーン） */
+  --accent-value: #22c55e;
+
+  /* 背景・カード（ダークテーマ - Liam ERD風） */
+  --background: #171717;
+  --background-solid: #171717;
+  --card: #1f1f1f;
+  --popover: #1f1f1f;
+
+  /* テキスト */
+  --foreground: #e5e5e5;
+  --card-foreground: #e5e5e5;
+  --popover-foreground: #e5e5e5;
+
+  /* プライマリ */
+  --primary: var(--accent-value);
+  --primary-foreground: #0a0a0a;
+
+  /* セカンダリ・ミュート・アクセント */
+  --secondary: #262626;
+  --secondary-foreground: #e5e5e5;
+  --muted: #262626;
+  --muted-foreground: #737373;
+  --accent: #262626;
+  --accent-foreground: #e5e5e5;
+
+  /* ボーダー・入力 */
+  --border: #2e2e2e;
+  --input: #262626;
+  --ring: var(--accent-value);
+
+  /* 機能カラー（落ち着いたトーン） */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: var(--accent-value);
+  --warning: #f59e0b;
+  --warning-foreground: #0a0a0a;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+  --danger: #ef4444;
+  --danger-foreground: #ffffff;
+
+  /* その他 */
+  --radius: 0.5rem;
+
+  /* ブランドカラー */
+  --brand: var(--accent-value);
+
+  /* サイドバー */
+  --sidebar: #1f1f1f;
+  --sidebar-foreground: #e5e5e5;
+  --sidebar-border: #2e2e2e;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #e5e5e5;
 }
+
+/* =============================================================================
+   ダークテーマ
+   ============================================================================= */
 
 .dark {
-  --background: var(--background-custom);
-  --foreground: oklch(0.985 0 0);
-  --card: var(--background-custom);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: var(--background-custom);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --success: var(--accent-custom);
-  --warning: oklch(0.769 0.188 70.08);
+  /* 背景・カード（ダークテーマ - Liam ERD風のより深いトーン） */
+  --background: #0f0f0f;
+  --background-solid: #0f0f0f;
+  --card: #171717;
+  --popover: #171717;
+
+  /* テキスト */
+  --foreground: #fafafa;
+  --card-foreground: #fafafa;
+  --popover-foreground: #fafafa;
+
+  /* プライマリ */
+  --primary-foreground: #0a0a0a;
+
+  /* セカンダリ・ミュート・アクセント */
+  --secondary: #1f1f1f;
+  --secondary-foreground: #fafafa;
+  --muted: #1f1f1f;
+  --muted-foreground: #737373;
+  --accent: #1f1f1f;
+  --accent-foreground: #fafafa;
+
+  /* ボーダー・入力 */
+  --border: #262626;
+  --input: #1f1f1f;
+
+  /* 機能カラー */
+  --destructive-foreground: #ffffff;
+  --warning-foreground: #0a0a0a;
+  --info-foreground: #ffffff;
+  --danger-foreground: #ffffff;
+
+  /* サイドバー */
+  --sidebar: #171717;
+  --sidebar-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #fafafa;
 }
+
+/* =============================================================================
+   背景色プリセット（data-bg-color属性で切り替え）
+   ============================================================================= */
+
+/* slate: 薄い青灰色 / 青灰色 */
+[data-bg-color="slate"] {
+  --background: oklch(0.97 0.01 250);
+  --card: oklch(0.97 0.01 250);
+  --popover: oklch(0.97 0.01 250);
+  --secondary: oklch(0.94 0.01 250);
+  --muted: oklch(0.94 0.01 250);
+  --accent: oklch(0.94 0.01 250);
+  --border: oklch(0.88 0.01 250);
+  --input: oklch(0.88 0.01 250);
+}
+[data-bg-color="slate"].dark,
+.dark[data-bg-color="slate"] {
+  --background: oklch(0.178 0.014 256);
+  --card: oklch(0.178 0.014 256);
+  --popover: oklch(0.178 0.014 256);
+  --secondary: oklch(0.22 0.014 256);
+  --muted: oklch(0.22 0.014 256);
+  --accent: oklch(0.22 0.014 256);
+  --border: oklch(0.30 0.014 256);
+  --input: oklch(0.30 0.014 256);
+}
+
+/* zinc: 薄いグレー / グレー */
+[data-bg-color="zinc"] {
+  --background: oklch(0.97 0 0);
+  --card: oklch(0.97 0 0);
+  --popover: oklch(0.97 0 0);
+  --secondary: oklch(0.94 0 0);
+  --muted: oklch(0.94 0 0);
+  --accent: oklch(0.94 0 0);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.88 0 0);
+}
+[data-bg-color="zinc"].dark,
+.dark[data-bg-color="zinc"] {
+  --background: oklch(0.18 0 0);
+  --card: oklch(0.18 0 0);
+  --popover: oklch(0.18 0 0);
+  --secondary: oklch(0.22 0 0);
+  --muted: oklch(0.22 0 0);
+  --accent: oklch(0.22 0 0);
+  --border: oklch(0.30 0 0);
+  --input: oklch(0.30 0 0);
+}
+
+/* カスタム色（ユーザーがカラーピッカーで選択） */
+[data-bg-color="custom"] {
+  --background: var(--custom-bg-light, oklch(0.97 0 0));
+  --card: var(--custom-bg-light, oklch(0.97 0 0));
+  --popover: var(--custom-bg-light, oklch(0.97 0 0));
+}
+[data-bg-color="custom"].dark,
+.dark[data-bg-color="custom"] {
+  --background: var(--custom-bg-dark, oklch(0.18 0 0));
+  --card: var(--custom-bg-dark, oklch(0.18 0 0));
+  --popover: var(--custom-bg-dark, oklch(0.18 0 0));
+}
+
+/* =============================================================================
+   アクセントカラープリセット（data-accent-color属性で切り替え）
+   ============================================================================= */
+
+/* green（デフォルト - 落ち着いたグリーン） */
+[data-accent-color="green"] {
+  --accent-value: #22c55e;
+}
+
+[data-accent-color="blue"] {
+  --accent-value: #3b82f6;
+}
+
+[data-accent-color="purple"] {
+  --accent-value: #a855f7;
+}
+
+[data-accent-color="pink"] {
+  --accent-value: #ec4899;
+}
+
+[data-accent-color="orange"] {
+  --accent-value: #f97316;
+}
+
+[data-accent-color="yellow"] {
+  --accent-value: #eab308;
+}
+
+[data-accent-color="custom"] {
+  --accent-value: var(--custom-accent, #22c55e);
+}
+
+/* =============================================================================
+   Tailwind テーマ連携
+   ============================================================================= */
 
 @theme inline {
   --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
 
-  /* Collapsible animation */
+  /* アニメーション */
   --animate-collapsible-down: collapsible-down 0.2s ease-out;
   --animate-collapsible-up: collapsible-up 0.2s ease-out;
+
+  /* カラー変数 */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -84,21 +238,51 @@
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-brand: var(--brand);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  /* 角丸 */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* =============================================================================
+   ベーススタイル
+   ============================================================================= */
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
   }
 
-  /* Custom scrollbar */
+  /* ネオングロー効果 */
+  .neon-glow {
+    text-shadow: 0 0 10px var(--accent-value), 0 0 20px var(--accent-value), 0 0 30px var(--accent-value);
+  }
+
+  /* ドットグリッドオーバーレイ（Liam ERD風の控えめなドット） */
+  .retro-grid {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* カスタムスクロールバー */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -124,26 +308,20 @@
   }
 }
 
-/* Collapsible keyframes */
+/* =============================================================================
+   アニメーション
+   ============================================================================= */
+
 @keyframes collapsible-down {
-  from {
-    height: 0;
-  }
-  to {
-    height: var(--radix-collapsible-content-height);
-  }
+  from { height: 0; }
+  to { height: var(--radix-collapsible-content-height); }
 }
 
 @keyframes collapsible-up {
-  from {
-    height: var(--radix-collapsible-content-height);
-  }
-  to {
-    height: 0;
-  }
+  from { height: var(--radix-collapsible-content-height); }
+  to { height: 0; }
 }
 
-/* Pulse border animation for onboarding highlight */
 @keyframes pulse-border {
   0%, 100% {
     box-shadow: 0 0 0 0 var(--primary), 0 0 0 0 transparent;

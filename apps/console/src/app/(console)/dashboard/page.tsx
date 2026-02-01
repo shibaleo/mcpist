@@ -134,9 +134,9 @@ export default function DashboardPage() {
 
       {/* 残高アラート（オンボーディング完了後、残高が少ない場合） */}
       {!loading && onboardingStep === "complete" && showLowCreditAlert && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
-            <Coins className="h-4 w-4 text-yellow-500" />
+        <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center">
+            <Coins className="h-4 w-4 text-warning" />
           </div>
           <div>
             <p className="font-medium text-foreground">クレジット残高が少なくなっています</p>

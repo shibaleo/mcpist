@@ -151,13 +151,13 @@ export default function BillingPage() {
               </div>
               <div className="flex gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-blue-500/20 text-blue-400">
+                  <Badge variant="secondary" className="bg-info/20 text-info">
                     無料
                   </Badge>
                   <span>{credits?.free_credits.toLocaleString() ?? 0}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-green-500/20 text-green-400">
+                  <Badge variant="secondary" className="bg-success/20 text-success">
                     有料
                   </Badge>
                   <span>{credits?.paid_credits.toLocaleString() ?? 0}</span>
@@ -281,15 +281,15 @@ export default function BillingPage() {
         <CardContent>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              <CheckCircle className="h-4 w-4 mt-0.5 text-success shrink-0" />
               <span>MCPツールの実行ごとに1クレジットを消費します</span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              <CheckCircle className="h-4 w-4 mt-0.5 text-success shrink-0" />
               <span>無料クレジットが優先的に消費されます</span>
             </li>
             <li className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              <CheckCircle className="h-4 w-4 mt-0.5 text-success shrink-0" />
               <span>有料クレジットに有効期限はありません</span>
             </li>
           </ul>
