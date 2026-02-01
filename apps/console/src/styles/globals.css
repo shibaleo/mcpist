@@ -7,8 +7,8 @@
    ============================================================================= */
 
 :root {
-  /* アクセントカラー（デフォルト: 落ち着いたグリーン） */
-  --accent-value: #22c55e;
+  /* アクセントカラー（デフォルト: 落ち着いたオレンジ） */
+  --accent-value: #d07850;
 
   /* 背景・カード（ダークテーマ - Liam ERD風） */
   --background: #171717;
@@ -17,9 +17,9 @@
   --popover: #1f1f1f;
 
   /* テキスト */
-  --foreground: #e5e5e5;
-  --card-foreground: #e5e5e5;
-  --popover-foreground: #e5e5e5;
+  --foreground: #b5b5b5;
+  --card-foreground: #dedad0;
+  --popover-foreground: #dedad0;
 
   /* プライマリ */
   --primary: var(--accent-value);
@@ -35,7 +35,7 @@
 
   /* ボーダー・入力 */
   --border: #2e2e2e;
-  --input: #262626;
+  --input: #3a3a3a;
   --ring: var(--accent-value);
 
   /* 機能カラー（落ち着いたトーン） */
@@ -75,9 +75,9 @@
   --popover: #171717;
 
   /* テキスト */
-  --foreground: #fafafa;
-  --card-foreground: #fafafa;
-  --popover-foreground: #fafafa;
+  --foreground: #b5b5b5;
+  --card-foreground: #dedad0;
+  --popover-foreground: #dedad0;
 
   /* プライマリ */
   --primary-foreground: #0a0a0a;
@@ -91,8 +91,8 @@
   --accent-foreground: #fafafa;
 
   /* ボーダー・入力 */
-  --border: #262626;
-  --input: #1f1f1f;
+  --border: #2e2e2e;
+  --input: #3a3a3a;
 
   /* 機能カラー */
   --destructive-foreground: #ffffff;
@@ -177,31 +177,31 @@
 
 /* green（デフォルト - 落ち着いたグリーン） */
 [data-accent-color="green"] {
-  --accent-value: #22c55e;
+  --accent-value: #4da872;
 }
 
 [data-accent-color="blue"] {
-  --accent-value: #3b82f6;
+  --accent-value: #5a8fc8;
 }
 
 [data-accent-color="purple"] {
-  --accent-value: #a855f7;
+  --accent-value: #a070c0;
 }
 
 [data-accent-color="pink"] {
-  --accent-value: #ec4899;
+  --accent-value: #c46a88;
 }
 
 [data-accent-color="orange"] {
-  --accent-value: #f97316;
+  --accent-value: #d07850;
 }
 
 [data-accent-color="yellow"] {
-  --accent-value: #eab308;
+  --accent-value: #b8a050;
 }
 
 [data-accent-color="custom"] {
-  --accent-value: var(--custom-accent, #22c55e);
+  --accent-value: var(--custom-accent, #d07850);
 }
 
 /* =============================================================================
@@ -277,9 +277,20 @@
   }
 
   /* ドットグリッドオーバーレイ（Liam ERD風の控えめなドット） */
-  .retro-grid {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  .dot-grid {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
     background-size: 24px 24px;
+  }
+
+  /* サイドバー用グラスオーバーレイ */
+  .glass-sidebar {
+    background: rgba(31, 31, 31, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dark .glass-sidebar {
+    background: rgba(23, 23, 23, 0.7);
   }
 
   /* カスタムスクロールバー */

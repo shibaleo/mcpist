@@ -47,8 +47,8 @@ export function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
   return (
     <div className="flex h-screen bg-background relative">
-      {/* Retro Grid Overlay */}
-      <div className="absolute inset-0 retro-grid pointer-events-none" />
+      {/* Dot Grid Background - covers entire screen */}
+      <div className="absolute inset-0 dot-grid pointer-events-none" />
 
       {/* Desktop/Tablet Sidebar */}
       <div className="hidden md:block relative z-10">
