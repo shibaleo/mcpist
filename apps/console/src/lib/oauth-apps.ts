@@ -166,7 +166,14 @@ export async function getOAuthAuthorizationUrl(
     params.set("returnTo", returnTo)
   }
 
-  const url = `/api/oauth/${provider}/authorize${params.toString() ? `?${params.toString()}` : ""}`
+  // google-tasks は google の authorize を使い、module パラメータで区別
+  let apiPath = provider
+  if (provider === "google-tasks") {
+    apiPath = "google"
+    params.set("module", "google_tasks")
+  }
+
+  const url = `/api/oauth/${apiPath}/authorize${params.toString() ? `?${params.toString()}` : ""}`
   const response = await fetch(url, {
     method: "GET",
     credentials: "include",

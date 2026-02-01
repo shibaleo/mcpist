@@ -22,16 +22,20 @@ export async function GET(request: Request) {
   const error = url.searchParams.get("error")
   const stateParam = url.searchParams.get("state")
 
-  // state から returnTo を取り出す
+  // state から returnTo と module を取り出す
   let returnTo = "/connections"
+  let module = "google_calendar"  // デフォルト（後方互換性）
   if (stateParam) {
     try {
       const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
       if (stateData.returnTo) {
         returnTo = stateData.returnTo
       }
+      if (stateData.module) {
+        module = stateData.module
+      }
     } catch {
-      // state のパースに失敗した場合はデフォルトのリダイレクト先を使用
+      // state のパースに失敗した場合はデフォルト値を使用
     }
   }
 
@@ -116,7 +120,7 @@ export async function GET(request: Request) {
     }
 
     const { error: saveError } = await supabase.rpc("upsert_my_credential", {
-      p_module: "google_calendar",
+      p_module: module,
       p_credentials: tokenCredentials,
     })
 
@@ -128,11 +132,18 @@ export async function GET(request: Request) {
     }
 
     // デフォルトツール設定を保存
-    await saveDefaultToolSettings(supabase, "google_calendar")
+    await saveDefaultToolSettings(supabase, module)
+
+    // モジュール名を表示用に変換
+    const moduleDisplayNames: Record<string, string> = {
+      google_calendar: "Google Calendar",
+      google_tasks: "Google Tasks",
+    }
+    const displayName = moduleDisplayNames[module] || module
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)
-    redirectUrl.searchParams.set("success", "Google Calendar connected successfully")
+    redirectUrl.searchParams.set("success", `${displayName} connected successfully`)
     return NextResponse.redirect(redirectUrl)
   } catch (err) {
     console.error("OAuth callback error:", err)
