@@ -4,6 +4,9 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser, SupabaseClient } from "@supabase/supabase-js"
 
+// Development auth bypass - set NEXT_PUBLIC_DEV_AUTH_BYPASS=true in .env.local
+const DEV_AUTH_BYPASS = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true"
+
 interface User {
   id: string
   name: string
@@ -22,6 +25,14 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Dummy user for development bypass
+const DEV_BYPASS_USER: User = {
+  id: "dev-bypass-user-id",
+  name: "Dev User",
+  email: "dev@localhost",
+  role: "admin",
+}
 
 async function fetchUserRole(client: SupabaseClient): Promise<"user" | "admin"> {
   const { data } = await client.rpc("get_my_role")
@@ -50,6 +61,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
+    // Development bypass - skip real auth
+    if (DEV_AUTH_BYPASS) {
+      console.warn("[Auth] DEV_AUTH_BYPASS enabled - using dummy user")
+      const client = createClient()
+      setSupabase(client)
+      setUser(DEV_BYPASS_USER)
+      setIsAdmin(true)
+      setIsLoading(false)
+      return
+    }
+
     const client = createClient()
     setSupabase(client)
 

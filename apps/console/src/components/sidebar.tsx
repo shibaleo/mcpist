@@ -41,7 +41,7 @@ const navItems = {
   mcp: [
     { href: "/connections", label: "MCP接続", icon: Server },
     { href: "/tools", label: "サービス & ツール", icon: Link2 },
-    { href: "/prompts", label: "プロンプト", icon: MessageSquareText },
+    { href: "/prompts", label: "テンプレート", icon: MessageSquareText },
   ],
   general: [
     { href: "/billing", label: "請求", icon: CreditCard },

@@ -25,22 +25,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
-import { modules } from "@/lib/module-data"
 import {
   Plus,
   Loader2,
   Pencil,
   Trash2,
   MessageSquareText,
-  FileText,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -66,8 +57,6 @@ export default function PromptsPage() {
   const [editForm, setEditForm] = useState({
     name: "",
     content: "",
-    moduleName: "",
-    enabled: true,
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -82,7 +71,7 @@ export default function PromptsPage() {
       setPrompts(data)
     } catch (error) {
       console.error("Failed to load prompts:", error)
-      toast.error("プロンプトの取得に失敗しました")
+      toast.error("テンプレートの取得に失敗しました")
     }
   }, [])
 
@@ -101,8 +90,6 @@ export default function PromptsPage() {
     setEditForm({
       name: prompt.name,
       content: prompt.content,
-      moduleName: prompt.module_name || "",
-      enabled: prompt.enabled,
     })
     setEditDialog({ open: true, prompt })
   }
@@ -112,8 +99,6 @@ export default function PromptsPage() {
     setEditForm({
       name: "",
       content: "",
-      moduleName: "",
-      enabled: true,
     })
     setEditDialog({ open: true, prompt: null })
   }
@@ -134,13 +119,13 @@ export default function PromptsPage() {
       const result = await upsertPrompt(
         editForm.name.trim(),
         editForm.content.trim(),
-        editForm.moduleName || undefined,
+        undefined, // moduleName is not used
         editDialog.prompt?.id,
-        editForm.enabled
+        editDialog.prompt?.enabled ?? true
       )
 
       if (result.success) {
-        toast.success(editDialog.prompt ? "プロンプトを更新しました" : "プロンプトを作成しました")
+        toast.success(editDialog.prompt ? "テンプレートを更新しました" : "テンプレートを作成しました")
         setEditDialog({ open: false, prompt: null })
         await loadPrompts()
       } else {
@@ -154,26 +139,34 @@ export default function PromptsPage() {
     }
   }
 
-  // Toggle enabled status
+  // Toggle enabled status (directly from list)
   const handleToggleEnabled = async (prompt: Prompt) => {
+    // Optimistic update
+    setPrompts((prev) =>
+      prev.map((p) => (p.id === prompt.id ? { ...p, enabled: !p.enabled } : p))
+    )
+
     try {
       const result = await upsertPrompt(
         prompt.name,
         prompt.content,
-        prompt.module_name || undefined,
+        undefined,
         prompt.id,
         !prompt.enabled
       )
 
-      if (result.success) {
-        // Update local state optimistically
+      if (!result.success) {
+        // Revert on failure
         setPrompts((prev) =>
-          prev.map((p) => (p.id === prompt.id ? { ...p, enabled: !p.enabled } : p))
+          prev.map((p) => (p.id === prompt.id ? { ...p, enabled: prompt.enabled } : p))
         )
-      } else {
         toast.error(result.error || "更新に失敗しました")
       }
     } catch (error) {
+      // Revert on error
+      setPrompts((prev) =>
+        prev.map((p) => (p.id === prompt.id ? { ...p, enabled: prompt.enabled } : p))
+      )
       console.error("Failed to toggle prompt:", error)
       toast.error("更新に失敗しました")
     }
@@ -188,7 +181,7 @@ export default function PromptsPage() {
       const result = await deletePrompt(deleteDialog.id)
 
       if (result.success) {
-        toast.success("プロンプトを削除しました")
+        toast.success("テンプレートを削除しました")
         setDeleteDialog(null)
         await loadPrompts()
       } else {
@@ -206,8 +199,8 @@ export default function PromptsPage() {
     return (
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">プロンプト</h1>
-          <p className="text-muted-foreground mt-1">カスタムプロンプトを管理します</p>
+          <h1 className="text-2xl font-bold text-foreground">テンプレート</h1>
+          <p className="text-muted-foreground mt-1">カスタムテンプレートを管理します</p>
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -220,8 +213,8 @@ export default function PromptsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">プロンプト</h1>
-          <p className="text-muted-foreground mt-1">カスタムプロンプトを管理します</p>
+          <h1 className="text-2xl font-bold text-foreground">テンプレート</h1>
+          <p className="text-muted-foreground mt-1">カスタムテンプレートを管理します</p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
@@ -234,7 +227,7 @@ export default function PromptsPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <MessageSquareText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              プロンプトがありません
+              テンプレートがありません
               <br />
               <span className="text-sm">「新規作成」ボタンから作成できます</span>
             </p>
@@ -245,54 +238,55 @@ export default function PromptsPage() {
           {prompts.map((prompt) => (
             <Card
               key={prompt.id}
-              className={cn(!prompt.enabled && "opacity-60")}
+              className={cn("py-2 cursor-pointer hover:bg-accent/50 transition-colors", !prompt.enabled && "opacity-60")}
+              onClick={() => handleEdit(prompt)}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
+              <CardHeader className="py-2">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-foreground" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">{prompt.name}</CardTitle>
-                      <CardDescription className="text-xs">
-                        {prompt.module_name ? (
-                          <span className="text-primary">{prompt.module_name}</span>
-                        ) : (
-                          <span className="text-muted-foreground">全モジュール共通</span>
-                        )}
-                        {" · "}
-                        {new Date(prompt.updated_at).toLocaleDateString("ja-JP")}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <Switch
                       checked={prompt.enabled}
                       onCheckedChange={() => handleToggleEnabled(prompt)}
+                      onClick={(e) => e.stopPropagation()}
                     />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-sm font-medium">{prompt.name}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {new Date(prompt.updated_at).toLocaleDateString("ja-JP")}
+                        </CardDescription>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
+                        {prompt.content.replace(/\n/g, " ")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleEdit(prompt)}
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEdit(prompt)
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDeleteDialog(prompt)}
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleteDialog(prompt)
+                      }}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono bg-secondary/30 p-3 rounded-lg max-h-32 overflow-auto">
-                  {prompt.content}
-                </pre>
-              </CardContent>
             </Card>
           ))}
         </div>
@@ -303,12 +297,12 @@ export default function PromptsPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editDialog.prompt ? "プロンプトを編集" : "新しいプロンプトを作成"}
+              {editDialog.prompt ? "テンプレートを編集" : "新しいテンプレートを作成"}
             </DialogTitle>
             <DialogDescription>
               {editDialog.prompt
-                ? "プロンプトの内容を編集します"
-                : "AIに渡すカスタムプロンプトを作成します"}
+                ? "テンプレートの内容を編集します"
+                : "AIに渡すカスタムテンプレートを作成します"}
             </DialogDescription>
           </DialogHeader>
 
@@ -325,46 +319,15 @@ export default function PromptsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prompt-module">対象モジュール（オプション）</Label>
-              <Select
-                value={editForm.moduleName || "__all__"}
-                onValueChange={(value) => setEditForm((prev) => ({ ...prev, moduleName: value === "__all__" ? "" : value }))}
-                disabled={submitting}
-              >
-                <SelectTrigger id="prompt-module">
-                  <SelectValue placeholder="全モジュール共通" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">全モジュール共通</SelectItem>
-                  {modules.map((mod) => (
-                    <SelectItem key={mod.id} value={mod.id}>
-                      {mod.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="prompt-content">内容</Label>
               <Textarea
                 id="prompt-content"
                 value={editForm.content}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, content: e.target.value }))}
                 placeholder="今日のタスク一覧を取得して、優先度順に整理してください..."
-                className="min-h-[150px] font-mono"
+                className="min-h-[200px] font-mono"
                 disabled={submitting}
               />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Switch
-                id="prompt-enabled"
-                checked={editForm.enabled}
-                onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, enabled: checked }))}
-                disabled={submitting}
-              />
-              <Label htmlFor="prompt-enabled">有効</Label>
             </div>
           </div>
 
@@ -390,7 +353,7 @@ export default function PromptsPage() {
       <AlertDialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>プロンプトを削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>テンプレートを削除しますか？</AlertDialogTitle>
             <AlertDialogDescription>
               「{deleteDialog?.name}」を削除します。この操作は取り消せません。
             </AlertDialogDescription>

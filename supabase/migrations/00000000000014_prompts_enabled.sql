@@ -10,8 +10,13 @@ ALTER TABLE mcpist.prompts ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEF
 -- -----------------------------------------------------------------------------
 -- list_my_prompts を更新（enabled カラムを含める）
 -- -----------------------------------------------------------------------------
+-- PostgreSQL では TABLE 型の戻り値を変更する場合、CREATE OR REPLACE では対応できない
+-- 先に DROP してから CREATE する必要がある
 
-CREATE OR REPLACE FUNCTION mcpist.list_my_prompts(
+DROP FUNCTION IF EXISTS public.list_my_prompts(TEXT);
+DROP FUNCTION IF EXISTS mcpist.list_my_prompts(TEXT);
+
+CREATE FUNCTION mcpist.list_my_prompts(
     p_module_name TEXT DEFAULT NULL
 )
 RETURNS TABLE (
@@ -52,7 +57,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.list_my_prompts(
+CREATE FUNCTION public.list_my_prompts(
     p_module_name TEXT DEFAULT NULL
 )
 RETURNS TABLE (
@@ -133,8 +138,12 @@ $$;
 -- -----------------------------------------------------------------------------
 -- upsert_my_prompt を更新（enabled パラメータを追加）
 -- -----------------------------------------------------------------------------
+-- 引数の数が変わるため、古い関数を先に DROP する
 
-CREATE OR REPLACE FUNCTION mcpist.upsert_my_prompt(
+DROP FUNCTION IF EXISTS public.upsert_my_prompt(TEXT, TEXT, TEXT, UUID);
+DROP FUNCTION IF EXISTS mcpist.upsert_my_prompt(TEXT, TEXT, TEXT, UUID);
+
+CREATE FUNCTION mcpist.upsert_my_prompt(
     p_name TEXT,
     p_content TEXT,
     p_module_name TEXT DEFAULT NULL,
@@ -209,7 +218,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.upsert_my_prompt(
+CREATE FUNCTION public.upsert_my_prompt(
     p_name TEXT,
     p_content TEXT,
     p_module_name TEXT DEFAULT NULL,
@@ -223,9 +232,8 @@ AS $$
     SELECT mcpist.upsert_my_prompt(p_name, p_content, p_module_name, p_prompt_id, p_enabled);
 $$;
 
--- 古い関数シグネチャを削除して新しいものに置き換え
-DROP FUNCTION IF EXISTS mcpist.upsert_my_prompt(TEXT, TEXT, TEXT, UUID);
-DROP FUNCTION IF EXISTS public.upsert_my_prompt(TEXT, TEXT, TEXT, UUID);
-
+-- GRANT 権限
+GRANT EXECUTE ON FUNCTION mcpist.list_my_prompts(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_my_prompts(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION mcpist.upsert_my_prompt(TEXT, TEXT, TEXT, UUID, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_my_prompt(TEXT, TEXT, TEXT, UUID, BOOLEAN) TO authenticated;
