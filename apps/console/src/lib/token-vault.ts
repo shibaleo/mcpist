@@ -107,10 +107,15 @@ export async function upsertTokenWithVerification(
   // Step 1: トークンを外部APIで検証（最低1秒表示）
   onProgress({ step: 'validating', message: 'トークンを検証中...' })
 
-  // Basic認証の場合は追加フィールドを渡す
-  const validationExtra = params.username && params.metadata?.domain
-    ? { email: params.username, domain: params.metadata.domain }
-    : undefined
+  // 認証方式に応じて追加フィールドを渡す
+  let validationExtra: { email?: string; domain?: string; api_key?: string } | undefined
+  if (params.service === 'trello' && params.username) {
+    // Trello: username に api_key が入っている
+    validationExtra = { api_key: params.username }
+  } else if (params.username && params.metadata?.domain) {
+    // Basic認証: email + domain
+    validationExtra = { email: params.username, domain: params.metadata.domain }
+  }
 
   const validationResult = await withMinDelay(
     validateToken(params.service, params.accessToken, validationExtra),

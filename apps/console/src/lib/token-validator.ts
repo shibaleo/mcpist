@@ -15,6 +15,8 @@ export interface TokenValidationParams {
   // Basic認証用の追加フィールド
   email?: string
   domain?: string
+  // Trello用
+  api_key?: string
 }
 
 /**
@@ -23,7 +25,7 @@ export interface TokenValidationParams {
 export async function validateToken(
   service: string,
   token: string,
-  extra?: { email?: string; domain?: string }
+  extra?: { email?: string; domain?: string; api_key?: string }
 ): Promise<TokenValidationResult> {
   try {
     console.log('[token-validator] Calling API for service:', service)
