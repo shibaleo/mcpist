@@ -154,6 +154,17 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Trelloアカウントでログインして、ボードへのアクセスを許可します",
     authType: "oauth",
   },
+  asana: {
+    authLabel: "Asana OAuth",
+    helpText: "Asanaアカウントでログインして、ワークスペースへのアクセスを許可します",
+    authType: "oauth",
+    alternativeAuth: {
+      authLabel: "Personal Access Token",
+      helpText: "Asana Settings > Apps > Developer apps > Personal access tokens から発行してください",
+      helpUrl: "https://app.asana.com/0/my-apps",
+      authType: "api_key",
+    },
+  },
 }
 
 export const dynamic = "force-dynamic"

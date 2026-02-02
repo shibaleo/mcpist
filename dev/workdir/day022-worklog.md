@@ -365,7 +365,61 @@ return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
 
 ---
 
+## GitHub OAuth 対応 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-011 | GitHub OAuth authorize/callback ルート作成 | ✅ | OAuth 2.0、CSRF 対策あり |
+| D22-012 | oauth-apps.ts に GitHub 追加 | ✅ | OAUTH_PROVIDERS, OAUTH_CONFIGS |
+| D22-013 | services/page.tsx に alternativeAuth パターン追加 | ✅ | OAuth + Fine-grained PAT |
+| D22-014 | 動作確認 | ✅ | get_user, list_repos 動作確認 |
+
+### GitHub OAuth の特徴
+
+| 項目 | 内容 |
+|------|------|
+| プロトコル | OAuth 2.0 |
+| トークン有効期限 | **無期限**（revoke されるまで有効） |
+| リフレッシュトークン | **なし** |
+| スコープ | `repo read:user` |
+| ツール数 | 20ツール |
+
+### 実装ポイント
+
+1. **alternativeAuth パターン**
+   - OAuth をプライマリ、Fine-grained PAT をフォールバックとして提供
+   - Notion と同様の UI パターン（「または」で区切り）
+
+2. **トークン保存**
+   - `refresh_token: null`、`expires_at: null` で保存
+   - リフレッシュ不要のため expires_at を設定しない
+
+3. **CSRF 対策**
+   - state パラメータに returnTo を Base64url エンコードで埋め込み
+   - callback で検証
+
+### テスト結果
+
+| ツール | 結果 | 備考 |
+|--------|------|------|
+| `get_user` | ✅ | ユーザー "shibaleo" を取得 |
+| `list_repos` | ✅ | リポジトリ一覧取得（mcpist, go-mcp-dev 等） |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/console/src/app/api/oauth/github/authorize/route.ts` | 新規作成（OAuth 2.0 認可リクエスト） |
+| `apps/console/src/app/api/oauth/github/callback/route.ts` | 新規作成（トークン交換、Vault 保存） |
+| `apps/console/src/lib/oauth-apps.ts` | GitHub プロバイダー追加 |
+| `apps/console/src/app/(console)/services/page.tsx` | alternativeAuth UI 追加（OAuth + PAT） |
+
+---
+
 ## 次回の作業
 
-1. Phase 3: Google Docs モジュール実装
-2. Airtable モジュール実装
+1. Phase 4: Google Docs モジュール実装
+2. Phase 5: Asana モジュール実装
+3. Phase 6: PostgreSQL モジュール実装
