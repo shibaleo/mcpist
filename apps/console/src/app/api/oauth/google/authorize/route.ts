@@ -24,6 +24,13 @@ const MODULE_SCOPES: Record<string, string[]> = {
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.readonly",  // For searching spreadsheets
   ],
+  google_apps_script: [
+    "https://www.googleapis.com/auth/script.projects",
+    "https://www.googleapis.com/auth/script.deployments",
+    "https://www.googleapis.com/auth/script.metrics",
+    "https://www.googleapis.com/auth/script.processes",
+    "https://www.googleapis.com/auth/drive.readonly",  // For listing projects
+  ],
 }
 
 function getAdminClient() {
