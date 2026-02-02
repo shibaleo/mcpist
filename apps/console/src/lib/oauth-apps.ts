@@ -119,6 +119,12 @@ export const OAUTH_PROVIDERS = [
     description: "Notion ページ、データベース など",
     docsUrl: "https://www.notion.so/profile/integrations",
   },
+  {
+    id: "trello",
+    name: "Trello",
+    description: "Trello ボード、カード、チェックリスト など",
+    docsUrl: "https://trello.com/power-ups/admin",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -209,6 +215,11 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     authUrl: "https://api.notion.com/v1/oauth/authorize",
     scopes: [],  // Notion はスコープを URL パラメータで指定しない
     serviceId: "notion",
+  },
+  trello: {
+    authUrl: "https://trello.com/1/OAuthAuthorizeToken",  // OAuth 1.0a
+    scopes: ["read", "write"],
+    serviceId: "trello",
   },
 }
 
