@@ -138,6 +138,7 @@ export async function GET(request: Request) {
     const moduleDisplayNames: Record<string, string> = {
       google_calendar: "Google Calendar",
       google_tasks: "Google Tasks",
+      google_drive: "Google Drive",
     }
     const displayName = moduleDisplayNames[module] || module
 

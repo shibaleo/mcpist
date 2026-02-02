@@ -14,6 +14,7 @@ import (
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/google_calendar"
+	"mcpist/server/internal/modules/google_drive"
 	"mcpist/server/internal/modules/google_tasks"
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/microsoft_todo"
@@ -34,6 +35,7 @@ func init() {
 	modules.RegisterModule(supabase.New())
 	modules.RegisterModule(airtable.New())
 	modules.RegisterModule(google_calendar.New())
+	modules.RegisterModule(google_drive.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
 	modules.RegisterModule(todoist.New())

@@ -172,6 +172,13 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     ],
     serviceId: "google_tasks",
   },
+  "google-drive": {
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    scopes: [
+      "https://www.googleapis.com/auth/drive",
+    ],
+    serviceId: "google_drive",
+  },
   microsoft: {
     authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     scopes: [
@@ -265,12 +272,15 @@ export async function getOAuthAuthorizationUrl(
     params.set("returnTo", returnTo)
   }
 
-  // google-tasks は google の authorize を使い、module パラメータで区別
+  // google-tasks, google-drive は google の authorize を使い、module パラメータで区別
   // atlassian-* は atlassian の authorize を使い、module パラメータで区別
   let apiPath = provider
   if (provider === "google-tasks") {
     apiPath = "google"
     params.set("module", "google_tasks")
+  } else if (provider === "google-drive") {
+    apiPath = "google"
+    params.set("module", "google_drive")
   } else if (provider === "atlassian-jira") {
     apiPath = "atlassian"
     params.set("module", "jira")
