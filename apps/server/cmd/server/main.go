@@ -16,6 +16,7 @@ import (
 	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/google_docs"
 	"mcpist/server/internal/modules/google_drive"
+	"mcpist/server/internal/modules/google_sheets"
 	"mcpist/server/internal/modules/google_tasks"
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/microsoft_todo"
@@ -38,6 +39,7 @@ func init() {
 	modules.RegisterModule(google_calendar.New())
 	modules.RegisterModule(google_docs.New())
 	modules.RegisterModule(google_drive.New())
+	modules.RegisterModule(google_sheets.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
 	modules.RegisterModule(todoist.New())

@@ -20,6 +20,10 @@ const MODULE_SCOPES: Record<string, string[]> = {
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive",  // Comments API requires Drive scope
   ],
+  google_sheets: [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.readonly",  // For searching spreadsheets
+  ],
 }
 
 function getAdminClient() {

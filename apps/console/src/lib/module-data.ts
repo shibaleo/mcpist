@@ -104,6 +104,7 @@ export const moduleIcons: Record<string, string> = {
   google_tasks: "list-todo",
   google_drive: "hard-drive",
   google_docs: "file-text",
+  google_sheets: "sheet",
   microsoft_todo: "check-square",
   todoist: "check-circle",
   trello: "trello",
