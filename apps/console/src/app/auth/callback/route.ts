@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     // デバッグ: 受信したcookieをログ
     const allCookies = cookieStore.getAll()
     console.log("[Auth Callback] Received cookies:", allCookies.map(c => c.name))
-    const pkceVerifier = allCookies.find(c => c.name.includes('code_verifier'))
+    const pkceVerifier = allCookies.find(c => c.name.includes('code-verifier'))
     console.log("[Auth Callback] PKCE code_verifier cookie present:", !!pkceVerifier)
 
     // Route Handler用に cookiesToSet を追跡
