@@ -107,6 +107,12 @@ export const OAUTH_PROVIDERS = [
     description: "Todoist タスク管理",
     docsUrl: "https://developer.todoist.com/appconsole.html",
   },
+  {
+    id: "atlassian",
+    name: "Atlassian",
+    description: "Jira, Confluence など",
+    docsUrl: "https://developer.atlassian.com/console/myapps/",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -158,6 +164,41 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     ],
     serviceId: "todoist",
   },
+  atlassian: {
+    authUrl: "https://auth.atlassian.com/authorize",
+    scopes: [
+      "read:jira-work",
+      "write:jira-work",
+      "read:jira-user",
+      "manage:jira-project",
+      "read:confluence-content.all",
+      "write:confluence-content",
+      "read:confluence-space.summary",
+      "offline_access",
+    ],
+    serviceId: "jira",  // Jira をプライマリとして使用
+  },
+  "atlassian-jira": {
+    authUrl: "https://auth.atlassian.com/authorize",
+    scopes: [
+      "read:jira-work",
+      "write:jira-work",
+      "read:jira-user",
+      "manage:jira-project",
+      "offline_access",
+    ],
+    serviceId: "jira",
+  },
+  "atlassian-confluence": {
+    authUrl: "https://auth.atlassian.com/authorize",
+    scopes: [
+      "read:confluence-content.all",
+      "write:confluence-content",
+      "read:confluence-space.summary",
+      "offline_access",
+    ],
+    serviceId: "confluence",
+  },
 }
 
 // サービスIDからOAuthプロバイダーIDを取得
@@ -181,10 +222,19 @@ export async function getOAuthAuthorizationUrl(
   }
 
   // google-tasks は google の authorize を使い、module パラメータで区別
+  // atlassian-* は atlassian の authorize を使い、module パラメータで区別
   let apiPath = provider
   if (provider === "google-tasks") {
     apiPath = "google"
     params.set("module", "google_tasks")
+  } else if (provider === "atlassian-jira") {
+    apiPath = "atlassian"
+    params.set("module", "jira")
+  } else if (provider === "atlassian-confluence") {
+    apiPath = "atlassian"
+    params.set("module", "confluence")
+  } else if (provider === "atlassian") {
+    params.set("module", "atlassian")
   }
 
   const url = `/api/oauth/${apiPath}/authorize${params.toString() ? `?${params.toString()}` : ""}`

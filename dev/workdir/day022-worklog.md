@@ -122,8 +122,105 @@ console.log("[Auth Callback] PKCE code_verifier cookie present:", !!pkceVerifier
 
 ---
 
+---
+
+## Todoist モジュール実装 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-001 | `modules/todoist/module.go` 作成 | ✅ | 12ツール実装 |
+| D22-002 | OAuth アプリ設定を Supabase に登録 | ✅ | Todoist Developer Console で登録 |
+| D22-003 | `main.go` に RegisterModule 追加 | ✅ | server と tools-export 両方 |
+| D22-004 | Console に Todoist OAuth 連携 UI 追加 | ✅ | authorize/callback ルート、oauth-apps.ts、services/page.tsx |
+| D22-005 | 動作確認 | ✅ | 全12ツールの動作確認完了 |
+
+### 実装したツール
+
+| ツール | 説明 | readOnlyHint | destructiveHint |
+|--------|------|--------------|-----------------|
+| list_projects | プロジェクト一覧 | true | - |
+| get_project | プロジェクト詳細 | true | - |
+| list_tasks | タスク一覧（フィルター対応） | true | - |
+| get_task | タスク詳細 | true | - |
+| create_task | タスク作成 | false | false |
+| update_task | タスク更新 | false | false |
+| complete_task | タスク完了 | false | false |
+| reopen_task | タスク再開 | false | false |
+| delete_task | タスク削除 | false | **true** |
+| quick_add | 自然言語でタスク追加 | false | false |
+| list_sections | セクション一覧 | true | - |
+| list_labels | ラベル一覧 | true | - |
+
+### Todoist OAuth の特徴
+
+- **リフレッシュトークンなし**: アクセストークンは長期間有効（revoke されるまで）
+- **Sync API**: quick_add のみ Sync API を使用（自然言語パース）
+- **スコープ**: `data:read_write`, `data:delete`
+
+---
+
+## OAuth callback リダイレクト修正 ✅
+
+| プロバイダー | 修正内容 |
+|--------------|----------|
+| Google | デフォルト `/connections` → `/tools` |
+| Microsoft | デフォルト `/connections` → `/tools` |
+| Todoist | デフォルト `/connections` → `/tools` |
+
+**動作**: `returnTo` パラメータで指定されたページに戻る。フォールバックは `/tools`
+
+---
+
+## ローカル開発環境の Cookie 修正 ✅
+
+`client.ts` で localhost 判定を追加:
+
+```typescript
+const isLocalhost = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
+  cookieOptions: {
+    sameSite: 'lax',
+    secure: !isLocalhost,  // HTTP では secure: false
+    path: '/',
+  },
+})
+```
+
+---
+
+## 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/server/internal/modules/todoist/module.go` | 新規作成（12ツール） |
+| `apps/server/cmd/server/main.go` | RegisterModule(todoist.New()) 追加 |
+| `apps/server/cmd/tools-export/main.go` | RegisterModule(todoist.New()) 追加 |
+| `apps/console/src/app/api/oauth/todoist/authorize/route.ts` | 新規作成 |
+| `apps/console/src/app/api/oauth/todoist/callback/route.ts` | 新規作成 |
+| `apps/console/src/lib/oauth-apps.ts` | Todoist プロバイダー追加 |
+| `apps/console/src/app/(console)/services/page.tsx` | Todoist authConfig 追加 |
+| `apps/console/src/lib/supabase/client.ts` | localhost 判定追加 |
+| `apps/console/src/app/api/oauth/google/callback/route.ts` | returnTo デフォルト変更 |
+| `apps/console/src/app/api/oauth/microsoft/callback/route.ts` | returnTo デフォルト変更 |
+| `apps/console/src/lib/tools.json` | Todoist ツール追加 |
+
+---
+
+## コミット履歴
+
+| コミット | 内容 |
+|----------|------|
+| 2fac647 | feat(todoist): add Todoist MCP module with OAuth support |
+| (未コミット) | fix(oauth): change default redirect to /tools and fix cookie secure for localhost |
+
+---
+
 ## 次回の作業
 
-1. 変更をコミット
-2. 仕様書整備（JWT aud チェック、MCP エラーコード）
-3. resources MCP 実装の検討
+1. ステージされた変更をコミット
+2. Phase 2: Trello モジュール実装
+3. Phase 3: Google Docs モジュール実装
