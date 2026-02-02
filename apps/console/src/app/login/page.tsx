@@ -36,23 +36,18 @@ function LoginContent() {
     setLoading(provider)
     const supabase = createClient()
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    // skipBrowserRedirect を削除して Supabase に直接リダイレクトを任せる
+    // これにより PKCE code_verifier cookie が確実に設定される
+    const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: getRedirectUrl(),
-        skipBrowserRedirect: true,
       },
     })
 
     if (error) {
       console.error("OAuth error:", error)
       setLoading(null)
-      return
-    }
-
-    // クッキーが設定された後にリダイレクト
-    if (data?.url) {
-      window.location.href = data.url
     }
   }
 
