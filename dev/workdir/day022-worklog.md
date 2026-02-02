@@ -418,8 +418,409 @@ return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
 
 ---
 
+## Asana OAuth 対応 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-030 | Asana モジュール実装 | ✅ | 12 ツール（読み取り専用） |
+| D22-031 | OAuth authorize/callback ルート作成 | ✅ | OAuth 2.0 + リフレッシュトークン |
+| D22-032 | oauth-apps.ts に Asana 追加 | ✅ | OAUTH_PROVIDERS, OAUTH_CONFIGS |
+| D22-033 | OAuth スコープエラー修正 | ✅ | Identity/OpenID Connect スコープ無効化 |
+| D22-034 | expires_at 型互換性修正 | ✅ | FlexibleTime 型導入 |
+| D22-035 | 全ツール動作確認 | ✅ | get_me, list_projects, list_tasks |
+
+### Asana OAuth の特徴
+
+| 項目 | 内容 |
+|------|------|
+| プロトコル | OAuth 2.0 |
+| トークン有効期限 | 約1時間（`expires_in` 返却） |
+| リフレッシュトークン | あり |
+| スコープ | パラメータ不要（アプリ設定で制御） |
+| ツール数 | 12ツール（読み取り専用） |
+
+### 実装したツール
+
+| ツール | 説明 | readOnlyHint |
+|--------|------|--------------|
+| get_me | 認証ユーザー情報取得 | true |
+| list_workspaces | ワークスペース一覧 | true |
+| get_workspace | ワークスペース詳細 | true |
+| list_projects | プロジェクト一覧 | true |
+| get_project | プロジェクト詳細 | true |
+| list_sections | セクション一覧 | true |
+| list_tasks | タスク一覧 | true |
+| get_task | タスク詳細 | true |
+| list_subtasks | サブタスク一覧 | true |
+| list_stories | ストーリー（コメント）一覧 | true |
+| list_tags | タグ一覧 | true |
+| search_tasks | タスク検索 | true |
+
+### トラブルシューティング
+
+#### 1. OAuth "forbidden_scopes" エラー
+
+**エラー:**
+```
+forbidden_scopes: Your app is not allowed to request user authorization for `default identity` scopes
+```
+
+**原因:** Asana Developer Console で「Identity / OpenID Connect」スコープ（OpenID, Profile）が有効になっていた
+
+**解決:** Developer Console で Identity/OpenID Connect スコープを無効化
+
+#### 2. 401 Unauthorized エラー
+
+**原因:** `expires_at` の型不一致
+- Console: ISO 文字列で保存 (`"2026-02-02T13:01:57.797Z"`)
+- Go: int64 Unix タイムスタンプを期待
+
+**解決:** `FlexibleTime` カスタム型を導入
+
+```go
+// FlexibleTime handles both Unix timestamp (int64) and ISO string formats
+type FlexibleTime int64
+
+func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
+    // Try as number first
+    var num int64
+    if err := json.Unmarshal(data, &num); err == nil {
+        *ft = FlexibleTime(num)
+        return nil
+    }
+
+    // Try as string (ISO format)
+    var str string
+    if err := json.Unmarshal(data, &str); err == nil {
+        t, err := time.Parse(time.RFC3339, str)
+        // ...
+        *ft = FlexibleTime(t.Unix())
+        return nil
+    }
+    return fmt.Errorf("expires_at must be number or string")
+}
+```
+
+**影響範囲:** 以下のモジュールを FlexibleTime に更新
+- asana/module.go
+- google_calendar/module.go
+- google_tasks/module.go
+- microsoft_todo/module.go
+- notion/client.go
+
+### テスト結果
+
+| ツール | 結果 | 備考 |
+|--------|------|------|
+| `get_me` | ✅ | shibaleo (shiba.dog.leo.private@gmail.com) |
+| `list_workspaces` | ✅ | "My workspace" 取得 |
+| `list_projects` | ✅ | "shibaleo's first project" 取得 |
+| `list_tasks` | ✅ | Task 1, Task 2, Task 3 取得 |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/server/internal/modules/asana/module.go` | 新規作成（12ツール） |
+| `apps/server/internal/store/token.go` | FlexibleTime 型追加 |
+| `apps/server/internal/modules/google_calendar/module.go` | FlexibleTime 対応 |
+| `apps/server/internal/modules/google_tasks/module.go` | FlexibleTime 対応 |
+| `apps/server/internal/modules/microsoft_todo/module.go` | FlexibleTime 対応 |
+| `apps/server/internal/modules/notion/client.go` | FlexibleTime 対応 |
+| `apps/server/cmd/server/main.go` | RegisterModule(asana.New()) 追加 |
+| `apps/server/cmd/tools-export/main.go` | RegisterModule(asana.New()) 追加 |
+| `apps/console/src/app/api/oauth/asana/authorize/route.ts` | 新規作成 |
+| `apps/console/src/app/api/oauth/asana/callback/route.ts` | 新規作成 |
+| `apps/console/src/lib/oauth-apps.ts` | Asana プロバイダー追加 |
+
+---
+
+## Google OAuth 統合 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-040 | OAuth スコープ統合設計 | ✅ | Calendar, Tasks, Drive, Docs, Sheets を 1 回の認証で |
+| D22-041 | oauth-apps.ts 修正 | ✅ | 統合スコープ、serviceId = "google" |
+| D22-042 | authorize/callback ルート修正 | ✅ | 全スコープ要求、"google" として保存 |
+| D22-043 | Go モジュール修正 | ✅ | google_calendar, google_tasks が "google" を参照 |
+| D22-044 | Console UI 修正 | ✅ | "google" 接続で Calendar/Tasks 両方接続済みに |
+| D22-045 | ビルド確認 | ✅ | Go / TypeScript 両方成功 |
+
+### 設計方針
+
+**問題**: Google Calendar と Google Tasks で別々の OAuth 認証が必要だった
+- ユーザーが 2 回認証を行う必要があった
+- 将来 Drive, Docs, Sheets 追加でさらに増加
+
+**解決**: 1 つの OAuth 認証で全 Google サービスにアクセス
+
+```
+OAuth 認証（1回）
+  スコープ: calendar + tasks + drive + docs + sheets
+     ↓
+user_credentials テーブル
+  module = "google" として 1 レコードだけ保存
+     ↓
+Go モジュール (google_calendar, google_tasks, etc.)
+  すべて "google" クレデンシャルを参照
+```
+
+### 統合スコープ
+
+```typescript
+const GOOGLE_SCOPES = [
+  // Calendar
+  "https://www.googleapis.com/auth/calendar",
+  "https://www.googleapis.com/auth/calendar.events",
+  // Tasks
+  "https://www.googleapis.com/auth/tasks",
+  // Drive
+  "https://www.googleapis.com/auth/drive",
+  // Docs
+  "https://www.googleapis.com/auth/documents",
+  // Sheets
+  "https://www.googleapis.com/auth/spreadsheets",
+]
+```
+
+### Console UI の変更
+
+- `services/page.tsx` で "google" 接続があれば `google_calendar`, `google_tasks` も接続済み表示
+- `getOAuthProviderForService()` が Google 系モジュールすべてに "google" を返す
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/console/src/lib/oauth-apps.ts` | 統合スコープ、google-tasks 削除、getOAuthProviderForService 修正 |
+| `apps/console/src/app/api/oauth/google/authorize/route.ts` | GOOGLE_SCOPES 統合、module パラメータ廃止 |
+| `apps/console/src/app/api/oauth/google/callback/route.ts` | "google" として保存、複数モジュールのツール設定を保存 |
+| `apps/console/src/app/(console)/services/page.tsx` | connectedModuleIds に google → calendar/tasks マッピング追加 |
+| `apps/server/internal/modules/google_calendar/module.go` | GetModuleToken, UpdateModuleToken を "google" に変更 |
+| `apps/server/internal/modules/google_tasks/module.go` | GetModuleToken, UpdateModuleToken を "google" に変更 |
+
+---
+
+## Google Sheets モジュール テスト ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-050 | google_sheets モジュール全ツールテスト | ✅ | 28ツール全て動作確認 |
+
+### テスト結果
+
+| カテゴリ | ツール | 結果 |
+|---------|--------|------|
+| **スプレッドシート** | `create_spreadsheet` | ✅ |
+| | `get_spreadsheet` | ✅ |
+| | `search_spreadsheets` | ✅ |
+| **シート操作** | `list_sheets` | ✅ |
+| | `create_sheet` | ✅ |
+| | `rename_sheet` | ✅ |
+| | `duplicate_sheet` | ✅ |
+| | `copy_sheet_to` | ✅ |
+| | `delete_sheet` | ✅ |
+| **値の読み取り** | `get_values` | ✅ |
+| | `batch_get_values` | ✅ |
+| | `get_formulas` | ✅ |
+| **値の書き込み** | `update_values` | ✅ |
+| | `batch_update_values` | ✅ |
+| | `append_values` | ✅ |
+| | `clear_values` | ✅ |
+| **行・列操作** | `insert_rows` | ✅ |
+| | `delete_rows` | ✅ |
+| | `insert_columns` | ✅ |
+| | `delete_columns` | ✅ |
+| **書式設定** | `format_cells` | ✅ |
+| | `merge_cells` | ✅ |
+| | `unmerge_cells` | ✅ |
+| | `set_borders` | ✅ |
+| | `auto_resize` | ✅ |
+| **その他** | `find_replace` | ✅ |
+| | `protect_range` | ✅ |
+
+### 備考
+
+- スプレッドシートの削除は `google_drive:delete_file` を使用
+- テスト用スプレッドシート 2 件を作成し、テスト後に google_drive で削除
+
+---
+
+## Google Apps Script モジュール実装 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-060 | コミュニティ実装調査 | ✅ | mohalmah/google-appscript-mcp-server, whichguy/gas_mcp |
+| D22-061 | ツール設計 | ✅ | 17ツール（トリガー管理除外） |
+| D22-062 | `modules/google_apps_script/module.go` 作成 | ✅ | 943行、全17ツール |
+| D22-063 | OAuth スコープ設定追加 | ✅ | oauth-apps.ts に google-apps-script 追加 |
+| D22-064 | `main.go` に RegisterModule 追加 | ✅ | server, tools-export 両方 |
+| D22-065 | Console UI に authConfig 追加 | ✅ | services/page.tsx、module-data.ts |
+| D22-066 | tools.json 再生成 | ✅ | Google Apps Script 17ツール追加 |
+
+### コミュニティ実装調査
+
+| 実装 | ツール数 | 特徴 |
+|------|----------|------|
+| [mohalmah/google-appscript-mcp-server](https://github.com/mohalmah/google-appscript-mcp-server) | 16 | 基本的な CRUD 操作 |
+| [whichguy/gas_mcp](https://github.com/whichguy/gas_mcp) | ~50 | ローカルファイルシステム操作（ls, cat, write, rsync, git）を含む |
+
+**whichguy/gas_mcp が 50 ツールある理由:**
+- ローカルファイルシステム操作（ls, cat, write, mkdir, rsync）
+- Git 操作（init, status, add, commit, push, pull）
+- clasp 連携（login, clone, pull, push, deploy）
+
+**mcpist で実装できない理由:**
+- mcpist はステートレスアーキテクチャ（Cloudflare Worker + Go サーバー）
+- ローカルファイルシステムへのアクセス不可
+- ユーザーのマシン上での clasp/git 操作不可
+
+### 設計判断
+
+1. **トリガー管理除外**: 公式 API エンドポイントが存在しない。`ScriptApp.newTrigger()` の実行で実装可能だが、ハッキー。
+2. **copy_project / delete_project 除外**: `google_drive:copy_file` / `google_drive:delete_file` で代替可能（GAS プロジェクトは Drive ファイル）。
+
+### 実装したツール（17ツール）
+
+| カテゴリ | ツール | 説明 | readOnlyHint |
+|----------|--------|------|--------------|
+| **プロジェクト** | `list_projects` | プロジェクト一覧 | true |
+| | `get_project` | プロジェクト詳細 | true |
+| | `create_project` | 新規プロジェクト作成 | false |
+| | `get_content` | スクリプトファイル内容取得 | true |
+| | `update_content` | スクリプトファイル更新 | false |
+| **バージョン** | `list_versions` | バージョン一覧 | true |
+| | `get_version` | バージョン詳細 | true |
+| | `create_version` | バージョン作成（スナップショット） | false |
+| **デプロイメント** | `list_deployments` | デプロイメント一覧 | true |
+| | `get_deployment` | デプロイメント詳細 | true |
+| | `create_deployment` | 新規デプロイメント | false |
+| | `update_deployment` | デプロイメント更新 | false |
+| | `delete_deployment` | デプロイメント削除 | false (destructive) |
+| **実行** | `run_function` | 関数実行 | false |
+| | `list_executions` | 実行履歴 | true |
+| **モニタリング** | `list_processes` | プロセス一覧 | true |
+| | `get_metrics` | メトリクス取得 | true |
+
+### OAuth スコープ
+
+```typescript
+"google-apps-script": {
+  authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+  scopes: [
+    "https://www.googleapis.com/auth/script.projects",
+    "https://www.googleapis.com/auth/script.deployments",
+    "https://www.googleapis.com/auth/script.metrics",
+    "https://www.googleapis.com/auth/script.processes",
+    "https://www.googleapis.com/auth/drive.readonly",
+  ],
+  serviceId: "google_apps_script",
+}
+```
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/server/internal/modules/google_apps_script/module.go` | 新規作成（17ツール、943行） |
+| `apps/server/cmd/server/main.go` | RegisterModule(google_apps_script.New()) 追加 |
+| `apps/server/cmd/tools-export/main.go` | RegisterModule(google_apps_script.New()) 追加 |
+| `apps/console/src/lib/oauth-apps.ts` | google-apps-script OAuth 設定追加 |
+| `apps/console/src/app/(console)/services/page.tsx` | google_apps_script authConfig 追加 |
+| `apps/console/src/lib/module-data.ts` | google_apps_script アイコン追加 |
+| `apps/console/src/lib/tools.json` | Google Apps Script 17ツール追加 |
+
+### コミット履歴
+
+| コミット | 内容 |
+|----------|------|
+| (未コミット) | feat(google_apps_script): add Google Apps Script MCP module with 17 tools |
+
+### テスト結果
+
+| ツール | 結果 | 備考 |
+|--------|------|------|
+| `list_projects` | ✅ | 4件取得 |
+| `get_project` | ✅ | メタデータ取得 |
+| `create_project` | ✅ | "MCP Test Project" 作成 |
+| `get_content` | ✅ | ソースコード取得 |
+| `update_content` | ✅ | Code.gs 更新 |
+| `list_versions` | ✅ | 8件取得 |
+| `get_version` | ✅ | v8 詳細取得 |
+| `create_version` | ✅ | v1 作成 |
+| `list_deployments` | ✅ | 8件取得 |
+| `get_deployment` | ✅ | デプロイメント詳細取得 |
+| `create_deployment` | ✅ | 新規デプロイメント作成 |
+| `update_deployment` | ⚠️ | API制限（read-only deployment は変更不可） |
+| `delete_deployment` | ✅ | デプロイメント削除 |
+| `run_function` | ❌ | 追加スコープ必要（後述） |
+| `list_executions` | ✅ | 空の結果（実行履歴なし） |
+| `list_processes` | ✅ | 空の結果 |
+| `get_metrics` | ❌ | API引数エラー（要調査） |
+
+### 未解決: `run_function` のスコープ問題
+
+**エラー:**
+```
+Request had insufficient authentication scopes.
+ACCESS_TOKEN_SCOPE_INSUFFICIENT
+```
+
+**原因:** `scripts.run` API は、実行するスクリプトが使用するリソースに応じたスコープが必要。
+
+**参考:** [Method: scripts.run | Apps Script API](https://developers.google.com/apps-script/api/reference/rest/v1/scripts/run)
+
+**必要なスコープ例:**
+- `https://www.googleapis.com/auth/script.scriptapp` - トリガー、権限管理
+- `https://www.googleapis.com/auth/spreadsheets` - スプレッドシート操作
+- `https://www.googleapis.com/auth/documents` - ドキュメント操作
+- `https://www.googleapis.com/auth/drive` - ドライブ操作
+- `https://www.googleapis.com/auth/script.external_request` - 外部API呼び出し
+
+**対応方針:**
+1. **方針A: 汎用スコープ追加** - `script.scriptapp` と主要なスコープを OAuth 認証時に追加
+   - メリット: 多くのスクリプトが実行可能
+   - デメリット: 過剰な権限要求、ユーザーが警戒する可能性
+2. **方針B: 動的スコープ** - スクリプトの `appsscript.json` を読み取り、必要なスコープを特定
+   - メリット: 最小限の権限
+   - デメリット: 実装が複雑、再認証が必要になる場合あり
+3. **方針C: run_function を除外** - プロジェクト管理に特化し、実行機能は除外
+   - メリット: シンプル、セキュリティリスク低
+   - デメリット: 機能制限
+
+**推奨:** 方針A で `script.scriptapp` を追加し、簡単なスクリプト実行をサポート。
+複雑なスクリプトはユーザーに再認証を促す形で対応。
+
+**TODO:**
+1. `google/authorize/route.ts` の `google_apps_script` スコープに `script.scriptapp` を追加
+2. `oauth-apps.ts` の `google-apps-script` スコープも同様に更新
+3. 再認証して `run_function` をテスト
+
+### 未解決: `get_metrics` のエラー
+
+**エラー:**
+```
+Request contains an invalid argument.
+INVALID_ARGUMENT
+```
+
+**TODO:**
+- Google Apps Script Metrics API のリクエスト形式を確認
+- `filter` パラメータの形式が正しいか検証
+
+---
+
 ## 次回の作業
 
-1. Phase 4: Google Docs モジュール実装
-2. Phase 5: Asana モジュール実装
-3. Phase 6: PostgreSQL モジュール実装
+1. `run_function` 対応: `script.scriptapp` スコープ追加
+2. `get_metrics` 修正: API リクエスト形式の確認
+3. PostgreSQL モジュール実装
+4. Google OAuth 統合の動作確認（実際に認証フローをテスト）
