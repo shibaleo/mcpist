@@ -185,6 +185,106 @@ Metadata map[string]interface{} `json:"metadata,omitempty"`
 
 ---
 
+## 9. Trello は OAuth 1.0a
+
+### OAuth 2.0 との違い
+
+Trello は **OAuth 1.0a** を使用している。OAuth 2.0 とは認証フローが大きく異なる。
+
+| 項目 | OAuth 2.0 | OAuth 1.0a |
+|------|-----------|------------|
+| トークン取得 | 1回のリクエスト | 3ステップ（Request Token → Authorize → Access Token） |
+| 署名 | 不要（HTTPS に依存） | HMAC-SHA1 署名が必須 |
+| リフレッシュトークン | あり | なし（トークンは無期限） |
+| 複雑さ | シンプル | 複雑（署名生成が必要） |
+
+### OAuth 1.0a の 3-legged フロー
+
+```
+1. Request Token 取得
+   POST /1/OAuthGetRequestToken
+   Authorization: OAuth oauth_consumer_key=xxx, oauth_signature=xxx, ...
+   → oauth_token, oauth_token_secret を取得
+
+2. ユーザー認可
+   GET /1/OAuthAuthorizeToken?oauth_token=xxx
+   → ユーザーが許可 → callback に oauth_token, oauth_verifier が返る
+
+3. Access Token 取得
+   POST /1/OAuthGetAccessToken
+   Authorization: OAuth oauth_token=xxx, oauth_verifier=xxx, oauth_signature=xxx, ...
+   → 最終的な oauth_token, oauth_token_secret を取得
+```
+
+### 署名生成の実装
+
+OAuth 1.0a で最も複雑な部分は**署名生成**：
+
+```typescript
+function generateOAuthSignature(
+  method: string,
+  url: string,
+  params: Record<string, string>,
+  consumerSecret: string,
+  tokenSecret: string = ""
+): string {
+  // 1. パラメータをアルファベット順にソート
+  const sortedParams = Object.keys(params)
+    .sort()
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join("&")
+
+  // 2. Signature Base String を作成
+  const signatureBaseString = [
+    method.toUpperCase(),
+    encodeURIComponent(url),
+    encodeURIComponent(sortedParams),
+  ].join("&")
+
+  // 3. Signing Key を作成
+  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`
+
+  // 4. HMAC-SHA1 でハッシュ
+  const signature = crypto
+    .createHmac("sha1", signingKey)
+    .update(signatureBaseString)
+    .digest("base64")
+
+  return signature
+}
+```
+
+### 状態管理の課題
+
+OAuth 1.0a では `oauth_token_secret` を Step 1 と Step 3 の間で保持する必要がある：
+
+| 方法 | メリット | デメリット |
+|------|---------|-----------|
+| Session/DB | 安全 | 複雑、追加のストレージ必要 |
+| Cookie | シンプル | クライアントに露出（要暗号化） |
+| URL パラメータ | × | セキュリティリスク |
+
+**今回の実装:** Cookie に Base64url エンコードで保存（10分で有効期限切れ）
+
+### API 呼び出し時の認証
+
+Trello API は OAuth 1.0a で取得したトークンでも、シンプルに `key` + `token` クエリパラメータで認証できる：
+
+```
+GET https://api.trello.com/1/boards/xxx?key=API_KEY&token=ACCESS_TOKEN
+```
+
+署名を毎回生成する必要がないため、API 呼び出し側の実装は OAuth 2.0 と同様にシンプル。
+
+### 教訓
+
+1. **OAuth 1.0a は現役** - Trello のような大手サービスでもまだ使われている
+2. **署名生成が最大のハードル** - パラメータの順序、エンコード、ハッシュ方式を正確に実装
+3. **状態管理が必要** - Request Token と Access Token の間で秘密情報を保持
+4. **API 側はシンプルな場合も** - 認証フローは複雑でも、API 呼び出しはクエリパラメータで済むことがある
+
+---
+
 ## まとめ
 
 1. Route Handler で cookie を設定するときは `NextResponse.cookies.set()` を使う
@@ -194,3 +294,4 @@ Metadata map[string]interface{} `json:"metadata,omitempty"`
 5. Supabase SSR の動作はコンテキスト依存、ドキュメントを注意深く読む
 6. OAuth プロバイダーの仕様は変わる（トークン形式、有効期限）—防御的に実装
 7. 汎用構造体は柔軟な型（interface{}）で将来の拡張に備える
+8. **OAuth 1.0a は現役**—署名生成と状態管理が OAuth 2.0 との主な違い

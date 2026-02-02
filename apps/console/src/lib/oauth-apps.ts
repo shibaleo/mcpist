@@ -125,6 +125,12 @@ export const OAUTH_PROVIDERS = [
     description: "Trello ボード、カード、チェックリスト など",
     docsUrl: "https://trello.com/power-ups/admin",
   },
+  {
+    id: "github",
+    name: "GitHub",
+    description: "GitHub リポジトリ、Issue、PR、Actions など",
+    docsUrl: "https://github.com/settings/developers",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -220,6 +226,11 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     authUrl: "https://trello.com/1/OAuthAuthorizeToken",  // OAuth 1.0a
     scopes: ["read", "write"],
     serviceId: "trello",
+  },
+  github: {
+    authUrl: "https://github.com/login/oauth/authorize",
+    scopes: ["repo", "read:user"],
+    serviceId: "github",
   },
 }
 
