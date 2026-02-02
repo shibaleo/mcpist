@@ -271,8 +271,101 @@ return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
 
 ---
 
+## Trello OAuth 1.0a 対応 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-020 | Trello OAuth 1.0a authorize ルート作成 | ✅ | HMAC-SHA1 署名生成、Request Token 取得 |
+| D22-021 | Trello OAuth 1.0a callback ルート作成 | ✅ | Access Token 取得、Vault 保存 |
+| D22-022 | oauth-apps.ts に Trello 追加 | ✅ | OAUTH_PROVIDERS, OAUTH_CONFIGS |
+| D22-023 | services/page.tsx を OAuth 方式に変更 | ✅ | API Key 入力から OAuth ボタンへ |
+| D22-024 | 全17ツールの動作確認 | ✅ | ボード、リスト、カード、チェックリスト操作 |
+
+### OAuth 1.0a の特徴
+
+| 項目 | 内容 |
+|------|------|
+| プロトコル | OAuth 1.0a（3-legged） |
+| 署名方式 | HMAC-SHA1 |
+| トークン有効期限 | 無期限（`expiration: never`） |
+| 必要な設定 | API Key + Secret + Allowed Origins |
+
+### OAuth 1.0a フロー
+
+```
+1. authorize: Request Token 取得
+   POST /1/OAuthGetRequestToken
+   ↓
+2. ユーザー認可
+   GET /1/OAuthAuthorizeToken?oauth_token=xxx
+   ↓
+3. callback: Access Token 取得
+   POST /1/OAuthGetAccessToken
+   ↓
+4. Vault に保存
+   - access_token: OAuth token
+   - username: API Key (consumer key)
+   - metadata.token_secret: OAuth token secret
+```
+
+### 実装ポイント
+
+1. **署名生成**
+   - パラメータをアルファベット順にソート
+   - Signature Base String = HTTP method + URL + params
+   - Signing Key = consumer_secret + & + token_secret
+   - HMAC-SHA1 でハッシュ、Base64 エンコード
+
+2. **状態管理**
+   - oauth_token_secret を Cookie に Base64url エンコードで保存
+   - callback で取得して署名に使用
+   - 10分で有効期限切れ
+
+3. **トークン保存形式**
+   - Go モジュールとの互換性のため API Key を `username` フィールドに保存
+   - Trello API は `key` + `token` クエリパラメータで認証
+
+### テスト結果
+
+| ツール | 結果 |
+|--------|------|
+| `list_boards` | ✅ |
+| `get_board` | ✅ |
+| `get_lists` | ✅ |
+| `get_cards` | ✅ |
+| `get_card` | ✅ |
+| `create_card` | ✅ |
+| `update_card` | ✅ |
+| `move_card` | ✅ |
+| `create_checklist` | ✅ |
+| `get_checklists` | ✅ |
+| `add_checklist_item` | ✅ |
+| `get_checklist_items` | ✅ |
+| `update_checklist_item` | ✅ |
+| `delete_checklist_item` | ✅ |
+| `delete_checklist` | ✅ |
+| `delete_card` | ✅ |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/console/src/app/api/oauth/trello/authorize/route.ts` | 新規作成（OAuth 1.0a Request Token） |
+| `apps/console/src/app/api/oauth/trello/callback/route.ts` | 新規作成（Access Token 取得） |
+| `apps/console/src/lib/oauth-apps.ts` | Trello プロバイダー追加 |
+| `apps/console/src/app/(console)/services/page.tsx` | authConfig を OAuth 方式に変更 |
+
+### コミット履歴
+
+| コミット | 内容 |
+|----------|------|
+| af566a2 | feat(trello): add OAuth 1.0a authentication support |
+
+---
+
 ## 次回の作業
 
-1. ステージされた変更をコミット
-2. Phase 2: Trello モジュール実装
-3. Phase 3: Google Docs モジュール実装
+1. Phase 3: Google Docs モジュール実装
+2. Airtable モジュール実装

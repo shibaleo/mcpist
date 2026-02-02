@@ -90,11 +90,16 @@ const authConfig: Record<string, AuthConfig> = {
     },
   },
   github: {
-    authLabel: "Personal Access Token",
-    helpText:
-      "GitHub Settings > Developer settings > Personal access tokens > Fine-grained tokens から発行してください",
-    helpUrl: "https://github.com/settings/tokens?type=beta",
-    authType: "api_key",
+    authLabel: "GitHub OAuth",
+    helpText: "GitHubアカウントでログインして、リポジトリへのアクセスを許可します",
+    authType: "oauth",
+    alternativeAuth: {
+      authLabel: "Fine-grained Personal Access Token",
+      helpText:
+        "GitHub Settings > Developer settings > Personal access tokens > Fine-grained tokens から発行してください",
+      helpUrl: "https://github.com/settings/tokens?type=beta",
+      authType: "api_key",
+    },
   },
   jira: {
     authLabel: "APIトークン",
