@@ -126,7 +126,7 @@ func needsRefresh(creds *store.Credentials) bool {
 	}
 	now := time.Now().Unix()
 	// Refresh if expired or expiring within buffer period
-	return now >= (creds.ExpiresAt - tokenRefreshBuffer)
+	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
 }
 
 // refreshToken exchanges the refresh token for a new access token
@@ -175,7 +175,7 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 		AuthType:     store.AuthTypeOAuth2,
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: creds.RefreshToken, // Keep the same refresh token
-		ExpiresAt:    time.Now().Unix() + tokenResp.ExpiresIn,
+		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
 	}
 
 	// Save updated credentials to Vault
