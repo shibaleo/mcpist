@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const stateParam = url.searchParams.get("state")
 
   // state から returnTo と module を取り出す
-  let returnTo = "/connections"
+  let returnTo = "/tools"
   let module = "google_calendar"  // デフォルト（後方互換性）
   if (stateParam) {
     try {

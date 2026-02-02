@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
   // パラメータを取得
   const url = new URL(request.url)
-  const returnTo = url.searchParams.get("returnTo") || "/connections"
+  const returnTo = url.searchParams.get("returnTo") || "/tools"
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）

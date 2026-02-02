@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const stateParam = url.searchParams.get("state")
 
   // state から returnTo を取り出す
-  let returnTo = "/connections"
+  let returnTo = "/tools"
   if (stateParam) {
     try {
       const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
