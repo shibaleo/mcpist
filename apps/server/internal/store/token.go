@@ -41,6 +41,39 @@ const (
 	AuthTypeCustomHeader = "custom_header" // Custom header
 )
 
+// FlexibleTime handles both Unix timestamp (int64) and ISO string formats
+type FlexibleTime int64
+
+func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
+	// Try as number first
+	var num int64
+	if err := json.Unmarshal(data, &num); err == nil {
+		*ft = FlexibleTime(num)
+		return nil
+	}
+
+	// Try as string (ISO format)
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		if str == "" {
+			*ft = 0
+			return nil
+		}
+		t, err := time.Parse(time.RFC3339, str)
+		if err != nil {
+			// Try without timezone
+			t, err = time.Parse("2006-01-02T15:04:05.999Z", str)
+			if err != nil {
+				return fmt.Errorf("failed to parse time string: %w", err)
+			}
+		}
+		*ft = FlexibleTime(t.Unix())
+		return nil
+	}
+
+	return fmt.Errorf("expires_at must be number or string")
+}
+
 // Credentials represents the credentials from Vault
 // Supports multiple authentication types as defined in dtl-itr-MOD-TVL.md
 type Credentials struct {
@@ -50,10 +83,9 @@ type Credentials struct {
 	AuthType2 string `json:"_auth_type,omitempty"` // Legacy field from Console
 
 	// OAuth 2.0 (with refresh support)
-	AccessToken  string `json:"access_token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-	ExpiresAt    int64  `json:"expires_at,omitempty"`   // Unix timestamp (int)
-	ExpiresAtStr string `json:"_expires_at,omitempty"` // ISO string from Console
+	AccessToken  string       `json:"access_token,omitempty"`
+	RefreshToken string       `json:"refresh_token,omitempty"`
+	ExpiresAt    FlexibleTime `json:"expires_at,omitempty"` // Unix timestamp or ISO string
 
 	// OAuth 1.0a
 	ConsumerKey       string `json:"consumer_key,omitempty"`

@@ -72,7 +72,7 @@ func needsRefresh(creds *store.Credentials) bool {
 	}
 	now := time.Now().Unix()
 	// Refresh if expired or expiring within buffer period
-	return now >= (creds.ExpiresAt - tokenRefreshBuffer)
+	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
 }
 
 // refreshToken exchanges the refresh token for a new access token
@@ -122,9 +122,9 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 	}
 
 	// Calculate expiry time
-	var expiresAt int64
+	var expiresAt store.FlexibleTime
 	if tokenResp.ExpiresIn > 0 {
-		expiresAt = time.Now().Unix() + tokenResp.ExpiresIn
+		expiresAt = store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn)
 	}
 
 	// Update credentials with new tokens

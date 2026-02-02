@@ -102,7 +102,7 @@ func getCredentials(ctx context.Context) *store.Credentials {
 
 	// Check if token needs refresh (Asana supports refresh tokens)
 	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" && credentials.ExpiresAt > 0 {
-		expiresAt := time.Unix(credentials.ExpiresAt, 0)
+		expiresAt := time.Unix(int64(credentials.ExpiresAt), 0)
 		if time.Until(expiresAt).Seconds() < tokenRefreshBuffer {
 			log.Printf("[asana] Token expires soon, refreshing...")
 			if err := refreshToken(ctx, authCtx.UserID, credentials); err != nil {
@@ -155,12 +155,12 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 	}
 
 	// Update credentials
-	expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second).Unix()
+	expiresAtUnix := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second).Unix()
 	newCreds := &store.Credentials{
 		AuthType:     store.AuthTypeOAuth2,
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: tokenResp.RefreshToken,
-		ExpiresAt:    expiresAt,
+		ExpiresAt:    store.FlexibleTime(expiresAtUnix),
 	}
 
 	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "asana", newCreds); err != nil {
@@ -170,7 +170,7 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 	// Update in-memory credentials
 	creds.AccessToken = tokenResp.AccessToken
 	creds.RefreshToken = tokenResp.RefreshToken
-	creds.ExpiresAt = expiresAt
+	creds.ExpiresAt = store.FlexibleTime(expiresAtUnix)
 
 	log.Printf("[asana] Token refreshed successfully")
 	return nil
