@@ -103,6 +103,8 @@ export const moduleIcons: Record<string, string> = {
   google_calendar: "calendar",
   google_tasks: "list-todo",
   microsoft_todo: "check-square",
+  todoist: "check-circle",
+  trello: "trello",
 }
 
 export function getModuleIcon(moduleId: string): string {

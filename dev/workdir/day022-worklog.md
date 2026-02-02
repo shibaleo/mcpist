@@ -219,6 +219,58 @@ return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
 
 ---
 
+---
+
+## Notion OAuth 対応 ✅
+
+### 完了タスク
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D22-010 | Notion OAuth authorize/callback ルート作成 | ✅ | HTTP Basic Auth でトークン交換 |
+| D22-011 | oauth-apps.ts に Notion 追加 | ✅ | スコープは URL パラメータで指定しない |
+| D22-012 | services/page.tsx に OAuth/API Key 選択 UI 追加 | ✅ | alternativeAuth パターン |
+| D22-013 | metadata の map[string]interface{} 対応 | ✅ | ネストした owner オブジェクト対応 |
+| D22-014 | トークンリフレッシュロジック実装 | ✅ | expires_at ベースの事前リフレッシュ |
+| D22-015 | 動作確認 | ✅ | OAuth 認証、API 呼び出し、リフレッシュ |
+
+### Notion OAuth の特徴
+
+| 項目 | 内容 |
+|------|------|
+| トークン形式 | `ntn_xxx`（アクセス）、`nrt_xxx`（リフレッシュ） |
+| 旧形式 | `secret_xxx`（2024年9月25日以前） |
+| トークン交換 | HTTP Basic Auth（`client_id:client_secret` を Base64） |
+| 有効期限 | `expires_in` が返されない（明示的な期限なし） |
+| リフレッシュ | `grant_type: refresh_token` で新しいトークンペア取得 |
+
+### 実装ポイント
+
+1. **alternativeAuth パターン**
+   - OAuth と内部インテグレーショントークン（API Key）の両方に対応
+   - UI で両方のオプションを表示（「または」で区切り）
+
+2. **metadata の型変更**
+   - `map[string]string` → `map[string]interface{}`
+   - Notion の `owner` オブジェクト（ネスト）に対応
+
+3. **リフレッシュロジック**
+   - `expires_at` がある場合のみリフレッシュ（5分前にトリガー）
+   - `expires_at` がない場合はリフレッシュしない（現状の Notion 仕様）
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/console/src/app/api/oauth/notion/authorize/route.ts` | 新規作成 |
+| `apps/console/src/app/api/oauth/notion/callback/route.ts` | 新規作成、expires_at 保存 |
+| `apps/console/src/lib/oauth-apps.ts` | Notion プロバイダー追加 |
+| `apps/console/src/app/(console)/services/page.tsx` | alternativeAuth UI 追加 |
+| `apps/server/internal/modules/notion/client.go` | リフレッシュロジック追加 |
+| `apps/server/internal/store/token.go` | Metadata 型を interface{} に変更 |
+
+---
+
 ## 次回の作業
 
 1. ステージされた変更をコミット

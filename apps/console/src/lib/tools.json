@@ -1703,6 +1703,227 @@
           }
         }
       ]
+    },
+    {
+      "id": "trello",
+      "name": "Trello",
+      "descriptions": {
+        "en-US": "Trello API - Manage boards, lists, cards, and checklists",
+        "ja-JP": "Trello API - ボード、リスト、カード、チェックリストの管理"
+      },
+      "apiVersion": "1",
+      "tools": [
+        {
+          "id": "trello:list_boards",
+          "name": "list_boards",
+          "descriptions": {
+            "en-US": "List all boards for the authenticated user.",
+            "ja-JP": "認証されたユーザーのすべてのボードを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:get_board",
+          "name": "get_board",
+          "descriptions": {
+            "en-US": "Get details of a specific board.",
+            "ja-JP": "特定のボードの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:get_lists",
+          "name": "get_lists",
+          "descriptions": {
+            "en-US": "Get all lists on a board.",
+            "ja-JP": "ボード上のすべてのリストを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:get_cards",
+          "name": "get_cards",
+          "descriptions": {
+            "en-US": "Get all cards on a board or in a specific list.",
+            "ja-JP": "ボード上またはリスト内のすべてのカードを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:get_card",
+          "name": "get_card",
+          "descriptions": {
+            "en-US": "Get details of a specific card.",
+            "ja-JP": "特定のカードの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:create_card",
+          "name": "create_card",
+          "descriptions": {
+            "en-US": "Create a new card in a list.",
+            "ja-JP": "リストに新しいカードを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:update_card",
+          "name": "update_card",
+          "descriptions": {
+            "en-US": "Update an existing card.",
+            "ja-JP": "既存のカードを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:move_card",
+          "name": "move_card",
+          "descriptions": {
+            "en-US": "Move a card to a different list.",
+            "ja-JP": "カードを別のリストに移動します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:delete_card",
+          "name": "delete_card",
+          "descriptions": {
+            "en-US": "Delete a card permanently.",
+            "ja-JP": "カードを完全に削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:get_checklists",
+          "name": "get_checklists",
+          "descriptions": {
+            "en-US": "Get all checklists on a card.",
+            "ja-JP": "カード上のすべてのチェックリストを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:create_checklist",
+          "name": "create_checklist",
+          "descriptions": {
+            "en-US": "Create a new checklist on a card.",
+            "ja-JP": "カードに新しいチェックリストを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:delete_checklist",
+          "name": "delete_checklist",
+          "descriptions": {
+            "en-US": "Delete a checklist.",
+            "ja-JP": "チェックリストを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:get_checklist_items",
+          "name": "get_checklist_items",
+          "descriptions": {
+            "en-US": "Get all items in a checklist.",
+            "ja-JP": "チェックリスト内のすべてのアイテムを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:add_checklist_item",
+          "name": "add_checklist_item",
+          "descriptions": {
+            "en-US": "Add a new item to a checklist.",
+            "ja-JP": "チェックリストに新しいアイテムを追加します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:update_checklist_item",
+          "name": "update_checklist_item",
+          "descriptions": {
+            "en-US": "Update a checklist item (name or state).",
+            "ja-JP": "チェックリストアイテムを更新します（名前または状態）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "trello:delete_checklist_item",
+          "name": "delete_checklist_item",
+          "descriptions": {
+            "en-US": "Delete a checklist item.",
+            "ja-JP": "チェックリストアイテムを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
     }
   ]
 }

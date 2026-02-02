@@ -105,6 +105,86 @@ OAuth 認証の問題はローカル環境では再現しにくい：
 
 ---
 
+---
+
+## 7. Notion OAuth トークンの仕様変更
+
+### トークン形式の変更（2024年9月25日〜）
+
+| 時期 | アクセストークン | リフレッシュトークン |
+|------|-----------------|---------------------|
+| 以前 | `secret_xxx` | なし（長期トークン） |
+| 現在 | `ntn_xxx` | `nrt_xxx` |
+
+**背景:** セキュリティスキャナーとの互換性向上、トークン識別の明確化
+
+### 有効期限が明示されない問題
+
+Notion の OAuth レスポンスには `expires_in` フィールドが含まれていない：
+
+```json
+{
+  "access_token": "ntn_xxx",
+  "refresh_token": "nrt_xxx",
+  "token_type": "bearer",
+  "bot_id": "xxx",
+  "workspace_id": "xxx",
+  "workspace_name": "..."
+  // expires_in がない！
+}
+```
+
+**対応戦略:**
+1. `expires_at` がなければリフレッシュしない
+2. 将来 Notion が `expires_in` を返し始めたら自動対応
+3. 401 エラー時のリトライは将来の拡張として保留
+
+### リフレッシュの実装パターン
+
+```go
+func needsRefresh(creds *store.Credentials) bool {
+    if creds.ExpiresAt == 0 {
+        return false  // 期限不明ならリフレッシュしない
+    }
+    now := time.Now().Unix()
+    return now >= (creds.ExpiresAt - tokenRefreshBuffer)
+}
+```
+
+**教訓:**
+- OAuth プロバイダーの仕様は変わる（トークン形式、有効期限の有無）
+- 防御的なコーディング：期限がなければ無期限として扱う
+- 公式ドキュメントに明記されていない仕様は実際のレスポンスで確認
+
+---
+
+## 8. ネストした JSON の型定義
+
+### Go での対応
+
+サービスによって metadata の構造が異なる：
+
+| サービス | metadata の構造 |
+|----------|----------------|
+| Atlassian | `{"domain": "xxx.atlassian.net"}` |
+| Notion | `{"owner": {"type": "user", "user": {...}}}` |
+
+**問題:** `map[string]string` ではネストしたオブジェクトを保存できない
+
+**解決:** `map[string]interface{}` に変更
+
+```go
+// Before
+Metadata map[string]string `json:"metadata,omitempty"`
+
+// After
+Metadata map[string]interface{} `json:"metadata,omitempty"`
+```
+
+**教訓:** 汎用的なクレデンシャル構造体を設計する際は、将来の拡張性を考慮して柔軟な型を使う
+
+---
+
 ## まとめ
 
 1. Route Handler で cookie を設定するときは `NextResponse.cookies.set()` を使う
@@ -112,3 +192,5 @@ OAuth 認証の問題はローカル環境では再現しにくい：
 3. エラーメッセージの変化は問題の前進を示す
 4. 本番でしか再現しない問題はデバッグログをデプロイして追う
 5. Supabase SSR の動作はコンテキスト依存、ドキュメントを注意深く読む
+6. OAuth プロバイダーの仕様は変わる（トークン形式、有効期限）—防御的に実装
+7. 汎用構造体は柔軟な型（interface{}）で将来の拡張に備える

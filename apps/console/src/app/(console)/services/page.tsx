@@ -144,6 +144,15 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Todoistアカウントでログインして、タスクへのアクセスを許可します",
     authType: "oauth",
   },
+  trello: {
+    authLabel: "API Token",
+    helpText: "Trello Power-Ups管理画面からAPI KeyとTokenを取得してください",
+    helpUrl: "https://trello.com/power-ups/admin",
+    authType: "api_key",
+    extraFields: [
+      { name: "api_key", label: "API Key", type: "text", placeholder: "32文字の16進数" },
+    ],
+  },
 }
 
 export const dynamic = "force-dynamic"
@@ -294,10 +303,10 @@ export default function ServicesPage() {
 
     const config = authConfig[connectDialog]
 
-    // Basic認証の場合、追加フィールドが必須
-    if (config?.authType === "basic") {
-      const missingFields = config.extraFields?.filter((f) => !extraFields[f.name])
-      if (missingFields && missingFields.length > 0) {
+    // 追加フィールドが必須かチェック
+    if (config?.extraFields) {
+      const missingFields = config.extraFields.filter((f) => !extraFields[f.name])
+      if (missingFields.length > 0) {
         toast.error(`${missingFields.map((f) => f.label).join("、")}を入力してください`)
         return
       }
@@ -307,15 +316,23 @@ export default function ServicesPage() {
     setConnectionProgress({ step: "validating", message: "トークンを検証中..." })
 
     try {
+      // Trello: api_key を username に、token を accessToken に
+      // Basic認証: email を username に、domain を metadata に
+      const upsertParams: Parameters<typeof upsertTokenWithVerification>[0] = {
+        service: connectDialog,
+        accessToken: tokenInput,
+      }
+
+      if (config?.authType === "basic") {
+        upsertParams.username = extraFields.email
+        upsertParams.metadata = { domain: extraFields.domain }
+      } else if (connectDialog === "trello") {
+        // Trello: API Key を username に格納
+        upsertParams.username = extraFields.api_key
+      }
+
       await upsertTokenWithVerification(
-        {
-          service: connectDialog,
-          accessToken: tokenInput,
-          ...(config?.authType === "basic" && {
-            username: extraFields.email,
-            metadata: { domain: extraFields.domain },
-          }),
-        },
+        upsertParams,
         (progress) => {
           setConnectionProgress({ ...progress })
         }

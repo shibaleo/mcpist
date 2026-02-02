@@ -248,6 +248,53 @@ async function validateConfluenceToken(email: string, token: string, domain: str
   }
 }
 
+async function validateTrelloToken(apiKey: string, token: string): Promise<ValidationResult> {
+  try {
+    console.log('[validate-token] Calling Trello API...')
+    const response = await fetch(`https://api.trello.com/1/members/me?key=${apiKey}&token=${token}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+
+    console.log('[validate-token] Trello API response status:', response.status)
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log('[validate-token] Valid token, user:', data.username)
+      return {
+        valid: true,
+        details: {
+          id: data.id,
+          username: data.username,
+          fullName: data.fullName,
+        },
+      }
+    }
+
+    if (response.status === 401) {
+      console.log('[validate-token] Invalid token (401)')
+      return {
+        valid: false,
+        error: 'API KeyまたはTokenが無効です。正しい認証情報を入力してください。',
+      }
+    }
+
+    console.log('[validate-token] API error:', response.status)
+    return {
+      valid: false,
+      error: `API接続エラー (${response.status})`,
+    }
+  } catch (error) {
+    console.error('[validate-token] Network error:', error)
+    return {
+      valid: false,
+      error: 'ネットワークエラーが発生しました',
+    }
+  }
+}
+
 async function validateNotionToken(token: string): Promise<ValidationResult> {
   try {
     console.log('[validate-token] Calling Notion API...')
@@ -297,7 +344,7 @@ async function validateNotionToken(token: string): Promise<ValidationResult> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { service, token, email, domain } = await request.json()
+    const { service, token, email, domain, api_key } = await request.json()
 
     console.log('[validate-token] Request received for service:', service)
 
@@ -337,6 +384,15 @@ export async function POST(request: NextRequest) {
           )
         }
         result = await validateConfluenceToken(email, token, domain)
+        break
+      case 'trello':
+        if (!api_key) {
+          return NextResponse.json(
+            { valid: false, error: 'TrelloにはAPI Keyが必要です' },
+            { status: 400 }
+          )
+        }
+        result = await validateTrelloToken(api_key, token)
         break
       default:
         console.log('[validate-token] Unknown service, skipping validation')
