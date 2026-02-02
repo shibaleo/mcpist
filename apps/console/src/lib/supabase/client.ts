@@ -11,5 +11,12 @@ export function createClient() {
     )
   }
 
-  return createBrowserClient<Database>(supabaseUrl, supabaseKey)
+  return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
+    cookieOptions: {
+      // OAuthリダイレクト後もcookieが送信されるようにする
+      sameSite: 'lax',
+      secure: true,
+      path: '/',
+    },
+  })
 }
