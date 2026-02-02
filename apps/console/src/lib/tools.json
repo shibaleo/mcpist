@@ -1554,6 +1554,383 @@
       ]
     },
     {
+      "id": "google_sheets",
+      "name": "Google Sheets",
+      "descriptions": {
+        "en-US": "Google Sheets API - Read, create, and edit Google Spreadsheets",
+        "ja-JP": "Google Sheets API - Google スプレッドシートの読み取り、作成、編集"
+      },
+      "apiVersion": "v4",
+      "tools": [
+        {
+          "id": "google_sheets:get_spreadsheet",
+          "name": "get_spreadsheet",
+          "descriptions": {
+            "en-US": "Get spreadsheet metadata including title, sheets, and properties.",
+            "ja-JP": "スプレッドシートのメタデータ（タイトル、シート、プロパティ）を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:create_spreadsheet",
+          "name": "create_spreadsheet",
+          "descriptions": {
+            "en-US": "Create a new spreadsheet.",
+            "ja-JP": "新しいスプレッドシートを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:search_spreadsheets",
+          "name": "search_spreadsheets",
+          "descriptions": {
+            "en-US": "Search for spreadsheets in Google Drive.",
+            "ja-JP": "Google Drive内のスプレッドシートを検索します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:list_sheets",
+          "name": "list_sheets",
+          "descriptions": {
+            "en-US": "List all sheets (tabs) in a spreadsheet.",
+            "ja-JP": "スプレッドシート内のすべてのシート（タブ）を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:create_sheet",
+          "name": "create_sheet",
+          "descriptions": {
+            "en-US": "Add a new sheet (tab) to a spreadsheet.",
+            "ja-JP": "スプレッドシートに新しいシート（タブ）を追加します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:delete_sheet",
+          "name": "delete_sheet",
+          "descriptions": {
+            "en-US": "Delete a sheet (tab) from a spreadsheet.",
+            "ja-JP": "スプレッドシートからシート（タブ）を削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:rename_sheet",
+          "name": "rename_sheet",
+          "descriptions": {
+            "en-US": "Rename a sheet (tab) in a spreadsheet.",
+            "ja-JP": "スプレッドシート内のシート（タブ）の名前を変更します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:duplicate_sheet",
+          "name": "duplicate_sheet",
+          "descriptions": {
+            "en-US": "Duplicate a sheet within the same spreadsheet.",
+            "ja-JP": "同じスプレッドシート内でシートを複製します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:copy_sheet_to",
+          "name": "copy_sheet_to",
+          "descriptions": {
+            "en-US": "Copy a sheet to another spreadsheet.",
+            "ja-JP": "シートを別のスプレッドシートにコピーします。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:get_values",
+          "name": "get_values",
+          "descriptions": {
+            "en-US": "Get cell values from a range (e.g., 'Sheet1!A1:C10').",
+            "ja-JP": "指定範囲のセル値を取得します（例: 'Sheet1!A1:C10'）。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:batch_get_values",
+          "name": "batch_get_values",
+          "descriptions": {
+            "en-US": "Get cell values from multiple ranges at once.",
+            "ja-JP": "複数の範囲からセル値を一度に取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:get_formulas",
+          "name": "get_formulas",
+          "descriptions": {
+            "en-US": "Get formulas from a range.",
+            "ja-JP": "指定範囲の数式を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:update_values",
+          "name": "update_values",
+          "descriptions": {
+            "en-US": "Update cell values in a range.",
+            "ja-JP": "指定範囲のセル値を更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:batch_update_values",
+          "name": "batch_update_values",
+          "descriptions": {
+            "en-US": "Update cell values in multiple ranges at once.",
+            "ja-JP": "複数の範囲のセル値を一度に更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:append_values",
+          "name": "append_values",
+          "descriptions": {
+            "en-US": "Append rows to a table (finds the last row and appends data).",
+            "ja-JP": "テーブルに行を追加します（最後の行を見つけてデータを追加）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:clear_values",
+          "name": "clear_values",
+          "descriptions": {
+            "en-US": "Clear cell contents in a range (keeps formatting).",
+            "ja-JP": "指定範囲のセル内容をクリアします（書式は保持）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:insert_rows",
+          "name": "insert_rows",
+          "descriptions": {
+            "en-US": "Insert empty rows at a specific position.",
+            "ja-JP": "指定位置に空の行を挿入します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:delete_rows",
+          "name": "delete_rows",
+          "descriptions": {
+            "en-US": "Delete rows from a sheet.",
+            "ja-JP": "シートから行を削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:insert_columns",
+          "name": "insert_columns",
+          "descriptions": {
+            "en-US": "Insert empty columns at a specific position.",
+            "ja-JP": "指定位置に空の列を挿入します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:delete_columns",
+          "name": "delete_columns",
+          "descriptions": {
+            "en-US": "Delete columns from a sheet.",
+            "ja-JP": "シートから列を削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:format_cells",
+          "name": "format_cells",
+          "descriptions": {
+            "en-US": "Format cells (background color, text format, alignment, number format).",
+            "ja-JP": "セルの書式を設定します（背景色、テキスト書式、配置、数値形式）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:merge_cells",
+          "name": "merge_cells",
+          "descriptions": {
+            "en-US": "Merge cells in a range.",
+            "ja-JP": "指定範囲のセルを結合します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:unmerge_cells",
+          "name": "unmerge_cells",
+          "descriptions": {
+            "en-US": "Unmerge previously merged cells.",
+            "ja-JP": "結合されたセルを解除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:set_borders",
+          "name": "set_borders",
+          "descriptions": {
+            "en-US": "Set borders for a range of cells.",
+            "ja-JP": "セル範囲に罫線を設定します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:auto_resize",
+          "name": "auto_resize",
+          "descriptions": {
+            "en-US": "Auto-resize columns or rows to fit content.",
+            "ja-JP": "列または行のサイズをコンテンツに合わせて自動調整します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:find_replace",
+          "name": "find_replace",
+          "descriptions": {
+            "en-US": "Find and replace text in a spreadsheet.",
+            "ja-JP": "スプレッドシート内のテキストを検索・置換します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_sheets:protect_range",
+          "name": "protect_range",
+          "descriptions": {
+            "en-US": "Protect a range or sheet from editing.",
+            "ja-JP": "範囲またはシートを編集から保護します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "google_tasks",
       "name": "Google Tasks",
       "descriptions": {
