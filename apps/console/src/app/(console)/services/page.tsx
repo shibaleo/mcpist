@@ -127,6 +127,11 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Microsoftアカウントでログインして、タスクへのアクセスを許可します",
     authType: "oauth",
   },
+  todoist: {
+    authLabel: "Todoist OAuth",
+    helpText: "Todoistアカウントでログインして、タスクへのアクセスを許可します",
+    authType: "oauth",
+  },
 }
 
 export const dynamic = "force-dynamic"

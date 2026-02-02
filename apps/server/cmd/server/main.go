@@ -18,6 +18,7 @@ import (
 	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
+	"mcpist/server/internal/modules/todoist"
 	"mcpist/server/internal/observability"
 	"mcpist/server/internal/store"
 )
@@ -33,6 +34,7 @@ func init() {
 	modules.RegisterModule(google_calendar.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
+	modules.RegisterModule(todoist.New())
 }
 
 func main() {

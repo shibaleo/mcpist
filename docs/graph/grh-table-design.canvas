@@ -38,5 +38,9 @@
 		{"id":"edge-enum-module-status","fromNode":"enum-module-status","fromSide":"top","toNode":"tbl-modules","toSide":"bottom","label":"Enum"},
 		{"id":"edge-enum-credit-tx-type","fromNode":"enum-credit-tx-type","fromSide":"right","toNode":"tbl-credit-transactions","toSide":"left","label":"Enum"},
 		{"id":"edge-users-credit-transactions","fromNode":"tbl-users","fromSide":"bottom","toNode":"tbl-credit-transactions","toSide":"top","label":"1:N"}
-	]
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
 }

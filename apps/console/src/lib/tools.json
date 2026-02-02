@@ -809,8 +809,8 @@
           "id": "google_tasks:clear_completed",
           "name": "clear_completed",
           "descriptions": {
-            "en-US": "Clear all completed tasks from a task list.",
-            "ja-JP": "タスクリストからすべての完了済みタスクを削除します。"
+            "en-US": "Delete all completed tasks from a task list permanently.",
+            "ja-JP": "タスクリストの完了済みタスクをすべて完全に削除します。"
           },
           "annotations": {
             "readOnlyHint": false,
@@ -1529,6 +1529,173 @@
           "descriptions": {
             "en-US": "Get storage configuration for the project including file size limits and features.",
             "ja-JP": "ファイルサイズ制限や機能を含むプロジェクトのストレージ設定を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "todoist",
+      "name": "Todoist",
+      "descriptions": {
+        "en-US": "Todoist API - List, create, update, and delete tasks and projects",
+        "ja-JP": "Todoist API - タスクとプロジェクトの一覧表示、作成、更新、削除"
+      },
+      "apiVersion": "v2",
+      "tools": [
+        {
+          "id": "todoist:list_projects",
+          "name": "list_projects",
+          "descriptions": {
+            "en-US": "List all projects for the user.",
+            "ja-JP": "ユーザーのすべてのプロジェクトを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:get_project",
+          "name": "get_project",
+          "descriptions": {
+            "en-US": "Get details of a specific project.",
+            "ja-JP": "特定のプロジェクトの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:list_tasks",
+          "name": "list_tasks",
+          "descriptions": {
+            "en-US": "List active tasks. Can filter by project, label, or filter string.",
+            "ja-JP": "アクティブなタスクを一覧表示します。プロジェクト、ラベル、フィルター文字列でフィルタリングできます。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:get_task",
+          "name": "get_task",
+          "descriptions": {
+            "en-US": "Get details of a specific task.",
+            "ja-JP": "特定のタスクの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:create_task",
+          "name": "create_task",
+          "descriptions": {
+            "en-US": "Create a new task.",
+            "ja-JP": "新しいタスクを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:update_task",
+          "name": "update_task",
+          "descriptions": {
+            "en-US": "Update an existing task.",
+            "ja-JP": "既存のタスクを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:complete_task",
+          "name": "complete_task",
+          "descriptions": {
+            "en-US": "Mark a task as completed.",
+            "ja-JP": "タスクを完了としてマークします。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:reopen_task",
+          "name": "reopen_task",
+          "descriptions": {
+            "en-US": "Reopen a completed task.",
+            "ja-JP": "完了したタスクを再度開きます。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:delete_task",
+          "name": "delete_task",
+          "descriptions": {
+            "en-US": "Delete a task.",
+            "ja-JP": "タスクを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:quick_add",
+          "name": "quick_add",
+          "descriptions": {
+            "en-US": "Add a task using natural language (Todoist Quick Add syntax). Supports #project, @label, p1-p4 priority, dates.",
+            "ja-JP": "自然言語でタスクを追加します（Todoistクイック追加構文）。#プロジェクト、@ラベル、p1-p4優先度、日付をサポート。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:list_sections",
+          "name": "list_sections",
+          "descriptions": {
+            "en-US": "List all sections in a project.",
+            "ja-JP": "プロジェクト内のすべてのセクションを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "todoist:list_labels",
+          "name": "list_labels",
+          "descriptions": {
+            "en-US": "List all labels for the user.",
+            "ja-JP": "ユーザーのすべてのラベルを一覧表示します。"
           },
           "annotations": {
             "readOnlyHint": true,
