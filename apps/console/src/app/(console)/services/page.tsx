@@ -145,13 +145,9 @@ const authConfig: Record<string, AuthConfig> = {
     authType: "oauth",
   },
   trello: {
-    authLabel: "API Token",
-    helpText: "Trello Power-Ups管理画面からAPI KeyとTokenを取得してください",
-    helpUrl: "https://trello.com/power-ups/admin",
-    authType: "api_key",
-    extraFields: [
-      { name: "api_key", label: "API Key", type: "text", placeholder: "32文字の16進数" },
-    ],
+    authLabel: "Trello OAuth",
+    helpText: "Trelloアカウントでログインして、ボードへのアクセスを許可します",
+    authType: "oauth",
   },
 }
 
