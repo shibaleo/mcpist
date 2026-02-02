@@ -11,11 +11,15 @@ export function createClient() {
     )
   }
 
+  // ローカル開発環境ではsecure: falseにする必要がある
+  const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
   return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
     cookieOptions: {
       // OAuthリダイレクト後もcookieが送信されるようにする
       sameSite: 'lax',
-      secure: true,
+      secure: !isLocalhost,  // HTTPSの場合のみsecure
       path: '/',
     },
   })
