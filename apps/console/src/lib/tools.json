@@ -887,6 +887,235 @@
       ]
     },
     {
+      "id": "google_apps_script",
+      "name": "Google Apps Script",
+      "descriptions": {
+        "en-US": "Google Apps Script API - Manage script projects, deployments, versions, and executions",
+        "ja-JP": "Google Apps Script API - スクリプトプロジェクト、デプロイ、バージョン、実行の管理"
+      },
+      "apiVersion": "v1",
+      "tools": [
+        {
+          "id": "google_apps_script:list_projects",
+          "name": "list_projects",
+          "descriptions": {
+            "en-US": "List Google Apps Script projects in Google Drive.",
+            "ja-JP": "Google Drive内のApps Scriptプロジェクト一覧を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:get_project",
+          "name": "get_project",
+          "descriptions": {
+            "en-US": "Get metadata for a script project.",
+            "ja-JP": "スクリプトプロジェクトのメタデータを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:create_project",
+          "name": "create_project",
+          "descriptions": {
+            "en-US": "Create a new standalone script project.",
+            "ja-JP": "新しいスタンドアロンスクリプトプロジェクトを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:get_content",
+          "name": "get_content",
+          "descriptions": {
+            "en-US": "Get the content (source code and metadata) of a script project.",
+            "ja-JP": "スクリプトプロジェクトのコンテンツ（ソースコードとメタデータ）を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:update_content",
+          "name": "update_content",
+          "descriptions": {
+            "en-US": "Update the content of a script project. Replaces all files.",
+            "ja-JP": "スクリプトプロジェクトのコンテンツを更新します。すべてのファイルを置き換えます。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:list_versions",
+          "name": "list_versions",
+          "descriptions": {
+            "en-US": "List all versions of a script project.",
+            "ja-JP": "スクリプトプロジェクトのすべてのバージョンを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:get_version",
+          "name": "get_version",
+          "descriptions": {
+            "en-US": "Get a specific version of a script project.",
+            "ja-JP": "スクリプトプロジェクトの特定のバージョンを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:create_version",
+          "name": "create_version",
+          "descriptions": {
+            "en-US": "Create a new immutable version of the script project.",
+            "ja-JP": "スクリプトプロジェクトの新しいイミュータブルバージョンを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:list_deployments",
+          "name": "list_deployments",
+          "descriptions": {
+            "en-US": "List all deployments of a script project.",
+            "ja-JP": "スクリプトプロジェクトのすべてのデプロイメントを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:get_deployment",
+          "name": "get_deployment",
+          "descriptions": {
+            "en-US": "Get details of a specific deployment.",
+            "ja-JP": "特定のデプロイメントの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:create_deployment",
+          "name": "create_deployment",
+          "descriptions": {
+            "en-US": "Create a new deployment for a script project.",
+            "ja-JP": "スクリプトプロジェクトの新しいデプロイメントを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:update_deployment",
+          "name": "update_deployment",
+          "descriptions": {
+            "en-US": "Update an existing deployment.",
+            "ja-JP": "既存のデプロイメントを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:delete_deployment",
+          "name": "delete_deployment",
+          "descriptions": {
+            "en-US": "Delete a deployment.",
+            "ja-JP": "デプロイメントを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:run_function",
+          "name": "run_function",
+          "descriptions": {
+            "en-US": "Execute a function in a script project. The project must be deployed as an API executable.",
+            "ja-JP": "スクリプトプロジェクト内の関数を実行します。プロジェクトはAPI実行可能としてデプロイされている必要があります。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:list_executions",
+          "name": "list_executions",
+          "descriptions": {
+            "en-US": "List recent executions of a script project.",
+            "ja-JP": "スクリプトプロジェクトの最近の実行履歴を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:list_processes",
+          "name": "list_processes",
+          "descriptions": {
+            "en-US": "List user's script processes with filtering options.",
+            "ja-JP": "ユーザーのスクリプトプロセスをフィルタリングオプション付きで一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_apps_script:get_metrics",
+          "name": "get_metrics",
+          "descriptions": {
+            "en-US": "Get execution metrics for a script project.",
+            "ja-JP": "スクリプトプロジェクトの実行メトリクスを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "google_calendar",
       "name": "Google Calendar",
       "descriptions": {
