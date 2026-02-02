@@ -1002,6 +1002,259 @@
       ]
     },
     {
+      "id": "google_docs",
+      "name": "Google Docs",
+      "descriptions": {
+        "en-US": "Google Docs API - Read, create, and edit Google Documents",
+        "ja-JP": "Google Docs API - Google ドキュメントの読み取り、作成、編集"
+      },
+      "apiVersion": "v1",
+      "tools": [
+        {
+          "id": "google_docs:get_document",
+          "name": "get_document",
+          "descriptions": {
+            "en-US": "Get a Google Document's metadata and structure.",
+            "ja-JP": "Google ドキュメントのメタデータと構造を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:read_document",
+          "name": "read_document",
+          "descriptions": {
+            "en-US": "Read a Google Document's content as plain text.",
+            "ja-JP": "Google ドキュメントの内容をプレーンテキストとして読み取ります。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:list_tabs",
+          "name": "list_tabs",
+          "descriptions": {
+            "en-US": "List all tabs in a multi-tab document.",
+            "ja-JP": "マルチタブドキュメントの全タブを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:create_document",
+          "name": "create_document",
+          "descriptions": {
+            "en-US": "Create a new Google Document.",
+            "ja-JP": "新しい Google ドキュメントを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:append_text",
+          "name": "append_text",
+          "descriptions": {
+            "en-US": "Append text to the end of a document.",
+            "ja-JP": "ドキュメントの末尾にテキストを追加します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:insert_text",
+          "name": "insert_text",
+          "descriptions": {
+            "en-US": "Insert text at a specific position in the document.",
+            "ja-JP": "ドキュメントの指定位置にテキストを挿入します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:delete_range",
+          "name": "delete_range",
+          "descriptions": {
+            "en-US": "Delete content from a specified range in the document.",
+            "ja-JP": "ドキュメントの指定範囲のコンテンツを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:apply_text_style",
+          "name": "apply_text_style",
+          "descriptions": {
+            "en-US": "Apply text styling (bold, italic, underline, colors) to a range.",
+            "ja-JP": "指定範囲にテキストスタイル（太字、斜体、下線、色）を適用します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:apply_paragraph_style",
+          "name": "apply_paragraph_style",
+          "descriptions": {
+            "en-US": "Apply paragraph styling (alignment, spacing, indentation) to a range.",
+            "ja-JP": "指定範囲に段落スタイル（配置、行間、インデント）を適用します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:insert_table",
+          "name": "insert_table",
+          "descriptions": {
+            "en-US": "Insert a table at a specific position in the document.",
+            "ja-JP": "ドキュメントの指定位置にテーブルを挿入します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:insert_page_break",
+          "name": "insert_page_break",
+          "descriptions": {
+            "en-US": "Insert a page break at a specific position.",
+            "ja-JP": "指定位置に改ページを挿入します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:insert_image",
+          "name": "insert_image",
+          "descriptions": {
+            "en-US": "Insert an image from a URL at a specific position.",
+            "ja-JP": "URLから画像を指定位置に挿入します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:list_comments",
+          "name": "list_comments",
+          "descriptions": {
+            "en-US": "List all comments on a document.",
+            "ja-JP": "ドキュメントの全コメントを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:get_comment",
+          "name": "get_comment",
+          "descriptions": {
+            "en-US": "Get a specific comment with its replies.",
+            "ja-JP": "特定のコメントとその返信を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:add_comment",
+          "name": "add_comment",
+          "descriptions": {
+            "en-US": "Add a comment anchored to a specific text range.",
+            "ja-JP": "特定のテキスト範囲にアンカーされたコメントを追加します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:reply_to_comment",
+          "name": "reply_to_comment",
+          "descriptions": {
+            "en-US": "Reply to an existing comment.",
+            "ja-JP": "既存のコメントに返信します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:resolve_comment",
+          "name": "resolve_comment",
+          "descriptions": {
+            "en-US": "Mark a comment as resolved.",
+            "ja-JP": "コメントを解決済みとしてマークします。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_docs:delete_comment",
+          "name": "delete_comment",
+          "descriptions": {
+            "en-US": "Delete a comment from the document.",
+            "ja-JP": "ドキュメントからコメントを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "google_drive",
       "name": "Google Drive",
       "descriptions": {

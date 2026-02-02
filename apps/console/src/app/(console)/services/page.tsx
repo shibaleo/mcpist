@@ -144,6 +144,11 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Googleアカウントでログインして、Driveへのアクセスを許可します",
     authType: "oauth",
   },
+  google_docs: {
+    authLabel: "Google OAuth",
+    helpText: "Googleアカウントでログインして、ドキュメントへのアクセスを許可します",
+    authType: "oauth",
+  },
   microsoft_todo: {
     authLabel: "Microsoft OAuth",
     helpText: "Microsoftアカウントでログインして、タスクへのアクセスを許可します",
