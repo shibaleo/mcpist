@@ -97,6 +97,7 @@ export async function GET(request: Request) {
     }
 
     const tokenData = await tokenResponse.json()
+    console.log("Notion token response:", JSON.stringify(tokenData, null, 2))
 
     if (!tokenData.access_token) {
       const errorUrl = new URL(returnTo, request.url)
