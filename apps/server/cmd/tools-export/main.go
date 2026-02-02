@@ -18,6 +18,7 @@ import (
 	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
 	"mcpist/server/internal/modules/supabase"
+	"mcpist/server/internal/modules/todoist"
 )
 
 // ToolAnnotations mirrors modules.ToolAnnotations for JSON export
@@ -61,6 +62,7 @@ var serviceDisplayNames = map[string]string{
 	"google_calendar": "Google Calendar",
 	"google_tasks":    "Google Tasks",
 	"microsoft_todo":  "Microsoft To Do",
+	"todoist":         "Todoist",
 }
 
 func init() {
@@ -74,6 +76,7 @@ func init() {
 	modules.RegisterModule(google_calendar.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
+	modules.RegisterModule(todoist.New())
 }
 
 func main() {

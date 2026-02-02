@@ -101,6 +101,12 @@ export const OAUTH_PROVIDERS = [
     description: "Microsoft Todo, Outlook, OneDrive など",
     docsUrl: "https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps",
   },
+  {
+    id: "todoist",
+    name: "Todoist",
+    description: "Todoist タスク管理",
+    docsUrl: "https://developer.todoist.com/appconsole.html",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -143,6 +149,14 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
       "offline_access",
     ],
     serviceId: "microsoft_todo",
+  },
+  todoist: {
+    authUrl: "https://todoist.com/oauth/authorize",
+    scopes: [
+      "data:read_write",
+      "data:delete",
+    ],
+    serviceId: "todoist",
   },
 }
 
