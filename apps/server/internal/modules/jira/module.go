@@ -121,6 +121,17 @@ func baseURL(ctx context.Context) string {
 	if creds == nil {
 		return ""
 	}
+
+	// OAuth 2.0の場合は api.atlassian.com 経由
+	if creds.AuthType == store.AuthTypeOAuth2 {
+		cloudID := creds.Metadata["cloud_id"]
+		if cloudID == "" {
+			return ""
+		}
+		return fmt.Sprintf("https://api.atlassian.com/ex/jira/%s%s", cloudID, jiraAPIPath)
+	}
+
+	// Basic認証の場合は直接ドメインにアクセス
 	domain := creds.Metadata["domain"]
 	if domain == "" {
 		return ""
