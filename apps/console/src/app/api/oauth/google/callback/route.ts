@@ -139,6 +139,7 @@ export async function GET(request: Request) {
       google_calendar: "Google Calendar",
       google_tasks: "Google Tasks",
       google_drive: "Google Drive",
+      google_docs: "Google Docs",
     }
     const displayName = moduleDisplayNames[module] || module
 

@@ -14,6 +14,7 @@ import (
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/google_calendar"
+	"mcpist/server/internal/modules/google_docs"
 	"mcpist/server/internal/modules/google_drive"
 	"mcpist/server/internal/modules/google_tasks"
 	"mcpist/server/internal/modules/jira"
@@ -63,6 +64,7 @@ var serviceDisplayNames = map[string]string{
 	"supabase":        "Supabase",
 	"airtable":        "Airtable",
 	"google_calendar": "Google Calendar",
+	"google_docs":     "Google Docs",
 	"google_drive":    "Google Drive",
 	"google_tasks":    "Google Tasks",
 	"microsoft_todo":  "Microsoft To Do",
@@ -80,6 +82,7 @@ func init() {
 	modules.RegisterModule(supabase.New())
 	modules.RegisterModule(airtable.New())
 	modules.RegisterModule(google_calendar.New())
+	modules.RegisterModule(google_docs.New())
 	modules.RegisterModule(google_drive.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
