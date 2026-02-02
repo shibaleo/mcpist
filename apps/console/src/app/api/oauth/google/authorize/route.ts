@@ -13,6 +13,9 @@ const MODULE_SCOPES: Record<string, string[]> = {
   google_tasks: [
     "https://www.googleapis.com/auth/tasks",
   ],
+  google_drive: [
+    "https://www.googleapis.com/auth/drive",
+  ],
 }
 
 function getAdminClient() {

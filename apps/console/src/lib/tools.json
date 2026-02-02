@@ -1002,6 +1002,305 @@
       ]
     },
     {
+      "id": "google_drive",
+      "name": "Google Drive",
+      "descriptions": {
+        "en-US": "Google Drive API - List, search, read, and manage files and folders",
+        "ja-JP": "Google Drive API - ファイルとフォルダの一覧表示、検索、読み取り、管理"
+      },
+      "apiVersion": "v3",
+      "tools": [
+        {
+          "id": "google_drive:list_files",
+          "name": "list_files",
+          "descriptions": {
+            "en-US": "List files and folders in Google Drive.",
+            "ja-JP": "Google Drive内のファイルとフォルダを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:get_file",
+          "name": "get_file",
+          "descriptions": {
+            "en-US": "Get metadata of a specific file or folder.",
+            "ja-JP": "特定のファイルまたはフォルダのメタデータを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:search_files",
+          "name": "search_files",
+          "descriptions": {
+            "en-US": "Search for files in Google Drive by name or content.",
+            "ja-JP": "名前またはコンテンツでGoogle Drive内のファイルを検索します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:read_file",
+          "name": "read_file",
+          "descriptions": {
+            "en-US": "Read the content of a file. For Google Docs/Sheets/Slides, exports as text/csv/plain text.",
+            "ja-JP": "ファイルの内容を読み取ります。Google Docs/Sheets/Slidesの場合はテキスト/CSV/プレーンテキストとしてエクスポートします。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:create_folder",
+          "name": "create_folder",
+          "descriptions": {
+            "en-US": "Create a new folder in Google Drive.",
+            "ja-JP": "Google Driveに新しいフォルダを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:copy_file",
+          "name": "copy_file",
+          "descriptions": {
+            "en-US": "Create a copy of a file.",
+            "ja-JP": "ファイルのコピーを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:move_file",
+          "name": "move_file",
+          "descriptions": {
+            "en-US": "Move a file to a different folder.",
+            "ja-JP": "ファイルを別のフォルダに移動します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:rename_file",
+          "name": "rename_file",
+          "descriptions": {
+            "en-US": "Rename a file or folder.",
+            "ja-JP": "ファイルまたはフォルダの名前を変更します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:delete_file",
+          "name": "delete_file",
+          "descriptions": {
+            "en-US": "Move a file or folder to trash.",
+            "ja-JP": "ファイルまたはフォルダをゴミ箱に移動します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:get_about",
+          "name": "get_about",
+          "descriptions": {
+            "en-US": "Get information about the user's Drive (storage quota, user info).",
+            "ja-JP": "ユーザーのDrive情報（ストレージ容量、ユーザー情報）を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:upload_file",
+          "name": "upload_file",
+          "descriptions": {
+            "en-US": "Upload a new file to Google Drive (text content only).",
+            "ja-JP": "Google Driveに新しいファイルをアップロードします（テキストコンテンツのみ）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:update_file_content",
+          "name": "update_file_content",
+          "descriptions": {
+            "en-US": "Update the content of an existing file (text content only).",
+            "ja-JP": "既存ファイルの内容を更新します（テキストコンテンツのみ）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:list_permissions",
+          "name": "list_permissions",
+          "descriptions": {
+            "en-US": "List permissions (sharing settings) for a file or folder.",
+            "ja-JP": "ファイルまたはフォルダの権限（共有設定）を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:share_file",
+          "name": "share_file",
+          "descriptions": {
+            "en-US": "Share a file or folder with a user, group, domain, or anyone.",
+            "ja-JP": "ファイルまたはフォルダをユーザー、グループ、ドメイン、または全員と共有します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:delete_permission",
+          "name": "delete_permission",
+          "descriptions": {
+            "en-US": "Remove a permission (unshare) from a file or folder.",
+            "ja-JP": "ファイルまたはフォルダから権限（共有）を削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:list_comments",
+          "name": "list_comments",
+          "descriptions": {
+            "en-US": "List comments on a file.",
+            "ja-JP": "ファイルのコメントを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:create_comment",
+          "name": "create_comment",
+          "descriptions": {
+            "en-US": "Add a comment to a file.",
+            "ja-JP": "ファイルにコメントを追加します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:list_revisions",
+          "name": "list_revisions",
+          "descriptions": {
+            "en-US": "List revisions (version history) of a file.",
+            "ja-JP": "ファイルのリビジョン（バージョン履歴）を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:restore_file",
+          "name": "restore_file",
+          "descriptions": {
+            "en-US": "Restore a file from trash.",
+            "ja-JP": "ゴミ箱からファイルを復元します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:empty_trash",
+          "name": "empty_trash",
+          "descriptions": {
+            "en-US": "Permanently delete all files in trash.",
+            "ja-JP": "ゴミ箱内のすべてのファイルを完全に削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:list_shared_drives",
+          "name": "list_shared_drives",
+          "descriptions": {
+            "en-US": "List shared drives the user has access to.",
+            "ja-JP": "ユーザーがアクセスできる共有ドライブを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "google_drive:export_file",
+          "name": "export_file",
+          "descriptions": {
+            "en-US": "Export a Google Workspace file (Docs, Sheets, Slides) to a specific format.",
+            "ja-JP": "Google Workspaceファイル（Docs、Sheets、Slides）を特定の形式でエクスポートします。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "google_tasks",
       "name": "Google Tasks",
       "descriptions": {

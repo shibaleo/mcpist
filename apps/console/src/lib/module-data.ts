@@ -102,6 +102,7 @@ export const moduleIcons: Record<string, string> = {
   airtable: "table",
   google_calendar: "calendar",
   google_tasks: "list-todo",
+  google_drive: "hard-drive",
   microsoft_todo: "check-square",
   todoist: "check-circle",
   trello: "trello",
