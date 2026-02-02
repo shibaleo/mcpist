@@ -16,6 +16,7 @@ import (
 	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/google_docs"
 	"mcpist/server/internal/modules/google_drive"
+	"mcpist/server/internal/modules/google_apps_script"
 	"mcpist/server/internal/modules/google_sheets"
 	"mcpist/server/internal/modules/google_tasks"
 	"mcpist/server/internal/modules/jira"
@@ -67,8 +68,9 @@ var serviceDisplayNames = map[string]string{
 	"google_calendar": "Google Calendar",
 	"google_docs":     "Google Docs",
 	"google_drive":    "Google Drive",
-	"google_sheets":   "Google Sheets",
-	"google_tasks":    "Google Tasks",
+	"google_sheets":      "Google Sheets",
+	"google_apps_script": "Google Apps Script",
+	"google_tasks":       "Google Tasks",
 	"microsoft_todo":  "Microsoft To Do",
 	"todoist":         "Todoist",
 	"trello":          "Trello",
@@ -87,6 +89,7 @@ func init() {
 	modules.RegisterModule(google_docs.New())
 	modules.RegisterModule(google_drive.New())
 	modules.RegisterModule(google_sheets.New())
+	modules.RegisterModule(google_apps_script.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
 	modules.RegisterModule(todoist.New())

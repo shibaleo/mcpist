@@ -154,6 +154,11 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "Googleアカウントでログインして、スプレッドシートへのアクセスを許可します",
     authType: "oauth",
   },
+  google_apps_script: {
+    authLabel: "Google OAuth",
+    helpText: "Googleアカウントでログインして、Apps Scriptプロジェクトへのアクセスを許可します",
+    authType: "oauth",
+  },
   microsoft_todo: {
     authLabel: "Microsoft OAuth",
     helpText: "Microsoftアカウントでログインして、タスクへのアクセスを許可します",
