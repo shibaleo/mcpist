@@ -240,7 +240,7 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
   },
   asana: {
     authUrl: "https://app.asana.com/-/oauth_authorize",
-    scopes: ["default"],  // Asana uses "default" scope for full access
+    scopes: [],  // Asana doesn't use scope parameter in OAuth authorize request
     serviceId: "asana",
   },
 }
