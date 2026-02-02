@@ -29,6 +29,7 @@ const MODULE_SCOPES: Record<string, string[]> = {
     "https://www.googleapis.com/auth/script.deployments",
     "https://www.googleapis.com/auth/script.metrics",
     "https://www.googleapis.com/auth/script.processes",
+    "https://www.googleapis.com/auth/script.scriptapp",  // For run_function (execute scripts)
     "https://www.googleapis.com/auth/drive.readonly",  // For listing projects
   ],
 }

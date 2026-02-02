@@ -510,8 +510,9 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"script_id": {Type: "string", Description: "Script project ID"},
-				"filter":    {Type: "string", Description: "Filter expression for metrics (optional)"},
+				"script_id":           {Type: "string", Description: "Script project ID"},
+				"metrics_granularity": {Type: "string", Description: "Metrics granularity: 'WEEKLY' or 'DAILY'. Default: 'WEEKLY'"},
+				"deployment_id":       {Type: "string", Description: "Filter metrics by deployment ID (optional)"},
 			},
 			Required: []string{"script_id"},
 		},
@@ -926,14 +927,20 @@ func getMetrics(ctx context.Context, params map[string]any) (string, error) {
 	scriptID, _ := params["script_id"].(string)
 
 	query := url.Values{}
-	if filter, ok := params["filter"].(string); ok && filter != "" {
-		query.Set("metricsFilter.deploymentId", filter)
+
+	// metricsGranularity is required (WEEKLY or DAILY)
+	granularity := "WEEKLY"
+	if g, ok := params["metrics_granularity"].(string); ok && g != "" {
+		granularity = g
+	}
+	query.Set("metricsGranularity", granularity)
+
+	// Optional deployment filter
+	if deploymentID, ok := params["deployment_id"].(string); ok && deploymentID != "" {
+		query.Set("metricsFilter.deploymentId", deploymentID)
 	}
 
-	endpoint := fmt.Sprintf("%s/projects/%s/metrics", appsScriptAPIBase, url.PathEscape(scriptID))
-	if len(query) > 0 {
-		endpoint += "?" + query.Encode()
-	}
+	endpoint := fmt.Sprintf("%s/projects/%s/metrics?%s", appsScriptAPIBase, url.PathEscape(scriptID), query.Encode())
 
 	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
 	if err != nil {
