@@ -71,9 +71,10 @@ type Credentials struct {
 	Token      string `json:"token,omitempty"`
 	HeaderName string `json:"header_name,omitempty"`
 
-	// Additional metadata (e.g., domain for Atlassian)
-	Metadata  map[string]string `json:"metadata,omitempty"`
-	Metadata2 map[string]string `json:"_metadata,omitempty"` // Legacy field from Console
+	// Additional metadata (e.g., domain for Atlassian, workspace info for Notion)
+	// Using interface{} to support nested objects (e.g., Notion's owner object)
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata2 map[string]interface{} `json:"_metadata,omitempty"` // Legacy field from Console
 }
 
 // GetAuthType returns the auth type, checking both standard and legacy fields
@@ -85,7 +86,7 @@ func (c *Credentials) GetAuthType() string {
 }
 
 // GetMetadata returns metadata, checking both standard and legacy fields
-func (c *Credentials) GetMetadata() map[string]string {
+func (c *Credentials) GetMetadata() map[string]interface{} {
 	if c.Metadata != nil {
 		return c.Metadata
 	}
@@ -94,13 +95,13 @@ func (c *Credentials) GetMetadata() map[string]string {
 
 // CredentialResult represents the result of get_user_credential RPC
 type CredentialResult struct {
-	Found       bool              `json:"found"`
-	UserID      string            `json:"user_id"`
-	Service     string            `json:"service"`
-	AuthType    string            `json:"auth_type"`
-	Credentials *Credentials      `json:"credentials,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"` // e.g., domain for Atlassian
-	Error       string            `json:"error,omitempty"`
+	Found       bool                   `json:"found"`
+	UserID      string                 `json:"user_id"`
+	Service     string                 `json:"service"`
+	AuthType    string                 `json:"auth_type"`
+	Credentials *Credentials           `json:"credentials,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"` // e.g., domain for Atlassian, workspace info for Notion
+	Error       string                 `json:"error,omitempty"`
 }
 
 // NewTokenStore creates a new token store

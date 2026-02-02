@@ -97,7 +97,6 @@ export async function GET(request: Request) {
     }
 
     const tokenData = await tokenResponse.json()
-    console.log("Notion token response:", JSON.stringify(tokenData, null, 2))
 
     if (!tokenData.access_token) {
       const errorUrl = new URL(returnTo, request.url)
@@ -107,11 +106,17 @@ export async function GET(request: Request) {
 
     // トークン情報を保存
     // Notion の場合、workspace_id と workspace_name も取得できる
+    // expires_in がある場合は expires_at を計算して保存（リフレッシュ判定に使用）
+    const expiresAt = tokenData.expires_in
+      ? Math.floor(Date.now() / 1000) + tokenData.expires_in
+      : null
+
     const tokenCredentials = {
       auth_type: "oauth2",
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token || null,
       token_type: tokenData.token_type || "Bearer",
+      expires_at: expiresAt,
       bot_id: tokenData.bot_id,
       metadata: {
         workspace_id: tokenData.workspace_id || "",
