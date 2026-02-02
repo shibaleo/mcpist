@@ -1,5 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { createServerClient } from "@supabase/ssr"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -19,7 +20,28 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = await createClient()
+    const cookieStore = await cookies()
+
+    // Route Handler用に cookiesToSet を追跡
+    const cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[] = []
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookies) {
+            cookies.forEach((cookie) => {
+              cookiesToSet.push(cookie)
+            })
+          },
+        },
+      }
+    )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
@@ -41,15 +63,22 @@ export async function GET(request: Request) {
         const needsOnboarding = context?.[0]?.account_status === "pre_active"
 
         if (needsOnboarding && !returnTo.startsWith("/onboarding")) {
-          return NextResponse.redirect(`${origin}/onboarding`)
+          const response = NextResponse.redirect(`${origin}/onboarding`)
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options as Record<string, unknown>)
+          })
+          return response
         }
       }
 
       // If returnTo is a full URL (for OAuth consent flow), redirect there
-      if (returnTo.startsWith("http")) {
-        return NextResponse.redirect(returnTo)
-      }
-      return NextResponse.redirect(`${origin}${returnTo}`)
+      const redirectUrl = returnTo.startsWith("http") ? returnTo : `${origin}${returnTo}`
+      const response = NextResponse.redirect(redirectUrl)
+      // 重要: cookieをレスポンスに設定
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options as Record<string, unknown>)
+      })
+      return response
     }
   }
 
