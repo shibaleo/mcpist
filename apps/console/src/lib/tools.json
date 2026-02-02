@@ -154,6 +154,315 @@
       ]
     },
     {
+      "id": "asana",
+      "name": "Asana",
+      "descriptions": {
+        "en-US": "Asana API - Workspaces, projects, tasks, sections, and tags management",
+        "ja-JP": "Asana API - ワークスペース、プロジェクト、タスク、セクション、タグの管理"
+      },
+      "apiVersion": "1.0",
+      "tools": [
+        {
+          "id": "asana:get_me",
+          "name": "get_me",
+          "descriptions": {
+            "en-US": "Get the current authenticated user's information.",
+            "ja-JP": "現在認証されているユーザーの情報を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_workspaces",
+          "name": "list_workspaces",
+          "descriptions": {
+            "en-US": "List all workspaces the user has access to.",
+            "ja-JP": "ユーザーがアクセスできるすべてのワークスペースを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:get_workspace",
+          "name": "get_workspace",
+          "descriptions": {
+            "en-US": "Get details of a specific workspace.",
+            "ja-JP": "特定のワークスペースの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_projects",
+          "name": "list_projects",
+          "descriptions": {
+            "en-US": "List projects in a workspace or team.",
+            "ja-JP": "ワークスペースまたはチーム内のプロジェクトを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:get_project",
+          "name": "get_project",
+          "descriptions": {
+            "en-US": "Get details of a specific project.",
+            "ja-JP": "特定のプロジェクトの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:create_project",
+          "name": "create_project",
+          "descriptions": {
+            "en-US": "Create a new project in a workspace or team.",
+            "ja-JP": "ワークスペースまたはチームに新しいプロジェクトを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:update_project",
+          "name": "update_project",
+          "descriptions": {
+            "en-US": "Update an existing project.",
+            "ja-JP": "既存のプロジェクトを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:delete_project",
+          "name": "delete_project",
+          "descriptions": {
+            "en-US": "Delete a project.",
+            "ja-JP": "プロジェクトを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_sections",
+          "name": "list_sections",
+          "descriptions": {
+            "en-US": "List all sections in a project.",
+            "ja-JP": "プロジェクト内のすべてのセクションを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:create_section",
+          "name": "create_section",
+          "descriptions": {
+            "en-US": "Create a new section in a project.",
+            "ja-JP": "プロジェクトに新しいセクションを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_tasks",
+          "name": "list_tasks",
+          "descriptions": {
+            "en-US": "List tasks in a project or section.",
+            "ja-JP": "プロジェクトまたはセクション内のタスクを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:get_task",
+          "name": "get_task",
+          "descriptions": {
+            "en-US": "Get details of a specific task.",
+            "ja-JP": "特定のタスクの詳細を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:create_task",
+          "name": "create_task",
+          "descriptions": {
+            "en-US": "Create a new task.",
+            "ja-JP": "新しいタスクを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:update_task",
+          "name": "update_task",
+          "descriptions": {
+            "en-US": "Update an existing task.",
+            "ja-JP": "既存のタスクを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:complete_task",
+          "name": "complete_task",
+          "descriptions": {
+            "en-US": "Mark a task as completed.",
+            "ja-JP": "タスクを完了としてマークします。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:delete_task",
+          "name": "delete_task",
+          "descriptions": {
+            "en-US": "Delete a task.",
+            "ja-JP": "タスクを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_subtasks",
+          "name": "list_subtasks",
+          "descriptions": {
+            "en-US": "List subtasks of a task.",
+            "ja-JP": "タスクのサブタスクを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:create_subtask",
+          "name": "create_subtask",
+          "descriptions": {
+            "en-US": "Create a subtask under a parent task.",
+            "ja-JP": "親タスクの下にサブタスクを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_stories",
+          "name": "list_stories",
+          "descriptions": {
+            "en-US": "List stories (comments and activity) on a task.",
+            "ja-JP": "タスクのストーリー（コメントとアクティビティ）を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:add_comment",
+          "name": "add_comment",
+          "descriptions": {
+            "en-US": "Add a comment to a task.",
+            "ja-JP": "タスクにコメントを追加します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:list_tags",
+          "name": "list_tags",
+          "descriptions": {
+            "en-US": "List tags in a workspace.",
+            "ja-JP": "ワークスペース内のタグを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:create_tag",
+          "name": "create_tag",
+          "descriptions": {
+            "en-US": "Create a new tag in a workspace.",
+            "ja-JP": "ワークスペースに新しいタグを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "asana:search_tasks",
+          "name": "search_tasks",
+          "descriptions": {
+            "en-US": "Search for tasks in a workspace using advanced filters.",
+            "ja-JP": "高度なフィルターを使用してワークスペース内のタスクを検索します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "confluence",
       "name": "Confluence",
       "descriptions": {

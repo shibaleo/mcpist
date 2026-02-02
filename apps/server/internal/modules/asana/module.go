@@ -1,0 +1,1248 @@
+package asana
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	"mcpist/server/internal/httpclient"
+	"mcpist/server/internal/middleware"
+	"mcpist/server/internal/modules"
+	"mcpist/server/internal/store"
+)
+
+const (
+	asanaAPIBase       = "https://app.asana.com/api/1.0"
+	asanaVersion       = "1.0"
+	asanaTokenURL      = "https://app.asana.com/-/oauth_token"
+	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
+)
+
+var client = httpclient.New()
+
+// AsanaModule implements the Module interface for Asana API
+type AsanaModule struct{}
+
+// New creates a new AsanaModule instance
+func New() *AsanaModule {
+	return &AsanaModule{}
+}
+
+// Module descriptions in multiple languages
+var moduleDescriptions = modules.LocalizedText{
+	"en-US": "Asana API - Workspaces, projects, tasks, sections, and tags management",
+	"ja-JP": "Asana API - ワークスペース、プロジェクト、タスク、セクション、タグの管理",
+}
+
+// Name returns the module name
+func (m *AsanaModule) Name() string {
+	return "asana"
+}
+
+// Descriptions returns the module descriptions in all languages
+func (m *AsanaModule) Descriptions() modules.LocalizedText {
+	return moduleDescriptions
+}
+
+// Description returns the module description for a specific language
+func (m *AsanaModule) Description(lang string) string {
+	return modules.GetLocalizedText(moduleDescriptions, lang)
+}
+
+// APIVersion returns the Asana API version
+func (m *AsanaModule) APIVersion() string {
+	return asanaVersion
+}
+
+// Tools returns all available tools
+func (m *AsanaModule) Tools() []modules.Tool {
+	return toolDefinitions
+}
+
+// ExecuteTool executes a tool by name and returns JSON response
+func (m *AsanaModule) ExecuteTool(ctx context.Context, name string, params map[string]any) (string, error) {
+	handler, ok := toolHandlers[name]
+	if !ok {
+		return "", fmt.Errorf("unknown tool: %s", name)
+	}
+	return handler(ctx, params)
+}
+
+// Resources returns all available resources (none for Asana)
+func (m *AsanaModule) Resources() []modules.Resource {
+	return nil
+}
+
+// ReadResource reads a resource by URI (not implemented)
+func (m *AsanaModule) ReadResource(ctx context.Context, uri string) (string, error) {
+	return "", fmt.Errorf("resources not supported")
+}
+
+// =============================================================================
+// Token and Headers
+// =============================================================================
+
+func getCredentials(ctx context.Context) *store.Credentials {
+	authCtx := middleware.GetAuthContext(ctx)
+	if authCtx == nil {
+		log.Printf("[asana] No auth context")
+		return nil
+	}
+	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "asana")
+	if err != nil {
+		log.Printf("[asana] GetModuleToken error: %v", err)
+		return nil
+	}
+	log.Printf("[asana] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
+
+	// Check if token needs refresh (Asana supports refresh tokens)
+	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" && credentials.ExpiresAt > 0 {
+		expiresAt := time.Unix(credentials.ExpiresAt, 0)
+		if time.Until(expiresAt).Seconds() < tokenRefreshBuffer {
+			log.Printf("[asana] Token expires soon, refreshing...")
+			if err := refreshToken(ctx, authCtx.UserID, credentials); err != nil {
+				log.Printf("[asana] Token refresh failed: %v", err)
+				// Continue with existing token, it might still work
+			}
+		}
+	}
+
+	return credentials
+}
+
+func refreshToken(ctx context.Context, userID string, creds *store.Credentials) error {
+	// Get OAuth app credentials
+	oauthCreds, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "asana")
+	if err != nil {
+		return fmt.Errorf("failed to get OAuth credentials: %w", err)
+	}
+
+	data := url.Values{}
+	data.Set("grant_type", "refresh_token")
+	data.Set("client_id", oauthCreds.ClientID)
+	data.Set("client_secret", oauthCreds.ClientSecret)
+	data.Set("refresh_token", creds.RefreshToken)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", asanaTokenURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return fmt.Errorf("failed to create refresh request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("refresh request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("refresh failed with status: %d", resp.StatusCode)
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		TokenType    string `json:"token_type"`
+		ExpiresIn    int64  `json:"expires_in"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return fmt.Errorf("failed to decode token response: %w", err)
+	}
+
+	// Update credentials
+	expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second).Unix()
+	newCreds := &store.Credentials{
+		AuthType:     store.AuthTypeOAuth2,
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		ExpiresAt:    expiresAt,
+	}
+
+	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "asana", newCreds); err != nil {
+		return fmt.Errorf("failed to save refreshed token: %w", err)
+	}
+
+	// Update in-memory credentials
+	creds.AccessToken = tokenResp.AccessToken
+	creds.RefreshToken = tokenResp.RefreshToken
+	creds.ExpiresAt = expiresAt
+
+	log.Printf("[asana] Token refreshed successfully")
+	return nil
+}
+
+func headers(ctx context.Context) map[string]string {
+	creds := getCredentials(ctx)
+	if creds == nil {
+		return map[string]string{}
+	}
+
+	h := map[string]string{
+		"Content-Type": "application/json",
+		"Accept":       "application/json",
+	}
+
+	// OAuth2 or PAT uses Bearer token
+	if creds.AuthType == store.AuthTypeOAuth2 || creds.AuthType == store.AuthTypeAPIKey {
+		h["Authorization"] = "Bearer " + creds.AccessToken
+	}
+
+	return h
+}
+
+// =============================================================================
+// Tool Definitions
+// =============================================================================
+
+var toolDefinitions = []modules.Tool{
+	// User
+	{
+		ID:   "asana:get_me",
+		Name: "get_me",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get the current authenticated user's information.",
+			"ja-JP": "現在認証されているユーザーの情報を取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type:       "object",
+			Properties: map[string]modules.Property{},
+		},
+	},
+	// Workspaces
+	{
+		ID:   "asana:list_workspaces",
+		Name: "list_workspaces",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all workspaces the user has access to.",
+			"ja-JP": "ユーザーがアクセスできるすべてのワークスペースを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type:       "object",
+			Properties: map[string]modules.Property{},
+		},
+	},
+	{
+		ID:   "asana:get_workspace",
+		Name: "get_workspace",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific workspace.",
+			"ja-JP": "特定のワークスペースの詳細を取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"workspace_gid": {Type: "string", Description: "Workspace GID"},
+			},
+			Required: []string{"workspace_gid"},
+		},
+	},
+	// Projects
+	{
+		ID:   "asana:list_projects",
+		Name: "list_projects",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List projects in a workspace or team.",
+			"ja-JP": "ワークスペースまたはチーム内のプロジェクトを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"workspace_gid": {Type: "string", Description: "Workspace GID"},
+				"team_gid":      {Type: "string", Description: "Team GID (optional)"},
+				"archived":      {Type: "boolean", Description: "Include archived projects"},
+			},
+			Required: []string{"workspace_gid"},
+		},
+	},
+	{
+		ID:   "asana:get_project",
+		Name: "get_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific project.",
+			"ja-JP": "特定のプロジェクトの詳細を取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_gid": {Type: "string", Description: "Project GID"},
+			},
+			Required: []string{"project_gid"},
+		},
+	},
+	{
+		ID:   "asana:create_project",
+		Name: "create_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new project in a workspace or team.",
+			"ja-JP": "ワークスペースまたはチームに新しいプロジェクトを作成します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"name":          {Type: "string", Description: "Project name (required)"},
+				"workspace_gid": {Type: "string", Description: "Workspace GID (required if team_gid not provided)"},
+				"team_gid":      {Type: "string", Description: "Team GID (required if workspace_gid not provided)"},
+				"notes":         {Type: "string", Description: "Project description"},
+				"color":         {Type: "string", Description: "Project color (dark-pink, dark-green, dark-blue, dark-red, dark-teal, dark-brown, dark-orange, dark-purple, dark-warm-gray, light-pink, light-green, light-blue, light-red, light-teal, light-brown, light-orange, light-purple, light-warm-gray, none)"},
+				"default_view":  {Type: "string", Description: "Default view: list, board, calendar, timeline"},
+				"due_on":        {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+			},
+			Required: []string{"name"},
+		},
+	},
+	{
+		ID:   "asana:update_project",
+		Name: "update_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing project.",
+			"ja-JP": "既存のプロジェクトを更新します。",
+		},
+		Annotations: modules.AnnotateUpdate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_gid":  {Type: "string", Description: "Project GID (required)"},
+				"name":         {Type: "string", Description: "New project name"},
+				"notes":        {Type: "string", Description: "New project description"},
+				"color":        {Type: "string", Description: "Project color"},
+				"default_view": {Type: "string", Description: "Default view"},
+				"due_on":       {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+				"archived":     {Type: "boolean", Description: "Archive status"},
+			},
+			Required: []string{"project_gid"},
+		},
+	},
+	{
+		ID:   "asana:delete_project",
+		Name: "delete_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete a project.",
+			"ja-JP": "プロジェクトを削除します。",
+		},
+		Annotations: modules.AnnotateDelete,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_gid": {Type: "string", Description: "Project GID"},
+			},
+			Required: []string{"project_gid"},
+		},
+	},
+	// Sections
+	{
+		ID:   "asana:list_sections",
+		Name: "list_sections",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all sections in a project.",
+			"ja-JP": "プロジェクト内のすべてのセクションを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_gid": {Type: "string", Description: "Project GID"},
+			},
+			Required: []string{"project_gid"},
+		},
+	},
+	{
+		ID:   "asana:create_section",
+		Name: "create_section",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new section in a project.",
+			"ja-JP": "プロジェクトに新しいセクションを作成します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_gid": {Type: "string", Description: "Project GID (required)"},
+				"name":        {Type: "string", Description: "Section name (required)"},
+			},
+			Required: []string{"project_gid", "name"},
+		},
+	},
+	// Tasks
+	{
+		ID:   "asana:list_tasks",
+		Name: "list_tasks",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List tasks in a project or section.",
+			"ja-JP": "プロジェクトまたはセクション内のタスクを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_gid":   {Type: "string", Description: "Project GID"},
+				"section_gid":   {Type: "string", Description: "Section GID"},
+				"assignee_gid":  {Type: "string", Description: "Assignee user GID"},
+				"workspace_gid": {Type: "string", Description: "Workspace GID (required when using assignee)"},
+				"completed":     {Type: "boolean", Description: "Filter by completion status"},
+			},
+		},
+	},
+	{
+		ID:   "asana:get_task",
+		Name: "get_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get details of a specific task.",
+			"ja-JP": "特定のタスクの詳細を取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid": {Type: "string", Description: "Task GID"},
+			},
+			Required: []string{"task_gid"},
+		},
+	},
+	{
+		ID:   "asana:create_task",
+		Name: "create_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new task.",
+			"ja-JP": "新しいタスクを作成します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"name":          {Type: "string", Description: "Task name (required)"},
+				"workspace_gid": {Type: "string", Description: "Workspace GID (required if projects not provided)"},
+				"projects":      {Type: "array", Description: "Array of project GIDs"},
+				"section_gid":   {Type: "string", Description: "Section GID to add task to"},
+				"parent_gid":    {Type: "string", Description: "Parent task GID for subtasks"},
+				"notes":         {Type: "string", Description: "Task description (plain text)"},
+				"html_notes":    {Type: "string", Description: "Task description (HTML)"},
+				"due_on":        {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+				"due_at":        {Type: "string", Description: "Due datetime (ISO 8601 format)"},
+				"start_on":      {Type: "string", Description: "Start date (YYYY-MM-DD format)"},
+				"assignee_gid":  {Type: "string", Description: "Assignee user GID"},
+				"tags":          {Type: "array", Description: "Array of tag GIDs"},
+			},
+			Required: []string{"name"},
+		},
+	},
+	{
+		ID:   "asana:update_task",
+		Name: "update_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing task.",
+			"ja-JP": "既存のタスクを更新します。",
+		},
+		Annotations: modules.AnnotateUpdate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid":     {Type: "string", Description: "Task GID (required)"},
+				"name":         {Type: "string", Description: "New task name"},
+				"notes":        {Type: "string", Description: "Task description (plain text)"},
+				"html_notes":   {Type: "string", Description: "Task description (HTML)"},
+				"due_on":       {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+				"due_at":       {Type: "string", Description: "Due datetime (ISO 8601 format)"},
+				"start_on":     {Type: "string", Description: "Start date (YYYY-MM-DD format)"},
+				"completed":    {Type: "boolean", Description: "Completion status"},
+				"assignee_gid": {Type: "string", Description: "Assignee user GID"},
+			},
+			Required: []string{"task_gid"},
+		},
+	},
+	{
+		ID:   "asana:complete_task",
+		Name: "complete_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Mark a task as completed.",
+			"ja-JP": "タスクを完了としてマークします。",
+		},
+		Annotations: modules.AnnotateUpdate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid": {Type: "string", Description: "Task GID"},
+			},
+			Required: []string{"task_gid"},
+		},
+	},
+	{
+		ID:   "asana:delete_task",
+		Name: "delete_task",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete a task.",
+			"ja-JP": "タスクを削除します。",
+		},
+		Annotations: modules.AnnotateDelete,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid": {Type: "string", Description: "Task GID"},
+			},
+			Required: []string{"task_gid"},
+		},
+	},
+	// Subtasks
+	{
+		ID:   "asana:list_subtasks",
+		Name: "list_subtasks",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List subtasks of a task.",
+			"ja-JP": "タスクのサブタスクを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid": {Type: "string", Description: "Parent task GID"},
+			},
+			Required: []string{"task_gid"},
+		},
+	},
+	{
+		ID:   "asana:create_subtask",
+		Name: "create_subtask",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a subtask under a parent task.",
+			"ja-JP": "親タスクの下にサブタスクを作成します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"parent_gid":   {Type: "string", Description: "Parent task GID (required)"},
+				"name":         {Type: "string", Description: "Subtask name (required)"},
+				"notes":        {Type: "string", Description: "Subtask description"},
+				"due_on":       {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+				"assignee_gid": {Type: "string", Description: "Assignee user GID"},
+			},
+			Required: []string{"parent_gid", "name"},
+		},
+	},
+	// Stories (Comments)
+	{
+		ID:   "asana:list_stories",
+		Name: "list_stories",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List stories (comments and activity) on a task.",
+			"ja-JP": "タスクのストーリー（コメントとアクティビティ）を一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid": {Type: "string", Description: "Task GID"},
+			},
+			Required: []string{"task_gid"},
+		},
+	},
+	{
+		ID:   "asana:add_comment",
+		Name: "add_comment",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Add a comment to a task.",
+			"ja-JP": "タスクにコメントを追加します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"task_gid": {Type: "string", Description: "Task GID (required)"},
+				"text":     {Type: "string", Description: "Comment text (required)"},
+			},
+			Required: []string{"task_gid", "text"},
+		},
+	},
+	// Tags
+	{
+		ID:   "asana:list_tags",
+		Name: "list_tags",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List tags in a workspace.",
+			"ja-JP": "ワークスペース内のタグを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"workspace_gid": {Type: "string", Description: "Workspace GID"},
+			},
+			Required: []string{"workspace_gid"},
+		},
+	},
+	{
+		ID:   "asana:create_tag",
+		Name: "create_tag",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new tag in a workspace.",
+			"ja-JP": "ワークスペースに新しいタグを作成します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"workspace_gid": {Type: "string", Description: "Workspace GID (required)"},
+				"name":          {Type: "string", Description: "Tag name (required)"},
+				"color":         {Type: "string", Description: "Tag color"},
+			},
+			Required: []string{"workspace_gid", "name"},
+		},
+	},
+	// Search
+	{
+		ID:   "asana:search_tasks",
+		Name: "search_tasks",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Search for tasks in a workspace using advanced filters.",
+			"ja-JP": "高度なフィルターを使用してワークスペース内のタスクを検索します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"workspace_gid":         {Type: "string", Description: "Workspace GID (required)"},
+				"text":                  {Type: "string", Description: "Search text"},
+				"completed":             {Type: "boolean", Description: "Filter by completion status"},
+				"is_subtask":            {Type: "boolean", Description: "Filter subtasks only"},
+				"assignee_gid":          {Type: "string", Description: "Filter by assignee"},
+				"projects_gid":          {Type: "string", Description: "Filter by project"},
+				"due_on_before":         {Type: "string", Description: "Due on or before date (YYYY-MM-DD)"},
+				"due_on_after":          {Type: "string", Description: "Due on or after date (YYYY-MM-DD)"},
+				"sort_by":               {Type: "string", Description: "Sort by: due_date, created_at, completed_at, likes, modified_at"},
+				"sort_ascending":        {Type: "boolean", Description: "Sort ascending (default: false)"},
+			},
+			Required: []string{"workspace_gid"},
+		},
+	},
+}
+
+// =============================================================================
+// Tool Handlers
+// =============================================================================
+
+type toolHandler func(ctx context.Context, params map[string]any) (string, error)
+
+var toolHandlers = map[string]toolHandler{
+	// User
+	"get_me": getMe,
+	// Workspaces
+	"list_workspaces": listWorkspaces,
+	"get_workspace":   getWorkspace,
+	// Projects
+	"list_projects":   listProjects,
+	"get_project":     getProject,
+	"create_project":  createProject,
+	"update_project":  updateProject,
+	"delete_project":  deleteProject,
+	// Sections
+	"list_sections":   listSections,
+	"create_section":  createSection,
+	// Tasks
+	"list_tasks":    listTasks,
+	"get_task":      getTask,
+	"create_task":   createTask,
+	"update_task":   updateTask,
+	"complete_task": completeTask,
+	"delete_task":   deleteTask,
+	// Subtasks
+	"list_subtasks":   listSubtasks,
+	"create_subtask":  createSubtask,
+	// Stories
+	"list_stories": listStories,
+	"add_comment":  addComment,
+	// Tags
+	"list_tags":   listTags,
+	"create_tag":  createTag,
+	// Search
+	"search_tasks": searchTasks,
+}
+
+// =============================================================================
+// Helper: Extract data from Asana response
+// =============================================================================
+
+func extractData(respBody []byte) ([]byte, error) {
+	var response struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		return respBody, nil // Return as-is if not standard format
+	}
+	return response.Data, nil
+}
+
+// =============================================================================
+// User
+// =============================================================================
+
+func getMe(ctx context.Context, params map[string]any) (string, error) {
+	endpoint := asanaAPIBase + "/users/me"
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+// =============================================================================
+// Workspaces
+// =============================================================================
+
+func listWorkspaces(ctx context.Context, params map[string]any) (string, error) {
+	endpoint := asanaAPIBase + "/workspaces"
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func getWorkspace(ctx context.Context, params map[string]any) (string, error) {
+	workspaceGID, _ := params["workspace_gid"].(string)
+	endpoint := fmt.Sprintf("%s/workspaces/%s", asanaAPIBase, url.PathEscape(workspaceGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+// =============================================================================
+// Projects
+// =============================================================================
+
+func listProjects(ctx context.Context, params map[string]any) (string, error) {
+	query := url.Values{}
+
+	workspaceGID, _ := params["workspace_gid"].(string)
+	teamGID, _ := params["team_gid"].(string)
+
+	var endpoint string
+	if teamGID != "" {
+		endpoint = fmt.Sprintf("%s/teams/%s/projects", asanaAPIBase, url.PathEscape(teamGID))
+	} else {
+		endpoint = fmt.Sprintf("%s/workspaces/%s/projects", asanaAPIBase, url.PathEscape(workspaceGID))
+	}
+
+	if archived, ok := params["archived"].(bool); ok && archived {
+		query.Set("archived", "true")
+	}
+
+	if len(query) > 0 {
+		endpoint += "?" + query.Encode()
+	}
+
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func getProject(ctx context.Context, params map[string]any) (string, error) {
+	projectGID, _ := params["project_gid"].(string)
+	endpoint := fmt.Sprintf("%s/projects/%s", asanaAPIBase, url.PathEscape(projectGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func createProject(ctx context.Context, params map[string]any) (string, error) {
+	project := map[string]interface{}{}
+
+	if name, ok := params["name"].(string); ok {
+		project["name"] = name
+	}
+	if workspaceGID, ok := params["workspace_gid"].(string); ok && workspaceGID != "" {
+		project["workspace"] = workspaceGID
+	}
+	if teamGID, ok := params["team_gid"].(string); ok && teamGID != "" {
+		project["team"] = teamGID
+	}
+	if notes, ok := params["notes"].(string); ok {
+		project["notes"] = notes
+	}
+	if color, ok := params["color"].(string); ok {
+		project["color"] = color
+	}
+	if defaultView, ok := params["default_view"].(string); ok {
+		project["default_view"] = defaultView
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		project["due_on"] = dueOn
+	}
+
+	body := map[string]interface{}{"data": project}
+	endpoint := asanaAPIBase + "/projects"
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func updateProject(ctx context.Context, params map[string]any) (string, error) {
+	projectGID, _ := params["project_gid"].(string)
+
+	project := map[string]interface{}{}
+
+	if name, ok := params["name"].(string); ok && name != "" {
+		project["name"] = name
+	}
+	if notes, ok := params["notes"].(string); ok {
+		project["notes"] = notes
+	}
+	if color, ok := params["color"].(string); ok {
+		project["color"] = color
+	}
+	if defaultView, ok := params["default_view"].(string); ok {
+		project["default_view"] = defaultView
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		project["due_on"] = dueOn
+	}
+	if archived, ok := params["archived"].(bool); ok {
+		project["archived"] = archived
+	}
+
+	body := map[string]interface{}{"data": project}
+	endpoint := fmt.Sprintf("%s/projects/%s", asanaAPIBase, url.PathEscape(projectGID))
+	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func deleteProject(ctx context.Context, params map[string]any) (string, error) {
+	projectGID, _ := params["project_gid"].(string)
+	endpoint := fmt.Sprintf("%s/projects/%s", asanaAPIBase, url.PathEscape(projectGID))
+
+	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	if err != nil {
+		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
+			return `{"success": true, "message": "Project deleted"}`, nil
+		}
+		return "", err
+	}
+	return `{"success": true, "message": "Project deleted"}`, nil
+}
+
+// =============================================================================
+// Sections
+// =============================================================================
+
+func listSections(ctx context.Context, params map[string]any) (string, error) {
+	projectGID, _ := params["project_gid"].(string)
+	endpoint := fmt.Sprintf("%s/projects/%s/sections", asanaAPIBase, url.PathEscape(projectGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func createSection(ctx context.Context, params map[string]any) (string, error) {
+	projectGID, _ := params["project_gid"].(string)
+	name, _ := params["name"].(string)
+
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"name": name,
+		},
+	}
+
+	endpoint := fmt.Sprintf("%s/projects/%s/sections", asanaAPIBase, url.PathEscape(projectGID))
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+// =============================================================================
+// Tasks
+// =============================================================================
+
+func listTasks(ctx context.Context, params map[string]any) (string, error) {
+	var endpoint string
+	query := url.Values{}
+
+	projectGID, hasProject := params["project_gid"].(string)
+	sectionGID, hasSection := params["section_gid"].(string)
+	assigneeGID, hasAssignee := params["assignee_gid"].(string)
+	workspaceGID, _ := params["workspace_gid"].(string)
+
+	if hasSection && sectionGID != "" {
+		endpoint = fmt.Sprintf("%s/sections/%s/tasks", asanaAPIBase, url.PathEscape(sectionGID))
+	} else if hasProject && projectGID != "" {
+		endpoint = fmt.Sprintf("%s/projects/%s/tasks", asanaAPIBase, url.PathEscape(projectGID))
+	} else if hasAssignee && assigneeGID != "" && workspaceGID != "" {
+		endpoint = asanaAPIBase + "/tasks"
+		query.Set("assignee", assigneeGID)
+		query.Set("workspace", workspaceGID)
+	} else {
+		return "", fmt.Errorf("must provide project_gid, section_gid, or (assignee_gid + workspace_gid)")
+	}
+
+	if completed, ok := params["completed"].(bool); ok {
+		if completed {
+			query.Set("completed_since", "2000-01-01T00:00:00Z")
+		}
+	}
+
+	// Add opt_fields for useful task info
+	query.Set("opt_fields", "name,completed,due_on,due_at,assignee.name,notes")
+
+	if len(query) > 0 {
+		if strings.Contains(endpoint, "?") {
+			endpoint += "&" + query.Encode()
+		} else {
+			endpoint += "?" + query.Encode()
+		}
+	}
+
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func getTask(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func createTask(ctx context.Context, params map[string]any) (string, error) {
+	task := map[string]interface{}{}
+
+	if name, ok := params["name"].(string); ok {
+		task["name"] = name
+	}
+	if workspaceGID, ok := params["workspace_gid"].(string); ok && workspaceGID != "" {
+		task["workspace"] = workspaceGID
+	}
+	if projects, ok := params["projects"].([]interface{}); ok && len(projects) > 0 {
+		task["projects"] = projects
+	}
+	if notes, ok := params["notes"].(string); ok {
+		task["notes"] = notes
+	}
+	if htmlNotes, ok := params["html_notes"].(string); ok {
+		task["html_notes"] = htmlNotes
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		task["due_on"] = dueOn
+	}
+	if dueAt, ok := params["due_at"].(string); ok {
+		task["due_at"] = dueAt
+	}
+	if startOn, ok := params["start_on"].(string); ok {
+		task["start_on"] = startOn
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok {
+		task["assignee"] = assigneeGID
+	}
+	if tags, ok := params["tags"].([]interface{}); ok && len(tags) > 0 {
+		task["tags"] = tags
+	}
+	if parentGID, ok := params["parent_gid"].(string); ok && parentGID != "" {
+		task["parent"] = parentGID
+	}
+
+	body := map[string]interface{}{"data": task}
+
+	// If section_gid provided, add to section after creation
+	sectionGID, hasSection := params["section_gid"].(string)
+
+	endpoint := asanaAPIBase + "/tasks"
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+
+	// Add to section if specified
+	if hasSection && sectionGID != "" {
+		var taskResp struct {
+			Data struct {
+				GID string `json:"gid"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(respBody, &taskResp); err == nil && taskResp.Data.GID != "" {
+			sectionEndpoint := fmt.Sprintf("%s/sections/%s/addTask", asanaAPIBase, url.PathEscape(sectionGID))
+			sectionBody := map[string]interface{}{
+				"data": map[string]interface{}{
+					"task": taskResp.Data.GID,
+				},
+			}
+			client.DoJSON("POST", sectionEndpoint, headers(ctx), sectionBody)
+		}
+	}
+
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func updateTask(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+
+	task := map[string]interface{}{}
+
+	if name, ok := params["name"].(string); ok && name != "" {
+		task["name"] = name
+	}
+	if notes, ok := params["notes"].(string); ok {
+		task["notes"] = notes
+	}
+	if htmlNotes, ok := params["html_notes"].(string); ok {
+		task["html_notes"] = htmlNotes
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		task["due_on"] = dueOn
+	}
+	if dueAt, ok := params["due_at"].(string); ok {
+		task["due_at"] = dueAt
+	}
+	if startOn, ok := params["start_on"].(string); ok {
+		task["start_on"] = startOn
+	}
+	if completed, ok := params["completed"].(bool); ok {
+		task["completed"] = completed
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok {
+		task["assignee"] = assigneeGID
+	}
+
+	body := map[string]interface{}{"data": task}
+	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
+	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func completeTask(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"completed": true,
+		},
+	}
+
+	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
+	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func deleteTask(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
+
+	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	if err != nil {
+		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
+			return `{"success": true, "message": "Task deleted"}`, nil
+		}
+		return "", err
+	}
+	return `{"success": true, "message": "Task deleted"}`, nil
+}
+
+// =============================================================================
+// Subtasks
+// =============================================================================
+
+func listSubtasks(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+	endpoint := fmt.Sprintf("%s/tasks/%s/subtasks?opt_fields=name,completed,due_on,assignee.name", asanaAPIBase, url.PathEscape(taskGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func createSubtask(ctx context.Context, params map[string]any) (string, error) {
+	parentGID, _ := params["parent_gid"].(string)
+
+	subtask := map[string]interface{}{}
+
+	if name, ok := params["name"].(string); ok {
+		subtask["name"] = name
+	}
+	if notes, ok := params["notes"].(string); ok {
+		subtask["notes"] = notes
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		subtask["due_on"] = dueOn
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok {
+		subtask["assignee"] = assigneeGID
+	}
+
+	body := map[string]interface{}{"data": subtask}
+	endpoint := fmt.Sprintf("%s/tasks/%s/subtasks", asanaAPIBase, url.PathEscape(parentGID))
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+// =============================================================================
+// Stories (Comments)
+// =============================================================================
+
+func listStories(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+	endpoint := fmt.Sprintf("%s/tasks/%s/stories", asanaAPIBase, url.PathEscape(taskGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func addComment(ctx context.Context, params map[string]any) (string, error) {
+	taskGID, _ := params["task_gid"].(string)
+	text, _ := params["text"].(string)
+
+	body := map[string]interface{}{
+		"data": map[string]interface{}{
+			"text": text,
+		},
+	}
+
+	endpoint := fmt.Sprintf("%s/tasks/%s/stories", asanaAPIBase, url.PathEscape(taskGID))
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+// =============================================================================
+// Tags
+// =============================================================================
+
+func listTags(ctx context.Context, params map[string]any) (string, error) {
+	workspaceGID, _ := params["workspace_gid"].(string)
+	endpoint := fmt.Sprintf("%s/workspaces/%s/tags", asanaAPIBase, url.PathEscape(workspaceGID))
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+func createTag(ctx context.Context, params map[string]any) (string, error) {
+	workspaceGID, _ := params["workspace_gid"].(string)
+	name, _ := params["name"].(string)
+
+	tag := map[string]interface{}{
+		"name":      name,
+		"workspace": workspaceGID,
+	}
+
+	if color, ok := params["color"].(string); ok {
+		tag["color"] = color
+	}
+
+	body := map[string]interface{}{"data": tag}
+	endpoint := asanaAPIBase + "/tags"
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}
+
+// =============================================================================
+// Search
+// =============================================================================
+
+func searchTasks(ctx context.Context, params map[string]any) (string, error) {
+	workspaceGID, _ := params["workspace_gid"].(string)
+	query := url.Values{}
+
+	if text, ok := params["text"].(string); ok && text != "" {
+		query.Set("text", text)
+	}
+	if completed, ok := params["completed"].(bool); ok {
+		query.Set("completed", fmt.Sprintf("%v", completed))
+	}
+	if isSubtask, ok := params["is_subtask"].(bool); ok {
+		query.Set("is_subtask", fmt.Sprintf("%v", isSubtask))
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok && assigneeGID != "" {
+		query.Set("assignee.any", assigneeGID)
+	}
+	if projectsGID, ok := params["projects_gid"].(string); ok && projectsGID != "" {
+		query.Set("projects.any", projectsGID)
+	}
+	if dueOnBefore, ok := params["due_on_before"].(string); ok && dueOnBefore != "" {
+		query.Set("due_on.before", dueOnBefore)
+	}
+	if dueOnAfter, ok := params["due_on_after"].(string); ok && dueOnAfter != "" {
+		query.Set("due_on.after", dueOnAfter)
+	}
+	if sortBy, ok := params["sort_by"].(string); ok && sortBy != "" {
+		query.Set("sort_by", sortBy)
+	}
+	if sortAscending, ok := params["sort_ascending"].(bool); ok && sortAscending {
+		query.Set("sort_ascending", "true")
+	}
+
+	// Add opt_fields
+	query.Set("opt_fields", "name,completed,due_on,due_at,assignee.name,notes,projects.name")
+
+	endpoint := fmt.Sprintf("%s/workspaces/%s/tasks/search?%s", asanaAPIBase, url.PathEscape(workspaceGID), query.Encode())
+	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	if err != nil {
+		return "", err
+	}
+	data, _ := extractData(respBody)
+	return httpclient.PrettyJSON(data), nil
+}

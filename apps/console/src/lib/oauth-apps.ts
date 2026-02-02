@@ -131,6 +131,12 @@ export const OAUTH_PROVIDERS = [
     description: "GitHub リポジトリ、Issue、PR、Actions など",
     docsUrl: "https://github.com/settings/developers",
   },
+  {
+    id: "asana",
+    name: "Asana",
+    description: "Asana ワークスペース、プロジェクト、タスク など",
+    docsUrl: "https://app.asana.com/0/developer-console",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -231,6 +237,11 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     authUrl: "https://github.com/login/oauth/authorize",
     scopes: ["repo", "read:user"],
     serviceId: "github",
+  },
+  asana: {
+    authUrl: "https://app.asana.com/-/oauth_authorize",
+    scopes: ["default"],  // Asana uses "default" scope for full access
+    serviceId: "asana",
   },
 }
 

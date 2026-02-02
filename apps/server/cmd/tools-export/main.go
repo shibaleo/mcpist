@@ -10,6 +10,7 @@ import (
 
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/modules/airtable"
+	"mcpist/server/internal/modules/asana"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/github"
 	"mcpist/server/internal/modules/google_calendar"
@@ -65,6 +66,7 @@ var serviceDisplayNames = map[string]string{
 	"microsoft_todo":  "Microsoft To Do",
 	"todoist":         "Todoist",
 	"trello":          "Trello",
+	"asana":           "Asana",
 }
 
 func init() {
@@ -80,6 +82,7 @@ func init() {
 	modules.RegisterModule(microsoft_todo.New())
 	modules.RegisterModule(todoist.New())
 	modules.RegisterModule(trello.New())
+	modules.RegisterModule(asana.New())
 }
 
 func main() {
