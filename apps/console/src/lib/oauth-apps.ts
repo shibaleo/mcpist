@@ -187,6 +187,14 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     ],
     serviceId: "google_docs",
   },
+  "google-sheets": {
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    scopes: [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.readonly",
+    ],
+    serviceId: "google_sheets",
+  },
   microsoft: {
     authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     scopes: [
@@ -292,6 +300,9 @@ export async function getOAuthAuthorizationUrl(
   } else if (provider === "google-docs") {
     apiPath = "google"
     params.set("module", "google_docs")
+  } else if (provider === "google-sheets") {
+    apiPath = "google"
+    params.set("module", "google_sheets")
   } else if (provider === "atlassian-jira") {
     apiPath = "atlassian"
     params.set("module", "jira")

@@ -140,6 +140,7 @@ export async function GET(request: Request) {
       google_tasks: "Google Tasks",
       google_drive: "Google Drive",
       google_docs: "Google Docs",
+      google_sheets: "Google Sheets",
     }
     const displayName = moduleDisplayNames[module] || module
 
