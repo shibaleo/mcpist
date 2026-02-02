@@ -67,15 +67,27 @@ interface AuthConfig {
   helpUrl?: string
   authType: "api_key" | "basic" | "oauth"
   extraFields?: AuthConfigField[]
+  // 複数の認証方法をサポートするサービス用
+  alternativeAuth?: {
+    authLabel: string
+    helpText?: string
+    helpUrl?: string
+    authType: "api_key" | "basic" | "oauth"
+    extraFields?: AuthConfigField[]
+  }
 }
 
 const authConfig: Record<string, AuthConfig> = {
   notion: {
-    authLabel: "内部インテグレーショントークン",
-    helpText:
-      "Notion設定 > マイコネクション > インテグレーションを開発または管理する > 新しいインテグレーションから取得してください",
-    helpUrl: "https://www.notion.so/profile/integrations",
-    authType: "api_key",
+    authLabel: "Notion OAuth",
+    helpText: "Notionアカウントでログインして、ページへのアクセスを許可します",
+    authType: "oauth",
+    alternativeAuth: {
+      authLabel: "内部インテグレーショントークン",
+      helpText: "Notion設定 > マイコネクション > インテグレーションを開発または管理する > 新しいインテグレーションから取得してください",
+      helpUrl: "https://www.notion.so/profile/integrations",
+      authType: "api_key",
+    },
   },
   github: {
     authLabel: "Personal Access Token",
@@ -231,6 +243,15 @@ export default function ServicesPage() {
   // 接続関連
   const handleConnect = async (serviceId: string) => {
     const config = authConfig[serviceId]
+
+    // alternativeAuth がある場合は常にダイアログを表示（認証方法を選択させる）
+    if (config?.alternativeAuth) {
+      setConnectDialog(serviceId)
+      setTokenInput("")
+      setExtraFields({})
+      setConnectionProgress(null)
+      return
+    }
 
     // OAuthサービスの場合は認可URLにリダイレクト
     if (config?.authType === "oauth") {
@@ -563,64 +584,184 @@ export default function ServicesPage() {
           ) : (
             <>
               <div className="space-y-4 py-4">
-                {dialogAuthConfig?.extraFields?.map((field) => (
-                  <div key={field.name} className="space-y-2">
-                    <Label htmlFor={`field-${field.name}`} className="text-sm font-medium">
-                      {field.label}
-                    </Label>
-                    <Input
-                      id={`field-${field.name}`}
-                      type={field.type}
-                      value={extraFields[field.name] || ""}
-                      onChange={(e) => setExtraFields((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                      placeholder={field.placeholder}
-                      disabled={submitting}
-                    />
-                  </div>
-                ))}
+                {/* OAuth + alternativeAuth がある場合: 両方のオプションを表示 */}
+                {dialogAuthConfig?.authType === "oauth" && dialogAuthConfig?.alternativeAuth ? (
+                  <>
+                    {/* OAuth ボタン */}
+                    <div className="space-y-2">
+                      <Button
+                        className="w-full"
+                        onClick={async () => {
+                          const providerId = getOAuthProviderForService(connectDialog!)
+                          if (!providerId) {
+                            toast.error("OAuth設定が見つかりません")
+                            return
+                          }
+                          try {
+                            const authUrl = await getOAuthAuthorizationUrl(providerId)
+                            window.location.href = authUrl
+                          } catch (error) {
+                            if (error instanceof OAuthAppError) {
+                              toast.error(error.message)
+                            } else {
+                              toast.error("OAuth認可URLの取得に失敗しました")
+                            }
+                          }
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        {dialogModule?.name}でログイン
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center">{dialogAuthConfig.helpText}</p>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="token-input" className="text-sm font-medium">
-                    {dialogAuthConfig?.authLabel || "APIトークン"}
-                  </Label>
-                  <Input
-                    id="token-input"
-                    type="password"
-                    value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                    placeholder="トークンを入力..."
-                    disabled={submitting}
-                  />
-                  {dialogAuthConfig?.helpText && (
-                    <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
-                      <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">{dialogAuthConfig.helpText}</p>
-                        {dialogAuthConfig.helpUrl && (
-                          <a
-                            href={dialogAuthConfig.helpUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            トークンを取得する
-                          </a>
-                        )}
+                    {/* 区切り線 */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">または</span>
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* API Key 入力 */}
+                    <div className="space-y-2">
+                      <Label htmlFor="token-input" className="text-sm font-medium">
+                        {dialogAuthConfig.alternativeAuth.authLabel}
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="token-input"
+                          type="password"
+                          value={tokenInput}
+                          onChange={(e) => setTokenInput(e.target.value)}
+                          placeholder="トークンを入力..."
+                          disabled={submitting}
+                          className="flex-1"
+                        />
+                        <Button onClick={handleConnectSubmit} disabled={!tokenInput || submitting}>
+                          <Link2 className="h-4 w-4 mr-2" />
+                          接続
+                        </Button>
+                      </div>
+                      {dialogAuthConfig.alternativeAuth.helpText && (
+                        <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+                          <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">{dialogAuthConfig.alternativeAuth.helpText}</p>
+                            {dialogAuthConfig.alternativeAuth.helpUrl && (
+                              <a
+                                href={dialogAuthConfig.alternativeAuth.helpUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                トークンを取得する
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : dialogAuthConfig?.authType === "oauth" ? (
+                  /* OAuth のみの場合 */
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+                      <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">{dialogAuthConfig.helpText}</p>
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={async () => {
+                        const providerId = getOAuthProviderForService(connectDialog!)
+                        if (!providerId) {
+                          toast.error("OAuth設定が見つかりません")
+                          return
+                        }
+                        try {
+                          const authUrl = await getOAuthAuthorizationUrl(providerId)
+                          window.location.href = authUrl
+                        } catch (error) {
+                          if (error instanceof OAuthAppError) {
+                            toast.error(error.message)
+                          } else {
+                            toast.error("OAuth認可URLの取得に失敗しました")
+                          }
+                        }
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {dialogModule?.name}でログイン
+                    </Button>
+                  </div>
+                ) : (
+                  /* API Key / Basic 認証の場合 */
+                  <>
+                    {dialogAuthConfig?.extraFields?.map((field) => (
+                      <div key={field.name} className="space-y-2">
+                        <Label htmlFor={`field-${field.name}`} className="text-sm font-medium">
+                          {field.label}
+                        </Label>
+                        <Input
+                          id={`field-${field.name}`}
+                          type={field.type}
+                          value={extraFields[field.name] || ""}
+                          onChange={(e) => setExtraFields((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                          placeholder={field.placeholder}
+                          disabled={submitting}
+                        />
+                      </div>
+                    ))}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="token-input" className="text-sm font-medium">
+                        {dialogAuthConfig?.authLabel || "APIトークン"}
+                      </Label>
+                      <Input
+                        id="token-input"
+                        type="password"
+                        value={tokenInput}
+                        onChange={(e) => setTokenInput(e.target.value)}
+                        placeholder="トークンを入力..."
+                        disabled={submitting}
+                      />
+                      {dialogAuthConfig?.helpText && (
+                        <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+                          <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">{dialogAuthConfig.helpText}</p>
+                            {dialogAuthConfig.helpUrl && (
+                              <a
+                                href={dialogAuthConfig.helpUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                トークンを取得する
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setConnectDialog(null)}>
                   キャンセル
                 </Button>
-                <Button onClick={handleConnectSubmit} disabled={!tokenInput || submitting}>
-                  <Link2 className="h-4 w-4 mr-2" />
-                  接続
-                </Button>
+                {dialogAuthConfig?.authType !== "oauth" && !dialogAuthConfig?.alternativeAuth && (
+                  <Button onClick={handleConnectSubmit} disabled={!tokenInput || submitting}>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    接続
+                  </Button>
+                )}
               </DialogFooter>
             </>
           )}

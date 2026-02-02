@@ -113,6 +113,12 @@ export const OAUTH_PROVIDERS = [
     description: "Jira, Confluence など",
     docsUrl: "https://developer.atlassian.com/console/myapps/",
   },
+  {
+    id: "notion",
+    name: "Notion",
+    description: "Notion ページ、データベース など",
+    docsUrl: "https://www.notion.so/profile/integrations",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -198,6 +204,11 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
       "offline_access",
     ],
     serviceId: "confluence",
+  },
+  notion: {
+    authUrl: "https://api.notion.com/v1/oauth/authorize",
+    scopes: [],  // Notion はスコープを URL パラメータで指定しない
+    serviceId: "notion",
   },
 }
 
