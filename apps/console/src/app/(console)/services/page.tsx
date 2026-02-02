@@ -85,14 +85,25 @@ const authConfig: Record<string, AuthConfig> = {
     authType: "api_key",
   },
   jira: {
-    authLabel: "Atlassian OAuth",
-    helpText: "Atlassianアカウントでログインして、Jiraへのアクセスを許可します",
-    authType: "oauth",
+    authLabel: "APIトークン",
+    helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください",
+    helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
+    authType: "basic",
+    extraFields: [
+      { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
+      { name: "domain", label: "ドメイン", type: "text", placeholder: "yourcompany.atlassian.net" },
+    ],
   },
   confluence: {
-    authLabel: "Atlassian OAuth",
-    helpText: "Atlassianアカウントでログインして、Confluenceへのアクセスを許可します",
-    authType: "oauth",
+    authLabel: "APIトークン",
+    helpText:
+      "Atlassian管理画面 > セキュリティ > APIトークンから発行してください（Jiraと共通のトークンを使用できます）",
+    helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
+    authType: "basic",
+    extraFields: [
+      { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
+      { name: "domain", label: "ドメイン", type: "text", placeholder: "yourcompany.atlassian.net" },
+    ],
   },
   supabase: {
     authLabel: "Personal Access Token",
