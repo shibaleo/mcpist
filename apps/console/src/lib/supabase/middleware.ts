@@ -36,7 +36,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // 未認証ユーザーを /login にリダイレクト（ランディングページと /login, /auth は除外）
+  // Redirect unauthenticated users to /login (excluding /, /login, /auth)
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&
@@ -45,6 +45,8 @@ export async function updateSession(request: NextRequest) {
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    const returnTo = request.nextUrl.pathname + request.nextUrl.search
+    url.searchParams.set('returnTo', returnTo)
     return NextResponse.redirect(url)
   }
 
