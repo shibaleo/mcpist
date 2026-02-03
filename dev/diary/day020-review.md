@@ -41,7 +41,7 @@
 
 ## やり残し
 
-→ [day020-backlog.md](./day020-backlog.md) に記載
+→ [day020-backlog.md](day020-backlog.md) に記載
 
 - Phase 2: 仕様書整備（BL-011〜014）
 - Phase 3: 設計書作成（D19-005）
@@ -59,6 +59,6 @@
 
 ## 参考
 
-- [day020-plan.md](./day020-plan.md) - 本日計画
-- [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md) - MCP Primitives 調査・計画
-- [day020-backlog.md](./day020-backlog.md) - バックログ
+- [day020-plan.md](day020-plan.md) - 本日計画
+- [day020-plan-mcp-primitives.md](day020-plan-mcp-primitives.md) - MCP Primitives 調査・計画
+- [day020-backlog.md](day020-backlog.md) - バックログ

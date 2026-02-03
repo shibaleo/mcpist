@@ -152,6 +152,6 @@
 ## 参考
 
 - [day022-plan.md](./day022-plan.md) - 本日計画
-- [day020-backlog.md](./day020-backlog.md) - 前回バックログ
+- [day020-backlog.md](day020-backlog.md) - 前回バックログ
 - [backlog-open-tasks.md](day022-backlog-open-tasks.md) - 全体バックログ
 - [dtl-itr-MOD-TVL.md](../../docs/002_specification/interaction/dtl-itr-MOD-TVL.md) - credentials 仕様

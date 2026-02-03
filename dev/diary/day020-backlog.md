@@ -40,7 +40,7 @@
 
 ## MCP Primitives 実装（day020-plan-mcp-primitives.md より）
 
-→ **詳細**: [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md)
+→ **詳細**: [day020-plan-mcp-primitives.md](day020-plan-mcp-primitives.md)
 
 ### 完了条件（コア機能）
 
@@ -122,7 +122,7 @@
 
 ## 参考
 
-- [day020-plan.md](./day020-plan.md) - 本日計画
-- [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md) - MCP Primitives 調査・計画
+- [day020-plan.md](day020-plan.md) - 本日計画
+- [day020-plan-mcp-primitives.md](day020-plan-mcp-primitives.md) - MCP Primitives 調査・計画
 - [day019-backlog.md](./day019-backlog.md) - 前日バックログ
 - [backlog-open-tasks.md](day022-backlog-open-tasks.md) - 全体バックログ
