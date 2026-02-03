@@ -2786,6 +2786,105 @@
       ]
     },
     {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "descriptions": {
+        "en-US": "PostgreSQL Database - Direct connection for query execution and schema inspection",
+        "ja-JP": "PostgreSQL データベース - クエリ実行とスキーマ確認のための直接接続"
+      },
+      "apiVersion": "v1",
+      "tools": [
+        {
+          "id": "postgresql:test_connection",
+          "name": "test_connection",
+          "descriptions": {
+            "en-US": "Test PostgreSQL connection and return server version and connection info.",
+            "ja-JP": "PostgreSQL 接続をテストし、サーバーバージョンと接続情報を返します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "postgresql:list_schemas",
+          "name": "list_schemas",
+          "descriptions": {
+            "en-US": "List all schemas in the database.",
+            "ja-JP": "データベース内のすべてのスキーマを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "postgresql:list_tables",
+          "name": "list_tables",
+          "descriptions": {
+            "en-US": "List all tables in a schema with row count estimates.",
+            "ja-JP": "スキーマ内のすべてのテーブルを推定行数とともに一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "postgresql:describe_table",
+          "name": "describe_table",
+          "descriptions": {
+            "en-US": "Get table structure including columns, types, constraints, and indexes.",
+            "ja-JP": "カラム、型、制約、インデックスを含むテーブル構造を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "postgresql:query",
+          "name": "query",
+          "descriptions": {
+            "en-US": "Execute a SELECT query. Supports parameterized queries with $1, $2, etc.",
+            "ja-JP": "SELECT クエリを実行します。$1, $2 などのパラメータ化クエリをサポートします。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "postgresql:execute",
+          "name": "execute",
+          "descriptions": {
+            "en-US": "Execute INSERT/UPDATE/DELETE statement. Returns affected row count.",
+            "ja-JP": "INSERT/UPDATE/DELETE 文を実行します。影響を受けた行数を返します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "postgresql:execute_ddl",
+          "name": "execute_ddl",
+          "descriptions": {
+            "en-US": "Execute DDL statement (CREATE/ALTER/DROP/TRUNCATE). Use with caution.",
+            "ja-JP": "DDL 文（CREATE/ALTER/DROP/TRUNCATE）を実行します。注意して使用してください。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "supabase",
       "name": "Supabase",
       "descriptions": {
