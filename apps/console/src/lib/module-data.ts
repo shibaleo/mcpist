@@ -107,6 +107,7 @@ export const moduleIcons: Record<string, string> = {
   google_sheets: "sheet",
   google_apps_script: "code",
   microsoft_todo: "check-square",
+  postgresql: "database",
   todoist: "check-circle",
   trello: "trello",
 }

@@ -22,6 +22,7 @@ import (
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
+	"mcpist/server/internal/modules/postgresql"
 	"mcpist/server/internal/modules/supabase"
 	"mcpist/server/internal/modules/todoist"
 	"mcpist/server/internal/modules/trello"
@@ -44,6 +45,7 @@ func init() {
 	modules.RegisterModule(google_apps_script.New())
 	modules.RegisterModule(google_tasks.New())
 	modules.RegisterModule(microsoft_todo.New())
+	modules.RegisterModule(postgresql.New())
 	modules.RegisterModule(todoist.New())
 	modules.RegisterModule(trello.New())
 	modules.RegisterModule(asana.New())
