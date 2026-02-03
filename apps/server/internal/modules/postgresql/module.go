@@ -23,6 +23,37 @@ const (
 	maxMaxRows     = 10000
 )
 
+// convertValue converts PostgreSQL-specific types to JSON-friendly formats
+// - UUID ([16]byte) -> string format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+func convertValue(v interface{}) interface{} {
+	if v == nil {
+		return nil
+	}
+
+	// Check for [16]byte (UUID)
+	if b, ok := v.([16]byte); ok {
+		return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+			b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+	}
+
+	// Check for []byte that might be a UUID (16 bytes)
+	if b, ok := v.([]byte); ok && len(b) == 16 {
+		return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+			b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+	}
+
+	return v
+}
+
+// convertRow applies convertValue to all values in a row
+func convertRow(values []interface{}) []interface{} {
+	result := make([]interface{}, len(values))
+	for i, v := range values {
+		result[i] = convertValue(v)
+	}
+	return result
+}
+
 // PostgreSQLModule implements the Module interface for PostgreSQL
 type PostgreSQLModule struct{}
 
@@ -708,7 +739,7 @@ func queryTool(ctx context.Context, params map[string]any) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("scan failed: %w", err)
 		}
-		resultRows = append(resultRows, values)
+		resultRows = append(resultRows, convertRow(values))
 		rowCount++
 	}
 
