@@ -181,8 +181,8 @@ func (h *Handler) handlePromptsGet(ctx context.Context, args map[string]interfac
 
 ## 参考
 
-- [day020-backlog.md](./day020-backlog.md) - バックログ
-- [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md) - MCP Primitives 計画
-- [day020-review.md](./day020-review.md) - 前日レビュー
+- [day020-backlog.md](day020-backlog.md) - バックログ
+- [day020-plan-mcp-primitives.md](day020-plan-mcp-primitives.md) - MCP Primitives 計画
+- [day020-review.md](day020-review.md) - 前日レビュー
 - [Google Tasks API](https://developers.google.com/tasks/reference/rest)
 - [MCP Specification - Prompts](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts)
