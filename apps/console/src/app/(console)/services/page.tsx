@@ -202,6 +202,11 @@ const authConfig: Record<string, AuthConfig> = {
       authType: "api_key",
     },
   },
+  ticktick: {
+    authLabel: "TickTick OAuth",
+    helpText: "TickTickアカウントでログインして、タスクへのアクセスを許可します",
+    authType: "oauth",
+  },
 }
 
 export const dynamic = "force-dynamic"
