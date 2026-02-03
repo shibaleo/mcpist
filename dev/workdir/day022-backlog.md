@@ -1,8 +1,11 @@
 # DAY022 バックログ
 
+> **注記:** このファイルの内容は `sprint006-backlog.md` へ統合済み（2026-02-03）
+> 今後はsprint006-backlog.mdを参照してください。
+
 ## 日付
 
-2026-02-02
+2026-02-02 〜 2026-02-03
 
 ---
 
@@ -14,6 +17,19 @@
 | D22-002 | Trello Console UI 追加 | API Key + Token 入力ダイアログ |
 | D22-003 | Trello トークン検証 API 追加 | validate-token route に Trello 対応追加 |
 | D22-004 | PKCE 認証エラー修正 | skipBrowserRedirect 削除 |
+| D22-005 | Todoist MCP モジュール実装 | 8ツール（プロジェクト、タスク操作） |
+| D22-006 | GitHub OAuth 実装 | alternativeAuth パターン、20ツール |
+| D22-007 | Asana MCP モジュール実装 | 12ツール読み取り専用、FlexibleTime 型導入 |
+| D22-008 | Google Docs MCP モジュール実装 | 4ツール |
+| D22-009 | Google Drive MCP モジュール実装 | 22ツール |
+| D22-010 | Google Sheets テスト完了 | 28ツール全て動作確認 |
+| D22-011 | Google Apps Script MCP モジュール実装 | 17ツール |
+| D22-012 | PostgreSQL MCP モジュール実装 | 7ツール、UUID変換対応 |
+| CORE-001 | Google Tasks MCP実装 | 9ツール |
+| CORE-002 | prompts MCP実装 | `prompts/list`, `prompts/get` ハンドラ |
+| CORE-003 | Console プロンプト管理UI | ユーザーがカスタムプロンプトを定義可能 |
+| BL-016 | user_prompts 管理UI実装 | Console でプロンプト作成・編集・削除・有効無効切替 |
+| BL-076 | Microsoft To Do モジュール実装 | mcpist-dev で実装済み |
 
 ---
 
@@ -73,24 +89,26 @@
 | ID | 内容 | 備考 |
 |----|------|------|
 | BL-015 | enabled_modules 参照API実装 | Console ツール設定で一部実装済み |
-| BL-016 | user_prompts 管理UI実装 | CORE-003 と統合 |
+| BL-016 | user_prompts 管理UI実装 | ✅ CORE-003 と統合、完了 |
 | BL-017 | usage_stats 参照API実装 | |
 | BL-019 | ツール実行ログにuser_id追加 | |
 | BL-020 | invalid_gateway_secretログ実装 | |
+| BL-076 | Microsoft To Do モジュール実装 | ✅ 完了 |
+| BL-077 | Google Calendar 日本の祝日対応 | 祝日カレンダー取得・表示機能 |
 
 ### MCP Primitives 実装
 
 | ID | 項目 | 説明 | 状態 |
 |----|------|------|------|
 | CORE-001 | Google Tasks MCP実装 | google_tasks モジュール追加 | ✅ |
-| CORE-002 | prompts MCP実装 | `prompts/list`, `prompts/get` ハンドラ | ❌ |
-| CORE-003 | Console プロンプト管理UI | ユーザーがカスタムプロンプトを定義可能 | ❌ |
-| CORE-004 | チャットUIからテンプレ実行 | Claude Web等でプロンプト選択・実行 | ❌ |
-| CORE-005 | resources MCP実装 | `resources/list`, `resources/read` ハンドラ | ❌ |
-| CORE-006 | resources/list 動作確認 | Grafana or サーバーログで呼び出し確認 | ❌ |
-| CORE-007 | profile リソース実装 | `mcpist://profile` - ユーザープロフィール | ❌ |
-| CORE-008 | tasks リソース実装 | `mcpist://tasks` - タスク一覧（MS Todo + Google Tasks） | ❌ |
-| CORE-009 | Claude Code E2E | ユーザーが `@` でリソース選択・実行 | ❌ |
+| CORE-002 | prompts MCP実装 | `prompts/list`, `prompts/get` ハンドラ | ✅ |
+| CORE-003 | Console プロンプト管理UI | ユーザーがカスタムプロンプトを定義可能 | ✅ |
+| CORE-004 | チャットUIからテンプレ実行 | Claude Web等でプロンプト選択・実行 | ✅ |
+| ~~CORE-005~~ | ~~resources MCP実装~~ | 廃止（実装しない） | - |
+| ~~CORE-006~~ | ~~resources/list 動作確認~~ | 廃止（実装しない） | - |
+| ~~CORE-007~~ | ~~profile リソース実装~~ | 廃止（実装しない） | - |
+| ~~CORE-008~~ | ~~tasks リソース実装~~ | 廃止（実装しない） | - |
+| ~~CORE-009~~ | ~~Claude Code E2E~~ | 廃止（実装しない） | - |
 
 ### 設計書作成
 
@@ -135,5 +153,5 @@
 
 - [day022-plan.md](./day022-plan.md) - 本日計画
 - [day020-backlog.md](./day020-backlog.md) - 前回バックログ
-- [backlog-open-tasks.md](./backlog-open-tasks.md) - 全体バックログ
+- [backlog-open-tasks.md](day022-backlog-open-tasks.md) - 全体バックログ
 - [dtl-itr-MOD-TVL.md](../../docs/002_specification/interaction/dtl-itr-MOD-TVL.md) - credentials 仕様

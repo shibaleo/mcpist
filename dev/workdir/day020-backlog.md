@@ -1,5 +1,7 @@
 # DAY020 バックログ
 
+> **注記:** このファイルの内容は `day022-backlog.md` へ転記済み（2026-02-03）
+
 ## 日付
 
 2026-01-31（更新: 2026-02-01）
@@ -123,4 +125,4 @@
 - [day020-plan.md](./day020-plan.md) - 本日計画
 - [day020-plan-mcp-primitives.md](./day020-plan-mcp-primitives.md) - MCP Primitives 調査・計画
 - [day019-backlog.md](./day019-backlog.md) - 前日バックログ
-- [backlog-open-tasks.md](./backlog-open-tasks.md) - 全体バックログ
+- [backlog-open-tasks.md](day022-backlog-open-tasks.md) - 全体バックログ

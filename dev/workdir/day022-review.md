@@ -1,5 +1,7 @@
 # DAY022 振り返り（学び）
 
+**期間:** 2026-02-02 〜 2026-02-03
+
 ## 1. Next.js Route Handler での Cookie 処理
 
 ### `cookies()` の罠
@@ -285,6 +287,80 @@ GET https://api.trello.com/1/boards/xxx?key=API_KEY&token=ACCESS_TOKEN
 
 ---
 
+## 10. pgx の UUID 型は [16]byte で返る
+
+### 問題
+
+PostgreSQL の `uuid` 型カラムを pgx で取得すると、Go 側では `[16]byte` として返される。これをそのまま JSON にシリアライズすると、バイト配列として出力される：
+
+```json
+{
+  "id": [19, 145, 213, 68, 245, 252, 65, 131, ...]
+}
+```
+
+期待される形式：
+```json
+{
+  "id": "1391d544-f5fc-4183-a277-ed0457816108"
+}
+```
+
+### 原因
+
+pgx は PostgreSQL のネイティブ型を Go の型に直接マッピングする：
+
+| PostgreSQL 型 | pgx Go 型 |
+|---------------|----------|
+| `uuid` | `[16]byte` |
+| `text` | `string` |
+| `integer` | `int32` |
+| `timestamp` | `time.Time` |
+
+`rows.Values()` で取得した値をそのまま JSON にすると、`[16]byte` は配列として出力される。
+
+### 解決策
+
+Go 側で UUID バイト配列を文字列形式に変換するヘルパー関数を実装：
+
+```go
+func convertValue(v interface{}) interface{} {
+    if v == nil {
+        return nil
+    }
+
+    // Check for [16]byte (UUID)
+    if b, ok := v.([16]byte); ok {
+        return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+            b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+    }
+
+    // Check for []byte that might be a UUID (16 bytes)
+    if b, ok := v.([]byte); ok && len(b) == 16 {
+        return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+            b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+    }
+
+    return v
+}
+```
+
+### 代替案との比較
+
+| 方法 | メリット | デメリット |
+|------|---------|-----------|
+| Go 側変換（採用） | JOIN などでも正しく動作 | 変換ロジック必要 |
+| SQL で `::text` キャスト | シンプル | JOIN 時に毎回キャスト必要 |
+| pgx カスタム型登録 | 一箇所で対応 | 設定が複雑 |
+
+### 教訓
+
+1. **ライブラリの型マッピングを把握する** - pgx は PostgreSQL 型を忠実にマッピング
+2. **JSON 出力を必ず確認** - Go の型と JSON の型は1対1ではない
+3. **変換は API レイヤーで行う** - SQL を複雑にするより、Go 側で変換するほうが保守しやすい
+
+---
+
 ## まとめ
 
 1. Route Handler で cookie を設定するときは `NextResponse.cookies.set()` を使う
@@ -295,3 +371,4 @@ GET https://api.trello.com/1/boards/xxx?key=API_KEY&token=ACCESS_TOKEN
 6. OAuth プロバイダーの仕様は変わる（トークン形式、有効期限）—防御的に実装
 7. 汎用構造体は柔軟な型（interface{}）で将来の拡張に備える
 8. **OAuth 1.0a は現役**—署名生成と状態管理が OAuth 2.0 との主な違い
+9. **pgx の UUID は `[16]byte`**—JSON 出力前に文字列形式へ変換が必要

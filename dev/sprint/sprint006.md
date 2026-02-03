@@ -5,9 +5,10 @@
 | 項目 | 値 |
 |------|-----|
 | スプリント番号 | SPRINT-006 |
-| 期間 | 2026-01-28 〜 |
+| 期間 | 2026-01-28 〜 2026-02-03 |
 | マイルストーン | M5: Stripe連携・品質基盤・仕様整備 |
 | 前提 | Sprint-005 完了（RPC基盤、OAuth基盤、8モジュール115ツール、Observability、セキュリティ多層防御） |
+| 状態 | **完了** |
 
 ---
 
@@ -174,14 +175,86 @@ dtl-itr-DST-GWY, DST-PSP, DST-SSM, DST-TVL, GWY-OBS
 - RPC設計時に「誰が呼ぶのか」を最初に決めないとカオス化する
 - 呼び出し元に応じた命名規則: `_my_` (Console User) / `_user_` (Router/API Server)
 
-### 2026-01-31 (DAY020) - 予定
+### 2026-01-31 (DAY020)
 
-| タスク | 優先度 | 備考 |
-|--------|--------|------|
-| database.types.ts 再生成 | 高 | 新RPC反映 |
-| Console/MCP Server RPC名変更対応 | 高 | コード修正 |
-| BL-011〜014 解消 | 高 | spc-itf.md 更新 |
-| Observability 設計書作成 | 中 | dsn-observability.md |
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| database.types.ts 再生成 | ✅ | Supabase CLI で型生成 |
+| Console ビルド確認 | ✅ | RPC名変更後の型チェック通過 |
+| Claude Web E2E テスト | ✅ | Notion search + get_page_content 成功 |
+| Liam ERD セットアップ | ✅ | `pnpm erd:build`, `pnpm erd:serve` 追加 |
+
+### 2026-02-01 (DAY021)
+
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| Google Tasks モジュール実装 | ✅ | 9ツール、OAuth共有コールバック方式 |
+| Microsoft To Do モジュール実装 | ✅ | mcpist-dev で実装 |
+| prompts MCP 実装 | ✅ | `prompts/list`, `prompts/get` ハンドラ |
+| Console プロンプト管理UI | ✅ | description フィールド追加、楽観的更新 |
+| Console テーマ改善 | ✅ | Liam ERD風ダークテーマ、アクセントカラー調整 |
+| /services ページ分離 | ✅ | ツール設定から接続管理を分離 |
+| PKCE認証エラー修正 | ✅ | skipBrowserRedirect で確実にクッキー設定 |
+
+### 2026-02-02〜03 (DAY022)
+
+**モジュール実装ラッシュ** - 10モジュール・130+ツールを2日間で実装完了
+
+| タスク | 状態 | 備考 |
+|--------|------|------|
+| Todoist モジュール実装 | ✅ | 8ツール、OAuth 2.0（リフレッシュなし） |
+| Trello モジュール実装 | ✅ | 17ツール、OAuth 1.0a（HMAC-SHA1署名） |
+| GitHub OAuth 実装 | ✅ | 20ツール、alternativeAuthパターン |
+| Asana モジュール実装 | ✅ | 12ツール読み取り専用、FlexibleTime型導入 |
+| Google Docs モジュール実装 | ✅ | 4ツール |
+| Google Drive モジュール実装 | ✅ | 22ツール |
+| Google Sheets テスト完了 | ✅ | 28ツール全て動作確認 |
+| Google Apps Script モジュール実装 | ✅ | 17ツール、script.scriptapp スコープ追加 |
+| PostgreSQL モジュール実装 | ✅ | 7ツール、UUID変換対応、SSRF対策 |
+
+**技術的な学び:**
+- OAuth 1.0a は現役（Trello）—署名生成と状態管理が OAuth 2.0 との主な違い
+- pgx の UUID は `[16]byte` で返る—JSON 出力前に文字列形式へ変換が必要
+- FlexibleTime 型導入—ISO文字列/Unix両対応で expires_at の互換性確保
+
+---
+
+## Sprint 006 成果サマリ
+
+### モジュール・ツール数
+
+| 項目 | Sprint 005 終了時 | Sprint 006 終了時 | 増加 |
+|------|------------------|------------------|------|
+| モジュール数 | 8 | 18 | +10 |
+| ツール数 | 115 | 248 | +133 |
+
+### 新規モジュール一覧
+
+| モジュール | ツール数 | 認証方式 |
+|-----------|---------|----------|
+| Google Tasks | 9 | OAuth 2.0 |
+| Microsoft To Do | 8 | OAuth 2.0 |
+| Todoist | 8 | OAuth 2.0 |
+| Trello | 17 | OAuth 1.0a |
+| GitHub | 20 | OAuth 2.0 / PAT |
+| Asana | 12 | OAuth 2.0 / PAT |
+| Google Docs | 4 | OAuth 2.0 |
+| Google Drive | 22 | OAuth 2.0 |
+| Google Apps Script | 17 | OAuth 2.0 |
+| PostgreSQL | 7 | Connection String |
+
+### 主要機能追加
+
+- **Stripe 決済連携** - $0 Checkout → Webhook → クレジット付与の一連フロー
+- **prompts MCP** - `prompts/list`, `prompts/get` でユーザー定義プロンプト配信
+- **Console UI改善** - ダークテーマ、アクセントカラー、楽観的更新、/services分離
+- **OAuth 1.0a 対応** - Trello向けに HMAC-SHA1 署名生成、3-legged フロー実装
+
+### 残課題（day022-backlog.md へ引き継ぎ）
+
+- BL-010〜014: 仕様書の実装追従更新（未着手）
+- D19-005/BL-080: 設計書作成（Observability, セキュリティ）
+- resources MCP: 実装しない方針に変更（CORE-005〜009 廃止）
 
 ---
 
