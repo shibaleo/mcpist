@@ -143,6 +143,12 @@ export const OAUTH_PROVIDERS = [
     description: "Airtable ベース、テーブル、レコード など",
     docsUrl: "https://airtable.com/create/oauth",
   },
+  {
+    id: "ticktick",
+    name: "TickTick",
+    description: "TickTick タスク・プロジェクト管理",
+    docsUrl: "https://developer.ticktick.com/",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -293,6 +299,14 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
       "schema.bases:write",
     ],
     serviceId: "airtable",
+  },
+  ticktick: {
+    authUrl: "https://ticktick.com/oauth/authorize",
+    scopes: [
+      "tasks:read",
+      "tasks:write",
+    ],
+    serviceId: "ticktick",
   },
 }
 
