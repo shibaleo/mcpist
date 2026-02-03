@@ -191,6 +191,17 @@ const authConfig: Record<string, AuthConfig> = {
     helpUrl: "https://supabase.com/docs/guides/database/connecting-to-postgres",
     authType: "api_key",
   },
+  airtable: {
+    authLabel: "Airtable OAuth",
+    helpText: "Airtableアカウントでログインして、ベースへのアクセスを許可します",
+    authType: "oauth",
+    alternativeAuth: {
+      authLabel: "Personal Access Token",
+      helpText: "Airtable の Developer Hub > Personal access tokens から発行してください",
+      helpUrl: "https://airtable.com/create/tokens",
+      authType: "api_key",
+    },
+  },
 }
 
 export const dynamic = "force-dynamic"

@@ -137,6 +137,12 @@ export const OAUTH_PROVIDERS = [
     description: "Asana ワークスペース、プロジェクト、タスク など",
     docsUrl: "https://app.asana.com/0/developer-console",
   },
+  {
+    id: "airtable",
+    name: "Airtable",
+    description: "Airtable ベース、テーブル、レコード など",
+    docsUrl: "https://airtable.com/create/oauth",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -277,6 +283,16 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     authUrl: "https://app.asana.com/-/oauth_authorize",
     scopes: [],  // Asana doesn't use scope parameter in OAuth authorize request
     serviceId: "asana",
+  },
+  airtable: {
+    authUrl: "https://airtable.com/oauth2/v1/authorize",
+    scopes: [
+      "data.records:read",
+      "data.records:write",
+      "schema.bases:read",
+      "schema.bases:write",
+    ],
+    serviceId: "airtable",
   },
 }
 
