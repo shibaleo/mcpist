@@ -799,12 +799,12 @@ ACCESS_TOKEN_SCOPE_INSUFFICIENT
 **推奨:** 方針A で `script.scriptapp` を追加し、簡単なスクリプト実行をサポート。
 複雑なスクリプトはユーザーに再認証を促す形で対応。
 
-**TODO:**
+**対応完了:** ✅
 1. `google/authorize/route.ts` の `google_apps_script` スコープに `script.scriptapp` を追加
 2. `oauth-apps.ts` の `google-apps-script` スコープも同様に更新
-3. 再認証して `run_function` をテスト
+3. 再認証して `run_function` をテスト → 成功
 
-### 未解決: `get_metrics` のエラー
+### 解決済み: `get_metrics` のエラー ✅
 
 **エラー:**
 ```
@@ -812,15 +812,122 @@ Request contains an invalid argument.
 INVALID_ARGUMENT
 ```
 
-**TODO:**
-- Google Apps Script Metrics API のリクエスト形式を確認
-- `filter` パラメータの形式が正しいか検証
+**原因:** `metricsGranularity` パラメータが必須だったが、指定していなかった
+
+**修正内容:**
+- `metricsGranularity` を必須パラメータとして追加（WEEKLY/DAILY、デフォルト: WEEKLY）
+- `filter` パラメータを `metrics_granularity` と `deployment_id` に明確化
+
+---
+
+## DAY023 追加作業 (2026-02-03)
+
+### Google Apps Script run_function / get_metrics 修正 ✅
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D23-001 | `script.scriptapp` スコープ追加 | ✅ | authorize/route.ts, oauth-apps.ts |
+| D23-002 | `get_metrics` 必須パラメータ修正 | ✅ | `metricsGranularity` (WEEKLY/DAILY) |
+| D23-003 | `run_function` テスト | ✅ | API 実行可能デプロイ後に動作確認 |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/console/src/app/api/oauth/google/authorize/route.ts` | `script.scriptapp` スコープ追加 |
+| `apps/console/src/lib/oauth-apps.ts` | `script.scriptapp` スコープ追加 |
+| `apps/server/internal/modules/google_apps_script/module.go` | `get_metrics` に `metricsGranularity` 必須パラメータ追加 |
+
+### テスト結果
+
+| ツール | 結果 | 備考 |
+|--------|------|------|
+| `get_metrics` | ✅ 成功 | `metricsGranularity=WEEKLY` で動作 |
+| `run_function` (引数なし) | ✅ 成功 | `hello()` → "Hello from MCP!" |
+| `run_function` (引数あり) | ✅ 成功 | `add(3, 5)` → 8 |
+
+### run_function の前提条件
+
+`run_function` を使用するには、Apps Script プロジェクト側で以下の設定が必要:
+
+1. **GCP プロジェクト紐付け**: Apps Script エディタ → プロジェクトの設定 → GCP プロジェクト番号を設定
+2. **API 実行可能デプロイ**: デプロイ → 新しいデプロイ → 「実行可能 API」を選択
+
+### コミット
+
+| コミット | 内容 |
+|----------|------|
+| (ステージ済み) | fix(google_apps_script): add script.scriptapp scope and fix get_metrics API |
+
+### PostgreSQL モジュール実装 ✅
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| D23-004 | PostgreSQL モジュール実装 | ✅ | 7ツール全て動作確認済み |
+| D23-005 | pgx v5 依存追加 | ✅ | go.mod に追加 |
+| D23-006 | Console UI 統合 | ✅ | authConfig、icon追加 |
+| D23-007 | UUID変換修正 | ✅ | `[16]byte` → 文字列形式 |
+
+### 実装したツール
+
+| ツール | 種別 | 説明 |
+|--------|------|------|
+| `test_connection` | read-only | 接続テスト |
+| `list_schemas` | read-only | スキーマ一覧取得 |
+| `list_tables` | read-only | テーブル一覧取得 |
+| `describe_table` | read-only | テーブル定義取得 |
+| `query` | read-only | SELECT実行（max_rows制限付き） |
+| `execute` | destructive | INSERT/UPDATE/DELETE実行 |
+| `execute_ddl` | destructive | CREATE/ALTER/DROP実行 |
+
+### セキュリティ対策
+
+- localhost/127.0.0.1/::1 接続禁止（SSRF対策）
+- `sslmode=require` デフォルト
+- SQL種別バリデーション（query→SELECTのみ、execute→DMLのみ、execute_ddl→DDLのみ）
+- 行数制限（デフォルト1000、最大10000）
+- タイムアウト設定（接続10秒、クエリ30秒）
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `apps/server/go.mod` | pgx v5.7.2 依存追加 |
+| `apps/server/internal/modules/postgresql/module.go` | 新規作成（7ツール実装） |
+| `apps/server/cmd/server/main.go` | postgresql モジュール登録 |
+| `apps/server/cmd/tools-export/main.go` | postgresql モジュール登録 |
+| `apps/console/src/app/(console)/services/page.tsx` | authConfig追加 |
+| `apps/console/src/lib/module-data.ts` | icon追加 |
+| `apps/console/src/lib/tools.json` | tools-exportで更新 |
+
+### テスト結果
+
+| ツール | 結果 | 備考 |
+|--------|------|------|
+| `test_connection` | ✅ 成功 | Supabase Session pooler (port 6543) |
+| `list_schemas` | ✅ 成功 | pg_temp_*, pg_toast含む |
+| `list_tables` | ✅ 成功 | public, auth スキーマ確認 |
+| `describe_table` | ✅ 成功 | カラム・インデックス情報取得 |
+| `query` | ✅ 成功 | UUID文字列変換動作 |
+| `execute` | ✅ 成功 | INSERT 3行 (dummys.test_users) |
+| `execute_ddl` | ✅ 成功 | CREATE SCHEMA/TABLE, ALTER TABLE, DROP SCHEMA CASCADE |
+
+### 解決した問題
+
+1. **IPv6接続エラー**: Render は IPv6 未対応。Supabase Session pooler (port 6543) に切り替えて解決
+2. **UUID表示問題**: pgx は UUID を `[16]byte` で返す。`convertValue` 関数で文字列形式に変換
+
+### コミット
+
+| コミット | 内容 |
+|----------|------|
+| `cd6c42a` | feat(postgresql): add PostgreSQL direct connection module with 7 tools |
+| `43800d0` | fix(console): add tools.json postgresql service |
+| (ステージ済み) | fix(postgresql): convert UUID bytes to string format in query results |
 
 ---
 
 ## 次回の作業
 
-1. `run_function` 対応: `script.scriptapp` スコープ追加
-2. `get_metrics` 修正: API リクエスト形式の確認
-3. PostgreSQL モジュール実装
-4. Google OAuth 統合の動作確認（実際に認証フローをテスト）
+1. Google OAuth 統合の動作確認（実際に認証フローをテスト）
+2. PostgreSQL execute/execute_ddl のエラーハンドリング強化（必要に応じて）
