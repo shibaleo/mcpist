@@ -185,6 +185,12 @@ const authConfig: Record<string, AuthConfig> = {
       authType: "api_key",
     },
   },
+  postgresql: {
+    authLabel: "接続文字列",
+    helpText: "PostgreSQL接続文字列を入力してください（例: postgresql://user:password@host:5432/database）。Supabaseの場合: Project Settings > Database > Connection string (URI)",
+    helpUrl: "https://supabase.com/docs/guides/database/connecting-to-postgres",
+    authType: "api_key",
+  },
 }
 
 export const dynamic = "force-dynamic"
