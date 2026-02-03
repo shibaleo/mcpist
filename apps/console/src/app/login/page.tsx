@@ -3,7 +3,6 @@
 import { Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
@@ -30,31 +29,14 @@ function LoginContent() {
     }
   }, [searchParams])
 
-  const getRedirectUrl = () => {
-    // If there's a returnTo, redirect to callback which will handle the redirect
-    if (returnTo) {
-      return `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`
-    }
-    return `${window.location.origin}/auth/callback`
-  }
-
-  const handleSocialLogin = async (provider: "google" | "github" | "azure") => {
+  const handleSocialLogin = (provider: "google" | "github" | "azure") => {
     setLoading(provider)
-    const supabase = createClient()
-
-    // skipBrowserRedirect を削除して Supabase に直接リダイレクトを任せる
-    // これにより PKCE code_verifier cookie が確実に設定される
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: getRedirectUrl(),
-      },
-    })
-
-    if (error) {
-      console.error("OAuth error:", error)
-      setLoading(null)
+    const url = new URL(`${window.location.origin}/auth/login`)
+    url.searchParams.set("provider", provider)
+    if (returnTo) {
+      url.searchParams.set("returnTo", returnTo)
     }
+    window.location.href = url.toString()
   }
 
   return (
