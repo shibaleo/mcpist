@@ -14,9 +14,15 @@ function LoginContent() {
   const [loading, setLoading] = useState<string | null>(null)
   const [returnTo, setReturnTo] = useState<string | null>(null)
 
+  const normalizeReturnTo = (value: string | null) => {
+    if (!value) return null
+    if (value.startsWith('/') && !value.startsWith('//')) return value
+    return null
+  }
+
   useEffect(() => {
     // Get returnTo from query params
-    const returnToParam = searchParams.get("returnTo")
+    const returnToParam = normalizeReturnTo(searchParams.get("returnTo"))
     if (returnToParam) {
       setReturnTo(returnToParam)
       // Store in sessionStorage for after OAuth callback

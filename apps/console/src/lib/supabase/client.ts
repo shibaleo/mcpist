@@ -11,15 +11,14 @@ export function createClient() {
     )
   }
 
-  // ローカル開発環境ではsecure: falseにする必要がある
-  const isLocalhost = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  // Use secure cookies only over HTTPS
+  const isSecureContext = typeof window !== 'undefined' && window.location.protocol === 'https:'
 
   return createBrowserClient<Database>(supabaseUrl, supabaseKey, {
     cookieOptions: {
       // OAuthリダイレクト後もcookieが送信されるようにする
       sameSite: 'lax',
-      secure: !isLocalhost,  // HTTPSの場合のみsecure
+      secure: isSecureContext,
       path: '/',
     },
   })
