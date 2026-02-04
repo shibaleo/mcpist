@@ -110,10 +110,13 @@ export async function upsertTokenWithVerification(
   onProgress({ step: 'validating', message: 'トークンを検証中...' })
 
   // 認証方式に応じて追加フィールドを渡す
-  let validationExtra: { email?: string; domain?: string; api_key?: string } | undefined
+  let validationExtra: { email?: string; domain?: string; api_key?: string; base_url?: string } | undefined
   if (params.service === 'trello' && params.username) {
     // Trello: username に api_key が入っている
     validationExtra = { api_key: params.username }
+  } else if (params.service === 'grafana' && params.metadata?.base_url) {
+    // Grafana: base_url が必要
+    validationExtra = { base_url: params.metadata.base_url }
   } else if (params.username && params.metadata?.domain) {
     // Basic認証: email + domain
     validationExtra = { email: params.username, domain: params.metadata.domain }

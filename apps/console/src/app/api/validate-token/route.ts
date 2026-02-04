@@ -342,9 +342,55 @@ async function validateNotionToken(token: string): Promise<ValidationResult> {
   }
 }
 
+async function validateGrafanaToken(token: string, baseUrl: string): Promise<ValidationResult> {
+  try {
+    console.log('[validate-token] Calling Grafana API...')
+    const url = `${baseUrl.replace(/\/+$/, '')}/api/org`
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    })
+
+    console.log('[validate-token] Grafana API response status:', response.status)
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log('[validate-token] Valid token, org:', data.name)
+      return {
+        valid: true,
+        details: {
+          orgId: data.id,
+          orgName: data.name,
+        },
+      }
+    }
+
+    if (response.status === 401) {
+      return {
+        valid: false,
+        error: 'Service Account Tokenが無効です。正しいトークンを入力してください。',
+      }
+    }
+
+    return {
+      valid: false,
+      error: `API接続エラー (${response.status})`,
+    }
+  } catch (error) {
+    console.error('[validate-token] Network error:', error)
+    return {
+      valid: false,
+      error: 'ネットワークエラーが発生しました。Grafana URLが正しいか確認してください。',
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { service, token, email, domain, api_key } = await request.json()
+    const { service, token, email, domain, api_key, base_url } = await request.json()
 
     console.log('[validate-token] Request received for service:', service)
 
@@ -393,6 +439,15 @@ export async function POST(request: NextRequest) {
           )
         }
         result = await validateTrelloToken(api_key, token)
+        break
+      case 'grafana':
+        if (!base_url) {
+          return NextResponse.json(
+            { valid: false, error: 'GrafanaにはBase URLが必要です' },
+            { status: 400 }
+          )
+        }
+        result = await validateGrafanaToken(token, base_url)
         break
       default:
         console.log('[validate-token] Unknown service, skipping validation')

@@ -25,7 +25,7 @@ export interface TokenValidationParams {
 export async function validateToken(
   service: string,
   token: string,
-  extra?: { email?: string; domain?: string; api_key?: string }
+  extra?: { email?: string; domain?: string; api_key?: string; base_url?: string }
 ): Promise<TokenValidationResult> {
   try {
     console.log('[token-validator] Calling API for service:', service)
