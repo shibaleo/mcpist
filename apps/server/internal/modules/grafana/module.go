@@ -401,6 +401,25 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"title", "rule_group", "folder_uid", "condition", "data"},
 		},
 	},
+	{
+		ID:   "grafana:query_datasource",
+		Name: "query_datasource",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Query a data source (Loki, Prometheus, etc.) via Grafana proxy",
+			"ja-JP": "Grafanaプロキシ経由でデータソース（Loki、Prometheus等）にクエリを実行",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Properties: map[string]modules.Property{
+				"datasource_uid": {Type: "string", Description: "Data source UID (use list_datasources to find)"},
+				"expr":           {Type: "string", Description: "Query expression (LogQL for Loki, PromQL for Prometheus, etc.)"},
+				"from":           {Type: "string", Description: "Start time (epoch ms or relative e.g., 'now-1h')"},
+				"to":             {Type: "string", Description: "End time (epoch ms or relative e.g., 'now')"},
+				"max_lines":      {Type: "number", Description: "Maximum number of log lines to return (Loki only, default: 100)"},
+			},
+			Required: []string{"datasource_uid", "expr"},
+		},
+	},
 }
 
 // =============================================================================
@@ -425,6 +444,7 @@ var toolHandlers = map[string]toolHandler{
 	"create_folder":           createFolder,
 	"delete_folder":           deleteFolder,
 	"create_alert_rule":       createAlertRule,
+	"query_datasource":        queryDatasource,
 }
 
 // =============================================================================
@@ -827,6 +847,56 @@ func createAlertRule(ctx context.Context, params map[string]any) (string, error)
 	}
 
 	endpoint := fmt.Sprintf("%s/api/v1/provisioning/alert-rules", base)
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	if err != nil {
+		return "", err
+	}
+	return httpclient.PrettyJSON(respBody), nil
+}
+
+func queryDatasource(ctx context.Context, params map[string]any) (string, error) {
+	base := baseURL(ctx)
+	if base == "" {
+		return "", fmt.Errorf("grafana base_url not configured")
+	}
+
+	dsUID, _ := params["datasource_uid"].(string)
+	if dsUID == "" {
+		return "", fmt.Errorf("datasource_uid is required")
+	}
+	expr, _ := params["expr"].(string)
+	if expr == "" {
+		return "", fmt.Errorf("expr is required")
+	}
+
+	from := "now-1h"
+	if f, ok := params["from"].(string); ok && f != "" {
+		from = f
+	}
+	to := "now"
+	if t, ok := params["to"].(string); ok && t != "" {
+		to = t
+	}
+
+	query := map[string]any{
+		"refId": "A",
+		"datasource": map[string]any{
+			"uid": dsUID,
+		},
+		"expr": expr,
+	}
+
+	if maxLines, ok := params["max_lines"].(float64); ok && maxLines > 0 {
+		query["maxLines"] = int(maxLines)
+	}
+
+	body := map[string]any{
+		"from":    from,
+		"to":      to,
+		"queries": []any{query},
+	}
+
+	endpoint := fmt.Sprintf("%s/api/ds/query", base)
 	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
 	if err != nil {
 		return "", err

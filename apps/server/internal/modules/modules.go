@@ -377,16 +377,21 @@ func Run(ctx context.Context, moduleName, toolName string, params map[string]int
 	result, err := m.ExecuteTool(ctx, toolName, params)
 	durationMs := time.Since(start).Milliseconds()
 	requestID := middleware.GetRequestID(ctx)
+	authCtx := middleware.GetAuthContext(ctx)
+	userID := ""
+	if authCtx != nil {
+		userID = authCtx.UserID
+	}
 
 	if err != nil {
-		observability.LogToolCall(requestID, moduleName, toolName, durationMs, "error", err.Error())
+		observability.LogToolCall(requestID, userID, moduleName, toolName, durationMs, "error", err.Error())
 		return &ToolCallResult{
 			Content: []ContentBlock{{Type: "text", Text: err.Error()}},
 			IsError: true,
 		}, nil
 	}
 
-	observability.LogToolCall(requestID, moduleName, toolName, durationMs, "success", "")
+	observability.LogToolCall(requestID, userID, moduleName, toolName, durationMs, "success", "")
 	return &ToolCallResult{
 		Content: []ContentBlock{{Type: "text", Text: result}},
 	}, nil

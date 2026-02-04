@@ -2693,6 +2693,18 @@
             "idempotentHint": false,
             "openWorldHint": false
           }
+        },
+        {
+          "id": "grafana:query_datasource",
+          "name": "query_datasource",
+          "descriptions": {
+            "en-US": "Query a data source (Loki, Prometheus, etc.) via Grafana proxy",
+            "ja-JP": "Grafanaプロキシ経由でデータソース（Loki、Prometheus等）にクエリを実行"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
         }
       ]
     },
