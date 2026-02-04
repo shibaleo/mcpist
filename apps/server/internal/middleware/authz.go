@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	"mcpist/server/internal/observability"
 	"mcpist/server/internal/store"
 )
 
@@ -65,7 +66,6 @@ func (a *Authorizer) Authorize(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authCtx, err := a.ValidateRequest(r)
 		if err != nil {
-			log.Printf("Authorization failed: %v", err)
 			a.writeErrorResponse(w, err)
 			return
 		}
@@ -88,6 +88,9 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 	// 1. Verify gateway secret (ensures request came from Worker)
 	requestSecret := r.Header.Get("X-Gateway-Secret")
 	if requestSecret != a.gatewaySecret {
+		observability.LogSecurityEvent("", "", "invalid_gateway_secret", map[string]any{
+			"remote_addr": r.RemoteAddr,
+		})
 		return nil, &AuthError{
 			Code:    "INVALID_GATEWAY_SECRET",
 			Message: "Invalid gateway secret",
@@ -143,9 +146,6 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		Language:           userContext.Language,
 		ModuleDescriptions: userContext.ModuleDescriptions,
 	}
-
-	log.Printf("Authorization: user=%s credits=free:%d+paid:%d modules=%d",
-		userID, userContext.FreeCredits, userContext.PaidCredits, len(userContext.EnabledModules))
 
 	return authCtx, nil
 }

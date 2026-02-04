@@ -17,6 +17,7 @@ type LokiClient struct {
 	apiKey     string
 	httpClient *http.Client
 	enabled    bool
+	appName    string
 }
 
 // Loki Push API format
@@ -36,9 +37,14 @@ func Init() {
 	username := os.Getenv("GRAFANA_LOKI_USER")
 	apiKey := os.Getenv("GRAFANA_LOKI_API_KEY")
 
+	appName := os.Getenv("APP_ENV")
+	if appName == "" {
+		appName = "mcpist-dev"
+	}
+
 	if url == "" || username == "" || apiKey == "" {
 		log.Println("Loki not configured, logging disabled")
-		defaultClient = &LokiClient{enabled: false}
+		defaultClient = &LokiClient{enabled: false, appName: appName}
 		return
 	}
 
@@ -48,6 +54,7 @@ func Init() {
 		apiKey:     apiKey,
 		httpClient: &http.Client{Timeout: 5 * time.Second},
 		enabled:    true,
+		appName:    appName,
 	}
 	log.Println("Loki client initialized")
 }
@@ -64,7 +71,7 @@ func (c *LokiClient) push(labels map[string]string, data map[string]any) {
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels["app"] = "mcpist-dev"
+	labels["app"] = c.appName
 
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
@@ -114,18 +121,18 @@ func (c *LokiClient) push(labels map[string]string, data map[string]any) {
 }
 
 // LogToolCall logs a tool call to Loki
-func LogToolCall(requestID, module, tool string, durationMs int64, status string, errMsg string) {
+func LogToolCall(requestID, userID, module, tool string, durationMs int64, status string, errMsg string) {
 	labels := map[string]string{
 		"module": module,
-		"tool":   tool,
 		"status": status,
 	}
 
 	data := map[string]any{
 		"request_id":  requestID,
-		"duration_ms": durationMs,
+		"user_id":     userID,
 		"module":      module,
 		"tool":        tool,
+		"duration_ms": durationMs,
 		"status":      status,
 	}
 
@@ -134,7 +141,6 @@ func LogToolCall(requestID, module, tool string, durationMs int64, status string
 	}
 
 	Push(labels, data)
-	log.Printf("Tool call: request=%s module=%s tool=%s duration=%dms status=%s", requestID, module, tool, durationMs, status)
 }
 
 // LogRequest logs an incoming request to Loki
@@ -153,7 +159,6 @@ func LogRequest(method, path string, statusCode int, durationMs int64) {
 	}
 
 	Push(labels, data)
-	log.Printf("Request: %s %s status=%d duration=%dms", method, path, statusCode, durationMs)
 }
 
 // LogError logs an error to Loki
@@ -169,16 +174,13 @@ func LogError(context string, err error) {
 	}
 
 	Push(labels, data)
-	log.Printf("Error: context=%s error=%v", context, err)
 }
 
 // LogSecurityEvent logs a security-related event to Loki (Layer 3: Detection)
 func LogSecurityEvent(requestID, userID, event string, details map[string]any) {
 	labels := map[string]string{
-		"type":           "security",
-		"level":          "warn",
-		"event":          event,
-		"maybe_attacked": "true",
+		"type":  "security",
+		"level": "warn",
 	}
 
 	data := map[string]any{
@@ -191,5 +193,4 @@ func LogSecurityEvent(requestID, userID, event string, details map[string]any) {
 	}
 
 	Push(labels, data)
-	log.Printf("WARN: security event=%s user=%s request=%s details=%v", event, userID, requestID, details)
 }
