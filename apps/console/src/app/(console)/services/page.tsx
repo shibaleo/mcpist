@@ -207,6 +207,20 @@ const authConfig: Record<string, AuthConfig> = {
     helpText: "TickTickアカウントでログインして、タスクへのアクセスを許可します",
     authType: "oauth",
   },
+  dropbox: {
+    authLabel: "Dropbox OAuth",
+    helpText: "Dropboxアカウントでログインして、ファイルとフォルダへのアクセスを許可します",
+    authType: "oauth",
+  },
+  grafana: {
+    authLabel: "Service Account Token",
+    helpText: "Grafana の Administration > Service accounts からトークンを発行してください。Base URLも合わせて設定が必要です",
+    helpUrl: "https://grafana.com/docs/grafana/latest/administration/service-accounts/",
+    authType: "api_key",
+    extraFields: [
+      { name: "base_url", label: "Grafana URL", type: "text", placeholder: "https://grafana.example.com" },
+    ],
+  },
 }
 
 export const dynamic = "force-dynamic"
@@ -383,6 +397,9 @@ export default function ServicesPage() {
       } else if (connectDialog === "trello") {
         // Trello: API Key を username に格納
         upsertParams.username = extraFields.api_key
+      } else if (connectDialog === "grafana") {
+        // Grafana: base_url を metadata に格納
+        upsertParams.metadata = { base_url: extraFields.base_url }
       }
 
       await upsertTokenWithVerification(
