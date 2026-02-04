@@ -46,5 +46,9 @@
 		{"id":"CON-EAS","fromNode":"CON","fromSide":"right","toNode":"EAS","toSide":"top","label":"認可フロー"},
 		{"id":"CON-PSP","fromNode":"CON","fromSide":"right","toNode":"PSP","toSide":"top","label":"決済"},
 		{"id":"AUS-DST","fromNode":"AUS","fromSide":"right","toNode":"DST","toSide":"top"}
-	]
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
 }
