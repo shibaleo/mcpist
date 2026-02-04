@@ -628,6 +628,209 @@
       ]
     },
     {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "descriptions": {
+        "en-US": "Dropbox API - File and folder operations (list, search, upload, download, share)",
+        "ja-JP": "Dropbox API - ファイルとフォルダの操作（一覧、検索、アップロード、ダウンロード、共有）"
+      },
+      "apiVersion": "v2",
+      "tools": [
+        {
+          "id": "dropbox:get_current_account",
+          "name": "get_current_account",
+          "descriptions": {
+            "en-US": "Get information about the currently authenticated Dropbox user.",
+            "ja-JP": "現在認証されているDropboxユーザーの情報を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:get_space_usage",
+          "name": "get_space_usage",
+          "descriptions": {
+            "en-US": "Get the space usage information for the current account.",
+            "ja-JP": "現在のアカウントのストレージ使用量情報を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:list_folder",
+          "name": "list_folder",
+          "descriptions": {
+            "en-US": "List contents of a folder in Dropbox. Returns files and sub-folders.",
+            "ja-JP": "Dropbox内のフォルダの内容を一覧表示します。ファイルとサブフォルダを返します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:list_folder_continue",
+          "name": "list_folder_continue",
+          "descriptions": {
+            "en-US": "Continue listing folder contents from a previous list_folder call using the cursor.",
+            "ja-JP": "前回のlist_folder呼び出しのカーソルを使用してフォルダの内容のリスト表示を継続します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:get_metadata",
+          "name": "get_metadata",
+          "descriptions": {
+            "en-US": "Get metadata for a file or folder by path.",
+            "ja-JP": "パスでファイルまたはフォルダのメタデータを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:search_files",
+          "name": "search_files",
+          "descriptions": {
+            "en-US": "Search for files and folders by name or content.",
+            "ja-JP": "名前またはコンテンツでファイルとフォルダを検索します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:read_file",
+          "name": "read_file",
+          "descriptions": {
+            "en-US": "Read the text content of a file. Returns up to 1MB of text. Suitable for code, config, markdown, and other text files.",
+            "ja-JP": "ファイルのテキスト内容を読み取ります。最大1MBのテキストを返します。コード、設定ファイル、マークダウン等のテキストファイルに適しています。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:list_shared_links",
+          "name": "list_shared_links",
+          "descriptions": {
+            "en-US": "List shared links for a file or folder, or all shared links if no path specified.",
+            "ja-JP": "ファイルまたはフォルダの共有リンクを一覧表示します。パスを指定しない場合はすべての共有リンクを表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:write_file",
+          "name": "write_file",
+          "descriptions": {
+            "en-US": "Create or overwrite a text file in Dropbox. Provide the file path and text content.",
+            "ja-JP": "Dropboxにテキストファイルを作成または上書きします。ファイルパスとテキスト内容を指定します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:create_folder",
+          "name": "create_folder",
+          "descriptions": {
+            "en-US": "Create a new folder in Dropbox.",
+            "ja-JP": "Dropboxに新しいフォルダを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:copy_file",
+          "name": "copy_file",
+          "descriptions": {
+            "en-US": "Copy a file or folder to a different location.",
+            "ja-JP": "ファイルまたはフォルダを別の場所にコピーします。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:move_file",
+          "name": "move_file",
+          "descriptions": {
+            "en-US": "Move a file or folder to a different location.",
+            "ja-JP": "ファイルまたはフォルダを別の場所に移動します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:delete_file",
+          "name": "delete_file",
+          "descriptions": {
+            "en-US": "Delete a file or folder (moves to trash, recoverable for a limited time).",
+            "ja-JP": "ファイルまたはフォルダを削除します（ゴミ箱に移動、一定期間復元可能）。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:create_shared_link",
+          "name": "create_shared_link",
+          "descriptions": {
+            "en-US": "Create a shared link for a file or folder.",
+            "ja-JP": "ファイルまたはフォルダの共有リンクを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "dropbox:list_revisions",
+          "name": "list_revisions",
+          "descriptions": {
+            "en-US": "List revisions of a file.",
+            "ja-JP": "ファイルのリビジョンを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
       "id": "github",
       "name": "GitHub",
       "descriptions": {
@@ -2283,6 +2486,211 @@
             "readOnlyHint": false,
             "destructiveHint": true,
             "idempotentHint": true,
+            "openWorldHint": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "grafana",
+      "name": "Grafana",
+      "descriptions": {
+        "en-US": "Grafana API - Dashboard, data source, alert, annotation, and folder operations",
+        "ja-JP": "Grafana API - ダッシュボード、データソース、アラート、アノテーション、フォルダ操作"
+      },
+      "apiVersion": "v1",
+      "tools": [
+        {
+          "id": "grafana:search",
+          "name": "search",
+          "descriptions": {
+            "en-US": "Search for dashboards and folders in Grafana.",
+            "ja-JP": "Grafanaでダッシュボードとフォルダを検索します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:get_dashboard",
+          "name": "get_dashboard",
+          "descriptions": {
+            "en-US": "Get a dashboard by its UID, including the full JSON model and metadata.",
+            "ja-JP": "UIDでダッシュボードを取得します（完全なJSONモデルとメタデータを含む）。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:list_datasources",
+          "name": "list_datasources",
+          "descriptions": {
+            "en-US": "List all configured data sources.",
+            "ja-JP": "設定済みの全データソースを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:get_datasource",
+          "name": "get_datasource",
+          "descriptions": {
+            "en-US": "Get a data source by its UID.",
+            "ja-JP": "UIDでデータソースを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:list_alerts",
+          "name": "list_alerts",
+          "descriptions": {
+            "en-US": "List all alert rules.",
+            "ja-JP": "すべてのアラートルールを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:get_alert",
+          "name": "get_alert",
+          "descriptions": {
+            "en-US": "Get an alert rule by its UID.",
+            "ja-JP": "UIDでアラートルールを取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:query_annotations",
+          "name": "query_annotations",
+          "descriptions": {
+            "en-US": "Query annotations with optional filters for dashboard, panel, time range, or tags.",
+            "ja-JP": "ダッシュボード、パネル、時間範囲、タグでフィルタリングしてアノテーションを検索します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:list_folders",
+          "name": "list_folders",
+          "descriptions": {
+            "en-US": "List all folders.",
+            "ja-JP": "すべてのフォルダを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:create_update_dashboard",
+          "name": "create_update_dashboard",
+          "descriptions": {
+            "en-US": "Create a new dashboard or update an existing one. Provide the full dashboard JSON model.",
+            "ja-JP": "新しいダッシュボードを作成するか、既存のダッシュボードを更新します。完全なダッシュボードJSONモデルを指定します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:delete_dashboard",
+          "name": "delete_dashboard",
+          "descriptions": {
+            "en-US": "Delete a dashboard by its UID.",
+            "ja-JP": "UIDでダッシュボードを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:create_annotation",
+          "name": "create_annotation",
+          "descriptions": {
+            "en-US": "Create a new annotation on a dashboard.",
+            "ja-JP": "ダッシュボードに新しいアノテーションを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:delete_annotation",
+          "name": "delete_annotation",
+          "descriptions": {
+            "en-US": "Delete an annotation by its ID.",
+            "ja-JP": "IDでアノテーションを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:create_folder",
+          "name": "create_folder",
+          "descriptions": {
+            "en-US": "Create a new folder.",
+            "ja-JP": "新しいフォルダを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:delete_folder",
+          "name": "delete_folder",
+          "descriptions": {
+            "en-US": "Delete a folder by its UID. This also deletes all dashboards within the folder.",
+            "ja-JP": "UIDでフォルダを削除します。フォルダ内のすべてのダッシュボードも削除されます。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:create_alert_rule",
+          "name": "create_alert_rule",
+          "descriptions": {
+            "en-US": "Create a new alert rule.",
+            "ja-JP": "新しいアラートルールを作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
             "openWorldHint": false
           }
         }

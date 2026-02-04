@@ -149,6 +149,12 @@ export const OAUTH_PROVIDERS = [
     description: "TickTick タスク・プロジェクト管理",
     docsUrl: "https://developer.ticktick.com/",
   },
+  {
+    id: "dropbox",
+    name: "Dropbox",
+    description: "Dropbox ファイル・フォルダ管理",
+    docsUrl: "https://www.dropbox.com/developers/apps",
+  },
 ] as const
 
 export type OAuthProviderId = (typeof OAUTH_PROVIDERS)[number]["id"]
@@ -307,6 +313,18 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
       "tasks:write",
     ],
     serviceId: "ticktick",
+  },
+  dropbox: {
+    authUrl: "https://www.dropbox.com/oauth2/authorize",
+    scopes: [
+      "files.metadata.read",
+      "files.metadata.write",
+      "files.content.read",
+      "files.content.write",
+      "sharing.read",
+      "sharing.write",
+    ],
+    serviceId: "dropbox",
   },
 }
 

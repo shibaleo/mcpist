@@ -111,6 +111,9 @@ export const moduleIcons: Record<string, string> = {
   ticktick: "check-circle-2",
   todoist: "check-circle",
   trello: "trello",
+  asana: "briefcase",
+  grafana: "activity",
+  dropbox: "cloud",
 }
 
 export function getModuleIcon(moduleId: string): string {
