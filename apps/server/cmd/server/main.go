@@ -12,7 +12,9 @@ import (
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/asana"
 	"mcpist/server/internal/modules/confluence"
+	"mcpist/server/internal/modules/dropbox"
 	"mcpist/server/internal/modules/github"
+	"mcpist/server/internal/modules/grafana"
 	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/google_docs"
 	"mcpist/server/internal/modules/google_drive"
@@ -51,6 +53,8 @@ func init() {
 	modules.RegisterModule(todoist.New())
 	modules.RegisterModule(trello.New())
 	modules.RegisterModule(asana.New())
+	modules.RegisterModule(grafana.New())
+	modules.RegisterModule(dropbox.New())
 }
 
 func main() {

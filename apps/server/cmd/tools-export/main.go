@@ -12,7 +12,9 @@ import (
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/asana"
 	"mcpist/server/internal/modules/confluence"
+	"mcpist/server/internal/modules/dropbox"
 	"mcpist/server/internal/modules/github"
+	"mcpist/server/internal/modules/grafana"
 	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/google_docs"
 	"mcpist/server/internal/modules/google_drive"
@@ -79,6 +81,8 @@ var serviceDisplayNames = map[string]string{
 	"todoist":         "Todoist",
 	"trello":          "Trello",
 	"asana":           "Asana",
+	"grafana":         "Grafana",
+	"dropbox":         "Dropbox",
 }
 
 func init() {
@@ -101,6 +105,8 @@ func init() {
 	modules.RegisterModule(todoist.New())
 	modules.RegisterModule(trello.New())
 	modules.RegisterModule(asana.New())
+	modules.RegisterModule(grafana.New())
+	modules.RegisterModule(dropbox.New())
 }
 
 func main() {
