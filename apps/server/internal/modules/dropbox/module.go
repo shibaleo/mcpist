@@ -584,7 +584,8 @@ var toolHandlers = map[string]toolHandler{
 
 func getCurrentAccount(ctx context.Context, params map[string]any) (string, error) {
 	endpoint := dropboxAPIBase + "/users/get_current_account"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), nil)
+	// Dropbox requires a JSON body (even "null") for no-param endpoints
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), json.RawMessage("null"))
 	if err != nil {
 		return "", err
 	}
@@ -593,7 +594,7 @@ func getCurrentAccount(ctx context.Context, params map[string]any) (string, erro
 
 func getSpaceUsage(ctx context.Context, params map[string]any) (string, error) {
 	endpoint := dropboxAPIBase + "/users/get_space_usage"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), nil)
+	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), json.RawMessage("null"))
 	if err != nil {
 		return "", err
 	}
