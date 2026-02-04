@@ -72,20 +72,18 @@ export async function GET(request: Request) {
     }
 
     // 認証コードをアクセストークンに交換
-    // Dropbox uses Basic auth (client_id:client_secret) with form-urlencoded body
-    const basicAuth = Buffer.from(`${credentials.client_id}:${credentials.client_secret}`).toString("base64")
-
     const tokenParams = new URLSearchParams({
       grant_type: "authorization_code",
       code,
       redirect_uri: credentials.redirect_uri,
+      client_id: credentials.client_id,
+      client_secret: credentials.client_secret,
     })
 
     const tokenResponse = await fetch(DROPBOX_TOKEN_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `Basic ${basicAuth}`,
       },
       body: tokenParams.toString(),
     })
