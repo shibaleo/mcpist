@@ -34,6 +34,15 @@ type lokiStream struct {
 
 var defaultClient *LokiClient
 
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 func Init() {
 	url := os.Getenv("GRAFANA_LOKI_URL")
 	username := os.Getenv("GRAFANA_LOKI_USER")
@@ -44,14 +53,18 @@ func Init() {
 		appName = "mcpist-dev"
 	}
 
-	instanceID := os.Getenv("INSTANCE_ID")
-	if instanceID == "" {
-		instanceID = "local"
-	}
-	instanceRegion := os.Getenv("INSTANCE_REGION")
-	if instanceRegion == "" {
-		instanceRegion = "local"
-	}
+	instanceID := firstNonEmpty(
+		os.Getenv("INSTANCE_ID"),
+		os.Getenv("RENDER_INSTANCE_ID"),
+		os.Getenv("KOYEB_INSTANCE_ID"),
+		"local",
+	)
+	instanceRegion := firstNonEmpty(
+		os.Getenv("INSTANCE_REGION"),
+		os.Getenv("RENDER_REGION"),
+		os.Getenv("KOYEB_REGION"),
+		"local",
+	)
 
 	if url == "" || username == "" || apiKey == "" {
 		log.Println("Loki not configured, logging disabled")
