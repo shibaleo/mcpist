@@ -33,6 +33,12 @@ interface Env {
 
   // Internal Secret (Console → Worker for /internal/* endpoints)
   INTERNAL_SECRET: string;
+
+  // Grafana Loki (Observability)
+  GRAFANA_LOKI_URL: string;
+  GRAFANA_LOKI_USER: string;
+  GRAFANA_LOKI_API_KEY: string;
+  APP_ENV: string;
 }
 
 interface AuthResult {
@@ -43,6 +49,111 @@ interface AuthResult {
 // === 定数 ===
 
 const FETCH_TIMEOUT_MS = 30000;
+
+// === Loki Push ===
+
+interface LokiStream {
+  stream: Record<string, string>;
+  values: string[][];
+}
+
+interface LokiPushRequest {
+  streams: LokiStream[];
+}
+
+/**
+ * Loki Push API にログを送信（ノンブロッキング）
+ * ctx.waitUntil() で呼び出すことでレスポンスをブロックしない
+ */
+function pushToLoki(
+  env: Env,
+  labels: Record<string, string>,
+  data: Record<string, unknown>
+): Promise<void> {
+  if (!env.GRAFANA_LOKI_URL || !env.GRAFANA_LOKI_USER || !env.GRAFANA_LOKI_API_KEY) {
+    return Promise.resolve();
+  }
+
+  const appName = env.APP_ENV || "mcpist-dev";
+  labels["app"] = appName;
+  labels["instance"] = "worker";
+  labels["region"] = "cloudflare";
+
+  const timestamp = String(Date.now() * 1_000_000); // ms → ns
+
+  const body: LokiPushRequest = {
+    streams: [{
+      stream: labels,
+      values: [[timestamp, JSON.stringify(data)]],
+    }],
+  };
+
+  const url = `${env.GRAFANA_LOKI_URL}/loki/api/v1/push`;
+  const auth = btoa(`${env.GRAFANA_LOKI_USER}:${env.GRAFANA_LOKI_API_KEY}`);
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${auth}`,
+    },
+    body: JSON.stringify(body),
+  }).then(resp => {
+    if (!resp.ok) {
+      console.error(`Loki push failed: ${resp.status}`);
+    }
+  }).catch(err => {
+    console.error("Loki push error:", err);
+  });
+}
+
+/** リクエストログを Loki に送信 */
+function logRequest(
+  env: Env,
+  requestId: string,
+  method: string,
+  path: string,
+  statusCode: number,
+  durationMs: number,
+  extra: Record<string, unknown> = {}
+): Promise<void> {
+  const labels: Record<string, string> = {
+    type: "request",
+    method: method,
+  };
+
+  const data: Record<string, unknown> = {
+    request_id: requestId,
+    method,
+    path,
+    status_code: statusCode,
+    duration_ms: durationMs,
+    ...extra,
+  };
+
+  return pushToLoki(env, labels, data);
+}
+
+/** セキュリティイベントを Loki に送信 */
+function logSecurityEvent(
+  env: Env,
+  requestId: string,
+  event: string,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  const labels: Record<string, string> = {
+    type: "security",
+    level: "warn",
+  };
+
+  const data: Record<string, unknown> = {
+    request_id: requestId,
+    event,
+    ...details,
+  };
+
+  return pushToLoki(env, labels, data);
+}
 
 // === メインハンドラー ===
 
@@ -112,12 +223,21 @@ export default {
       return jsonResponse({ error: "Not Found" }, 404);
     }
 
+    const requestId = crypto.randomUUID();
+    const startTime = Date.now();
+
     try {
       // 1. 認証（JWT or API Key）
       const authResult = await authenticate(request, env);
       if (!authResult) {
         // WWW-Authenticate ヘッダーでOAuthフローを開始させる (RFC 9728)
         const resourceMetadataUrl = `${url.protocol}//${url.host}/mcp/.well-known/oauth-protected-resource`;
+        const durationMs = Date.now() - startTime;
+        ctx.waitUntil(logSecurityEvent(env, requestId, "auth_failed", {
+          method: request.method,
+          path: url.pathname,
+          duration_ms: durationMs,
+        }));
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: {
@@ -129,9 +249,20 @@ export default {
       }
 
       // 2. プロキシ（Primary優先、失敗時Secondary）
-      return await proxyRequest(request, authResult, env);
+      const result = await proxyRequest(request, requestId, authResult, env);
+      const durationMs = Date.now() - startTime;
+      ctx.waitUntil(logRequest(env, requestId, request.method, url.pathname, result.status, durationMs, {
+        user_id: authResult.userId,
+        auth_type: authResult.type,
+        backend: result.headers.get("X-Backend") || "unknown",
+      }));
+      return result;
     } catch (error) {
       console.error("Gateway error:", error);
+      const durationMs = Date.now() - startTime;
+      ctx.waitUntil(logRequest(env, requestId, request.method, url.pathname, 500, durationMs, {
+        error: error instanceof Error ? error.message : "unknown",
+      }));
       return jsonResponse({ error: "Internal server error" }, 500);
     }
   },
@@ -225,12 +356,13 @@ async function handleOAuthAuthorizationServerMetadata(env: Env): Promise<Respons
 
 async function proxyRequest(
   request: Request,
+  requestId: string,
   authResult: AuthResult,
   env: Env
 ): Promise<Response> {
   // Primary優先
   try {
-    const response = await fetchBackend(request, env.PRIMARY_API_URL, authResult, env);
+    const response = await fetchBackend(request, requestId, env.PRIMARY_API_URL, authResult, env);
     return addCORSToResponse(response, "primary");
   } catch (primaryError) {
     console.error("Primary backend failed:", primaryError);
@@ -238,7 +370,7 @@ async function proxyRequest(
 
   // Primaryが失敗したらSecondaryにフォールバック
   try {
-    const response = await fetchBackend(request, env.SECONDARY_API_URL, authResult, env);
+    const response = await fetchBackend(request, requestId, env.SECONDARY_API_URL, authResult, env);
     return addCORSToResponse(response, "secondary");
   } catch (secondaryError) {
     console.error("Secondary backend also failed:", secondaryError);
@@ -252,6 +384,7 @@ async function proxyRequest(
 
 async function fetchBackend(
   request: Request,
+  requestId: string,
   backendUrl: string,
   authResult: AuthResult,
   env: Env
@@ -262,7 +395,7 @@ async function fetchBackend(
   const headers = new Headers(request.headers);
   headers.set("X-User-ID", authResult.userId);
   headers.set("X-Auth-Type", authResult.type);
-  headers.set("X-Request-ID", crypto.randomUUID());
+  headers.set("X-Request-ID", requestId);
 
   if (env.GATEWAY_SECRET) {
     headers.set("X-Gateway-Secret", env.GATEWAY_SECRET);

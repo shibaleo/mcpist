@@ -12,12 +12,14 @@ import (
 )
 
 type LokiClient struct {
-	url        string
-	username   string
-	apiKey     string
-	httpClient *http.Client
-	enabled    bool
-	appName    string
+	url            string
+	username       string
+	apiKey         string
+	httpClient     *http.Client
+	enabled        bool
+	appName        string
+	instanceID     string
+	instanceRegion string
 }
 
 // Loki Push API format
@@ -42,19 +44,30 @@ func Init() {
 		appName = "mcpist-dev"
 	}
 
+	instanceID := os.Getenv("INSTANCE_ID")
+	if instanceID == "" {
+		instanceID = "local"
+	}
+	instanceRegion := os.Getenv("INSTANCE_REGION")
+	if instanceRegion == "" {
+		instanceRegion = "local"
+	}
+
 	if url == "" || username == "" || apiKey == "" {
 		log.Println("Loki not configured, logging disabled")
-		defaultClient = &LokiClient{enabled: false, appName: appName}
+		defaultClient = &LokiClient{enabled: false, appName: appName, instanceID: instanceID, instanceRegion: instanceRegion}
 		return
 	}
 
 	defaultClient = &LokiClient{
-		url:        url + "/loki/api/v1/push",
-		username:   username,
-		apiKey:     apiKey,
-		httpClient: &http.Client{Timeout: 5 * time.Second},
-		enabled:    true,
-		appName:    appName,
+		url:            url + "/loki/api/v1/push",
+		username:       username,
+		apiKey:         apiKey,
+		httpClient:     &http.Client{Timeout: 5 * time.Second},
+		enabled:        true,
+		appName:        appName,
+		instanceID:     instanceID,
+		instanceRegion: instanceRegion,
 	}
 	log.Println("Loki client initialized")
 }
@@ -72,6 +85,8 @@ func (c *LokiClient) push(labels map[string]string, data map[string]any) {
 		labels = make(map[string]string)
 	}
 	labels["app"] = c.appName
+	labels["instance"] = c.instanceID
+	labels["region"] = c.instanceRegion
 
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
