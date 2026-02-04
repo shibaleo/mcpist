@@ -75,9 +75,6 @@ function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
     // Basic認証: username(email) + password(token)
     credentials.username = params.username
     credentials.password = params.accessToken
-    if (params.metadata) {
-      credentials.metadata = params.metadata
-    }
   } else {
     // OAuth2 / API Key
     credentials.access_token = params.accessToken
@@ -93,6 +90,11 @@ function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
     if (params.expiresAt) {
       credentials.expires_at = Math.floor(params.expiresAt.getTime() / 1000) // Unix timestamp
     }
+  }
+
+  // metadata は認証方式に関わらず保存
+  if (params.metadata) {
+    credentials.metadata = params.metadata
   }
 
   return credentials
