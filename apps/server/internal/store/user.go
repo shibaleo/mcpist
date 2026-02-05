@@ -210,8 +210,17 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	}, nil
 }
 
-// ConsumeCredit consumes credits for a tool execution (idempotent)
-func (s *UserStore) ConsumeCredit(userID, module, tool string, amount int, requestID string, taskID *string) (*ConsumeResult, error) {
+// ToolDetail represents a single tool execution in the details array
+type ToolDetail struct {
+	TaskID string `json:"task_id,omitempty"`
+	Module string `json:"module"`
+	Tool   string `json:"tool"`
+}
+
+// ConsumeCredit consumes credits for tool execution(s) (idempotent)
+// metaTool: "run" or "batch"
+// details: array of ToolDetail for tracking individual tool executions
+func (s *UserStore) ConsumeCredit(userID, metaTool string, amount int, requestID string, details []ToolDetail) (*ConsumeResult, error) {
 	if s.serviceKey == "" {
 		// Skip in development
 		return &ConsumeResult{
@@ -222,18 +231,15 @@ func (s *UserStore) ConsumeCredit(userID, module, tool string, amount int, reque
 	}
 
 	// Build request body
-	var reqBody string
-	if taskID != nil {
-		reqBody = fmt.Sprintf(
-			`{"p_user_id": "%s", "p_module": "%s", "p_tool": "%s", "p_amount": %d, "p_request_id": "%s", "p_task_id": "%s"}`,
-			userID, module, tool, amount, requestID, *taskID,
-		)
-	} else {
-		reqBody = fmt.Sprintf(
-			`{"p_user_id": "%s", "p_module": "%s", "p_tool": "%s", "p_amount": %d, "p_request_id": "%s"}`,
-			userID, module, tool, amount, requestID,
-		)
+	detailsJSON, err := json.Marshal(details)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal details: %w", err)
 	}
+
+	reqBody := fmt.Sprintf(
+		`{"p_user_id": "%s", "p_meta_tool": "%s", "p_amount": %d, "p_request_id": "%s", "p_details": %s}`,
+		userID, metaTool, amount, requestID, string(detailsJSON),
+	)
 
 	req, err := http.NewRequest(
 		"POST",

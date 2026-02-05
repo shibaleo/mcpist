@@ -412,11 +412,10 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 	// Consume credits after successful call
 	consumeResult, err := h.userStore.ConsumeCredit(
 		authCtx.UserID,
-		moduleName,
-		toolName,
+		"run",
 		creditCost,
 		middleware.GetRequestID(ctx),
-		nil, // no task_id for single calls
+		[]store.ToolDetail{{Module: moduleName, Tool: toolName}},
 	)
 	if err != nil {
 		log.Printf("Failed to consume credits: %v", err)
@@ -449,16 +448,23 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
-	// Consume credits for successful tool executions
-	if batchResult.SuccessCount > 0 {
-		creditCost := batchResult.SuccessCount // 1 credit per successful tool call
+	// Consume credits for all successful tool executions in one transaction
+	if len(batchResult.SuccessfulTasks) > 0 {
+		details := make([]store.ToolDetail, len(batchResult.SuccessfulTasks))
+		for i, task := range batchResult.SuccessfulTasks {
+			details[i] = store.ToolDetail{
+				TaskID: task.TaskID,
+				Module: task.Module,
+				Tool:   task.Tool,
+			}
+		}
+
 		consumeResult, err := h.userStore.ConsumeCredit(
 			authCtx.UserID,
 			"batch",
-			"batch",
-			creditCost,
+			len(details), // total credit cost
 			requestID,
-			nil,
+			details,
 		)
 		if err != nil {
 			log.Printf("Failed to consume credits for batch: %v", err)
