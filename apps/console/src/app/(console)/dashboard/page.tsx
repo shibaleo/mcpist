@@ -29,9 +29,19 @@ function getOnboardingStep(
 }
 
 // ハイライトカードのラッパー
-// 日付をYYYY-MM-DD形式に変換
+// 日付をYYYY-MM-DD形式に変換（ローカルタイムゾーン）
 function formatDateForInput(date: Date): string {
-  return date.toISOString().split('T')[0]
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// 文字列から日付を安全にパース
+function parseDateFromInput(value: string, fallback: Date): Date {
+  if (!value) return fallback
+  const parsed = new Date(value + 'T00:00:00')
+  return isNaN(parsed.getTime()) ? fallback : parsed
 }
 
 // 今月の開始日を取得
@@ -284,14 +294,14 @@ export default function DashboardPage() {
                 <input
                   type="date"
                   value={formatDateForInput(usageStartDate)}
-                  onChange={(e) => setUsageStartDate(new Date(e.target.value))}
+                  onChange={(e) => setUsageStartDate(parseDateFromInput(e.target.value, usageStartDate))}
                   className="flex-1 px-2 py-1 text-xs rounded border border-input bg-background"
                 />
                 <span className="text-muted-foreground self-center">〜</span>
                 <input
                   type="date"
                   value={formatDateForInput(usageEndDate)}
-                  onChange={(e) => setUsageEndDate(new Date(e.target.value))}
+                  onChange={(e) => setUsageEndDate(parseDateFromInput(e.target.value, usageEndDate))}
                   className="flex-1 px-2 py-1 text-xs rounded border border-input bg-background"
                 />
               </div>
