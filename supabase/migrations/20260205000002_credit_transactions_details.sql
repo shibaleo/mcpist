@@ -202,36 +202,7 @@ BEGIN
       AND created_at >= p_start_date
       AND created_at < p_end_date;
 
-    -- Aggregate by module from details JSONB
-    -- Handles both new format (details) and legacy format (module column)
-    WITH tool_details AS (
-        -- New format: extract from details JSONB array
-        SELECT
-            d->>'module' AS module_name,
-            1 AS credit_count
-        FROM mcpist.credit_transactions ct,
-             jsonb_array_elements(ct.details) AS d
-        WHERE ct.user_id = v_user_id
-          AND ct.type = 'consume'
-          AND ct.details IS NOT NULL
-          AND ct.created_at >= p_start_date
-          AND ct.created_at < p_end_date
-
-        UNION ALL
-
-        -- Legacy format: use module column directly
-        SELECT
-            ct.module AS module_name,
-            ABS(ct.amount) AS credit_count
-        FROM mcpist.credit_transactions ct
-        WHERE ct.user_id = v_user_id
-          AND ct.type = 'consume'
-          AND ct.details IS NULL
-          AND ct.module IS NOT NULL
-          AND ct.module != 'batch'  -- Exclude old batch records with 'batch' as module
-          AND ct.created_at >= p_start_date
-          AND ct.created_at < p_end_date
-    )
+    -- Aggregate by module from details JSONB array
     SELECT COALESCE(
         jsonb_object_agg(module_name, usage),
         '{}'::JSONB
@@ -239,13 +210,18 @@ BEGIN
     INTO v_module_usage
     FROM (
         SELECT
-            module_name,
-            SUM(credit_count)::INTEGER AS usage
-        FROM tool_details
-        WHERE module_name IS NOT NULL
-        GROUP BY module_name
+            d->>'module' AS module_name,
+            COUNT(*)::INTEGER AS usage
+        FROM mcpist.credit_transactions ct,
+             jsonb_array_elements(ct.details) AS d
+        WHERE ct.user_id = v_user_id
+          AND ct.type = 'consume'
+          AND ct.created_at >= p_start_date
+          AND ct.created_at < p_end_date
+        GROUP BY d->>'module'
         ORDER BY usage DESC
-    ) sub;
+    ) sub
+    WHERE module_name IS NOT NULL;
 
     RETURN jsonb_build_object(
         'total_consumed', v_total_consumed,
@@ -296,19 +272,32 @@ WHERE type = 'consume'
   AND meta_tool IS NULL
   AND details IS NULL;
 
--- Migrate legacy 'batch' records (module='batch', tool='batch')
--- These cannot be fully reconstructed, but we mark them as batch
--- The details will remain NULL, and get_my_usage handles this case
-UPDATE mcpist.credit_transactions
-SET
-    meta_tool = 'batch'
-    -- details remains NULL - we cannot reconstruct individual tool info
+-- Delete legacy 'batch' records (module='batch', tool='batch')
+-- These cannot be reconstructed, so we remove them
+-- Credit totals are already reflected in the credits table
+DELETE FROM mcpist.credit_transactions
 WHERE type = 'consume'
   AND module = 'batch'
-  AND tool = 'batch'
-  AND meta_tool IS NULL;
+  AND tool = 'batch';
 
--- Add comment about legacy batch records
-COMMENT ON COLUMN mcpist.credit_transactions.module IS 'Legacy: module name. For new records, use details JSONB.';
-COMMENT ON COLUMN mcpist.credit_transactions.tool IS 'Legacy: tool name. For new records, use details JSONB.';
-COMMENT ON COLUMN mcpist.credit_transactions.task_id IS 'Legacy: task_id for batch. For new records, use details JSONB.';
+-- Add NOT NULL constraint to details (all records now have details)
+ALTER TABLE mcpist.credit_transactions
+  ALTER COLUMN details SET NOT NULL;
+
+-- Add NOT NULL constraint to meta_tool
+ALTER TABLE mcpist.credit_transactions
+  ALTER COLUMN meta_tool SET NOT NULL;
+
+-- Drop legacy idempotency index that references task_id
+DROP INDEX IF EXISTS mcpist.idx_credit_transactions_idempotency;
+
+-- Create new idempotency index (one record per request_id)
+CREATE UNIQUE INDEX idx_credit_transactions_idempotency
+  ON mcpist.credit_transactions(user_id, request_id)
+  WHERE request_id IS NOT NULL;
+
+-- Drop legacy columns
+ALTER TABLE mcpist.credit_transactions
+  DROP COLUMN module,
+  DROP COLUMN tool,
+  DROP COLUMN task_id;
