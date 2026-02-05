@@ -427,10 +427,18 @@ type taskState struct {
 	skipped bool
 }
 
+// SuccessfulTask represents a successfully executed task for credit tracking
+type SuccessfulTask struct {
+	TaskID string
+	Module string
+	Tool   string
+}
+
 // BatchResult contains the tool call result and success count for credit consumption
 type BatchResult struct {
-	Result       *ToolCallResult
-	SuccessCount int
+	Result          *ToolCallResult
+	SuccessCount    int
+	SuccessfulTasks []SuccessfulTask // Individual task info for per-tool credit tracking
 }
 
 // Batch executes multiple tools from JSONL input with DAG-based parallel execution
@@ -531,6 +539,7 @@ func Batch(ctx context.Context, commands string) (*BatchResult, error) {
 		Errors:  make(map[string]string),
 	}
 	successCount := 0
+	var successfulTasks []SuccessfulTask
 
 	for _, id := range order {
 		state := tasks[id]
@@ -541,6 +550,11 @@ func Batch(ctx context.Context, commands string) (*BatchResult, error) {
 		} else {
 			// Successful execution
 			successCount++
+			successfulTasks = append(successfulTasks, SuccessfulTask{
+				TaskID: id,
+				Module: state.cmd.Module,
+				Tool:   state.cmd.Tool,
+			})
 			if state.cmd.RawOutput {
 				// raw_output: true -> return JSON as-is
 				response.Results[id] = state.result
@@ -574,7 +588,8 @@ func Batch(ctx context.Context, commands string) (*BatchResult, error) {
 		Result: &ToolCallResult{
 			Content: []ContentBlock{{Type: "text", Text: string(jsonBytes)}},
 		},
-		SuccessCount: successCount,
+		SuccessCount:    successCount,
+		SuccessfulTasks: successfulTasks,
 	}, nil
 }
 
