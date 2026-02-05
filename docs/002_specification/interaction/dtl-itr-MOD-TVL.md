@@ -2,11 +2,11 @@
 
 ## ドキュメント管理情報
 
-| 項目 | 値 |
-|------|-----|
-| Status | `reviewed` |
-| Version | v2.0 |
-| Note | Modules - Token Vault Interaction Detail |
+| 項目      | 値                                        |
+| ------- | ---------------------------------------- |
+| Status  | `draft`                                  |
+| Version | v2.2                                     |
+| Note    | Modules - Token Vault Interaction Detail |
 
 ---
 
@@ -26,7 +26,7 @@
 | 項目 | 内容 |
 |------|------|
 | トリガー | 外部API呼び出し時 |
-| 操作 | サービス別トークン取得、リフレッシュ（MOD側で実行）、トークン更新 |
+| 操作 | モジュール別トークン取得、リフレッシュ（MOD側で実行）、トークン更新 |
 
 ### 責務分担
 
@@ -40,8 +40,8 @@
 ### フロー
 
 1. MODが外部APIリクエストを処理
-2. TVLにuser_id + serviceで問い合わせ
-3. TVLがcredentials（auth_type含む）を返却
+2. TVLにuser_id + moduleで問い合わせ
+3. TVLがauth_type + credentialsを返却
 4. MODがauth_typeに応じて認証ヘッダーを生成
 5. OAuth 2.0の場合、MODが期限切れを検知しリフレッシュ→TVLに更新保存
 
@@ -50,24 +50,41 @@
 ```json
 {
   "user_id": "user-123",
-  "service": "notion"
+  "module": "notion"
 }
 ```
 
 ### 取得レスポンス
 
-TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
+TVLはauth_type + credentialsをそのまま返す。リフレッシュはMODの責務。
+
+#### credentials 構造
+
+| フィールド | 位置 | 説明 |
+|-----------|------|------|
+| `auth_type` | credentials 外 | API呼び出し方式の識別子（機密情報ではない） |
+| `access_token` 等 | credentials 内 | 認証に必要なトークン・シークレット |
+| `metadata` | credentials 内 | モジュール固有の追加情報（domain, workspace 等） |
+
+**設計理由**:
+- `auth_type` は機密情報ではないため、credentials 外に配置（復号化せずに参照可能）
+- `auth_type` は「API呼び出し方式」を表す（認可方式ではない）
+- `metadata` には機密情報を含む場合があるため、暗号化対象の credentials 内に格納
 
 *OAuth 2.0形式:*
 ```json
 {
   "user_id": "user-123",
-  "service": "notion",
+  "module": "notion",
   "auth_type": "oauth2",
   "credentials": {
     "access_token": "ntn_xxx",
     "refresh_token": "ntn_refresh_xxx",
-    "expires_at": 1706140800
+    "expires_at": 1706140800,
+    "metadata": {
+      "workspace_id": "xxx",
+      "workspace_name": "My Workspace"
+    }
   }
 }
 ```
@@ -76,7 +93,7 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 ```json
 {
   "user_id": "user-123",
-  "service": "github",
+  "module": "github",
   "auth_type": "api_key",
   "credentials": {
     "access_token": "ghp_xxx"
@@ -84,17 +101,18 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 }
 ```
 
-*OAuth 1.0a形式:*
+*API Key形式（クエリパラメータ方式 - Trello）:*
+
+Trello は OAuth 1.0a で認可するが、API 呼び出しは API Key + Token のクエリパラメータ方式。
+
 ```json
 {
   "user_id": "user-123",
-  "service": "zaim",
-  "auth_type": "oauth1",
+  "module": "trello",
+  "auth_type": "api_key",
   "credentials": {
-    "consumer_key": "xxx",
-    "consumer_secret": "xxx",
     "access_token": "xxx",
-    "access_token_secret": "xxx"
+    "api_key": "xxx"
   }
 }
 ```
@@ -103,14 +121,29 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 ```json
 {
   "user_id": "user-123",
-  "service": "jira",
+  "module": "jira",
   "auth_type": "basic",
   "credentials": {
     "username": "user@example.com",
-    "password": "ATATT3xFfGF0..."
-  },
-  "metadata": {
-    "domain": "mycompany.atlassian.net"
+    "password": "ATATT3xFfGF0...",
+    "metadata": {
+      "domain": "mycompany.atlassian.net"
+    }
+  }
+}
+```
+
+*API Key形式（metadata付き - Grafana）:*
+```json
+{
+  "user_id": "user-123",
+  "module": "grafana",
+  "auth_type": "api_key",
+  "credentials": {
+    "access_token": "glsa_xxx",
+    "metadata": {
+      "base_url": "https://mycompany.grafana.net"
+    }
   }
 }
 ```
@@ -119,24 +152,38 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 
 ## auth_type一覧
 
-| auth_type | 説明 | credentials | Authorizationヘッダー |
-|-----------|------|-------------|----------------------|
-| `oauth2` | OAuth 2.0（リフレッシュ対応） | `access_token`, `refresh_token`, `expires_at` | `Authorization: Bearer {token}` |
-| `api_key` | API Key（リフレッシュなし） | `access_token` | `Authorization: Bearer {token}` |
-| `oauth1` | OAuth 1.0a署名 | `consumer_key`, `consumer_secret`, `access_token`, `access_token_secret` | `Authorization: OAuth ...` |
+`auth_type` は**API呼び出し方式**を表す（認可方式ではない）。
+
+| auth_type | 説明 | credentials フィールド | API呼び出し方式 |
+|-----------|------|----------------------|----------------|
+| `oauth2` | Bearer トークン（リフレッシュ対応） | `access_token`, `refresh_token`, `expires_at` | `Authorization: Bearer {token}` |
+| `api_key` | Bearer トークンまたはクエリパラメータ | `access_token`（+ `api_key` for Trello） | `Authorization: Bearer {token}` or `?key=&token=` |
 | `basic` | Basic認証 | `username`, `password` | `Authorization: Basic {base64(user:pass)}` |
-| `custom_header` | カスタムヘッダー | `token`, `header_name` | `{header_name}: {token}` |
 
-### サービス別auth_type例
+### モジュール別auth_type
 
-| サービス | auth_type | 備考 |
-|---------|-----------|------|
-| Notion | `oauth2` | OAuth 2.0 Public Integration |
-| GitHub | `oauth2` / `api_key` | OAuth App または Personal Access Token |
-| Jira | `basic` | email + API Token、`metadata.domain`必須 |
-| Confluence | `basic` | email + API Token、`metadata.domain`必須 |
-| Supabase | `api_key` | Management API Token |
-| Zaim | `oauth1` | OAuth 1.0a |
+| モジュール | auth_type | 認可方式 | metadata | 備考 |
+|-----------|-----------|---------|----------|------|
+| notion | `oauth2` | OAuth 2.0 | `workspace_id`, `workspace_name` | - |
+| github | `oauth2` / `api_key` | OAuth 2.0 / PAT | - | OAuth App または Personal Access Token |
+| google_calendar | `oauth2` | OAuth 2.0 | - | - |
+| google_docs | `oauth2` | OAuth 2.0 | - | - |
+| google_drive | `oauth2` | OAuth 2.0 | - | - |
+| google_sheets | `oauth2` | OAuth 2.0 | - | - |
+| google_tasks | `oauth2` | OAuth 2.0 | - | - |
+| google_apps_script | `oauth2` | OAuth 2.0 | - | - |
+| microsoft_todo | `oauth2` | OAuth 2.0 | - | Microsoft Graph API |
+| todoist | `oauth2` | OAuth 2.0 | - | リフレッシュトークンなし |
+| asana | `oauth2` | OAuth 2.0 | - | - |
+| airtable | `oauth2` | OAuth 2.0 + PKCE | - | - |
+| ticktick | `oauth2` | OAuth 2.0 | - | - |
+| dropbox | `oauth2` | OAuth 2.0 | - | - |
+| jira | `basic` | API Token | `domain`（必須） | email + API Token |
+| confluence | `basic` | API Token | `domain`（必須） | email + API Token |
+| trello | `api_key` | OAuth 1.0a | - | クエリパラメータ方式 |
+| supabase | `api_key` | PAT | - | Management API Token |
+| grafana | `api_key` | Service Account | `base_url`（必須） | - |
+| postgresql | `basic` | 直接接続 | `host`, `port`, `database`（必須） | - |
 
 ---
 
@@ -161,7 +208,8 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 ```json
 {
   "user_id": "user-123",
-  "service": "notion",
+  "module": "notion",
+  "auth_type": "oauth2",
   "credentials": {
     "access_token": "new_access_token",
     "refresh_token": "new_refresh_token",
@@ -170,13 +218,15 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 }
 ```
 
+**注意**: リフレッシュ時は `metadata` を含めない（既存の metadata は保持される）。
+
 ---
 
 ## トークン未設定時
 
 ```json
 {
-  "error": "no token configured for user: user-123, service: notion"
+  "error": "no token configured for user: user-123, module: notion"
 }
 ```
 
@@ -188,4 +238,3 @@ TVLはcredentialsをそのまま返す。リフレッシュはMODの責務。
 |-------------|------|
 | [itr-MOD.md](./itr-MOD.md) | Modules 詳細仕様 |
 | [itr-TVL.md](./itr-TVL.md) | Token Vault 詳細仕様 |
-| [idx-itr-rel.md](./idx-itr-rel.md) | インタラクション関係ID一覧 |

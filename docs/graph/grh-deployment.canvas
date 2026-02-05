@@ -40,5 +40,9 @@
 		{"id":"1c04dea0a22aae38","fromNode":"ce53d764534ee603","fromSide":"right","toNode":"e187972aef6db73a","toSide":"left"},
 		{"id":"978deab4a152eecd","fromNode":"7df0d0dcd7f4cf11","fromSide":"bottom","toNode":"47c1e0a60251d8f0","toSide":"top"},
 		{"id":"a624dc52a27b17da","fromNode":"7df0d0dcd7f4cf11","fromSide":"bottom","toNode":"a2c443d6ce092968","toSide":"top"}
-	]
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
 }
