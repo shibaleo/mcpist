@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Loader2, Play, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getOAuthClientId } from '@/lib/oauth-client'
+import { getMcpServerUrl } from '@/lib/env'
 
 type TestStep = {
   name: string
@@ -218,7 +219,7 @@ function CallbackContent() {
       { name: 'tools/list', status: 'pending' },
     ])
 
-    const mcpServerUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || 'http://mcp.localhost'
+    const mcpServerUrl = getMcpServerUrl()
     const mcpEndpoint = `${mcpServerUrl}/mcp`
 
     // Step 1: Connect to MCP Server

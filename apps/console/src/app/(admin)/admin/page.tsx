@@ -15,6 +15,7 @@ import {
   OAuthConsentError,
   type OAuthConsentAdmin,
 } from "@/lib/oauth-consents"
+import { getMcpServerUrl } from "@/lib/env"
 
 type VerifyStep = {
   name: string
@@ -309,7 +310,7 @@ function JsonResponseViewer({ data, label }: { data: unknown; label: string }) {
 // OAuth Authentication Flow Verification Component
 function OAuthVerificationCard() {
   const [mcpServerUrl, setMcpServerUrl] = useState(
-    process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://mcp.localhost"
+    getMcpServerUrl()
   )
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])

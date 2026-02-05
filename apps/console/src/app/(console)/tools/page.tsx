@@ -466,7 +466,7 @@ export default function ToolsPage() {
                   }
                 }}
                 placeholder="このモジュールの使い方や注意点を記述してください（AIへの追加コンテキストとして使用されます）"
-                className="min-h-[80px] resize-none"
+                className="min-h-[80px] resize-y"
                 maxLength={256}
               />
               {editingModuleId === selectedModule.id && (

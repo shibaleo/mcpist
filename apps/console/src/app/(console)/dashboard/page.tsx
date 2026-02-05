@@ -199,8 +199,8 @@ export default function DashboardPage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Connected Services */}
         <HighlightCard
-          href="/tools"
-          highlight={onboardingStep === "connections"}
+          href="/services"
+          highlight={!loading && onboardingStep === "connections"}
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
         {/* Credit Balance */}
         <HighlightCard
           href="/billing"
-          highlight={onboardingStep === "billing" || showLowCreditAlert}
+          highlight={!loading && (onboardingStep === "billing" || showLowCreditAlert)}
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">

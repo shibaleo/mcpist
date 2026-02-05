@@ -1,8 +1,11 @@
 /**
  * Environment utilities
- *
- * Always use Supabase OAuth Server (no more OAuth Mock Server)
  */
 
-// No functions needed - Supabase OAuth Server URLs are constructed directly
-// in .well-known/oauth-authorization-server/route.ts
+export function getMcpServerUrl(): string {
+  const url = process.env.NEXT_PUBLIC_MCP_SERVER_URL
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_MCP_SERVER_URL is not set")
+  }
+  return url
+}

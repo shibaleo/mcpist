@@ -54,13 +54,8 @@ import {
   type ApiKey,
   type GenerateApiKeyResult,
 } from "@/lib/api-keys"
-import {
-  listOAuthConsents,
-  revokeOAuthConsent,
-  OAuthConsentError,
-  type OAuthConsent,
-} from "@/lib/oauth-consents"
 import { revokeApiKeyAction } from "./actions"
+import { getMcpServerUrl } from "@/lib/env"
 
 type VerifyStep = {
   name: string
@@ -95,14 +90,8 @@ export default function McpConnectionPage() {
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  // OAuth Consents state
-  const [oauthConsents, setOAuthConsents] = useState<OAuthConsent[]>([])
-  const [consentsLoading, setConsentsLoading] = useState(true)
-  const [revokeDialogConsent, setRevokeDialogConsent] = useState<OAuthConsent | null>(null)
-  const [revoking, setRevoking] = useState(false)
-
   // API Key test state
-  const [mcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://mcp.localhost")
+  const mcpServerUrl = getMcpServerUrl()
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])
   const [testApiKey, setTestApiKey] = useState<string>("")
@@ -110,8 +99,7 @@ export default function McpConnectionPage() {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set())
 
   // MCPエンドポイント
-  const mcpBaseUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL || "http://localhost:8787"
-  const endpoint = `${mcpBaseUrl}/mcp`
+  const endpoint = `${mcpServerUrl}/mcp`
 
   const handleCopy = async (text: string, type: string) => {
     await navigator.clipboard.writeText(text)
@@ -133,29 +121,13 @@ export default function McpConnectionPage() {
     }
   }, [])
 
-  // Load OAuth Consents
-  const loadOAuthConsents = useCallback(async () => {
-    try {
-      const consents = await listOAuthConsents()
-      setOAuthConsents(consents)
-    } catch (error) {
-      if (error instanceof OAuthConsentError) {
-        console.error("Failed to load OAuth consents:", error.message)
-      }
-    } finally {
-      setConsentsLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (user) {
       loadApiKeys()
-      loadOAuthConsents()
     } else {
       setKeysLoading(false)
-      setConsentsLoading(false)
     }
-  }, [user, loadApiKeys, loadOAuthConsents])
+  }, [user, loadApiKeys])
 
   // Create API Key
   const handleCreate = async () => {
@@ -218,31 +190,6 @@ export default function McpConnectionPage() {
     setKeyCopied(true)
     toast.success("APIキーをコピーしました")
     setTimeout(() => setKeyCopied(false), 2000)
-  }
-
-  // Revoke OAuth Consent
-  const handleRevokeConsent = async () => {
-    if (!revokeDialogConsent) return
-
-    setRevoking(true)
-    try {
-      const revoked = await revokeOAuthConsent(revokeDialogConsent.id)
-      if (revoked) {
-        toast.success("セッションを取り消しました")
-        await loadOAuthConsents()
-        setRevokeDialogConsent(null)
-      } else {
-        toast.error("取り消しに失敗しました")
-      }
-    } catch (error) {
-      if (error instanceof OAuthConsentError) {
-        toast.error(`取り消しに失敗しました: ${error.message}`)
-      } else {
-        toast.error("取り消しに失敗しました")
-      }
-    } finally {
-      setRevoking(false)
-    }
   }
 
   const formatDate = (dateString: string | null) => {
@@ -775,71 +722,6 @@ export default function McpConnectionPage() {
             </CardContent>
           </Card>
 
-          {/* Active Sessions Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <LogIn className="h-5 w-5" />
-                認可済みクライアント
-              </CardTitle>
-              <CardDescription>
-                OAuth認証で接続を許可したMCPクライアント
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {consentsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : oauthConsents.length === 0 ? (
-                <div className="text-center py-8">
-                  <LogIn className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground mb-2">認可済みのクライアントはありません</p>
-                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                    MCPクライアントからOAuth認証で接続すると、ここに表示されます。
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {oauthConsents.map((consent) => (
-                    <div
-                      key={consent.id}
-                      className="flex items-center justify-between p-3 rounded-lg border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                          <Server className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">
-                              {consent.client_name || "Unknown Client"}
-                            </span>
-                            <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
-                              認可済み
-                            </Badge>
-                          </div>
-                          <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                            <span>スコープ: {consent.scopes}</span>
-                            <span>認可日: {formatDate(consent.granted_at)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setRevokeDialogConsent(consent)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
         </TabsContent>
       </Tabs>
 
@@ -991,38 +873,6 @@ export default function McpConnectionPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Revoke OAuth Consent Confirmation Dialog */}
-      <AlertDialog
-        open={!!revokeDialogConsent}
-        onOpenChange={(open) => !open && setRevokeDialogConsent(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>認可を取り消しますか？</AlertDialogTitle>
-            <AlertDialogDescription>
-              「{revokeDialogConsent?.client_name || "Unknown Client"}」の認可を取り消します。
-              このクライアントは再度認証が必要になります。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={revoking}>キャンセル</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRevokeConsent}
-              disabled={revoking}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {revoking ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  取り消し中...
-                </>
-              ) : (
-                "取り消し"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
