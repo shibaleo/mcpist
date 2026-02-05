@@ -47,7 +47,7 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	}
 
 	// Check if token needs refresh (OAuth2 only)
-	if credentials.GetAuthType() == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
+	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
 		if needsRefresh(credentials) {
 			log.Printf("[notion] Token expired or expiring soon, refreshing...")
 			refreshed, err := refreshToken(ctx, userID, credentials)
@@ -162,8 +162,7 @@ func headers(ctx context.Context) map[string]string {
 	}
 
 	// Notion supports OAuth2 and API Key (both use Bearer token)
-	authType := creds.GetAuthType()
-	switch authType {
+	switch creds.AuthType {
 	case store.AuthTypeOAuth2, store.AuthTypeAPIKey:
 		h["Authorization"] = "Bearer " + creds.AccessToken
 	default:

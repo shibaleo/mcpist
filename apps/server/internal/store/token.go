@@ -35,7 +35,7 @@ type TokenStore struct {
 // AuthType constants for API request authentication methods
 const (
 	AuthTypeOAuth2       = "oauth2"        // OAuth 2.0 (with refresh token support)
-	AuthTypeOAuth1       = "oauth1"        // OAuth 1.0a signature
+	AuthTypeOAuth1       = "oauth1"        // OAuth 1.0a (for future services like Zaim)
 	AuthTypeAPIKey       = "api_key"       // API Key (Bearer token, no refresh)
 	AuthTypeBasic        = "basic"         // Basic authentication (username:password)
 	AuthTypeCustomHeader = "custom_header" // Custom header
@@ -75,27 +75,25 @@ func (ft *FlexibleTime) UnmarshalJSON(data []byte) error {
 }
 
 // Credentials represents the credentials from Vault
-// Supports multiple authentication types as defined in dtl-itr-MOD-TVL.md
+// Supports multiple authentication types as defined in dtl-itr-MOD-TVL.md v2.2
 type Credentials struct {
-	// Common fields
-	// Note: Console saves as "_auth_type", so we support both
-	AuthType  string `json:"auth_type,omitempty"`  // Standard field
-	AuthType2 string `json:"_auth_type,omitempty"` // Legacy field from Console
+	// auth_type is stored inside credentials JSON
+	AuthType string `json:"auth_type,omitempty"`
 
 	// OAuth 2.0 (with refresh support)
 	AccessToken  string       `json:"access_token,omitempty"`
 	RefreshToken string       `json:"refresh_token,omitempty"`
 	ExpiresAt    FlexibleTime `json:"expires_at,omitempty"` // Unix timestamp or ISO string
 
-	// OAuth 1.0a
+	// OAuth 1.0a (for future services like Zaim)
 	ConsumerKey       string `json:"consumer_key,omitempty"`
 	ConsumerSecret    string `json:"consumer_secret,omitempty"`
 	AccessTokenSecret string `json:"access_token_secret,omitempty"`
 
-	// API Key (also uses AccessToken field for the key)
-	// Uses AccessToken field above
+	// API Key (Trello, GitHub PAT, Supabase, Grafana)
+	APIKey string `json:"api_key,omitempty"`
 
-	// Basic authentication
+	// Basic authentication (Jira, Confluence, PostgreSQL)
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 
@@ -104,25 +102,7 @@ type Credentials struct {
 	HeaderName string `json:"header_name,omitempty"`
 
 	// Additional metadata (e.g., domain for Atlassian, workspace info for Notion)
-	// Using interface{} to support nested objects (e.g., Notion's owner object)
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
-	Metadata2 map[string]interface{} `json:"_metadata,omitempty"` // Legacy field from Console
-}
-
-// GetAuthType returns the auth type, checking both standard and legacy fields
-func (c *Credentials) GetAuthType() string {
-	if c.AuthType != "" {
-		return c.AuthType
-	}
-	return c.AuthType2
-}
-
-// GetMetadata returns metadata, checking both standard and legacy fields
-func (c *Credentials) GetMetadata() map[string]interface{} {
-	if c.Metadata != nil {
-		return c.Metadata
-	}
-	return c.Metadata2
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // CredentialResult represents the result of get_user_credential RPC
@@ -205,19 +185,14 @@ func (s *TokenStore) GetModuleToken(ctx context.Context, userID, module string) 
 		return nil, fmt.Errorf("no credential configured for user: %s, module: %s", userID, module)
 	}
 
-	// Normalize auth_type: use GetAuthType() to check both fields
-	authType := result.Credentials.GetAuthType()
-	if authType == "" {
-		authType = result.AuthType
+	// auth_type and metadata are extracted by RPC from credentials JSON
+	// Fallback to RPC response fields if not in credentials
+	if result.Credentials.AuthType == "" {
+		result.Credentials.AuthType = result.AuthType
 	}
-	result.Credentials.AuthType = authType
-
-	// Normalize metadata: use GetMetadata() to check both fields
-	metadata := result.Credentials.GetMetadata()
-	if metadata == nil && result.Metadata != nil {
-		metadata = result.Metadata
+	if result.Credentials.Metadata == nil && result.Metadata != nil {
+		result.Credentials.Metadata = result.Metadata
 	}
-	result.Credentials.Metadata = metadata
 
 	return result.Credentials, nil
 }
