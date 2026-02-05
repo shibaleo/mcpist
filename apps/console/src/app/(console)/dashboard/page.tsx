@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Link2, Coins, Receipt, Loader2, Settings2, ChevronRight } from "lucide-react"
-import { getUserContext, getServiceConnections, type UserCredits, type ServiceConnection } from "@/lib/credits"
+import { getUserContext, getServiceConnections, getMyMonthlyUsage, type UserCredits, type ServiceConnection, type UsageStats } from "@/lib/credits"
 import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -65,16 +65,18 @@ export default function DashboardPage() {
   const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [connections, setConnections] = useState<ServiceConnection[]>([])
   const [toolSettings, setToolSettings] = useState<ToolSetting[]>([])
+  const [monthlyUsage, setMonthlyUsage] = useState<UsageStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
       try {
-        const [contextData, connectionsData, toolSettingsData] = await Promise.all([
+        const [contextData, connectionsData, toolSettingsData, usageData] = await Promise.all([
           getUserContext(),
           getServiceConnections(),
           getMyToolSettings(),
+          getMyMonthlyUsage(),
         ])
         setAccountStatus(contextData?.account_status ?? null)
         setCredits(contextData ? {
@@ -84,6 +86,7 @@ export default function DashboardPage() {
         } : null)
         setConnections(connectionsData)
         setToolSettings(toolSettingsData)
+        setMonthlyUsage(usageData)
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
       } finally {
@@ -227,8 +230,10 @@ export default function DashboardPage() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : (
               <>
-                <div className="text-3xl font-bold">-</div>
-                <p className="text-xs text-muted-foreground mt-1">詳細は課金ページで確認</p>
+                <div className="text-3xl font-bold">
+                  {monthlyUsage?.total_consumed?.toLocaleString() ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">クレジット消費</p>
               </>
             )}
           </CardContent>

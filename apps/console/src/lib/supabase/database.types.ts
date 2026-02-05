@@ -69,6 +69,10 @@ export type Database = {
           tool_id: string
         }[]
       }
+      get_my_usage: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: Json
+      }
       get_oauth_app_credentials: { Args: { p_provider: string }; Returns: Json }
       get_stripe_customer_id: { Args: { p_user_id: string }; Returns: string }
       get_user_by_stripe_customer: {
@@ -90,6 +94,16 @@ export type Database = {
       get_user_credential: {
         Args: { p_module: string; p_user_id: string }
         Returns: Json
+      }
+      get_user_prompt_by_name: {
+        Args: { p_prompt_name: string; p_user_id: string }
+        Returns: {
+          content: string
+          description: string
+          enabled: boolean
+          id: string
+          name: string
+        }[]
       }
       link_stripe_customer: {
         Args: { p_stripe_customer_id: string; p_user_id: string }
@@ -150,6 +164,8 @@ export type Database = {
         Returns: {
           content: string
           created_at: string
+          description: string
+          enabled: boolean
           id: string
           module_name: string
           name: string
@@ -157,6 +173,16 @@ export type Database = {
         }[]
       }
       list_oauth_apps: { Args: never; Returns: Json }
+      list_user_prompts: {
+        Args: { p_enabled_only?: boolean; p_user_id: string }
+        Returns: {
+          content: string
+          description: string
+          enabled: boolean
+          id: string
+          name: string
+        }[]
+      }
       lookup_user_by_key_hash: { Args: { p_key_hash: string }; Returns: Json }
       revoke_my_api_key: { Args: { p_key_id: string }; Returns: Json }
       revoke_my_oauth_consent: { Args: { p_consent_id: string }; Returns: Json }
@@ -170,15 +196,28 @@ export type Database = {
         Args: { p_description: string; p_module_name: string }
         Returns: Json
       }
-      upsert_my_prompt: {
-        Args: {
-          p_content: string
-          p_module_name?: string
-          p_name: string
-          p_prompt_id?: string
-        }
-        Returns: Json
-      }
+      upsert_my_prompt:
+        | {
+            Args: {
+              p_content: string
+              p_enabled?: boolean
+              p_module_name?: string
+              p_name: string
+              p_prompt_id?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_content: string
+              p_description?: string
+              p_enabled?: boolean
+              p_module_name?: string
+              p_name: string
+              p_prompt_id?: string
+            }
+            Returns: Json
+          }
       upsert_my_tool_settings: {
         Args: {
           p_disabled_tools: string[]

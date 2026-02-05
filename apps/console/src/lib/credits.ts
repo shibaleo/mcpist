@@ -108,3 +108,46 @@ export async function getUserContext(): Promise<UserContext | null> {
     paid_credits: context.paid_credits,
   }
 }
+
+/**
+ * Usage statistics for a period
+ */
+export interface UsageStats {
+  total_consumed: number
+  by_module: Record<string, number>
+  period: {
+    start: string
+    end: string
+  }
+}
+
+/**
+ * Get the current user's usage statistics for a period
+ * @param startDate - Start of the period (inclusive)
+ * @param endDate - End of the period (exclusive)
+ */
+export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageStats | null> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.rpc('get_my_usage', {
+    p_start_date: startDate.toISOString(),
+    p_end_date: endDate.toISOString(),
+  })
+
+  if (error) {
+    console.error('Failed to fetch usage:', error)
+    return null
+  }
+
+  return data as unknown as UsageStats
+}
+
+/**
+ * Get usage for the current month (1st to now)
+ */
+export async function getMyMonthlyUsage(): Promise<UsageStats | null> {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  // End is "now" for current month
+  return getMyUsage(startOfMonth, now)
+}
