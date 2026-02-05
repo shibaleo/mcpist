@@ -29,7 +29,7 @@ export async function validateToken(
 ): Promise<TokenValidationResult> {
   try {
     console.log('[token-validator] Calling API for service:', service)
-    const response = await fetch('/api/validate-token', {
+    const response = await fetch('/api/credentials/validate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

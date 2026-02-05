@@ -104,8 +104,7 @@ func addAuth(endpoint string, ctx context.Context) string {
 	}
 
 	// Trello uses API Key + Token as query parameters
-	// API Key is stored in Username field, Token in AccessToken
-	apiKey := creds.Username
+	apiKey := creds.APIKey
 	token := creds.AccessToken
 
 	if apiKey == "" || token == "" {

@@ -59,9 +59,18 @@ async function withMinDelay<T>(promiseLike: PromiseLike<T>, minDelayMs: number):
 
 // Vault JSON形式で credentials を構築
 function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
-  // auth_typeを決定: Basic認証 > OAuth2 > API Key
+  // auth_typeを決定
+  // - Trello: api_key (api_key + access_token)
+  // - Basic認証 (Jira/Confluence): basic (username + password)
+  // - OAuth2: oauth2 (refreshTokenあり)
+  // - その他: api_key (access_token only)
   let authType = 'api_key'
-  if (params.username) {
+
+  // Trello は api_key タイプ（username に api_key が入っている特殊ケース）
+  const isTrello = params.service === 'trello' && params.username
+
+  if (!isTrello && params.username) {
+    // Basic認証: Jira, Confluence
     authType = 'basic'
   } else if (params.refreshToken) {
     authType = 'oauth2'
@@ -71,7 +80,11 @@ function buildCredentials(params: UpsertTokenParams): Record<string, unknown> {
     auth_type: authType,
   }
 
-  if (authType === 'basic') {
+  if (isTrello) {
+    // Trello: api_key + access_token
+    credentials.api_key = params.username  // api_key は username パラメータで渡される
+    credentials.access_token = params.accessToken
+  } else if (authType === 'basic') {
     // Basic認証: username(email) + password(token)
     credentials.username = params.username
     credentials.password = params.accessToken
