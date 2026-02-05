@@ -8,20 +8,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import {
   useAppearance,
   accentColors,
   type AccentColorId,
 } from "@/lib/appearance-context"
-import { Sun, Moon, Monitor, Check, Globe, Loader2 } from "lucide-react"
+import { Sun, Moon, Monitor, Check, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useState } from "react"
 import {
   getUserSettings,
   updateUserSettings,
   type Language,
 } from "@/lib/user-settings"
+import { toast } from "sonner"
+
+// モジュールレベルキャッシュ
+let cachedLanguage: Language | null = null
 
 export const dynamic = "force-dynamic"
 
@@ -37,37 +40,40 @@ export default function SettingsPage() {
     setAccentColor,
   } = useAppearance()
   const [mounted, setMounted] = useState(false)
-  const [language, setLanguage] = useState<Language>("en-US")
-  const [originalLanguage, setOriginalLanguage] = useState<Language>("en-US")
-  const [isPending, startTransition] = useTransition()
-  const [saveMessage, setSaveMessage] = useState<{
-    type: "success" | "error"
-    text: string
-  } | null>(null)
+  const [language, setLanguage] = useState<Language>(cachedLanguage ?? "en-US")
+  const [savingLanguage, setSavingLanguage] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    // Load user settings
     getUserSettings().then((settings) => {
+      cachedLanguage = settings.language
       setLanguage(settings.language)
-      setOriginalLanguage(settings.language)
     })
   }, [])
 
-  const hasChanges = language !== originalLanguage
+  const handleLanguageChange = async (newLanguage: Language) => {
+    if (newLanguage === language) return
 
-  const handleSave = () => {
-    startTransition(async () => {
-      const result = await updateUserSettings({ language })
+    // Optimistic update
+    const prevLanguage = language
+    setLanguage(newLanguage)
+    setSavingLanguage(true)
+
+    try {
+      const result = await updateUserSettings({ language: newLanguage })
       if (result.success) {
-        setOriginalLanguage(language)
-        setSaveMessage({ type: "success", text: "設定を保存しました" })
+        cachedLanguage = newLanguage
       } else {
-        setSaveMessage({ type: "error", text: result.error || "保存に失敗しました" })
+        // Revert on failure
+        setLanguage(prevLanguage)
+        toast.error(result.error || "保存に失敗しました")
       }
-      // Clear message after 3 seconds
-      setTimeout(() => setSaveMessage(null), 3000)
-    })
+    } catch {
+      setLanguage(prevLanguage)
+      toast.error("保存に失敗しました")
+    } finally {
+      setSavingLanguage(false)
+    }
   }
 
   if (!mounted) {
@@ -82,55 +88,39 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">設定</h1>
-          <p className="text-muted-foreground mt-1">アプリの設定をカスタマイズします</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {saveMessage && (
-            <span
-              className={cn(
-                "text-sm",
-                saveMessage.type === "success" ? "text-success" : "text-destructive"
-              )}
-            >
-              {saveMessage.text}
-            </span>
-          )}
-          <Button onClick={handleSave} disabled={!hasChanges || isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            保存
-          </Button>
-        </div>
+      <div className="pl-8 md:pl-0">
+        <h1 className="text-2xl font-bold text-foreground">設定</h1>
+        <p className="text-muted-foreground mt-1">アプリの設定をカスタマイズします</p>
       </div>
 
       {/* 言語設定 */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            言語 / Language
+          <CardTitle className="text-lg flex items-start gap-2">
+            <Globe className="h-5 w-5 shrink-0 mt-0.5" />
+            <span className="break-all">言語 / Language</span>
           </CardTitle>
-          <CardDescription>MCP Serverのツール説明文の言語を選択</CardDescription>
+          <CardDescription>ツール説明文の言語を選択</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3 max-w-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {languageOptions.map((option) => {
               const isSelected = language === option.id
               return (
                 <button
                   key={option.id}
-                  onClick={() => setLanguage(option.id)}
+                  onClick={() => handleLanguageChange(option.id)}
+                  disabled={savingLanguage}
                   className={cn(
-                    "relative flex flex-col items-center gap-1 p-4 rounded-lg border-2 transition-all",
+                    "relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all",
                     isSelected
                       ? "border-success bg-success/10"
-                      : "border-border hover:border-muted-foreground"
+                      : "border-border hover:border-muted-foreground",
+                    savingLanguage && "opacity-60 pointer-events-none"
                   )}
                 >
                   <span
-                    className={cn("text-lg font-medium", isSelected && "text-success")}
+                    className={cn("text-base font-medium", isSelected && "text-success")}
                   >
                     {option.nativeName}
                   </span>
@@ -154,7 +144,7 @@ export default function SettingsPage() {
           <CardDescription>ダーク/ライト/システムデフォルトを選択</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {themeOptions.map((option) => {
               const Icon = option.icon
               const isSelected = theme === option.id
@@ -202,7 +192,7 @@ export default function SettingsPage() {
                   )}
                 >
                   <div
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
+                    className="w-full max-w-10 aspect-square rounded-full mx-auto"
                     style={{ backgroundColor: color.preview || "#888" }}
                   />
                   <span className="text-xs font-medium">{color.name}</span>

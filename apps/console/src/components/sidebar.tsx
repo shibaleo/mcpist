@@ -2,12 +2,12 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { getServiceConnections } from "@/lib/credits"
 import {
   DropdownMenu,
@@ -19,22 +19,23 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
-  ChevronLeft,
+  PanelLeft,
   Link2,
   Server,
   CreditCard,
-  Zap,
   Shield,
   HelpCircle,
   KeyRound,
   MessageSquareText,
   Wrench,
+  ChevronsUpDown,
 } from "lucide-react"
 
-const MIN_WIDTH = 150
-const MAX_WIDTH = 400
-const DEFAULT_WIDTH = 256
+const SIDEBAR_WIDTH = 256
 const COLLAPSED_WIDTH = 64
+
+// コネクション数のモジュールレベルキャッシュ
+let cachedConnectionCount: number | null = null
 
 // ナビゲーションアイテム
 const navItems = {
@@ -70,16 +71,25 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
   const { accentColor } = useAppearance()
   const accentPreview = accentColors.find(c => c.id === accentColor)?.preview ?? "#22c55e"
 
-  const [width, setWidth] = useState(DEFAULT_WIDTH)
-  const [isResizing, setIsResizing] = useState(false)
-  const [connectionCount, setConnectionCount] = useState(0)
-  const sidebarRef = useRef<HTMLElement>(null)
+  const [connectionCount, setConnectionCount] = useState(cachedConnectionCount ?? 0)
+
+  // モバイル: ページ遷移時にサイドバーを閉じる（初回マウントは除外）
+  const [prevPathname, setPrevPathname] = useState(pathname)
+  useEffect(() => {
+    if (pathname !== prevPathname) {
+      setPrevPathname(pathname)
+      if (onClose) {
+        onClose()
+      }
+    }
+  }, [pathname, prevPathname, onClose])
 
   // 接続済みサービス数を取得
   useEffect(() => {
     async function fetchConnectionCount() {
       try {
         const connections = await getServiceConnections()
+        cachedConnectionCount = connections.length
         setConnectionCount(connections.length)
       } catch (error) {
         console.error("Failed to fetch connection count:", error)
@@ -95,138 +105,106 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
     router.push("/login")
   }
 
-  const startResizing = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
-
-  const stopResizing = useCallback(() => {
-    setIsResizing(false)
-  }, [])
-
-  const resize = useCallback((e: MouseEvent) => {
-    if (isResizing && sidebarRef.current) {
-      const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
-        setWidth(newWidth)
-      }
-    }
-  }, [isResizing])
-
-  useEffect(() => {
-    if (isResizing) {
-      window.addEventListener("mousemove", resize)
-      window.addEventListener("mouseup", stopResizing)
-    }
-    return () => {
-      window.removeEventListener("mousemove", resize)
-      window.removeEventListener("mouseup", stopResizing)
-    }
-  }, [isResizing, resize, stopResizing])
-
-  const toggleSidebar = useCallback(() => {
+  const toggleSidebar = () => {
     if (onCollapsedChange) {
       onCollapsedChange(!collapsed)
     } else if (onClose) {
       onClose()
     }
-  }, [collapsed, onCollapsedChange, onClose])
+  }
+
+  // 折りたたみ時の内幅 = COLLAPSED_WIDTH - px-3*2 = 64 - 24 = 40px
+  // アイコン領域を40px固定にすることで、折りたたみ時に中央配置され、展開時もアイコン位置が変わらない
+  const ICON_AREA_WIDTH = COLLAPSED_WIDTH - 24 // px-3 (12px) * 2 = 24px
 
   const renderNavItem = (item: NavItem) => {
     const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-    return (
+    const link = (
       <Link
         key={item.href}
         href={item.href}
         onClick={(e) => e.stopPropagation()}
+        className={cn(
+          "flex items-center gap-2 h-9 rounded-md text-sm transition-colors",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        )}
       >
-        <Button
-          variant={isActive ? "secondary" : "ghost"}
-          className={cn(
-            "h-10 w-full justify-start gap-3 px-2",
-            isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
-          )}
-        >
-          <item.icon className="h-5 w-5 shrink-0" />
-          <span className={cn(
-            "transition-opacity duration-300 whitespace-nowrap",
-            collapsed ? "opacity-0" : "opacity-100"
-          )}>{item.label}</span>
-        </Button>
+        <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+          <item.icon className="h-[18px] w-[18px]" />
+        </div>
+        <span className={cn(
+          "transition-opacity duration-200 whitespace-nowrap",
+          collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
+        )}>{item.label}</span>
       </Link>
+    )
+
+    if (!collapsed) return <div key={item.href}>{link}</div>
+
+    return (
+      <Tooltip key={item.href}>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right">{item.label}</TooltipContent>
+      </Tooltip>
     )
   }
 
-  const sidebarWidth = collapsed ? COLLAPSED_WIDTH : width
+  const sidebarWidth = collapsed ? COLLAPSED_WIDTH : SIDEBAR_WIDTH
 
   return (
+    <TooltipProvider>
     <aside
-      ref={sidebarRef}
-      className={cn(
-        "relative flex flex-col h-full glass-sidebar border-r border-sidebar-border overflow-hidden transition-all duration-300",
-        isResizing && "select-none transition-none"
-      )}
+      className="relative flex flex-col h-full glass-sidebar border-r border-sidebar-border overflow-hidden transition-all duration-300"
       style={{ width: sidebarWidth }}
     >
-      {/* Header with Logo and Collapse Button */}
-      <div className="flex items-center justify-between h-16 px-4">
-        <div
-          className="flex items-center gap-3 cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation()
-            toggleSidebar()
-          }}
-        >
-          <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <Zap className="h-4 w-4 text-foreground" />
-          </div>
-          <span className={cn(
-            "font-semibold text-foreground transition-opacity duration-300 whitespace-nowrap",
-            collapsed ? "opacity-0" : "opacity-100"
-          )}>MCPist</span>
+      {/* Header with Logo and Toggle */}
+      <div className="flex items-center h-14 px-3">
+        <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+          <button
+            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "h-8 w-8 shrink-0 transition-opacity duration-300",
-            collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
-          )}
-          onClick={() => onCollapsedChange ? onCollapsedChange(true) : onClose?.()}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+        <span className={cn(
+          "font-semibold text-foreground text-sm whitespace-nowrap transition-opacity duration-200 ml-2",
+          collapsed ? "opacity-0 w-0 overflow-hidden ml-0" : "opacity-100"
+        )}>MCPist</span>
       </div>
 
-      {/* Connected Services Count */}
+      {/* Connection Count */}
       <div
-        className="h-14 px-4 border-b border-sidebar-border cursor-pointer flex items-center"
-        onClick={toggleSidebar}
+        className={cn("mb-2 mx-3 flex items-center", collapsed && "cursor-pointer")}
+        onClick={collapsed ? toggleSidebar : undefined}
       >
-        <div className="flex items-center gap-3">
-          <div
-            className="flex items-center justify-center w-8 h-8 rounded-full text-base font-semibold shrink-0 border"
-            style={{
-              color: accentPreview,
-              backgroundColor: `${accentPreview}20`,
-              borderColor: `${accentPreview}30`,
-            }}
-          >
-            {connectionCount}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+            <div
+              className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold"
+              style={{
+                color: accentPreview,
+                backgroundColor: `${accentPreview}15`,
+              }}
+            >
+              {connectionCount}
+            </div>
           </div>
           <span className={cn(
-            "text-sm text-muted-foreground transition-opacity duration-300 whitespace-nowrap",
-            collapsed ? "opacity-0" : "opacity-100"
+            "text-sm text-muted-foreground transition-opacity duration-200 whitespace-nowrap",
+            collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
           )}>コネクション</span>
         </div>
       </div>
 
       {/* Navigation */}
       <nav
-        className="flex-1 px-3 py-3 overflow-hidden"
-        onClick={toggleSidebar}
+        className={cn("flex-1 py-1 px-3 overflow-hidden", collapsed && "cursor-pointer")}
+        onClick={collapsed ? toggleSidebar : undefined}
       >
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {renderNavItem(navItems.dashboard)}
           {navItems.mcp.map(renderNavItem)}
           {navItems.general.map(renderNavItem)}
@@ -235,53 +213,78 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
       </nav>
 
       {/* Help Link */}
-      <div className="h-12 px-3 flex items-center">
-        <a
-          href="https://docs.mcpist.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="w-full"
-        >
-          <Button
-            variant="ghost"
-            className="w-full h-10 justify-start gap-3 px-2"
+      <div className="py-1 px-3">
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href="https://docs.mcpist.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-2 h-9 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+              >
+                <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+                  <HelpCircle className="h-[18px] w-[18px]" />
+                </div>
+                <span className="opacity-0 w-0 overflow-hidden whitespace-nowrap">ヘルプ</span>
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="right">ヘルプ</TooltipContent>
+          </Tooltip>
+        ) : (
+          <a
+            href="https://docs.mcpist.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 h-9 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
           >
-            <HelpCircle className="h-5 w-5 shrink-0" />
-            <span className={cn(
-              "transition-opacity duration-300 whitespace-nowrap",
-              collapsed ? "opacity-0" : "opacity-100"
-            )}>ヘルプ</span>
-          </Button>
-        </a>
+            <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+              <HelpCircle className="h-[18px] w-[18px]" />
+            </div>
+            <span className="whitespace-nowrap">ヘルプ</span>
+          </a>
+        )}
       </div>
 
       {/* User Profile */}
-      <div className="h-14 px-4 border-t border-sidebar-border flex items-center">
+      <div className="py-3 px-3 border-t border-sidebar-border">
         {collapsed ? (
-          <Avatar className="h-8 w-8 shrink-0">
-            {user?.avatar && <AvatarImage src={user.avatar} />}
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              {user?.name?.slice(0, 2) || "U"}
-            </AvatarFallback>
-          </Avatar>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center">
+                <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+                  <Avatar className="h-8 w-8 shrink-0">
+                    {user?.avatar && <AvatarImage src={user.avatar} />}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {user?.name?.slice(0, 2) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">{user?.name}</TooltipContent>
+          </Tooltip>
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="w-full h-10 justify-start gap-3 px-0"
-              >
-                <Avatar className="h-8 w-8 shrink-0">
-                  {user?.avatar && <AvatarImage src={user.avatar} />}
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    {user?.name?.slice(0, 2) || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</span>
-              </Button>
+              <button className="w-full flex items-center gap-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors text-left">
+                <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+                  <Avatar className="h-8 w-8 shrink-0">
+                    {user?.avatar && <AvatarImage src={user.avatar} />}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {user?.name?.slice(0, 2) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</div>
+                </div>
+                <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start" className="w-56">
+            <DropdownMenuContent side="right" align="end" className="w-56">
               <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 ログアウト
@@ -290,14 +293,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
           </DropdownMenu>
         )}
       </div>
-
-      {/* Resize Handle */}
-      {!collapsed && (
-        <div
-          className="absolute top-0 right-0 w-1 h-full cursor-ew-resize bg-transparent hover:bg-primary/30 active:bg-primary/40 transition-colors"
-          onMouseDown={startResizing}
-        />
-      )}
     </aside>
+    </TooltipProvider>
   )
 }

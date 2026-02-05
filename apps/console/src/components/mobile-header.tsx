@@ -1,9 +1,8 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
-import { Menu, Zap } from "lucide-react"
+import { PanelLeft } from "lucide-react"
 import { Sidebar } from "./sidebar"
 import { useState } from "react"
 
@@ -11,13 +10,13 @@ export function MobileHeader() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="flex items-center h-14 px-4 border-b border-border bg-sidebar md:hidden">
+    <div className="md:hidden fixed z-50">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="mr-3">
-            <Menu className="h-5 w-5" />
+          <button className="fixed top-4 left-3 z-40 h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors bg-transparent">
+            <PanelLeft className="h-4 w-4" />
             <span className="sr-only">メニューを開く</span>
-          </Button>
+          </button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-64" hideCloseButton>
           <VisuallyHidden.Root>
@@ -26,12 +25,6 @@ export function MobileHeader() {
           <Sidebar onClose={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-          <Zap className="h-4 w-4 text-primary-foreground" />
-        </div>
-        <span className="font-semibold text-brand">MCPist</span>
-      </div>
-    </header>
+    </div>
   )
 }
