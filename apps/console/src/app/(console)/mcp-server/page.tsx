@@ -73,6 +73,9 @@ type LogEntry = {
   message: string
 }
 
+// モジュールレベルキャッシュ
+let cachedApiKeys: ApiKey[] | null = null
+
 export default function McpConnectionPage() {
   const { user } = useAuth()
   const { accentColor } = useAppearance()
@@ -80,8 +83,9 @@ export default function McpConnectionPage() {
   const [copied, setCopied] = useState<string | null>(null)
 
   // API Key management state
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
-  const [keysLoading, setKeysLoading] = useState(true)
+  const hasCached = cachedApiKeys !== null
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>(cachedApiKeys ?? [])
+  const [keysLoading, setKeysLoading] = useState(!hasCached)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deleteDialogKey, setDeleteDialogKey] = useState<ApiKey | null>(null)
   const [createdKey, setCreatedKey] = useState<(GenerateApiKeyResult & { display_name: string }) | null>(null)
@@ -117,6 +121,7 @@ export default function McpConnectionPage() {
   const loadApiKeys = useCallback(async () => {
     try {
       const keys = await listApiKeys()
+      cachedApiKeys = keys
       setApiKeys(keys)
     } catch (error) {
       if (error instanceof ApiKeyError) {
@@ -389,24 +394,26 @@ export default function McpConnectionPage() {
     <div className="p-6 space-y-6">
       {/* Auth Method Tabs - wraps everything */}
       <Tabs defaultValue="oauth" className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-4 pl-8 md:pl-0">
           <h1 className="text-2xl font-bold text-foreground">MCPサーバー</h1>
-          <TabsList className="bg-background p-1" style={{ borderWidth: 1, borderStyle: "solid", borderColor: accentPreview }}>
-            <TabsTrigger
-              value="oauth"
-              className="gap-2 px-4"
-            >
-              <LogIn className="h-4 w-4" />
-              OAuth
-            </TabsTrigger>
-            <TabsTrigger
-              value="api-key"
-              className="gap-2 px-4"
-            >
-              <Key className="h-4 w-4" />
-              APIキー
-            </TabsTrigger>
-          </TabsList>
+          <div className="ml-auto">
+            <TabsList className="bg-background p-1" style={{ borderWidth: 1, borderStyle: "solid", borderColor: accentPreview }}>
+              <TabsTrigger
+                value="oauth"
+                className="gap-2 px-4"
+              >
+                <LogIn className="h-4 w-4" />
+                OAuth
+              </TabsTrigger>
+              <TabsTrigger
+                value="api-key"
+                className="gap-2 px-4"
+              >
+                <Key className="h-4 w-4" />
+                APIキー
+              </TabsTrigger>
+            </TabsList>
+          </div>
           <style>{`
             [data-slot="tabs-trigger"][data-state="active"] {
               background-color: ${accentPreview} !important;
@@ -423,21 +430,21 @@ export default function McpConnectionPage() {
           {/* API Keys Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                APIキー
-              </CardTitle>
-              <CardDescription>
-                Claude Code、Cursor などの MCP クライアントで使用する認証キー
-              </CardDescription>
+          <div className="flex flex-wrap items-center gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              APIキー
+            </CardTitle>
+            <div className="ml-auto">
+              <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                新規作成
+              </Button>
             </div>
-            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              新規作成
-            </Button>
           </div>
+          <CardDescription>
+            Claude Code、Cursor などの MCP クライアントで使用する認証キー
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {keysLoading ? (
@@ -462,50 +469,50 @@ export default function McpConnectionPage() {
                 <div
                   key={apiKey.id}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-lg border",
+                    "p-3 rounded-lg border overflow-hidden",
                     (isExpired || isRevoked) && "border-warning/50 bg-warning/5"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                      <Key className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-7 h-7 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                        <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <span className="font-medium text-sm truncate">{apiKey.display_name}</span>
+                      {isExpired && (
+                        <Badge
+                          variant="outline"
+                          className="bg-warning/20 text-warning border-warning/30 text-xs shrink-0"
+                        >
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          期限切れ
+                        </Badge>
+                      )}
+                      {isRevoked && (
+                        <Badge
+                          variant="outline"
+                          className="bg-destructive/20 text-destructive border-destructive/30 text-xs shrink-0"
+                        >
+                          無効化済み
+                        </Badge>
+                      )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{apiKey.display_name}</span>
-                        {isExpired && (
-                          <Badge
-                            variant="outline"
-                            className="bg-warning/20 text-warning border-warning/30 text-xs"
-                          >
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            期限切れ
-                          </Badge>
-                        )}
-                        {isRevoked && (
-                          <Badge
-                            variant="outline"
-                            className="bg-destructive/20 text-destructive border-destructive/30 text-xs"
-                          >
-                            無効化済み
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs font-mono text-muted-foreground">{apiKey.key_prefix}</p>
-                      <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                        {apiKey.expires_at && <span>有効期限: {formatDate(apiKey.expires_at)}</span>}
-                        <span>最終使用: {formatLastUsed(apiKey.last_used_at)}</span>
-                      </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteDialogKey(apiKey)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="mt-1.5 pl-9 text-xs text-muted-foreground space-y-0.5">
+                    <p className="font-mono truncate">{apiKey.key_prefix}</p>
+                    <div className="flex flex-wrap gap-x-3">
+                      {apiKey.expires_at && <span>有効期限: {formatDate(apiKey.expires_at)}</span>}
+                      <span>最終使用: {formatLastUsed(apiKey.last_used_at)}</span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => setDeleteDialogKey(apiKey)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
               )})}
 
@@ -517,16 +524,12 @@ export default function McpConnectionPage() {
       {/* Connection Settings Card (with integrated test) */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                接続設定
-              </CardTitle>
-              <CardDescription>
-                Claude CodeやCursorなどのMCPクライアントで使用する設定例
-              </CardDescription>
-            </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              接続設定
+            </CardTitle>
+            <div className="ml-auto">
             <Button
               variant={testApiKey ? "default" : "outline"}
               size="sm"
@@ -545,7 +548,11 @@ export default function McpConnectionPage() {
                 </>
               )}
             </Button>
+            </div>
           </div>
+          <CardDescription>
+            Claude CodeやCursorなどのMCPクライアントで使用する設定例
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-secondary rounded-lg p-4 overflow-x-auto">
@@ -697,17 +704,18 @@ export default function McpConnectionPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Server className="h-5 w-5" />
-                リモートMCPサーバー エンドポイント
+                MCPサーバー エンドポイント
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-secondary rounded-lg px-4 py-3 font-mono text-sm">
+                <div className="flex-1 min-w-0 bg-secondary rounded-lg px-4 py-3 font-mono text-sm break-all">
                   {endpoint}
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
+                  className="shrink-0"
                   onClick={() => handleCopy(endpoint, "oauth-endpoint")}
                 >
                   {copied === "oauth-endpoint" ? (
@@ -729,17 +737,19 @@ export default function McpConnectionPage() {
       {/* Setup Guide */}
       <Card className="mt-8">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-4">
             <CardTitle className="text-lg">セットアップガイド</CardTitle>
-            <Select value={guideClient} onValueChange={(v) => setGuideClient(v as "claude" | "chatgpt")}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="claude">Claude Desktop</SelectItem>
-                <SelectItem value="chatgpt">ChatGPT</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="ml-auto">
+              <Select value={guideClient} onValueChange={(v) => setGuideClient(v as "claude" | "chatgpt")}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="claude">Claude Desktop</SelectItem>
+                  <SelectItem value="chatgpt">ChatGPT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-8">

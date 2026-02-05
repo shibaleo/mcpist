@@ -9,6 +9,13 @@ import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
+// ダッシュボードデータのモジュールレベルキャッシュ
+let cachedCredits: UserCredits | null = null
+let cachedAccountStatus: string | null = null
+let cachedConnections: ServiceConnection[] | null = null
+let cachedToolSettings: ToolSetting[] | null = null
+let cachedUsage: UsageStats | null = null
+
 // オンボーディングステップの判定
 type OnboardingStep = "connections" | "billing" | "complete"
 
@@ -88,13 +95,14 @@ function HighlightCard({
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [credits, setCredits] = useState<UserCredits | null>(null)
-  const [accountStatus, setAccountStatus] = useState<string | null>(null)
-  const [connections, setConnections] = useState<ServiceConnection[]>([])
-  const [toolSettings, setToolSettings] = useState<ToolSetting[]>([])
-  const [usage, setUsage] = useState<UsageStats | null>(null)
-  const [usageLoading, setUsageLoading] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const hasCachedData = cachedConnections !== null
+  const [credits, setCredits] = useState<UserCredits | null>(cachedCredits)
+  const [accountStatus, setAccountStatus] = useState<string | null>(cachedAccountStatus)
+  const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
+  const [toolSettings, setToolSettings] = useState<ToolSetting[]>(cachedToolSettings ?? [])
+  const [usage, setUsage] = useState<UsageStats | null>(cachedUsage)
+  const [usageLoading, setUsageLoading] = useState(!cachedUsage)
+  const [loading, setLoading] = useState(!hasCachedData)
 
   // 期間選択 (デフォルト: 今月)
   const [usageStartDate, setUsageStartDate] = useState<Date>(getStartOfMonth())
@@ -110,12 +118,18 @@ export default function DashboardPage() {
           getServiceConnections(),
           getMyToolSettings(),
         ])
-        setAccountStatus(contextData?.account_status ?? null)
-        setCredits(contextData ? {
+        const newAccountStatus = contextData?.account_status ?? null
+        const newCredits = contextData ? {
           free_credits: contextData.free_credits,
           paid_credits: contextData.paid_credits,
           updated_at: new Date().toISOString(),
-        } : null)
+        } : null
+        cachedAccountStatus = newAccountStatus
+        cachedCredits = newCredits
+        cachedConnections = connectionsData
+        cachedToolSettings = toolSettingsData
+        setAccountStatus(newAccountStatus)
+        setCredits(newCredits)
         setConnections(connectionsData)
         setToolSettings(toolSettingsData)
       } catch (error) {
@@ -134,6 +148,7 @@ export default function DashboardPage() {
       setUsageLoading(true)
       try {
         const usageData = await getMyUsage(usageStartDate, usageEndDate)
+        cachedUsage = usageData
         setUsage(usageData)
       } catch (error) {
         console.error('Failed to fetch usage data:', error)
@@ -162,8 +177,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
+    <div className="p-6 md:p-8 space-y-6">
+      <div className="pl-8 md:pl-0">
         <h1 className="text-2xl font-bold text-foreground">ダッシュボード</h1>
         <p className="text-muted-foreground mt-1">
           MCPistへようこそ、{user?.name}さん

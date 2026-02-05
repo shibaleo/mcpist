@@ -57,12 +57,12 @@ export function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
-        {/* Mobile Header */}
-        <MobileHeader />
-
         {/* Page Content */}
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
+
+      {/* Mobile Header - outside z-10 stacking context */}
+      <MobileHeader />
     </div>
   )
 }

@@ -42,12 +42,16 @@ import {
   type Prompt,
 } from "@/lib/prompts"
 
+// モジュールレベルキャッシュ
+let cachedPrompts: Prompt[] | null = null
+
 export const dynamic = "force-dynamic"
 
 export default function PromptsPage() {
   const { user } = useAuth()
-  const [prompts, setPrompts] = useState<Prompt[]>([])
-  const [loading, setLoading] = useState(true)
+  const hasCached = cachedPrompts !== null
+  const [prompts, setPrompts] = useState<Prompt[]>(cachedPrompts ?? [])
+  const [loading, setLoading] = useState(!hasCached)
 
   // Edit/Create dialog state
   const [editDialog, setEditDialog] = useState<{
@@ -69,6 +73,7 @@ export default function PromptsPage() {
   const loadPrompts = useCallback(async () => {
     try {
       const data = await listPrompts()
+      cachedPrompts = data
       setPrompts(data)
     } catch (error) {
       console.error("Failed to load prompts:", error)
@@ -203,7 +208,7 @@ export default function PromptsPage() {
   if (loading) {
     return (
       <div className="p-6 space-y-6">
-        <div>
+        <div className="pl-8 md:pl-0">
           <h1 className="text-2xl font-bold text-foreground">テンプレート</h1>
           <p className="text-muted-foreground mt-1">カスタムテンプレートを管理します</p>
         </div>
@@ -216,15 +221,17 @@ export default function PromptsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="pl-8 md:pl-0">
+        <div className="flex flex-wrap items-center gap-4">
           <h1 className="text-2xl font-bold text-foreground">テンプレート</h1>
-          <p className="text-muted-foreground mt-1">カスタムテンプレートを管理します</p>
+          <div className="ml-auto">
+            <Button onClick={handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              新規作成
+            </Button>
+          </div>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          新規作成
-        </Button>
+        <p className="text-muted-foreground mt-1">カスタムテンプレートを管理します</p>
       </div>
 
       {prompts.length === 0 ? (
@@ -247,47 +254,46 @@ export default function PromptsPage() {
               onClick={() => handleEdit(prompt)}
             >
               <CardHeader className="py-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={prompt.enabled}
-                      onCheckedChange={() => handleToggleEnabled(prompt)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-sm font-medium">{prompt.name}</CardTitle>
-                        <CardDescription className="text-xs">
-                          {new Date(prompt.updated_at).toLocaleDateString("ja-JP")}
-                        </CardDescription>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate max-w-md mt-0.5">
-                        {prompt.description || prompt.content.replace(/\n/g, " ")}
-                      </p>
+                <div className="flex items-start gap-3 overflow-hidden">
+                  <Switch
+                    checked={prompt.enabled}
+                    onCheckedChange={() => handleToggleEnabled(prompt)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 mt-0.5"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-sm font-medium truncate">{prompt.name}</CardTitle>
+                      <CardDescription className="text-xs shrink-0">
+                        {new Date(prompt.updated_at).toLocaleDateString("ja-JP")}
+                      </CardDescription>
                     </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {prompt.description || prompt.content.replace(/\n/g, " ")}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={(e) => {
                         e.stopPropagation()
                         handleEdit(prompt)
                       }}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7"
                       onClick={(e) => {
                         e.stopPropagation()
                         setDeleteDialog(prompt)
                       }}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
                 </div>

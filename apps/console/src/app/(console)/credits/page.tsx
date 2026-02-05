@@ -9,13 +9,18 @@ import { getUserContext, type UserCredits } from "@/lib/credits"
 import { Coins, Gift, Loader2, CheckCircle, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 
+// モジュールレベルキャッシュ
+let cachedCredits: UserCredits | null = null
+let cachedAccountStatus: string | null = null
+
 export const dynamic = "force-dynamic"
 
 export default function BillingPage() {
   const searchParams = useSearchParams()
-  const [credits, setCredits] = useState<UserCredits | null>(null)
-  const [accountStatus, setAccountStatus] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const hasCached = cachedCredits !== null
+  const [credits, setCredits] = useState<UserCredits | null>(cachedCredits)
+  const [accountStatus, setAccountStatus] = useState<string | null>(cachedAccountStatus)
+  const [loading, setLoading] = useState(!hasCached)
   const [purchasing, setPurchasing] = useState(false)
   const [claiming, setClaiming] = useState(false)
 
@@ -43,12 +48,16 @@ export default function BillingPage() {
     setLoading(true)
     try {
       const context = await getUserContext()
-      setAccountStatus(context?.account_status ?? null)
-      setCredits(context ? {
+      const newAccountStatus = context?.account_status ?? null
+      const newCredits = context ? {
         free_credits: context.free_credits,
         paid_credits: context.paid_credits,
         updated_at: new Date().toISOString(),
-      } : null)
+      } : null
+      cachedAccountStatus = newAccountStatus
+      cachedCredits = newCredits
+      setAccountStatus(newAccountStatus)
+      setCredits(newCredits)
     } catch (error) {
       console.error("Failed to fetch user context:", error)
     } finally {
@@ -121,7 +130,7 @@ export default function BillingPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
+      <div className="pl-8 md:pl-0">
         <h1 className="text-2xl font-bold text-foreground">クレジット</h1>
         <p className="text-muted-foreground mt-1">クレジット残高の確認と購入</p>
       </div>
@@ -145,19 +154,19 @@ export default function BillingPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-4xl font-bold">{totalCredits.toLocaleString()}</span>
                 <span className="text-muted-foreground">クレジット</span>
               </div>
-              <div className="flex gap-4 text-sm">
+              <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-info/20 text-info">
+                  <Badge variant="secondary" className="bg-info/20 text-info shrink-0">
                     無料
                   </Badge>
                   <span>{credits?.free_credits.toLocaleString() ?? 0}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-success/20 text-success">
+                  <Badge variant="secondary" className="bg-success/20 text-success shrink-0">
                     有料
                   </Badge>
                   <span>{credits?.paid_credits.toLocaleString() ?? 0}</span>
@@ -172,8 +181,8 @@ export default function BillingPage() {
       {accountStatus === "pre_active" && (
         <Card className="animate-pulse-border border-primary shadow-lg shadow-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg flex items-start gap-2">
+              <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               ようこそ！初回クレジットを受け取る
             </CardTitle>
             <CardDescription>
@@ -183,14 +192,14 @@ export default function BillingPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="bg-primary/10 rounded-lg p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center gap-4">
                   <div>
                     <p className="font-medium">スタートボーナス</p>
                     <p className="text-sm text-muted-foreground">
                       今すぐ受け取れます
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="ml-auto text-right">
                     <p className="text-2xl font-bold text-primary">100</p>
                     <p className="text-sm text-muted-foreground">クレジット</p>
                   </div>
@@ -223,8 +232,8 @@ export default function BillingPage() {
       {accountStatus === "active" && (
         <Card className="border-dashed border-2 border-primary/30">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Gift className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg flex items-start gap-2">
+              <Gift className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               テスト用クレジットを取得
             </CardTitle>
             <CardDescription>
@@ -234,16 +243,14 @@ export default function BillingPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">テストクレジット</p>
-                    <p className="text-sm text-muted-foreground">
-                      100クレジット（無料）
-                    </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold">100</span>
+                    <span className="text-muted-foreground">クレジット</span>
                   </div>
-                  <div className="text-right">
+                  <div className="ml-auto text-right">
                     <p className="text-2xl font-bold text-primary">無料</p>
-                    <p className="text-sm text-muted-foreground">100クレジット</p>
+                    <p className="text-sm text-muted-foreground">テストクレジット</p>
                   </div>
                 </div>
               </div>

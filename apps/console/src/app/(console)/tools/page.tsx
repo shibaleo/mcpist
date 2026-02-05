@@ -45,6 +45,12 @@ import {
 } from "@/lib/tool-settings"
 import { getUserSettings, type Language } from "@/lib/user-settings"
 
+// モジュールレベルキャッシュ
+let cachedToolSettings: ToolSettingsMap | null = null
+let cachedConnections: ServiceConnection[] | null = null
+let cachedModuleDescriptions: ModuleDescriptionsMap | null = null
+let cachedLanguage: Language | null = null
+
 export const dynamic = "force-dynamic"
 
 export default function ToolsPage() {
@@ -53,25 +59,27 @@ export default function ToolsPage() {
   const accentPreview = accentColors.find((c) => c.id === accentColor)?.preview ?? "#22c55e"
 
   // Tool settings state (loaded from DB)
-  const [toolSettings, setToolSettings] = useState<ToolSettingsMap>({})
-  const [localToolSettings, setLocalToolSettings] = useState<ToolSettingsMap>({})
-  const [connections, setConnections] = useState<ServiceConnection[]>([])
-  const [loading, setLoading] = useState(true)
+  const hasCached = cachedToolSettings !== null
+  const [toolSettings, setToolSettings] = useState<ToolSettingsMap>(cachedToolSettings ?? {})
+  const [localToolSettings, setLocalToolSettings] = useState<ToolSettingsMap>(cachedToolSettings ?? {})
+  const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
+  const [loading, setLoading] = useState(!hasCached)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
 
   // Module description state
-  const [moduleDescriptions, setModuleDescriptions] = useState<ModuleDescriptionsMap>({})
+  const [moduleDescriptions, setModuleDescriptions] = useState<ModuleDescriptionsMap>(cachedModuleDescriptions ?? {})
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null)
   const [editingDescription, setEditingDescription] = useState("")
   const [savingDescription, setSavingDescription] = useState(false)
 
   // Language setting
-  const [language, setLanguage] = useState<Language>("ja-JP")
+  const [language, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
 
   // 接続済みサービスを取得
   const loadConnections = useCallback(async () => {
     try {
       const data = await getMyConnections()
+      cachedConnections = data
       setConnections(data)
     } catch (error) {
       if (error instanceof TokenVaultError) {
@@ -89,9 +97,13 @@ export default function ToolsPage() {
         getUserSettings(),
       ])
       const settingsMap = toToolSettingsMap(settings)
+      const descriptionsMap = toModuleDescriptionsMap(descriptions)
+      cachedToolSettings = settingsMap
+      cachedModuleDescriptions = descriptionsMap
+      cachedLanguage = userSettings.language
       setToolSettings(settingsMap)
       setLocalToolSettings(settingsMap)
-      setModuleDescriptions(toModuleDescriptionsMap(descriptions))
+      setModuleDescriptions(descriptionsMap)
       setLanguage(userSettings.language)
     } catch (error) {
       if (error instanceof ToolSettingsError) {
@@ -338,7 +350,7 @@ export default function ToolsPage() {
   if (loading) {
     return (
       <div className="p-6 space-y-6">
-        <div>
+        <div className="pl-8 md:pl-0">
           <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
           <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理します</p>
         </div>
@@ -353,7 +365,7 @@ export default function ToolsPage() {
   if (connectedModules.length === 0) {
     return (
       <div className="p-6 space-y-6">
-        <div>
+        <div className="pl-8 md:pl-0">
           <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
           <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理します</p>
         </div>
@@ -380,7 +392,7 @@ export default function ToolsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
+      <div className="pl-8 md:pl-0">
         <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
         <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理します</p>
       </div>

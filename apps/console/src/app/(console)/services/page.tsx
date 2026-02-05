@@ -223,6 +223,11 @@ const authConfig: Record<string, AuthConfig> = {
   },
 }
 
+// モジュールレベルキャッシュ
+let cachedConnections: ServiceConnection[] | null = null
+let cachedLanguage: Language | null = null
+let cachedPreferredModules: string[] | null = null
+
 export const dynamic = "force-dynamic"
 
 export default function ServicesPage() {
@@ -232,15 +237,16 @@ export default function ServicesPage() {
   const router = useRouter()
   const accentPreview = accentColors.find((c) => c.id === accentColor)?.preview ?? "#22c55e"
 
-  const [connections, setConnections] = useState<ServiceConnection[]>([])
-  const [loading, setLoading] = useState(true)
+  const hasCached = cachedConnections !== null
+  const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
+  const [loading, setLoading] = useState(!hasCached)
   const carouselRef = useRef<HTMLDivElement>(null)
 
   // Language setting
-  const [language, setLanguage] = useState<Language>("ja-JP")
+  const [language, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
 
   // User preferences (preferred modules from onboarding)
-  const [preferredModules, setPreferredModules] = useState<string[]>([])
+  const [preferredModules, setPreferredModules] = useState<string[]>(cachedPreferredModules ?? [])
 
   // Dialog states
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
@@ -254,6 +260,7 @@ export default function ServicesPage() {
   const loadConnections = useCallback(async () => {
     try {
       const data = await getMyConnections()
+      cachedConnections = data
       setConnections(data)
     } catch (error) {
       if (error instanceof TokenVaultError) {
@@ -269,10 +276,12 @@ export default function ServicesPage() {
         getUserSettings(),
         fetch("/api/user/preferences").then(res => res.json()).catch(() => ({})),
       ])
+      cachedLanguage = userSettings.language
       setLanguage(userSettings.language)
       // preferred_modules を設定
       const prefs = prefsResponse as UserPreferences
       if (prefs?.preferred_modules && Array.isArray(prefs.preferred_modules)) {
+        cachedPreferredModules = prefs.preferred_modules
         setPreferredModules(prefs.preferred_modules)
       }
     } catch (error) {
@@ -472,7 +481,7 @@ export default function ServicesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
+      <div className="pl-8 md:pl-0">
         <h1 className="text-2xl font-bold text-foreground">サービス接続</h1>
         <p className="text-muted-foreground mt-1">外部サービスへの接続を管理します</p>
       </div>
