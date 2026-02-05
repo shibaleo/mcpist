@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Link2, Coins, Receipt, Loader2, Settings2, ChevronRight } from "lucide-react"
-import { getUserContext, getServiceConnections, getMyMonthlyUsage, type UserCredits, type ServiceConnection, type UsageStats } from "@/lib/credits"
+import { Link2, Coins, Receipt, Loader2, Settings2, ChevronRight, Calendar } from "lucide-react"
+import { getUserContext, getServiceConnections, getMyUsage, type UserCredits, type ServiceConnection, type UsageStats } from "@/lib/credits"
 import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -29,6 +29,23 @@ function getOnboardingStep(
 }
 
 // ハイライトカードのラッパー
+// 日付をYYYY-MM-DD形式に変換
+function formatDateForInput(date: Date): string {
+  return date.toISOString().split('T')[0]
+}
+
+// 今月の開始日を取得
+function getStartOfMonth(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+}
+
+// 今月の終了日（翌月1日）を取得
+function getEndOfMonth(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1)
+}
+
 function HighlightCard({
   children,
   href,
@@ -65,18 +82,23 @@ export default function DashboardPage() {
   const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [connections, setConnections] = useState<ServiceConnection[]>([])
   const [toolSettings, setToolSettings] = useState<ToolSetting[]>([])
-  const [monthlyUsage, setMonthlyUsage] = useState<UsageStats | null>(null)
+  const [usage, setUsage] = useState<UsageStats | null>(null)
+  const [usageLoading, setUsageLoading] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // 期間選択 (デフォルト: 今月)
+  const [usageStartDate, setUsageStartDate] = useState<Date>(getStartOfMonth())
+  const [usageEndDate, setUsageEndDate] = useState<Date>(getEndOfMonth())
+
+  // 初期データ取得
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
       try {
-        const [contextData, connectionsData, toolSettingsData, usageData] = await Promise.all([
+        const [contextData, connectionsData, toolSettingsData] = await Promise.all([
           getUserContext(),
           getServiceConnections(),
           getMyToolSettings(),
-          getMyMonthlyUsage(),
         ])
         setAccountStatus(contextData?.account_status ?? null)
         setCredits(contextData ? {
@@ -86,7 +108,6 @@ export default function DashboardPage() {
         } : null)
         setConnections(connectionsData)
         setToolSettings(toolSettingsData)
-        setMonthlyUsage(usageData)
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
       } finally {
@@ -96,6 +117,23 @@ export default function DashboardPage() {
 
     fetchData()
   }, [])
+
+  // 利用量データ取得 (期間変更時)
+  useEffect(() => {
+    async function fetchUsage() {
+      setUsageLoading(true)
+      try {
+        const usageData = await getMyUsage(usageStartDate, usageEndDate)
+        setUsage(usageData)
+      } catch (error) {
+        console.error('Failed to fetch usage data:', error)
+      } finally {
+        setUsageLoading(false)
+      }
+    }
+
+    fetchUsage()
+  }, [usageStartDate, usageEndDate])
 
   const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
   const enabledToolCount = toolSettings.filter((t) => t.enabled).length
@@ -217,27 +255,49 @@ export default function DashboardPage() {
           </CardContent>
         </HighlightCard>
 
-        {/* Usage This Month */}
-        <HighlightCard href="/billing">
+        {/* Usage with Date Range */}
+        <Card className="relative">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Receipt className="h-4 w-4" />
-              今月の利用
+              利用量
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {usageLoading ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : (
               <>
                 <div className="text-3xl font-bold">
-                  {monthlyUsage?.total_consumed?.toLocaleString() ?? 0}
+                  {usage?.total_consumed?.toLocaleString() ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">クレジット消費</p>
               </>
             )}
+            {/* 期間選択 */}
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                <Calendar className="h-3 w-3" />
+                期間
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={formatDateForInput(usageStartDate)}
+                  onChange={(e) => setUsageStartDate(new Date(e.target.value))}
+                  className="flex-1 px-2 py-1 text-xs rounded border border-input bg-background"
+                />
+                <span className="text-muted-foreground self-center">〜</span>
+                <input
+                  type="date"
+                  value={formatDateForInput(usageEndDate)}
+                  onChange={(e) => setUsageEndDate(new Date(e.target.value))}
+                  className="flex-1 px-2 py-1 text-xs rounded border border-input bg-background"
+                />
+              </div>
+            </div>
           </CardContent>
-        </HighlightCard>
+        </Card>
       </div>
     </div>
   )
