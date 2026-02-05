@@ -242,7 +242,7 @@ export default function DashboardPage() {
 
         {/* Credit Balance */}
         <HighlightCard
-          href="/billing"
+          href="/credits"
           highlight={!loading && (onboardingStep === "billing" || showLowCreditAlert)}
         >
           <CardHeader className="pb-2">

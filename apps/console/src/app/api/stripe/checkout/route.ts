@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/billing?success=true`,
-      cancel_url: `${origin}/billing?canceled=true`,
+      success_url: `${origin}/credits?success=true`,
+      cancel_url: `${origin}/credits?canceled=true`,
       metadata: {
         user_id: user.id,
         credits: "100",
