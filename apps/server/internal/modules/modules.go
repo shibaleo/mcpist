@@ -142,6 +142,9 @@ func DynamicMetaTools(enabledModules []string, lang string) []Tool {
 {"id":"search","module":"notion","tool":"search","params":{"query":"design"}}
 {"id":"page","module":"notion","tool":"get_page_content","params":{"page_id":"${search.results[0].id}"},"after":["search"],"output":true}
 
+[制限]
+- 1バッチあたり最大10コマンド
+
 [実行ルール]
 - afterなし -> goroutineによる並列実行
 - afterあり -> 依存タスク完了後に実行
@@ -179,6 +182,9 @@ func DynamicMetaTools(enabledModules []string, lang string) []Tool {
 [Example 2: Chained Processing]
 {"id":"search","module":"notion","tool":"search","params":{"query":"design"}}
 {"id":"page","module":"notion","tool":"get_page_content","params":{"page_id":"${search.results[0].id}"},"after":["search"],"output":true}
+
+[Limits]
+- Maximum 10 commands per batch
 
 [Execution Rules]
 - No after -> parallel execution via goroutines

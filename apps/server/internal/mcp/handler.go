@@ -514,6 +514,15 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 		}
 	}
 
+	// Batch size limit
+	const maxBatchSize = 10
+	if toolCount > maxBatchSize {
+		return &Error{
+			Code:    InvalidRequest,
+			Message: fmt.Sprintf("batch too large: %d commands (max %d)", toolCount, maxBatchSize),
+		}
+	}
+
 	if len(deniedDetails) > 0 {
 		// Layer 3: Detection log (server-side only, not exposed to client)
 		observability.LogSecurityEvent(requestID, authCtx.UserID, "batch_permission_denied", map[string]any{
