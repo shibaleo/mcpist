@@ -22,6 +22,7 @@ import {
   getUserSettings,
   updateUserSettings,
   type Language,
+  type UserSettings,
 } from "@/lib/user-settings"
 import { toast } from "sonner"
 
