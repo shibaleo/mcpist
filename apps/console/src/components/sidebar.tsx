@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -24,7 +25,6 @@ import {
   Server,
   CreditCard,
   Shield,
-  HelpCircle,
   KeyRound,
   MessageSquareText,
   Wrench,
@@ -48,7 +48,6 @@ const navItems = {
   ],
   general: [
     { href: "/credits", label: "クレジット", icon: CreditCard },
-    { href: "/settings", label: "設定", icon: Settings },
   ],
   admin: [
     { href: "/admin", label: "管理者パネル", icon: Shield },
@@ -212,86 +211,56 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
         </div>
       </nav>
 
-      {/* Help Link */}
-      <div className="py-1 px-3">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <a
-                href="https://docs.mcpist.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-2 h-9 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-              >
-                <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
-                  <HelpCircle className="h-[18px] w-[18px]" />
-                </div>
-                <span className="opacity-0 w-0 overflow-hidden whitespace-nowrap">ヘルプ</span>
-              </a>
-            </TooltipTrigger>
-            <TooltipContent side="right">ヘルプ</TooltipContent>
-          </Tooltip>
-        ) : (
-          <a
-            href="https://docs.mcpist.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-2 h-9 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-          >
-            <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
-              <HelpCircle className="h-[18px] w-[18px]" />
-            </div>
-            <span className="whitespace-nowrap">ヘルプ</span>
-          </a>
-        )}
-      </div>
-
-      {/* User Profile */}
-      <div className="py-3 px-3 border-t border-sidebar-border">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center">
-                <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
-                  <Avatar className="h-8 w-8 shrink-0">
-                    {user?.avatar && <AvatarImage src={user.avatar} />}
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {user?.name?.slice(0, 2) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
+      {/* User Profile - 固定高さで開閉時のズレを防止 */}
+      <div className="h-14 px-3 border-t border-sidebar-border flex items-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className={cn(
+              "flex items-center h-10 rounded-md hover:bg-sidebar-accent/50 transition-colors text-left",
+              collapsed ? "" : "w-full gap-2"
+            )}>
+              <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
+                <Avatar className="h-8 w-8 shrink-0">
+                  {user?.avatar && <AvatarImage src={user.avatar} />}
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {user?.name?.slice(0, 2) || "U"}
+                  </AvatarFallback>
+                </Avatar>
               </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">{user?.name}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-2 py-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors text-left">
-                <div className="flex items-center justify-center shrink-0" style={{ width: ICON_AREA_WIDTH }}>
-                  <Avatar className="h-8 w-8 shrink-0">
-                    {user?.avatar && <AvatarImage src={user.avatar} />}
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {user?.name?.slice(0, 2) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</div>
-                </div>
-                <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="end" className="w-56">
-              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                ログアウト
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              <div className={cn(
+                "flex-1 min-w-0 transition-opacity duration-200",
+                collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
+              )}>
+                <div className="text-sm font-medium text-sidebar-foreground truncate">{user?.name}</div>
+              </div>
+              <ChevronsUpDown className={cn(
+                "h-4 w-4 text-muted-foreground shrink-0 transition-opacity duration-200",
+                collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"
+              )} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align={collapsed ? "center" : "start"} className="w-56">
+            {/* ユーザー情報 */}
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium truncate">{user?.name}</p>
+              {user?.email && (
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              )}
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                設定
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              ログアウト
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
     </TooltipProvider>

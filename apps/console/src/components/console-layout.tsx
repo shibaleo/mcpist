@@ -35,7 +35,7 @@ export function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-dvh items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading...</div>
       </div>
     )
@@ -46,7 +46,7 @@ export function ConsoleLayout({ children }: ConsoleLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className="flex h-dvh bg-background relative">
       {/* Dot Grid Background - covers entire screen */}
       <div className="absolute inset-0 dot-grid pointer-events-none" />
 
