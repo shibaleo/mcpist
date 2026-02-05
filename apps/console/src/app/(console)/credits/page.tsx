@@ -29,12 +29,12 @@ export default function BillingPage() {
         description: "100クレジットがアカウントに追加されました。",
       })
       // Clear URL params
-      window.history.replaceState({}, "", "/billing")
+      window.history.replaceState({}, "", "/credits")
     } else if (canceled === "true") {
       toast.error("購入がキャンセルされました", {
         description: "クレジットは追加されませんでした。",
       })
-      window.history.replaceState({}, "", "/billing")
+      window.history.replaceState({}, "", "/credits")
     }
   }, [searchParams])
 

@@ -43,7 +43,10 @@ import {
   ChevronDown,
   ChevronRight,
   LogIn,
+  ExternalLink,
+  Image as ImageIcon,
 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -89,6 +92,9 @@ export default function McpConnectionPage() {
   const [expiration, setExpiration] = useState<string>("never")
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // Setup guide state
+  const [guideClient, setGuideClient] = useState<"claude" | "chatgpt">("claude")
 
   // API Key test state
   const mcpServerUrl = getMcpServerUrl()
@@ -384,12 +390,7 @@ export default function McpConnectionPage() {
       {/* Auth Method Tabs - wraps everything */}
       <Tabs defaultValue="oauth" className="space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">MCP接続</h1>
-            <p className="text-muted-foreground mt-1">
-              MCPクライアントからの接続設定
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground">MCPサーバー</h1>
           <TabsList className="bg-background p-1" style={{ borderWidth: 1, borderStyle: "solid", borderColor: accentPreview }}>
             <TabsTrigger
               value="oauth"
@@ -413,6 +414,9 @@ export default function McpConnectionPage() {
             }
           `}</style>
         </div>
+        <p className="text-sm text-muted-foreground -mt-4">
+          MCPサーバーへの接続設定
+        </p>
 
         {/* API Key Authentication Tab */}
         <TabsContent value="api-key" className="space-y-6 mt-0">
@@ -693,11 +697,8 @@ export default function McpConnectionPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Server className="h-5 w-5" />
-                リモートMCP エンドポイント
+                リモートMCPサーバー エンドポイント
               </CardTitle>
-              <CardDescription>
-                Claude DesktopなどのOAuth対応MCPクライアントで指定するURL
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -717,13 +718,134 @@ export default function McpConnectionPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                MCPクライアントでこのURLを指定すると、OAuth認証フローが開始されます。
+                コネクタでこのURLを指定して、OAuth認可フローを実行すると、MCPistに接続できます。
               </p>
             </CardContent>
           </Card>
 
         </TabsContent>
       </Tabs>
+
+      {/* Setup Guide */}
+      <Card className="mt-8">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">セットアップガイド</CardTitle>
+            <Select value={guideClient} onValueChange={(v) => setGuideClient(v as "claude" | "chatgpt")}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="claude">Claude Desktop</SelectItem>
+                <SelectItem value="chatgpt">ChatGPT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-8">
+          {guideClient === "claude" ? (
+            <div className="space-y-4">
+              <ol className="space-y-6 list-none">
+                <li className="space-y-2">
+                  <p className="font-medium">
+                    <span className="inline-flex w-6 h-6 rounded-full bg-primary/10 text-primary items-center justify-center text-xs font-bold mr-2 align-middle">1</span>
+                    設定画面を開く
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Claude Desktop の設定 →「Integrations」を開きます。
+                  </p>
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 h-48 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/50">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-xs">スクリーンショット（準備中）</p>
+                    </div>
+                  </div>
+                </li>
+                <li className="space-y-2">
+                  <p className="font-medium">
+                    <span className="inline-flex w-6 h-6 rounded-full bg-primary/10 text-primary items-center justify-center text-xs font-bold mr-2 align-middle">2</span>
+                    MCPistのURLを追加
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    「Add more integrations」→「Add custom MCP server」を選び、上記のエンドポイント URL を入力します。
+                  </p>
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 h-48 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/50">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-xs">スクリーンショット（準備中）</p>
+                    </div>
+                  </div>
+                </li>
+                <li className="space-y-2">
+                  <p className="font-medium">
+                    <span className="inline-flex w-6 h-6 rounded-full bg-primary/10 text-primary items-center justify-center text-xs font-bold mr-2 align-middle">3</span>
+                    OAuth認可を完了
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ブラウザが開きます。MCPistアカウントでログインし、アクセスを許可すると接続完了です。
+                  </p>
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 h-48 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/50">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-xs">スクリーンショット（準備中）</p>
+                    </div>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <ol className="space-y-6 list-none">
+                <li className="space-y-2">
+                  <p className="font-medium">
+                    <span className="inline-flex w-6 h-6 rounded-full bg-primary/10 text-primary items-center justify-center text-xs font-bold mr-2 align-middle">1</span>
+                    チャット画面からMCPを追加
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ChatGPTのチャット画面で、入力欄の下にあるツールアイコン →「Add more tools」→「Add MCP server (Streamable HTTP)」を選びます。
+                  </p>
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 h-48 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/50">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-xs">スクリーンショット（準備中）</p>
+                    </div>
+                  </div>
+                </li>
+                <li className="space-y-2">
+                  <p className="font-medium">
+                    <span className="inline-flex w-6 h-6 rounded-full bg-primary/10 text-primary items-center justify-center text-xs font-bold mr-2 align-middle">2</span>
+                    MCPistのURLを入力
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    サーバー URL 入力欄に上記のエンドポイント URL を貼り付け、「Add」をクリックします。
+                  </p>
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 h-48 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/50">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-xs">スクリーンショット（準備中）</p>
+                    </div>
+                  </div>
+                </li>
+                <li className="space-y-2">
+                  <p className="font-medium">
+                    <span className="inline-flex w-6 h-6 rounded-full bg-primary/10 text-primary items-center justify-center text-xs font-bold mr-2 align-middle">3</span>
+                    OAuth認可を完了
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ブラウザが開きます。MCPistアカウントでログインし、アクセスを許可すると接続完了です。
+                  </p>
+                  <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 h-48 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/50">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-xs">スクリーンショット（準備中）</p>
+                    </div>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Create API Key Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

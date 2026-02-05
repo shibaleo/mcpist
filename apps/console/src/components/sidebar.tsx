@@ -40,13 +40,13 @@ const COLLAPSED_WIDTH = 64
 const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
-    { href: "/connections", label: "MCP", icon: Server },
+    { href: "/mcp-server", label: "MCPサーバー", icon: Server },
     { href: "/services", label: "サービス", icon: Link2 },
     { href: "/tools", label: "ツール", icon: Wrench },
-    { href: "/prompts", label: "テンプレート", icon: MessageSquareText },
+    { href: "/templates", label: "テンプレート", icon: MessageSquareText },
   ],
   general: [
-    { href: "/billing", label: "請求", icon: CreditCard },
+    { href: "/credits", label: "クレジット", icon: CreditCard },
     { href: "/settings", label: "設定", icon: Settings },
   ],
   admin: [
@@ -217,7 +217,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
           <span className={cn(
             "text-sm text-muted-foreground transition-opacity duration-300 whitespace-nowrap",
             collapsed ? "opacity-0" : "opacity-100"
-          )}>アクティブコネクション</span>
+          )}>コネクション</span>
         </div>
       </div>
 
