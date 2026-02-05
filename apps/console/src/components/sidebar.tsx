@@ -40,9 +40,9 @@ const COLLAPSED_WIDTH = 64
 const navItems = {
   dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
   mcp: [
-    { href: "/connections", label: "MCP接続", icon: Server },
-    { href: "/services", label: "サービス接続", icon: Link2 },
-    { href: "/tools", label: "ツール設定", icon: Wrench },
+    { href: "/connections", label: "MCP", icon: Server },
+    { href: "/services", label: "サービス", icon: Link2 },
+    { href: "/tools", label: "ツール", icon: Wrench },
     { href: "/prompts", label: "テンプレート", icon: MessageSquareText },
   ],
   general: [
@@ -294,7 +294,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
       {/* Resize Handle */}
       {!collapsed && (
         <div
-          className="absolute top-0 right-0 w-1.5 h-full cursor-ew-resize bg-sidebar-border hover:bg-primary/30 active:bg-primary/40 transition-colors"
+          className="absolute top-0 right-0 w-1 h-full cursor-ew-resize bg-transparent hover:bg-primary/30 active:bg-primary/40 transition-colors"
           onMouseDown={startResizing}
         />
       )}
