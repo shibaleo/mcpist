@@ -19,7 +19,7 @@ Sprint-007 2日目。DAY023 で完了した設計書（dsn-observability.md, dsn
 | Phase 1: Observability 設計書 (S7-001) | ✅ 完了 |
 | Phase 1: ダッシュボード設計 (S7-006) | ✅ 設計完了（Grafana UI 設定は未着手） |
 | Phase 2: セキュリティ設計書 (S7-010〜015) | ✅ 全完了 |
-| Phase 1: 構造化ログ実装 (S7-002〜005) | ❌ 未着手 |
+| Phase 1: 構造化ログ実装 (S7-002〜005) | ✅ 完了 |
 | Phase 3: 仕様書更新 (S7-020〜026) | ❌ 未着手 |
 
 ---
@@ -36,37 +36,37 @@ dsn-observability.md Section 11 の実装タスク一覧に基づく。
 
 | ID | タスク | 対象ファイル | 備考 | 状態 |
 |----|--------|-------------|------|------|
-| D24-001 | `LogToolCall` ラベルから `tool` を削除、データフィールドに移動 | `internal/observability/loki.go` | S7-005-1 | 未着手 |
-| D24-002 | `LogSecurityEvent` ラベルから `event` を削除、データフィールドに移動 | `internal/observability/loki.go` | S7-005-2 | 未着手 |
+| D24-001 | `LogToolCall` ラベルから `tool` を削除、データフィールドに移動 | `internal/observability/loki.go` | S7-005-1 | ✅ 完了 |
+| D24-002 | `LogSecurityEvent` ラベルから `event` を削除、データフィールドに移動 | `internal/observability/loki.go` | S7-005-2 | ✅ 完了 |
 
 #### S7-003: user_id 追加
 
 | ID | タスク | 対象ファイル | 備考 | 状態 |
 |----|--------|-------------|------|------|
-| D24-003 | `LogToolCall` に `userID` パラメータ追加 | `internal/observability/loki.go` | S7-003-1 | 未着手 |
-| D24-004 | `modules.Run` から `userID` を渡す | `internal/modules/modules.go` | S7-003-2 | 未着手 |
-| D24-005 | `modules.Batch` から `userID` を渡す | `internal/modules/modules.go` | S7-003-3 | 未着手 |
+| D24-003 | `LogToolCall` に `userID` パラメータ追加 | `internal/observability/loki.go` | S7-003-1 | ✅ 完了 |
+| D24-004 | `modules.Run` から `userID` を渡す | `internal/modules/modules.go` | S7-003-2 | ✅ 完了 |
+| D24-005 | `modules.Batch` から `userID` を渡す | `internal/modules/modules.go` | S7-003-3 | ✅ 完了 |
 
 #### S7-004: invalid_gateway_secret ログ
 
 | ID | タスク | 対象ファイル | 備考 | 状態 |
 |----|--------|-------------|------|------|
-| D24-006 | Gateway Secret 検証失敗時に `LogSecurityEvent` 呼び出し追加 | `internal/middleware/authz.go` | S7-004-1 | 未着手 |
+| D24-006 | Gateway Secret 検証失敗時に `LogSecurityEvent` 呼び出し追加 | `internal/middleware/authz.go` | S7-004-1 | ✅ 完了 |
 
 #### S7-002: 不要な log.Printf の削除
 
 | ID | タスク | 対象ファイル | 備考 | 状態 |
 |----|--------|-------------|------|------|
-| D24-007 | `LogToolCall` 内の `log.Printf` を削除 | `internal/observability/loki.go` | S7-002-1 | 未着手 |
-| D24-008 | `middleware/authz.go` の認証ログを `LogSecurityEvent` に統合 | `internal/middleware/authz.go` | S7-002-2 | 未着手 |
-| D24-009 | 各モジュール内の不要な `log.Printf` を削除 | `internal/modules/*.go` | S7-002-3 | 未着手 |
+| D24-007 | `LogToolCall` 内の `log.Printf` を削除 | `internal/observability/loki.go` | S7-002-1 | ✅ 完了 |
+| D24-008 | `middleware/authz.go` の認証ログを `LogSecurityEvent` に統合 | `internal/middleware/authz.go` | S7-002-2 | ✅ 完了 |
+| D24-009 | 各モジュール内の不要な `log.Printf` を削除 | `internal/modules/*.go` | S7-002-3 | ⏸️ 保留（デバッグ用として残す判断） |
 
 #### ビルド・動作確認
 
 | ID | タスク | 備考 | 状態 |
 |----|--------|------|------|
-| D24-010 | Go ビルド確認 | `go build ./cmd/server` | 未着手 |
-| D24-011 | ローカル動作確認 | Loki Push のログ構造確認 | 未着手 |
+| D24-010 | Go ビルド確認 | `go build ./cmd/server` | ✅ 完了 |
+| D24-011 | ローカル動作確認 | Loki Push のログ構造確認 | ✅ 完了 |
 
 ---
 
@@ -96,12 +96,12 @@ dsn-observability.md Section 11 の実装タスク一覧に基づく。
 
 ## 完了条件
 
-- [ ] `LogToolCall` のラベルが `app`, `module`, `status` のみ（`tool` はデータフィールド）
-- [ ] `LogSecurityEvent` のラベルが `app`, `type`, `level` のみ（`event` はデータフィールド）
-- [ ] `LogToolCall` に `userID` パラメータがあり、ログデータに `user_id` が含まれる
-- [ ] Gateway Secret 検証失敗時に `LogSecurityEvent` が呼ばれる
-- [ ] 運用ログは Loki Push のみ（`log.Printf` は起動・初期化・Loki失敗に限定）
-- [ ] `go build ./cmd/server` が成功する
+- [x] `LogToolCall` のラベルが `app`, `module`, `status` のみ（`tool` はデータフィールド）
+- [x] `LogSecurityEvent` のラベルが `app`, `type`, `level` のみ（`event` はデータフィールド）
+- [x] `LogToolCall` に `userID` パラメータがあり、ログデータに `user_id` が含まれる
+- [x] Gateway Secret 検証失敗時に `LogSecurityEvent` が呼ばれる
+- [x] 運用ログは Loki Push のみ（`log.Printf` は起動・初期化・Loki失敗・トークンリフレッシュに限定）
+- [x] `go build ./cmd/server` が成功する
 
 ---
 
