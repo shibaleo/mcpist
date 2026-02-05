@@ -6,10 +6,12 @@ export type Language = "en-US" | "ja-JP"
 
 export interface UserSettings {
   language: Language
+  display_name: string
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
   language: "en-US",
+  display_name: "",
 }
 
 /**
@@ -28,6 +30,7 @@ export async function getUserSettings(): Promise<UserSettings> {
   const prefs = data as Record<string, unknown>
   return {
     language: (prefs?.language as Language) || DEFAULT_SETTINGS.language,
+    display_name: (prefs?.display_name as string) || DEFAULT_SETTINGS.display_name,
   }
 }
 

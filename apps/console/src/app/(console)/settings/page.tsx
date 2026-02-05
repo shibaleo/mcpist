@@ -13,9 +13,11 @@ import {
   accentColors,
   type AccentColorId,
 } from "@/lib/appearance-context"
-import { Sun, Moon, Monitor, Check, Globe } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Sun, Moon, Monitor, Check, Globe, User } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
+import { useAuth } from "@/lib/auth-context"
 import {
   getUserSettings,
   updateUserSettings,
@@ -25,6 +27,7 @@ import { toast } from "sonner"
 
 // モジュールレベルキャッシュ
 let cachedLanguage: Language | null = null
+let cachedDisplayName: string | null = null
 
 export const dynamic = "force-dynamic"
 
@@ -39,15 +42,21 @@ export default function SettingsPage() {
     accentColor,
     setAccentColor,
   } = useAppearance()
+  const { user, updateName } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [language, setLanguage] = useState<Language>(cachedLanguage ?? "en-US")
   const [savingLanguage, setSavingLanguage] = useState(false)
+  const [displayName, setDisplayName] = useState(cachedDisplayName ?? "")
+  const [savingName, setSavingName] = useState(false)
+  const nameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setMounted(true)
     getUserSettings().then((settings) => {
       cachedLanguage = settings.language
       setLanguage(settings.language)
+      cachedDisplayName = settings.display_name
+      setDisplayName(settings.display_name)
     })
   }, [])
 
@@ -76,6 +85,30 @@ export default function SettingsPage() {
     }
   }
 
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value)
+    // Debounce: save 500ms after user stops typing
+    if (nameTimerRef.current) clearTimeout(nameTimerRef.current)
+    nameTimerRef.current = setTimeout(async () => {
+      const trimmed = value.trim()
+      if (!trimmed || trimmed === cachedDisplayName) return
+      setSavingName(true)
+      try {
+        const result = await updateUserSettings({ display_name: trimmed } as Partial<UserSettings>)
+        if (result.success) {
+          cachedDisplayName = trimmed
+          updateName(trimmed)
+        } else {
+          toast.error(result.error || "保存に失敗しました")
+        }
+      } catch {
+        toast.error("保存に失敗しました")
+      } finally {
+        setSavingName(false)
+      }
+    }, 500)
+  }
+
   if (!mounted) {
     return null
   }
@@ -92,6 +125,30 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-foreground">設定</h1>
         <p className="text-muted-foreground mt-1">アプリの設定をカスタマイズします</p>
       </div>
+
+      {/* 表示名 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-start gap-2">
+            <User className="h-5 w-5 shrink-0 mt-0.5" />
+            表示名
+          </CardTitle>
+          <CardDescription>サイドバーに表示される名前</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Input
+              value={displayName}
+              onChange={(e) => handleDisplayNameChange(e.target.value)}
+              placeholder={user?.name || "名前を入力"}
+              className="max-w-sm"
+            />
+            {savingName && (
+              <span className="text-xs text-muted-foreground">保存中...</span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 言語設定 */}
       <Card className="overflow-hidden">

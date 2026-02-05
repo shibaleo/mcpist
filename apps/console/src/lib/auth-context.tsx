@@ -22,6 +22,7 @@ interface AuthContextType {
   isLoading: boolean
   isAdmin: boolean
   signOut: () => Promise<void>
+  updateName: (name: string) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -42,11 +43,14 @@ async function fetchUserRole(client: SupabaseClient): Promise<"user" | "admin"> 
 }
 
 async function buildUser(client: SupabaseClient, sbUser: SupabaseUser): Promise<User> {
-  const role = await fetchUserRole(client)
+  const [role, settings] = await Promise.all([
+    fetchUserRole(client),
+    client.rpc("get_my_settings").then(({ data }) => data as Record<string, unknown> | null),
+  ])
+  const displayName = (settings?.display_name as string) || sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User"
   return {
     id: sbUser.id,
-    // #FIX: 'full_name' -> 'display_name' に統一する（プロバイダにより 'name', 'full_name' 等が使われる）
-    name: sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User",
+    name: displayName,
     email: sbUser.email || "",
     avatar: sbUser.user_metadata?.avatar_url,
     role,
@@ -141,8 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const updateName = (name: string) => {
+    setUser((prev) => prev ? { ...prev, name } : prev)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, supabaseUser, supabase, isLoading, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, supabaseUser, supabase, isLoading, isAdmin, signOut, updateName }}>
       {children}
     </AuthContext.Provider>
   )
