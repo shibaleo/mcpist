@@ -47,35 +47,20 @@
 | アラート設定 | ❌ 未着手 | エラーレート閾値のアラートルール作成 |
 | パネル改善 | ❌ 未着手 | 必要に応じて追加パネル |
 
-### 5. ステージ済み変更のコミット
+### 5. Console UI 残タスク
 
 | タスク | 状態 | 備考 |
 |--------|------|------|
-| Console UI 改善のコミット | ❌ 未コミット | 11ファイルがステージ済み |
+| display_name 変更後にサイドバー dropdown 内の名前も即時更新 | ❌ 未対応 | dropdown 内のユーザー名表示は `user?.name` を参照しているため updateName() で更新済みだが、dropdown のメール表示と合わせて動作確認が必要 |
+| display_name 空文字送信の防止 | ⚠️ 要確認 | 全文字削除→500ms後に `!trimmed` で弾いているが、空文字のままフォーカスアウトした場合の挙動確認 |
+| サイドバー折りたたみ時の avatar クリック→dropdown の位置 | ⚠️ 要確認 | `align="center"` を設定したが、狭い画面での表示位置を確認 |
 
-**提案コミットメッセージ:**
-```
-feat(console): add ivory light theme, refine dark theme, and clean up UI
-
-- Add ivory/cream light theme with proper visual hierarchy (background < card < form)
-- Refine dark theme to Obsidian-like slightly brighter tones
-- Centralize MCP server URL access via getMcpServerUrl() with error on missing env
-- Remove OAuth consents section from connections page
-- Fix dashboard card highlight flash during loading
-- Shorten sidebar labels and make resize handle thinner
-- Allow textarea resize for tool custom descriptions
-```
-
-### 6. 未コミットの仕様書変更
+### 6. 未コミットの変更
 
 | ファイル | 状態 |
 |----------|------|
-| `docs/002_specification/interaction/dtl-itr-CON-TVL.md` | 変更あり・未ステージ |
-| `docs/002_specification/interaction/dtl-itr-MOD-TVL.md` | 変更あり・未ステージ |
-| `docs/002_specification/interaction/itr-TVL.md` | 変更あり・未ステージ |
-| `docs/graph/grh-deployment.canvas` | 変更あり・未ステージ |
-| `dev/workdir/day024-plan.md` | 変更あり・未ステージ |
 | `dev/workdir/day024-worklog.md` | 変更あり・未ステージ |
+| `dev/workdir/day024-backlog.md` | 変更あり・未ステージ |
 
 ---
 
@@ -83,8 +68,8 @@ feat(console): add ivory light theme, refine dark theme, and clean up UI
 
 | 優先度 | タスク |
 |--------|--------|
-| 高 | ステージ済み変更のコミット |
 | 高 | 言語設定問題の再確認（再接続で解消するか） |
+| 高 | Console UI 残タスクの動作確認 |
 | 中 | 仕様書更新 (S7-020〜026) |
 | 中 | クレジットモデル仕様書更新 |
 | 低 | Grafana ダッシュボード改善 |
