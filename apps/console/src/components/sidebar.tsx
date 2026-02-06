@@ -17,17 +17,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  LayoutDashboard,
+  Blocks,
+  PanelsTopLeft,
   LogOut,
   Settings,
   PanelLeft,
-  Link2,
   Server,
   CreditCard,
   Shield,
   KeyRound,
   MessageSquareText,
-  Wrench,
+  Settings2,
   ChevronsUpDown,
 } from "lucide-react"
 
@@ -39,11 +39,11 @@ let cachedConnectionCount: number | null = null
 
 // ナビゲーションアイテム
 const navItems = {
-  dashboard: { href: "/dashboard", label: "ダッシュボード", icon: LayoutDashboard },
+  dashboard: { href: "/dashboard", label: "ダッシュボード", icon: PanelsTopLeft },
   mcp: [
     { href: "/mcp-server", label: "MCPサーバー", icon: Server },
-    { href: "/services", label: "サービス", icon: Link2 },
-    { href: "/tools", label: "ツール", icon: Wrench },
+    { href: "/services", label: "サービス", icon: Blocks },
+    { href: "/tools", label: "ツール", icon: Settings2 },
     { href: "/templates", label: "テンプレート", icon: MessageSquareText },
   ],
   general: [
@@ -155,7 +155,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
   return (
     <TooltipProvider>
     <aside
-      className="relative flex flex-col h-full glass-sidebar border-r border-sidebar-border overflow-hidden transition-all duration-300"
+      className="relative flex flex-col h-full bg-sidebar border-r border-sidebar-border overflow-hidden transition-all duration-300"
       style={{ width: sidebarWidth }}
     >
       {/* Header with Logo and Toggle */}

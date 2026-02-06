@@ -32,6 +32,7 @@ import {
   Copy,
   Check,
   Server,
+  Globe,
   Play,
   CheckCircle2,
   XCircle,
@@ -45,6 +46,7 @@ import {
   LogIn,
   ExternalLink,
   Image as ImageIcon,
+  BookOpen,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -422,7 +424,7 @@ export default function McpConnectionPage() {
           `}</style>
         </div>
         <p className="text-sm text-muted-foreground -mt-4">
-          MCPサーバーへの接続設定
+          MCPクライアントへの接続を管理
         </p>
 
         {/* API Key Authentication Tab */}
@@ -432,7 +434,7 @@ export default function McpConnectionPage() {
         <CardHeader>
           <div className="flex flex-wrap items-center gap-4">
             <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+              <Key className="h-5 w-5" style={{ color: accentPreview }} />
               APIキー
             </CardTitle>
             <div className="ml-auto">
@@ -526,7 +528,7 @@ export default function McpConnectionPage() {
         <CardHeader>
           <div className="flex flex-wrap items-center gap-4">
             <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
+              <Server className="h-5 w-5" style={{ color: accentPreview }} />
               接続設定
             </CardTitle>
             <div className="ml-auto">
@@ -703,8 +705,8 @@ export default function McpConnectionPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                MCPサーバー エンドポイント
+                <Globe className="h-5 w-5" style={{ color: accentPreview }} />
+                エンドポイント
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -738,7 +740,10 @@ export default function McpConnectionPage() {
       <Card className="mt-8">
         <CardHeader>
           <div className="flex flex-wrap items-center gap-4">
-            <CardTitle className="text-lg">セットアップガイド</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BookOpen className="h-5 w-5" style={{ color: accentPreview }} />
+              セットアップガイド
+            </CardTitle>
             <div className="ml-auto">
               <Select value={guideClient} onValueChange={(v) => setGuideClient(v as "claude" | "chatgpt")}>
                 <SelectTrigger className="w-full sm:w-48">

@@ -1,10 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -17,22 +15,20 @@ import {
 } from "@/components/ui/dialog"
 import { ModuleIcon } from "@/components/module-icon"
 import { useAuth } from "@/lib/auth-context"
-import { useAppearance, accentColors } from "@/lib/appearance-context"
 import {
   modules,
-  getModuleIcon,
   getModuleDescription,
 } from "@/lib/module-data"
 import {
-  Link2,
+  Plug,
+  Cable,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
+  CircleCheckBig,
   XCircle,
   Unlink,
   Info,
   ExternalLink,
+  Search,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -232,21 +228,20 @@ export const dynamic = "force-dynamic"
 
 export default function ServicesPage() {
   const { user } = useAuth()
-  const { accentColor } = useAppearance()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const accentPreview = accentColors.find((c) => c.id === accentColor)?.preview ?? "#22c55e"
 
   const hasCached = cachedConnections !== null
   const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
   const [loading, setLoading] = useState(!hasCached)
-  const carouselRef = useRef<HTMLDivElement>(null)
-
   // Language setting
   const [language, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
 
   // User preferences (preferred modules from onboarding)
   const [preferredModules, setPreferredModules] = useState<string[]>(cachedPreferredModules ?? [])
+
+  // Search filter
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Dialog states
   const [connectDialog, setConnectDialog] = useState<string | null>(null)
@@ -316,51 +311,8 @@ export default function ServicesPage() {
   // 接続済みモジュールのIDセット
   const connectedModuleIds = new Set(connections.map((c) => c.module))
 
-  // カルーセルナビゲーション
-  const scrollCarousel = (direction: "left" | "right") => {
-    if (!carouselRef.current) return
-    const scrollAmount = 200
-    carouselRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    })
-  }
-
   // 接続関連
-  const handleConnect = async (serviceId: string) => {
-    const config = authConfig[serviceId]
-
-    // alternativeAuth がある場合は常にダイアログを表示（認証方法を選択させる）
-    if (config?.alternativeAuth) {
-      setConnectDialog(serviceId)
-      setTokenInput("")
-      setExtraFields({})
-      setConnectionProgress(null)
-      return
-    }
-
-    // OAuthサービスの場合は認可URLにリダイレクト
-    if (config?.authType === "oauth") {
-      const providerId = getOAuthProviderForService(serviceId)
-      if (!providerId) {
-        toast.error("OAuth設定が見つかりません")
-        return
-      }
-
-      try {
-        const authUrl = await getOAuthAuthorizationUrl(providerId)
-        window.location.href = authUrl
-      } catch (error) {
-        if (error instanceof OAuthAppError) {
-          toast.error(error.message)
-        } else {
-          toast.error("OAuth認可URLの取得に失敗しました")
-        }
-      }
-      return
-    }
-
-    // API Key / Basic認証の場合はダイアログを表示
+  const handleConnect = (serviceId: string) => {
     setConnectDialog(serviceId)
     setTokenInput("")
     setExtraFields({})
@@ -475,158 +427,83 @@ export default function ServicesPage() {
     )
   }
 
-  // 接続済みと未接続に分類
-  const connectedServices = modules.filter(m => connectedModuleIds.has(m.id))
-  const unconnectedServices = modules.filter(m => !connectedModuleIds.has(m.id))
+  // 接続済みと未接続に分類（検索フィルタ適用）
+  const query = searchQuery.toLowerCase()
+  const connectedServices = modules.filter(m => connectedModuleIds.has(m.id) && (!query || m.name.toLowerCase().includes(query) || m.id.includes(query)))
+  const unconnectedServices = modules.filter(m => !connectedModuleIds.has(m.id) && (!query || m.name.toLowerCase().includes(query) || m.id.includes(query)))
 
   return (
     <div className="p-6 space-y-6">
       <div className="pl-8 md:pl-0">
-        <h1 className="text-2xl font-bold text-foreground">サービス接続</h1>
-        <p className="text-muted-foreground mt-1">外部サービスへの接続を管理します</p>
+        <h1 className="text-2xl font-bold text-foreground">サービス</h1>
+        <p className="text-muted-foreground mt-1">外部サービスへの接続を管理</p>
       </div>
 
-      {/* 接続済みサービス */}
-      {connectedServices.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">接続済み</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {connectedServices.map((module) => (
-              <Card key={module.id} className="border-success/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                      <ModuleIcon icon={getModuleIcon(module.id)} className="h-5 w-5 text-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-base">{module.name}</CardTitle>
-                        <Badge
-                          style={{
-                            backgroundColor: `${accentPreview}20`,
-                            color: accentPreview,
-                            borderColor: `${accentPreview}30`,
-                          }}
-                        >
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          接続済
-                        </Badge>
-                      </div>
-                      <CardDescription className="text-xs truncate">
-                        {getModuleDescription(module, language)}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleConnect(module.id)}
-                    >
-                      <Link2 className="h-3 w-3 mr-1" />
-                      更新
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setDisconnectDialog(module.id)}
-                    >
-                      <Unlink className="h-3 w-3 mr-1" />
-                      切断
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* 検索フィルタ */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="サービスを検索..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
 
-      {/* 未接続サービス */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">利用可能なサービス</h2>
-        <div className="relative group">
-          <Button
-            variant="outline"
-            size="icon"
-            className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 bg-background hover:bg-secondary shadow-lg h-10 w-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => scrollCarousel("left")}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div
-            ref={carouselRef}
-            className="flex gap-4 overflow-x-auto scrollbar-hide py-4 px-2"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            {/* preferredModulesで優先ソート */}
+      {/* 未接続サービス - Browse connectors 風グリッド */}
+      {unconnectedServices.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Cable className="h-5 w-5 text-primary" />
+            サービスを追加
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[...unconnectedServices].sort((a, b) => {
               const aPreferred = preferredModules.includes(a.id)
               const bPreferred = preferredModules.includes(b.id)
               if (aPreferred && !bPreferred) return -1
               if (!aPreferred && bPreferred) return 1
               return preferredModules.indexOf(a.id) - preferredModules.indexOf(b.id)
-            }).map((module) => {
-              const isPreferred = preferredModules.includes(module.id)
-
-              return (
-                <div
-                  key={module.id}
-                  onClick={() => handleConnect(module.id)}
-                  className={cn(
-                    "flex-shrink-0 w-48 p-4 rounded-xl border-2 transition-all shadow-sm hover:shadow-md cursor-pointer",
-                    isPreferred
-                      ? "animate-pulse-border border-primary bg-primary/5"
-                      : "border-dashed border-muted-foreground/30 bg-muted/30 hover:border-muted-foreground/50"
-                  )}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-muted">
-                      <ModuleIcon
-                        icon={getModuleIcon(module.id)}
-                        className="h-6 w-6 text-muted-foreground"
-                      />
-                    </div>
-                    <div className="text-center w-full">
-                      <div className="font-semibold text-sm text-muted-foreground">
-                        {module.name}
-                      </div>
-                      <div className="flex items-center justify-center gap-1 mt-0.5 text-muted-foreground">
-                        <span className="text-xs">未接続</span>
-                      </div>
-                    </div>
-                    <div className="w-full mt-1">
-                      <Button
-                        size="sm"
-                        className="w-full h-7 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleConnect(module.id)
-                        }}
-                      >
-                        <Link2 className="h-3 w-3 mr-1" />
-                        接続
-                      </Button>
-                    </div>
-                  </div>
+            }).map((module) => (
+              <div
+                key={module.id}
+                onClick={() => handleConnect(module.id)}
+                className="flex items-center gap-3 p-3 rounded-xl border bg-card/70 hover:bg-muted/50 transition-colors cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
+                  <ModuleIcon moduleId={module.id} className="h-5 w-5 text-foreground" />
                 </div>
-              )
-            })}
+                <span className="font-medium text-sm truncate">{module.name}</span>
+              </div>
+            ))}
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 bg-background hover:bg-secondary shadow-lg h-10 w-10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => scrollCarousel("right")}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
         </div>
-      </div>
+      )}
+
+      {/* 接続済みサービス */}
+      {connectedServices.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <CircleCheckBig className="h-5 w-5 text-primary" />
+            接続済みサービス
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {connectedServices.map((module) => (
+              <div
+                key={module.id}
+                onClick={() => setDisconnectDialog(module.id)}
+                className="relative flex items-center gap-3 p-3 rounded-xl border bg-card/70 hover:bg-muted/50 transition-colors cursor-pointer group"
+              >
+                <div className="relative w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
+                  <ModuleIcon moduleId={module.id} className="h-5 w-5 text-foreground" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                </div>
+                <span className="font-medium text-sm truncate flex-1">{module.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Connect Dialog */}
       <Dialog open={!!connectDialog} onOpenChange={(open) => !open && setConnectDialog(null)}>
@@ -634,8 +511,8 @@ export default function ServicesPage() {
           <DialogHeader>
             <div className="flex items-center gap-3">
               {dialogModule && (
-                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                  <ModuleIcon icon={getModuleIcon(dialogModule.id)} className="h-5 w-5 text-foreground" />
+                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
+                  <ModuleIcon moduleId={dialogModule.id} className="h-5 w-5 text-foreground" />
                 </div>
               )}
               <div>
@@ -648,7 +525,7 @@ export default function ServicesPage() {
           {connectionProgress ? (
             <div className="py-8 flex flex-col items-center justify-center space-y-4">
               {connectionProgress.step === "completed" ? (
-                <CheckCircle2 className="h-12 w-12 text-success" />
+                <CircleCheckBig className="h-12 w-12 text-success" />
               ) : connectionProgress.step === "error" ? (
                 <XCircle className="h-12 w-12 text-destructive" />
               ) : (
@@ -738,7 +615,7 @@ export default function ServicesPage() {
                           className="flex-1"
                         />
                         <Button onClick={handleConnectSubmit} disabled={!tokenInput || submitting}>
-                          <Link2 className="h-4 w-4 mr-2" />
+                          <Plug className="h-4 w-4 mr-2" />
                           接続
                         </Button>
                       </div>
@@ -855,7 +732,7 @@ export default function ServicesPage() {
                 </Button>
                 {dialogAuthConfig?.authType !== "oauth" && !dialogAuthConfig?.alternativeAuth && (
                   <Button onClick={handleConnectSubmit} disabled={!tokenInput || submitting}>
-                    <Link2 className="h-4 w-4 mr-2" />
+                    <Plug className="h-4 w-4 mr-2" />
                     接続
                   </Button>
                 )}
