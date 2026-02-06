@@ -8,7 +8,7 @@ import { ModuleIcon } from "@/components/module-icon"
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { modules, getModuleIcon } from "@/lib/module-data"
+import { modules } from "@/lib/module-data"
 
 // TODO: プロダクトツアーを実装
 // - ステップ1: MCPistとは何か、何ができるかの説明
@@ -137,7 +137,7 @@ export default function OnboardingPage() {
                     )}
                   >
                     <ModuleIcon
-                      icon={getModuleIcon(module.id)}
+                      moduleId={module.id}
                       className={cn(
                         "h-6 w-6",
                         isSelected ? "text-primary" : "text-muted-foreground"

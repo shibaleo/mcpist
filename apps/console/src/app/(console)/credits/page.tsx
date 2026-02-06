@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getUserContext, type UserCredits } from "@/lib/credits"
-import { Coins, Gift, Loader2, CheckCircle, Sparkles } from "lucide-react"
+import { Coins, Gift, Loader2, CheckCircle, Sparkles, Info } from "lucide-react"
 import { toast } from "sonner"
 
 // モジュールレベルキャッシュ
@@ -139,7 +139,7 @@ export default function BillingPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Coins className="h-5 w-5" />
+            <Coins className="h-5 w-5 text-primary" />
             クレジット残高
           </CardTitle>
           <CardDescription>
@@ -283,7 +283,10 @@ export default function BillingPage() {
       {/* クレジットの使い方 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">クレジットについて</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Info className="h-5 w-5 text-primary" />
+            クレジットについて
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm text-muted-foreground">

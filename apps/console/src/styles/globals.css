@@ -68,31 +68,31 @@
    ============================================================================= */
 
 .dark {
-  /* 背景・カード（ダークテーマ - Obsidian風） */
-  --background: #1a1a1e;
-  --background-solid: #1a1a1e;
-  --card: #222226;
-  --popover: #222226;
+  /* 背景・カード（ダークテーマ - Obsidian風・やや明るめ） */
+  --background: #212126;
+  --background-solid: #212126;
+  --card: #2a2a2f;
+  --popover: #2a2a2f;
 
   /* テキスト */
-  --foreground: #b5b5b5;
-  --card-foreground: #dedad0;
-  --popover-foreground: #dedad0;
+  --foreground: #c8c8c8;
+  --card-foreground: #e5e1d8;
+  --popover-foreground: #e5e1d8;
 
   /* プライマリ */
   --primary-foreground: #0a0a0a;
 
   /* セカンダリ・ミュート・アクセント */
-  --secondary: #2a2a2e;
+  --secondary: #343438;
   --secondary-foreground: #fafafa;
-  --muted: #2a2a2e;
-  --muted-foreground: #808080;
-  --accent: #2a2a2e;
+  --muted: #343438;
+  --muted-foreground: #989898;
+  --accent: #343438;
   --accent-foreground: #fafafa;
 
   /* ボーダー・入力 */
-  --border: #333338;
-  --input: #3a3a40;
+  --border: #3e3e45;
+  --input: #46464e;
 
   /* 機能カラー */
   --destructive-foreground: #ffffff;
@@ -101,10 +101,10 @@
   --danger-foreground: #ffffff;
 
   /* サイドバー */
-  --sidebar: #1e1e22;
+  --sidebar: #26262a;
   --sidebar-foreground: #fafafa;
-  --sidebar-border: #2a2a2e;
-  --sidebar-accent: #2a2a2e;
+  --sidebar-border: #343438;
+  --sidebar-accent: #343438;
   --sidebar-accent-foreground: #fafafa;
 }
 

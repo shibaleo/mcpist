@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Link2, Coins, Receipt, Loader2, Settings2, ChevronRight, Calendar } from "lucide-react"
+import { Cable, Coins, Receipt, Loader2, Settings2, ChevronRight, Calendar } from "lucide-react"
 import { getUserContext, getServiceConnections, getMyUsage, type UserCredits, type ServiceConnection, type UsageStats } from "@/lib/credits"
 import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 import Link from "next/link"
@@ -219,7 +219,7 @@ export default function DashboardPage() {
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Link2 className="h-4 w-4" />
+              <Cable className="h-4 w-4" />
               連携中のサービス
             </CardTitle>
           </CardHeader>

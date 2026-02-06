@@ -11,7 +11,6 @@ import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
 import {
   modules,
-  getModuleIcon,
   isDefaultEnabled,
   isDangerous,
   getModuleDescription,
@@ -23,8 +22,18 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
+  ChevronsUpDown,
   X,
 } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -71,6 +80,7 @@ export default function ToolsPage() {
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null)
   const [editingDescription, setEditingDescription] = useState("")
   const [savingDescription, setSavingDescription] = useState(false)
+  const [comboboxOpen, setComboboxOpen] = useState(false)
 
   // Language setting
   const [language, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
@@ -88,7 +98,7 @@ export default function ToolsPage() {
     }
   }, [])
 
-  // ツール設定を取得
+  // ツールを取得
   const loadToolSettings = useCallback(async () => {
     try {
       const [settings, descriptions, userSettings] = await Promise.all([
@@ -165,7 +175,7 @@ export default function ToolsPage() {
     setEditingDescription("")
   }, [selectedModuleId])
 
-  // ツール設定関連（楽観的更新パターン）
+  // ツール関連（楽観的更新パターン）
   const handleToggleTool = async (moduleId: string, toolId: string) => {
     const current = getModuleToolSettings(moduleId)
     const newValue = !current[toolId]
@@ -197,7 +207,7 @@ export default function ToolsPage() {
       if (error instanceof ToolSettingsError) {
         toast.error(`保存に失敗しました: ${error.message}`)
       } else {
-        toast.error("ツール設定の保存に失敗しました")
+        toast.error("ツールの保存に失敗しました")
       }
     }
   }
@@ -230,7 +240,7 @@ export default function ToolsPage() {
         ...prev,
         [moduleId]: current,
       }))
-      toast.error("ツール設定の保存に失敗しました")
+      toast.error("ツールの保存に失敗しました")
     }
   }
 
@@ -262,7 +272,7 @@ export default function ToolsPage() {
         ...prev,
         [moduleId]: current,
       }))
-      toast.error("ツール設定の保存に失敗しました")
+      toast.error("ツールの保存に失敗しました")
     }
   }
 
@@ -294,7 +304,7 @@ export default function ToolsPage() {
         ...prev,
         [moduleId]: current,
       }))
-      toast.error("ツール設定の保存に失敗しました")
+      toast.error("ツールの保存に失敗しました")
     }
   }
 
@@ -351,8 +361,8 @@ export default function ToolsPage() {
     return (
       <div className="p-6 space-y-6">
         <div className="pl-8 md:pl-0">
-          <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
-          <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理します</p>
+          <h1 className="text-2xl font-bold text-foreground">ツール</h1>
+          <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理</p>
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -366,8 +376,8 @@ export default function ToolsPage() {
     return (
       <div className="p-6 space-y-6">
         <div className="pl-8 md:pl-0">
-          <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
-          <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理します</p>
+          <h1 className="text-2xl font-bold text-foreground">ツール</h1>
+          <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理</p>
         </div>
         <Card>
           <CardContent className="py-12">
@@ -375,7 +385,7 @@ export default function ToolsPage() {
               <Link2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-semibold mb-2">接続済みサービスがありません</h3>
               <p className="text-sm mb-4">
-                サービス接続ページからサービスを接続すると、ツール設定が可能になります
+                サービス接続ページからサービスを接続すると、ツールが可能になります
               </p>
               <Button asChild>
                 <a href="/services">
@@ -393,37 +403,71 @@ export default function ToolsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="pl-8 md:pl-0">
-        <h1 className="text-2xl font-bold text-foreground">ツール設定</h1>
-        <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理します</p>
+        <h1 className="text-2xl font-bold text-foreground">ツール</h1>
+        <p className="text-muted-foreground mt-1">接続済みサービスのツールを管理</p>
       </div>
 
-      {/* サービス選択タブ */}
-      <div className="flex gap-2 flex-wrap">
-        {connectedModules.map((module) => {
-          const isSelected = selectedModuleId === module.id
-          const enabledCount = getEnabledToolCount(module.id)
-          const totalCount = module.tools.length
-
-          return (
-            <button
-              key={module.id}
-              onClick={() => setSelectedModuleId(module.id)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg border transition-all",
-                isSelected
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-primary/50"
-              )}
-            >
-              <ModuleIcon icon={getModuleIcon(module.id)} className="h-4 w-4" />
-              <span className="font-medium text-sm">{module.name}</span>
-              <Badge variant="secondary" className="text-xs">
-                {enabledCount}/{totalCount}
-              </Badge>
-            </button>
-          )
-        })}
-      </div>
+      {/* サービス選択コンボボックス */}
+      <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={comboboxOpen}
+            className="w-full sm:w-[320px] justify-between bg-card"
+          >
+            {selectedModule ? (
+              <span className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-white flex items-center justify-center shrink-0">
+                  <ModuleIcon moduleId={selectedModule.id} className="h-3.5 w-3.5" />
+                </span>
+                <span>{selectedModule.name}</span>
+                <Badge variant="secondary" className="text-xs ml-1">
+                  {getEnabledToolCount(selectedModule.id)}/{selectedModule.tools.length}
+                </Badge>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">サービスを選択...</span>
+            )}
+            <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] sm:w-[320px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="サービスを検索..." />
+            <CommandList>
+              <CommandEmpty>見つかりません</CommandEmpty>
+              <CommandGroup>
+                {connectedModules.map((module) => {
+                  const enabledCount = getEnabledToolCount(module.id)
+                  const totalCount = module.tools.length
+                  return (
+                    <CommandItem
+                      key={module.id}
+                      value={module.name}
+                      onSelect={() => {
+                        setSelectedModuleId(module.id)
+                        setComboboxOpen(false)
+                      }}
+                    >
+                      <span className="w-6 h-6 rounded-md bg-white flex items-center justify-center shrink-0">
+                        <ModuleIcon moduleId={module.id} className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="flex-1">{module.name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {enabledCount}/{totalCount}
+                      </Badge>
+                      {selectedModuleId === module.id && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       {/* 選択されたモジュールの詳細 */}
       {selectedModule && (
@@ -431,8 +475,8 @@ export default function ToolsPage() {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
-                  <ModuleIcon icon={getModuleIcon(selectedModule.id)} className="h-6 w-6 text-foreground" />
+                <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center">
+                  <ModuleIcon moduleId={selectedModule.id} className="h-6 w-6 text-foreground" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -514,10 +558,10 @@ export default function ToolsPage() {
             </div>
           </CardContent>
 
-          {/* ツール設定 */}
+          {/* ツール */}
           <CardContent className="space-y-3 border-t pt-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-sm text-foreground">ツール設定</h3>
+              <h3 className="font-medium text-sm text-foreground">ツール</h3>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleSelectDefault(selectedModule.id)}>
                   デフォルト
@@ -539,7 +583,7 @@ export default function ToolsPage() {
                 <div
                   key={tool.id}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border",
+                    "flex items-center gap-3 p-3 rounded-lg border bg-background",
                     dangerous && "border-warning/30 bg-warning/5"
                   )}
                 >
