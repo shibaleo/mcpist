@@ -142,8 +142,8 @@
    ============================================================================= */
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --font-sans: var(--font-ubuntu), var(--font-noto-sans-jp), system-ui, sans-serif;
+  --font-mono: var(--font-ubuntu), monospace;
 
   /* アニメーション */
   --animate-collapsible-down: collapsible-down 0.2s ease-out;
@@ -281,4 +281,22 @@
 
 .animate-pulse-border {
   animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+/* LP用ドットグリッド（::after疑似要素オーバーレイ） */
+.lp-dot-grid {
+  position: relative;
+}
+.lp-dot-grid::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.lp-dot-grid > * {
+  position: relative;
+  z-index: 1;
 }
