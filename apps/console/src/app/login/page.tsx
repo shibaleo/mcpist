@@ -2,7 +2,6 @@
 
 import { Suspense } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
@@ -40,9 +39,9 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4 pb-2">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 lp-dot-grid" data-accent-color="orange">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-2xl">M</span>
@@ -52,10 +51,8 @@ function LoginContent() {
             <h1 className="text-2xl font-bold text-foreground">MCPist</h1>
             <p className="text-sm text-muted-foreground mt-1">MCP Server 管理プラットフォーム</p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-6">
-          {/* Social Login Buttons */}
-          <div className="space-y-2">
+        </div>
+        <div className="space-y-2">
             <Button
               variant="outline"
               className="w-full h-12 justify-start gap-3 bg-transparent"
@@ -128,22 +125,19 @@ function LoginContent() {
                 "Microsoftでログイン"
               )}
             </Button>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4 pt-6">
-          <div className="text-center text-xs text-muted-foreground">
-            ログインすることで、
-            <Link href="/terms" className="text-primary hover:underline">
-              利用規約
-            </Link>
-            および
-            <Link href="/privacy" className="text-primary hover:underline">
-              プライバシーポリシー
-            </Link>
-            に同意したものとみなされます。
-          </div>
-        </CardFooter>
-      </Card>
+        </div>
+        <div className="text-center text-xs text-muted-foreground">
+          ログインすることで、
+          <Link href="/terms" className="text-primary hover:underline">
+            利用規約
+          </Link>
+          および
+          <Link href="/privacy" className="text-primary hover:underline">
+            プライバシーポリシー
+          </Link>
+          に同意したものとみなされます。
+        </div>
+      </div>
     </div>
   )
 }
