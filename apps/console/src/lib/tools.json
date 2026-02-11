@@ -1122,6 +1122,18 @@
             "readOnlyHint": true,
             "openWorldHint": false
           }
+        },
+        {
+          "id": "github:describe_user",
+          "name": "describe_user",
+          "descriptions": {
+            "en-US": "Comprehensive GitHub user analysis. Fetches profile, repositories, starred repos, organizations, and recent activity in parallel.",
+            "ja-JP": "GitHubユーザーの総合分析。プロフィール、リポジトリ、スター、所属組織、最近のアクティビティを並列取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
         }
       ]
     },

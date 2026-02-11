@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
@@ -541,6 +542,23 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"username"},
 		},
 	},
+	// Composite
+	{
+		ID:   "github:describe_user",
+		Name: "describe_user",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Comprehensive GitHub user analysis. Fetches profile, repositories, starred repos, organizations, and recent activity in parallel.",
+			"ja-JP": "GitHubユーザーの総合分析。プロフィール、リポジトリ、スター、所属組織、最近のアクティビティを並列取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"username": {Type: "string", Description: "GitHub username to analyze"},
+			},
+			Required: []string{"username"},
+		},
+	},
 }
 
 // =============================================================================
@@ -573,6 +591,7 @@ var toolHandlers = map[string]toolHandler{
 	"list_workflow_runs":  listWorkflowRuns,
 	"list_orgs":           listOrgs,
 	"list_public_events":  listPublicEvents,
+	"describe_user":       describeUser,
 }
 
 // =============================================================================
@@ -1131,4 +1150,81 @@ func listWorkflowRuns(ctx context.Context, params map[string]any) (string, error
 		return "", err
 	}
 	return toJSON(res)
+}
+
+// =============================================================================
+// Composite: describe_user
+// =============================================================================
+
+func describeUser(ctx context.Context, params map[string]any) (string, error) {
+	username, _ := params["username"].(string)
+
+	type result struct {
+		key string
+		val string
+		err error
+	}
+
+	ch := make(chan result, 5)
+	var wg sync.WaitGroup
+
+	calls := []struct {
+		key    string
+		params map[string]any
+		fn     toolHandler
+	}{
+		{"profile", map[string]any{"username": username}, getUser},
+		{"repos", map[string]any{"username": username, "sort": "updated", "per_page": float64(10)}, listRepos},
+		{"starred", map[string]any{"username": username, "per_page": float64(10)}, listStarredRepos},
+		{"orgs", map[string]any{"username": username}, listOrgs},
+		{"events", map[string]any{"username": username, "per_page": float64(10)}, listPublicEvents},
+	}
+
+	for _, c := range calls {
+		wg.Add(1)
+		go func(key string, fn toolHandler, p map[string]any) {
+			defer wg.Done()
+			v, err := fn(ctx, p)
+			ch <- result{key: key, val: v, err: err}
+		}(c.key, c.fn, c.params)
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	results := make(map[string]string, 5)
+	for r := range ch {
+		if r.err != nil {
+			results[r.key] = fmt.Sprintf("error: %s", r.err.Error())
+		} else {
+			results[r.key] = r.val
+		}
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# GitHub User: %s\n\n", username))
+
+	sb.WriteString("## Profile\n```json\n")
+	sb.WriteString(results["profile"])
+	sb.WriteString("\n```\n\n")
+
+	sb.WriteString("## Repositories (recent 10)\n```json\n")
+	sb.WriteString(results["repos"])
+	sb.WriteString("\n```\n\n")
+
+	sb.WriteString("## Starred Repositories (recent 10)\n```json\n")
+	sb.WriteString(results["starred"])
+	sb.WriteString("\n```\n\n")
+
+	sb.WriteString("## Organizations\n```json\n")
+	sb.WriteString(results["orgs"])
+	sb.WriteString("\n```\n\n")
+
+	sb.WriteString("## Recent Activity (10 events)\n```json\n")
+	sb.WriteString(results["events"])
+	sb.WriteString("\n```\n")
+
+	return sb.String(), nil
 }
