@@ -2,12 +2,6 @@
 
 package gen
 
-// GenerateTypescriptTypesParams is parameters of generateTypescriptTypes operation.
-type GenerateTypescriptTypesParams struct {
-	Ref             string
-	IncludedSchemas OptString `json:",omitempty,omitzero"`
-}
-
 // GetApiKeysParams is parameters of getApiKeys operation.
 type GetApiKeysParams struct {
 	Ref string

@@ -82,7 +82,7 @@ apps/server/
 │   ├── client.go                     # SecuritySource アダプタ
 │   └── gen/                          # ogen 自動生成 (編集不可)
 ├── pkg/supabaseapi/                  # Supabase Management API Client 層
-│   ├── openapi-subset.yaml           # ★ subset spec (13 endpoints)
+│   ├── openapi-subset.yaml           # ★ subset spec (12 endpoints)
 │   ├── ogen.yaml                     # ogen 設定
 │   ├── client.go                     # SecuritySource アダプタ (Bearer, 固定URL)
 │   ├── client_test.go                # 統合テスト (実API呼出)
@@ -100,7 +100,7 @@ apps/server/
 │   ├── github/
 │   │   └── module.go                 # GitHub Module Interface 層
 │   ├── supabase/
-│   │   └── module.go                 # Supabase Module Interface 層 (19 tools)
+│   │   └── module.go                 # Supabase Module Interface 層 (18 tools)
 │   └── grafana/
 │       └── module.go                 # Grafana Module Interface 層 (16 tools)
 ```
