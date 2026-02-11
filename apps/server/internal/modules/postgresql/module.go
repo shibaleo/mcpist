@@ -413,7 +413,7 @@ func testConnection(ctx context.Context, params map[string]any) (string, error) 
 		result["user"] = u.User.Username()
 	}
 
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
 
@@ -466,7 +466,7 @@ func listSchemas(ctx context.Context, params map[string]any) (string, error) {
 	result := map[string]interface{}{
 		"schemas": schemas,
 	}
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
 
@@ -542,7 +542,7 @@ func listTables(ctx context.Context, params map[string]any) (string, error) {
 		"schema": schema,
 		"tables": tables,
 	}
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
 
@@ -664,7 +664,7 @@ func describeTable(ctx context.Context, params map[string]any) (string, error) {
 		"indexes":            indexes,
 		"row_count_estimate": rowCount,
 	}
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
 
@@ -749,7 +749,7 @@ func queryTool(ctx context.Context, params map[string]any) (string, error) {
 		"row_count": rowCount,
 		"truncated": truncated,
 	}
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
 
@@ -793,7 +793,7 @@ func executeTool(ctx context.Context, params map[string]any) (string, error) {
 		"rows_affected": tag.RowsAffected(),
 		"command":       tag.String(),
 	}
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
 
@@ -826,6 +826,6 @@ func executeDDL(ctx context.Context, params map[string]any) (string, error) {
 		"success": true,
 		"command": tag.String(),
 	}
-	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
+	jsonBytes, _ := json.Marshal(result)
 	return string(jsonBytes), nil
 }
