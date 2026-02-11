@@ -110,7 +110,7 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 }
 
 func toJSON(v any) (string, error) {
-	b, err := json.MarshalIndent(v, "", "  ")
+	b, err := json.Marshal(v)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal response: %w", err)
 	}
