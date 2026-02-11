@@ -163,14 +163,6 @@ components:
           type: string
           nullable: true
 
-    # ============ TypeScript Types ============
-    TypescriptResponse:
-      type: object
-      required: [types]
-      properties:
-        types:
-          type: string
-
     # ============ Edge Functions ============
     EdgeFunction:
       type: object
@@ -413,31 +405,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ApiKey'
-
-  # ============ TypeScript Types ============
-  /projects/{ref}/types/typescript:
-    get:
-      operationId: generateTypescriptTypes
-      summary: Generate TypeScript type definitions
-      parameters:
-        - name: ref
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: included_schemas
-          in: query
-          required: false
-          schema:
-            type: string
-            default: public
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TypescriptResponse'
 
   # ============ Edge Functions ============
   /projects/{ref}/functions:

@@ -3534,18 +3534,6 @@
           }
         },
         {
-          "id": "supabase:generate_typescript_types",
-          "name": "generate_typescript_types",
-          "descriptions": {
-            "en-US": "Generate TypeScript type definitions from the database schema.",
-            "ja-JP": "データベーススキーマからTypeScript型定義を生成します。"
-          },
-          "annotations": {
-            "readOnlyHint": true,
-            "openWorldHint": false
-          }
-        },
-        {
           "id": "supabase:list_edge_functions",
           "name": "list_edge_functions",
           "descriptions": {

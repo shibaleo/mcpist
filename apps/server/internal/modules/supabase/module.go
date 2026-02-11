@@ -306,22 +306,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"project_ref"},
 		},
 	},
-	{
-		ID:   "supabase:generate_typescript_types",
-		Name: "generate_typescript_types",
-		Descriptions: modules.LocalizedText{
-			"en-US": "Generate TypeScript type definitions from the database schema.",
-			"ja-JP": "データベーススキーマからTypeScript型定義を生成します。",
-		},
-		Annotations: modules.AnnotateReadOnly,
-		InputSchema: modules.InputSchema{
-			Type: "object",
-			Properties: map[string]modules.Property{
-				"project_ref": {Type: "string", Description: "Project reference"},
-			},
-			Required: []string{"project_ref"},
-		},
-	},
 	// Edge Function Tools
 	{
 		ID:   "supabase:list_edge_functions",
@@ -443,7 +427,6 @@ var toolHandlers = map[string]toolHandler{
 	"get_performance_advisors":  getPerformanceAdvisors,
 	"get_project_url":           getProjectURL,
 	"get_api_keys":              getAPIKeys,
-	"generate_typescript_types": generateTypescriptTypes,
 	"list_edge_functions":       listEdgeFunctions,
 	"get_edge_function":         getEdgeFunction,
 	"list_storage_buckets":      listStorageBuckets,
@@ -555,7 +538,7 @@ func runQuery(ctx context.Context, params map[string]any) (string, error) {
 func listMigrations(ctx context.Context, params map[string]any) (string, error) {
 	projectRef, _ := params["project_ref"].(string)
 	query := `
-		SELECT version, name, executed_at
+		SELECT version, name
 		FROM supabase_migrations.schema_migrations
 		ORDER BY version DESC
 	`
@@ -664,19 +647,6 @@ func getAPIKeys(ctx context.Context, params map[string]any) (string, error) {
 	}
 	projectRef, _ := params["project_ref"].(string)
 	res, err := c.GetApiKeys(ctx, gen.GetApiKeysParams{Ref: projectRef})
-	if err != nil {
-		return "", err
-	}
-	return toJSON(res)
-}
-
-func generateTypescriptTypes(ctx context.Context, params map[string]any) (string, error) {
-	c, err := newOgenClient(ctx)
-	if err != nil {
-		return "", err
-	}
-	projectRef, _ := params["project_ref"].(string)
-	res, err := c.GenerateTypescriptTypes(ctx, gen.GenerateTypescriptTypesParams{Ref: projectRef})
 	if err != nil {
 		return "", err
 	}

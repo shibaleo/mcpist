@@ -1342,18 +1342,3 @@ func (s *StorageFeatures) SetImageTransformation(val OptFeatureToggle) {
 func (s *StorageFeatures) SetS3Protocol(val OptFeatureToggle) {
 	s.S3Protocol = val
 }
-
-// Ref: #/components/schemas/TypescriptResponse
-type TypescriptResponse struct {
-	Types string `json:"types"`
-}
-
-// GetTypes returns the value of Types.
-func (s *TypescriptResponse) GetTypes() string {
-	return s.Types
-}
-
-// SetTypes sets the value of Types.
-func (s *TypescriptResponse) SetTypes(val string) {
-	s.Types = val
-}

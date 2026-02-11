@@ -155,20 +155,6 @@ func TestGetApiKeys(t *testing.T) {
 	}
 }
 
-func TestGenerateTypescriptTypes(t *testing.T) {
-	c := newClient(t)
-	ref := skipIfNoProject(t)
-	res, err := c.GenerateTypescriptTypes(context.Background(), gen.GenerateTypescriptTypesParams{Ref: ref})
-	if err != nil {
-		t.Fatalf("GenerateTypescriptTypes: %v", err)
-	}
-	types := res.Types
-	fmt.Printf("TypeScript types: %d chars\n", len(types))
-	if len(types) > 200 {
-		fmt.Printf("  (first 200 chars): %s...\n", types[:200])
-	}
-}
-
 func TestListEdgeFunctions(t *testing.T) {
 	c := newClient(t)
 	ref := skipIfNoProject(t)
