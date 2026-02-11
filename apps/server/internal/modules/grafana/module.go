@@ -2,22 +2,18 @@ package grafana
 
 import (
 	"context"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
-)
+	"mcpist/server/pkg/grafanaapi"
+	gen "mcpist/server/pkg/grafanaapi/gen"
 
-const (
-	grafanaAPIVersion = "v1"
+	"github.com/go-faster/jx"
 )
-
-var client = httpclient.New()
 
 // GrafanaModule implements the Module interface for Grafana API
 type GrafanaModule struct{}
@@ -50,7 +46,7 @@ func (m *GrafanaModule) Description(lang string) string {
 
 // APIVersion returns the Grafana API version
 func (m *GrafanaModule) APIVersion() string {
-	return grafanaAPIVersion
+	return "v1"
 }
 
 // Tools returns all available tools
@@ -78,7 +74,7 @@ func (m *GrafanaModule) ReadResource(ctx context.Context, uri string) (string, e
 }
 
 // =============================================================================
-// Token and Headers
+// ogen client helper
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -93,38 +89,54 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-func baseURL(ctx context.Context) string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return ""
+		return nil, fmt.Errorf("no credentials available")
 	}
+
 	base, _ := creds.Metadata["base_url"].(string)
 	if base == "" {
-		return ""
+		return nil, fmt.Errorf("grafana base_url not configured")
 	}
-	return strings.TrimRight(base, "/")
-}
-
-func headers(ctx context.Context) map[string]string {
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return map[string]string{}
-	}
-
-	h := map[string]string{
-		"Accept":       "application/json",
-		"Content-Type": "application/json",
-	}
+	serverURL := strings.TrimRight(base, "/")
 
 	switch creds.AuthType {
-	case store.AuthTypeAPIKey:
-		h["Authorization"] = "Bearer " + creds.AccessToken
 	case store.AuthTypeBasic:
-		auth := base64.StdEncoding.EncodeToString([]byte(creds.Username + ":" + creds.Password))
-		h["Authorization"] = "Basic " + auth
+		return grafanaapi.NewBasicClient(serverURL, creds.Username, creds.Password)
+	default:
+		return grafanaapi.NewBearerClient(serverURL, creds.AccessToken)
 	}
+}
 
-	return h
+func toJSON(v any) (string, error) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+	return string(b), nil
+}
+
+// toRaw converts any value to jx.Raw (JSON bytes).
+func toRaw(v any) (jx.Raw, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return jx.Raw(b), nil
+}
+
+// toRawSlice converts []interface{} to []jx.Raw.
+func toRawSlice(v []interface{}) ([]jx.Raw, error) {
+	result := make([]jx.Raw, 0, len(v))
+	for _, item := range v {
+		raw, err := toRaw(item)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, raw)
+	}
+	return result, nil
 }
 
 // =============================================================================
@@ -452,193 +464,168 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func search(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
 
-	query := url.Values{}
+	p := gen.SearchParams{}
 	if q, ok := params["query"].(string); ok && q != "" {
-		query.Set("query", q)
+		p.Query.SetTo(q)
 	}
 	if t, ok := params["type"].(string); ok && t != "" {
-		query.Set("type", t)
+		p.Type.SetTo(t)
 	}
 	if tags, ok := params["tag"].([]interface{}); ok {
 		for _, tag := range tags {
 			if ts, ok := tag.(string); ok {
-				query.Add("tag", ts)
+				p.Tag = append(p.Tag, ts)
 			}
 		}
 	}
 	if uids, ok := params["folder_uids"].([]interface{}); ok {
 		for _, uid := range uids {
 			if us, ok := uid.(string); ok {
-				query.Add("folderUIDs", us)
+				p.FolderUIDs = append(p.FolderUIDs, us)
 			}
 		}
 	}
 	if l, ok := params["limit"].(float64); ok {
-		query.Set("limit", fmt.Sprintf("%d", int(l)))
+		p.Limit.SetTo(int(l))
 	}
-	if p, ok := params["page"].(float64); ok {
-		query.Set("page", fmt.Sprintf("%d", int(p)))
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
 	}
 
-	endpoint := fmt.Sprintf("%s/api/search?%s", base, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.Search(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func getDashboard(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-	uid, _ := params["uid"].(string)
-	if uid == "" {
-		return "", fmt.Errorf("uid is required")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/dashboards/uid/%s", base, url.PathEscape(uid))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	uid, _ := params["uid"].(string)
+	res, err := c.GetDashboardByUid(ctx, gen.GetDashboardByUidParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func listDatasources(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/datasources", base)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListDatasources(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getDatasource(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-	uid, _ := params["uid"].(string)
-	if uid == "" {
-		return "", fmt.Errorf("uid is required")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/datasources/uid/%s", base, url.PathEscape(uid))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	uid, _ := params["uid"].(string)
+	res, err := c.GetDatasourceByUid(ctx, gen.GetDatasourceByUidParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func listAlerts(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/v1/provisioning/alert-rules", base)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListAlertRules(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getAlert(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-	uid, _ := params["uid"].(string)
-	if uid == "" {
-		return "", fmt.Errorf("uid is required")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/v1/provisioning/alert-rules/%s", base, url.PathEscape(uid))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	uid, _ := params["uid"].(string)
+	res, err := c.GetAlertRule(ctx, gen.GetAlertRuleParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func queryAnnotations(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
 
-	query := url.Values{}
+	p := gen.QueryAnnotationsParams{}
 	if from, ok := params["from"].(float64); ok {
-		query.Set("from", fmt.Sprintf("%d", int64(from)))
+		p.From.SetTo(int64(from))
 	}
 	if to, ok := params["to"].(float64); ok {
-		query.Set("to", fmt.Sprintf("%d", int64(to)))
+		p.To.SetTo(int64(to))
 	}
 	if uid, ok := params["dashboard_uid"].(string); ok && uid != "" {
-		query.Set("dashboardUID", uid)
+		p.DashboardUID.SetTo(uid)
 	}
 	if pid, ok := params["panel_id"].(float64); ok {
-		query.Set("panelId", fmt.Sprintf("%d", int(pid)))
+		p.PanelId.SetTo(int(pid))
 	}
 	if tags, ok := params["tags"].([]interface{}); ok {
 		for _, tag := range tags {
 			if ts, ok := tag.(string); ok {
-				query.Add("tags", ts)
+				p.Tags = append(p.Tags, ts)
 			}
 		}
 	}
 	if t, ok := params["type"].(string); ok && t != "" {
-		query.Set("type", t)
+		p.Type.SetTo(t)
 	}
 	if l, ok := params["limit"].(float64); ok {
-		query.Set("limit", fmt.Sprintf("%d", int(l)))
+		p.Limit.SetTo(int(l))
 	}
 
-	endpoint := fmt.Sprintf("%s/api/annotations?%s", base, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.QueryAnnotations(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func listFolders(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-
-	query := url.Values{}
-	if l, ok := params["limit"].(float64); ok {
-		query.Set("limit", fmt.Sprintf("%d", int(l)))
-	}
-	if p, ok := params["page"].(float64); ok {
-		query.Set("page", fmt.Sprintf("%d", int(p)))
-	}
-
-	endpoint := fmt.Sprintf("%s/api/folders", base)
-	if encoded := query.Encode(); encoded != "" {
-		endpoint += "?" + encoded
-	}
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	p := gen.ListFoldersParams{}
+	if l, ok := params["limit"].(float64); ok {
+		p.Limit.SetTo(int(l))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+
+	res, err := c.ListFolders(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -646,9 +633,9 @@ func listFolders(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func createUpdateDashboard(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
 
 	dashboard, ok := params["dashboard"]
@@ -656,218 +643,195 @@ func createUpdateDashboard(ctx context.Context, params map[string]any) (string, 
 		return "", fmt.Errorf("dashboard is required")
 	}
 
-	body := map[string]any{
-		"dashboard": dashboard,
-	}
-	if folderUID, ok := params["folder_uid"].(string); ok && folderUID != "" {
-		body["folderUid"] = folderUID
-	}
-	if message, ok := params["message"].(string); ok && message != "" {
-		body["message"] = message
-	}
-	if overwrite, ok := params["overwrite"].(bool); ok {
-		body["overwrite"] = overwrite
+	dashRaw, err := toRaw(dashboard)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode dashboard: %w", err)
 	}
 
-	endpoint := fmt.Sprintf("%s/api/dashboards/db", base)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	req := &gen.SaveDashboardRequest{
+		Dashboard: dashRaw,
+	}
+	if folderUID, ok := params["folder_uid"].(string); ok && folderUID != "" {
+		req.FolderUid.SetTo(folderUID)
+	}
+	if message, ok := params["message"].(string); ok && message != "" {
+		req.Message.SetTo(message)
+	}
+	if overwrite, ok := params["overwrite"].(bool); ok {
+		req.Overwrite.SetTo(overwrite)
+	}
+
+	res, err := c.CreateOrUpdateDashboard(ctx, req)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func deleteDashboard(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-	uid, _ := params["uid"].(string)
-	if uid == "" {
-		return "", fmt.Errorf("uid is required")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/dashboards/uid/%s", base, url.PathEscape(uid))
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	uid, _ := params["uid"].(string)
+	res, err := c.DeleteDashboardByUid(ctx, gen.DeleteDashboardByUidParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createAnnotation(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
 
 	text, _ := params["text"].(string)
-	if text == "" {
-		return "", fmt.Errorf("text is required")
-	}
-
-	body := map[string]any{
-		"text": text,
+	req := &gen.CreateAnnotationRequest{
+		Text: text,
 	}
 	if uid, ok := params["dashboard_uid"].(string); ok && uid != "" {
-		body["dashboardUID"] = uid
+		req.DashboardUID.SetTo(uid)
 	}
 	if pid, ok := params["panel_id"].(float64); ok {
-		body["panelId"] = int(pid)
+		req.PanelId.SetTo(int(pid))
 	}
 	if t, ok := params["time"].(float64); ok {
-		body["time"] = int64(t)
+		req.Time.SetTo(int64(t))
 	}
 	if te, ok := params["time_end"].(float64); ok {
-		body["timeEnd"] = int64(te)
+		req.TimeEnd.SetTo(int64(te))
 	}
 	if tags, ok := params["tags"].([]interface{}); ok {
-		body["tags"] = tags
+		for _, tag := range tags {
+			if ts, ok := tag.(string); ok {
+				req.Tags = append(req.Tags, ts)
+			}
+		}
 	}
 
-	endpoint := fmt.Sprintf("%s/api/annotations", base)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.CreateAnnotation(ctx, req)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func deleteAnnotation(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-	id, ok := params["annotation_id"].(float64)
-	if !ok {
-		return "", fmt.Errorf("annotation_id is required")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/annotations/%d", base, int(id))
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	id, _ := params["annotation_id"].(float64)
+	res, err := c.DeleteAnnotation(ctx, gen.DeleteAnnotationParams{ID: int(id)})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createFolder(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-
-	title, _ := params["title"].(string)
-	if title == "" {
-		return "", fmt.Errorf("title is required")
-	}
-
-	body := map[string]any{
-		"title": title,
-	}
-	if uid, ok := params["uid"].(string); ok && uid != "" {
-		body["uid"] = uid
-	}
-
-	endpoint := fmt.Sprintf("%s/api/folders", base)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	title, _ := params["title"].(string)
+	req := &gen.CreateFolderRequest{
+		Title: title,
+	}
+	if uid, ok := params["uid"].(string); ok && uid != "" {
+		req.UID.SetTo(uid)
+	}
+
+	res, err := c.CreateFolder(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func deleteFolder(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-	uid, _ := params["uid"].(string)
-	if uid == "" {
-		return "", fmt.Errorf("uid is required")
-	}
-
-	endpoint := fmt.Sprintf("%s/api/folders/%s", base, url.PathEscape(uid))
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	uid, _ := params["uid"].(string)
+	res, err := c.DeleteFolderByUid(ctx, gen.DeleteFolderByUidParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createAlertRule(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
-	}
-
-	title, _ := params["title"].(string)
-	if title == "" {
-		return "", fmt.Errorf("title is required")
-	}
-	ruleGroup, _ := params["rule_group"].(string)
-	if ruleGroup == "" {
-		return "", fmt.Errorf("rule_group is required")
-	}
-	folderUID, _ := params["folder_uid"].(string)
-	if folderUID == "" {
-		return "", fmt.Errorf("folder_uid is required")
-	}
-	condition, _ := params["condition"].(string)
-	if condition == "" {
-		return "", fmt.Errorf("condition is required")
-	}
-	data, ok := params["data"]
-	if !ok {
-		return "", fmt.Errorf("data is required")
-	}
-
-	body := map[string]any{
-		"title":     title,
-		"ruleGroup": ruleGroup,
-		"folderUID": folderUID,
-		"condition": condition,
-		"data":      data,
-	}
-
-	if nds, ok := params["no_data_state"].(string); ok && nds != "" {
-		body["noDataState"] = nds
-	}
-	if ees, ok := params["exec_err_state"].(string); ok && ees != "" {
-		body["execErrState"] = ees
-	}
-	if fd, ok := params["for_duration"].(string); ok && fd != "" {
-		body["for"] = fd
-	}
-	if ann, ok := params["annotations"]; ok {
-		body["annotations"] = ann
-	}
-	if lbl, ok := params["labels"]; ok {
-		body["labels"] = lbl
-	}
-
-	endpoint := fmt.Sprintf("%s/api/v1/provisioning/alert-rules", base)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	title, _ := params["title"].(string)
+	ruleGroup, _ := params["rule_group"].(string)
+	folderUID, _ := params["folder_uid"].(string)
+	condition, _ := params["condition"].(string)
+
+	data, ok := params["data"].([]interface{})
+	if !ok {
+		return "", fmt.Errorf("data is required and must be an array")
+	}
+	dataRaw, err := toRawSlice(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode data: %w", err)
+	}
+
+	req := &gen.CreateAlertRuleRequest{
+		Title:     title,
+		RuleGroup: ruleGroup,
+		FolderUID: folderUID,
+		Condition: condition,
+		Data:      dataRaw,
+	}
+
+	if nds, ok := params["no_data_state"].(string); ok && nds != "" {
+		req.NoDataState.SetTo(nds)
+	}
+	if ees, ok := params["exec_err_state"].(string); ok && ees != "" {
+		req.ExecErrState.SetTo(ees)
+	}
+	if fd, ok := params["for_duration"].(string); ok && fd != "" {
+		req.For.SetTo(fd)
+	}
+	if ann, ok := params["annotations"]; ok {
+		raw, err := toRaw(ann)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode annotations: %w", err)
+		}
+		req.Annotations = raw
+	}
+	if lbl, ok := params["labels"]; ok {
+		raw, err := toRaw(lbl)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode labels: %w", err)
+		}
+		req.Labels = raw
+	}
+
+	res, err := c.CreateAlertRule(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func queryDatasource(ctx context.Context, params map[string]any) (string, error) {
-	base := baseURL(ctx)
-	if base == "" {
-		return "", fmt.Errorf("grafana base_url not configured")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
 
 	dsUID, _ := params["datasource_uid"].(string)
-	if dsUID == "" {
-		return "", fmt.Errorf("datasource_uid is required")
-	}
 	expr, _ := params["expr"].(string)
-	if expr == "" {
-		return "", fmt.Errorf("expr is required")
-	}
 
 	from := "now-1h"
 	if f, ok := params["from"].(string); ok && f != "" {
@@ -890,16 +854,26 @@ func queryDatasource(ctx context.Context, params map[string]any) (string, error)
 		query["maxLines"] = int(maxLines)
 	}
 
-	body := map[string]any{
-		"from":    from,
-		"to":      to,
-		"queries": []any{query},
+	queryRaw, err := toRaw(query)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode query: %w", err)
 	}
 
-	endpoint := fmt.Sprintf("%s/api/ds/query", base)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	req := &gen.DsQueryRequest{
+		Queries: []jx.Raw{queryRaw},
+	}
+	req.From.SetTo(from)
+	req.To.SetTo(to)
+
+	res, err := c.QueryDatasource(ctx, req)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	// res is jx.Raw (free-form), pretty-print it
+	var parsed any
+	if json.Unmarshal(res, &parsed) == nil {
+		return toJSON(parsed)
+	}
+	return string(res), nil
 }

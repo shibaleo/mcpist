@@ -64,7 +64,7 @@ mcpist が **何を返すか** を宣言するスキーマ定義である。
 
 | 条件 | 採用可否 |
 |------|----------|
-| 公式 OpenAPI spec が存在する API (GitHub, Supabase, Jira, Grafana) | ogen 推奨 |
+| 公式 OpenAPI spec が存在する API (GitHub, Supabase, Grafana, Jira) | ogen 推奨 |
 | OpenAPI spec がない/不完全な API (Notion, Trello) | 手書き httpclient |
 
 ogen を使うモジュールと使わないモジュールで、ハンドラのワークロードが大きく変わらないようにする。
@@ -72,7 +72,7 @@ ogen を使うモジュールと使わないモジュールで、ハンドラの
 
 ## File Structure
 
-### ogen 採用モジュール (GitHub, Supabase)
+### ogen 採用モジュール (GitHub, Supabase, Grafana)
 
 ```
 apps/server/
@@ -87,6 +87,11 @@ apps/server/
 │   ├── client.go                     # SecuritySource アダプタ (Bearer, 固定URL)
 │   ├── client_test.go                # 統合テスト (実API呼出)
 │   └── gen/                          # ogen 自動生成 (編集不可)
+├── pkg/grafanaapi/                   # Grafana HTTP API Client 層
+│   ├── openapi-subset.yaml           # ★ subset spec (16 endpoints, dual auth)
+│   ├── ogen.yaml                     # ogen 設定
+│   ├── client.go                     # SecuritySource アダプタ (Bearer/Basic, 動的URL)
+│   └── gen/                          # ogen 自動生成 (編集不可)
 ├── internal/modules/
 │   ├── types.go                      # Module interface, Tool, InputSchema
 │   ├── modules.go                    # Registry, Run() with validation
@@ -94,8 +99,10 @@ apps/server/
 │   ├── validate_test.go
 │   ├── github/
 │   │   └── module.go                 # GitHub Module Interface 層
-│   └── supabase/
-│       └── module.go                 # Supabase Module Interface 層 (19 tools)
+│   ├── supabase/
+│   │   └── module.go                 # Supabase Module Interface 層 (19 tools)
+│   └── grafana/
+│       └── module.go                 # Grafana Module Interface 層 (16 tools)
 ```
 
 ### 手書きモジュール (Notion 等)
