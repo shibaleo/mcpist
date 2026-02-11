@@ -190,6 +190,75 @@ func (r *ModuleRegistry) Run(ctx, moduleName, toolName, params) (*ToolCallResult
 - `Properties[key].Type` に基づく型チェック (`string`, `number`, `boolean`, `array`, `object`)
 - 未宣言パラメータはスルー (OpenWorld)
 
+## Response Format Strategy
+
+ツールのレスポンスは **3 レベル** で制御する。
+
+### Level 1: Spec Level (フィールドフィルタ)
+
+ogen の subset spec が自動的にフィールドフィルタとして機能する。
+
+- `Decode()`: JSON 内の未定義フィールドは `d.Skip()` で読み飛ばし
+- `Encode()`: struct に定義されたフィールドのみシリアライズ
+
+例: GitHub `get_repo` は API の 80+ フィールドから subset spec 定義の 22 フィールドのみ返す。
+
+**→ 単一ツール (ogen) は `toJSON(res)` でそのまま返す。追加のフィールドフィルタは不要。**
+
+### Level 2: Field Selection (複合ツール)
+
+複数 API を並行呼出しする複合ツールは、ハンドラ内でフィールドを選別する。
+
+- 各 API レスポンスから **概要に必要なフィールドだけ** を `map[string]any` に抽出
+- 長文テキスト (body, README) は切り詰め
+- `_note` フィールドで「詳細は個別ツールで取得」と補足
+- 結果は JSON (`toJSON`) で返す — LLM が直接解析する用途に最適
+
+例: `describe_repo` = get_repo + README + branches + issues + PRs → 概要 JSON
+
+### Level 3: Format Conversion (構造変換)
+
+複雑なネスト構造を持つ API (Notion 等) は、JSON → 人間/LLM 可読フォーマットに変換する。
+
+| Format | Use Case |
+|--------|----------|
+| Markdown | ページ内容、リッチテキスト (Notion blocks → MD) |
+| CSV/Table | テーブルデータ、一覧 (Notion DB → CSV) |
+| TOON | 汎用コンパクト形式 (将来) |
+
+ogen モジュールでは Level 1 で十分なため Level 3 は不要。
+手書きモジュール (Notion 等) で必要に応じて実装する。
+
+### 判断基準
+
+```
+ツール種別の判定:
+  単一 API (ogen)  → Level 1: toJSON(res) そのまま
+  複合ツール       → Level 2: フィールド選別 + toJSON
+  複雑構造 (手書き) → Level 3: MD/CSV/TOON 変換
+```
+
+## Composite Tool Design
+
+### 定義
+
+**複合ツール** = 複数 API を goroutine で並行呼出し → フィールド選別 → 1 JSON で返すツール。
+
+### 設計基準
+
+1. **API 呼出回数が固定**であること (入力によって変動しない)
+2. **構成する API 群が自明**であること (常に同じ組み合わせ)
+3. **概要把握の需要がある**こと (個別に呼ぶと手間)
+
+### 不採用にしたもの
+
+| 候補 | 理由 |
+|------|------|
+| `describe_issue` | 単一 API (get_issue) で十分。合成の価値なし |
+| `user_stats` (list 系全呼出) | ページネーション = API 呼出回数が無制限 |
+| `describe_ci` | workflow_id が入力依存で呼出回数不定 |
+| `search_and_read` | 検索結果に依存して呼出回数不定 |
+
 ## Regeneration Workflow
 
 ツール追加・変更時のワークフロー:

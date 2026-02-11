@@ -559,6 +559,41 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"username"},
 		},
 	},
+	{
+		ID:   "github:describe_repo",
+		Name: "describe_repo",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Comprehensive repository analysis. Fetches repo info, topics, README, branches, open issues, and open PRs in parallel.",
+			"ja-JP": "リポジトリの総合分析。リポジトリ情報、トピック、README、ブランチ、オープンIssue、オープンPRを並列取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"owner": {Type: "string", Description: "Repository owner"},
+				"repo":  {Type: "string", Description: "Repository name"},
+			},
+			Required: []string{"owner", "repo"},
+		},
+	},
+	{
+		ID:   "github:describe_pr",
+		Name: "describe_pr",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Comprehensive pull request analysis. Fetches PR details, changed files, reviews, and comments in parallel.",
+			"ja-JP": "プルリクエストの総合分析。PR詳細、変更ファイル、レビュー、コメントを並列取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"owner":       {Type: "string", Description: "Repository owner"},
+				"repo":        {Type: "string", Description: "Repository name"},
+				"pr_number": {Type: "number", Description: "Pull request number"},
+			},
+			Required: []string{"owner", "repo", "pr_number"},
+		},
+	},
 }
 
 // =============================================================================
@@ -592,6 +627,8 @@ var toolHandlers = map[string]toolHandler{
 	"list_orgs":           listOrgs,
 	"list_public_events":  listPublicEvents,
 	"describe_user":       describeUser,
+	"describe_repo":       describeRepo,
+	"describe_pr":         describePR,
 }
 
 // =============================================================================
@@ -1194,37 +1231,407 @@ func describeUser(ctx context.Context, params map[string]any) (string, error) {
 		close(ch)
 	}()
 
-	results := make(map[string]string, 5)
+	raw := make(map[string]string, 5)
 	for r := range ch {
 		if r.err != nil {
-			results[r.key] = fmt.Sprintf("error: %s", r.err.Error())
+			raw[r.key] = ""
 		} else {
-			results[r.key] = r.val
+			raw[r.key] = r.val
 		}
 	}
 
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# GitHub User: %s\n\n", username))
+	out := map[string]any{}
 
-	sb.WriteString("## Profile\n```json\n")
-	sb.WriteString(results["profile"])
-	sb.WriteString("\n```\n\n")
+	// Profile: extract only essential fields
+	if s := raw["profile"]; s != "" {
+		var u map[string]any
+		if json.Unmarshal([]byte(s), &u) == nil {
+			p := map[string]any{}
+			for _, k := range []string{"name", "html_url", "bio", "public_repos", "followers", "following"} {
+				if v, ok := u[k]; ok && v != nil {
+					p[k] = v
+				}
+			}
+			out["profile"] = p
+		}
+	}
 
-	sb.WriteString("## Repositories (recent 10)\n```json\n")
-	sb.WriteString(results["repos"])
-	sb.WriteString("\n```\n\n")
+	// Repos: name, description, language, stars, fork
+	if s := raw["repos"]; s != "" {
+		var repos []map[string]any
+		if json.Unmarshal([]byte(s), &repos) == nil {
+			compact := make([]map[string]any, 0, len(repos))
+			for _, r := range repos {
+				c := map[string]any{"name": r["name"]}
+				if v := r["description"]; v != nil && v != "" {
+					c["desc"] = v
+				}
+				if v := r["language"]; v != nil && v != "" {
+					c["lang"] = v
+				}
+				if v, ok := r["stargazers_count"].(float64); ok && v > 0 {
+					c["stars"] = int(v)
+				}
+				if v, ok := r["fork"].(bool); ok && v {
+					c["fork"] = true
+				}
+				compact = append(compact, c)
+			}
+			out["repos"] = compact
+		}
+	}
 
-	sb.WriteString("## Starred Repositories (recent 10)\n```json\n")
-	sb.WriteString(results["starred"])
-	sb.WriteString("\n```\n\n")
+	// Starred: full_name, description, language, topics
+	if s := raw["starred"]; s != "" {
+		var starred []map[string]any
+		if json.Unmarshal([]byte(s), &starred) == nil {
+			compact := make([]map[string]any, 0, len(starred))
+			for _, r := range starred {
+				c := map[string]any{"repo": r["full_name"]}
+				if v := r["description"]; v != nil && v != "" {
+					c["desc"] = v
+				}
+				if v := r["language"]; v != nil && v != "" {
+					c["lang"] = v
+				}
+				if arr, ok := r["topics"].([]any); ok && len(arr) > 0 {
+					c["topics"] = arr
+				}
+				compact = append(compact, c)
+			}
+			out["starred"] = compact
+		}
+	}
 
-	sb.WriteString("## Organizations\n```json\n")
-	sb.WriteString(results["orgs"])
-	sb.WriteString("\n```\n\n")
+	// Orgs: login, description
+	if s := raw["orgs"]; s != "" {
+		var orgs []map[string]any
+		if json.Unmarshal([]byte(s), &orgs) == nil && len(orgs) > 0 {
+			compact := make([]map[string]any, 0, len(orgs))
+			for _, o := range orgs {
+				c := map[string]any{"login": o["login"]}
+				if v := o["description"]; v != nil && v != "" {
+					c["desc"] = v
+				}
+				compact = append(compact, c)
+			}
+			out["orgs"] = compact
+		}
+	}
 
-	sb.WriteString("## Recent Activity (10 events)\n```json\n")
-	sb.WriteString(results["events"])
-	sb.WriteString("\n```\n")
+	// Events: type, repo, date
+	if s := raw["events"]; s != "" {
+		var events []map[string]any
+		if json.Unmarshal([]byte(s), &events) == nil && len(events) > 0 {
+			compact := make([]map[string]any, 0, len(events))
+			for _, e := range events {
+				c := map[string]any{"type": e["type"]}
+				if r, ok := e["repo"].(map[string]any); ok {
+					if name, ok := r["name"].(string); ok {
+						c["repo"] = name
+					}
+				}
+				if v, ok := e["created_at"].(string); ok && len(v) >= 16 {
+					c["date"] = v[:10] + " " + v[11:16]
+				}
+				compact = append(compact, c)
+			}
+			out["events"] = compact
+		}
+	}
 
-	return sb.String(), nil
+	return toJSON(out)
+}
+
+// =============================================================================
+// Composite: describe_repo
+// =============================================================================
+
+func describeRepo(ctx context.Context, params map[string]any) (string, error) {
+	owner, _ := params["owner"].(string)
+	repoName, _ := params["repo"].(string)
+
+	type result struct {
+		key string
+		val string
+		err error
+	}
+
+	ch := make(chan result, 5)
+	var wg sync.WaitGroup
+
+	calls := []struct {
+		key    string
+		params map[string]any
+		fn     toolHandler
+	}{
+		{"repo", map[string]any{"owner": owner, "repo": repoName}, getRepo},
+		{"readme", map[string]any{"owner": owner, "repo": repoName, "path": "README.md"}, getFileContent},
+		{"branches", map[string]any{"owner": owner, "repo": repoName, "per_page": float64(10)}, listBranches},
+		{"issues", map[string]any{"owner": owner, "repo": repoName, "state": "open", "per_page": float64(10)}, listIssues},
+		{"prs", map[string]any{"owner": owner, "repo": repoName, "state": "open", "per_page": float64(10)}, listPRs},
+	}
+
+	for _, c := range calls {
+		wg.Add(1)
+		go func(key string, fn toolHandler, p map[string]any) {
+			defer wg.Done()
+			v, err := fn(ctx, p)
+			ch <- result{key: key, val: v, err: err}
+		}(c.key, c.fn, c.params)
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	raw := make(map[string]string, 5)
+	for r := range ch {
+		if r.err != nil {
+			raw[r.key] = ""
+		} else {
+			raw[r.key] = r.val
+		}
+	}
+
+	out := map[string]any{
+		"_note": "Partial data. Use get_repo, get_issue, get_pr, get_file_content for full details.",
+	}
+
+	// Repo: essential fields only (no html_url, owner)
+	if s := raw["repo"]; s != "" {
+		var r map[string]any
+		if json.Unmarshal([]byte(s), &r) == nil {
+			p := map[string]any{}
+			for _, k := range []string{"full_name", "description", "language", "visibility", "stargazers_count", "forks_count", "open_issues_count", "default_branch", "archived", "fork"} {
+				if v, ok := r[k]; ok && v != nil {
+					p[k] = v
+				}
+			}
+			if arr, ok := r["topics"].([]any); ok && len(arr) > 0 {
+				p["topics"] = arr
+			}
+			if v, ok := r["created_at"].(string); ok && len(v) >= 10 {
+				p["created"] = v[:10]
+			}
+			if v, ok := r["pushed_at"].(string); ok && len(v) >= 10 {
+				p["last_push"] = v[:10]
+			}
+			out["repo"] = p
+		}
+	}
+
+	// README: extract content field, truncate to 2000 chars
+	if s := raw["readme"]; s != "" {
+		var f map[string]any
+		if json.Unmarshal([]byte(s), &f) == nil {
+			if content, ok := f["content"].(string); ok {
+				if len(content) > 2000 {
+					out["readme"] = content[:2000] + "...(truncated)"
+				} else {
+					out["readme"] = content
+				}
+			}
+		}
+	}
+
+	// Branches: already compact (name, protected)
+	if s := raw["branches"]; s != "" {
+		var branches []map[string]any
+		if json.Unmarshal([]byte(s), &branches) == nil {
+			names := make([]string, 0, len(branches))
+			for _, b := range branches {
+				if name, ok := b["name"].(string); ok {
+					names = append(names, name)
+				}
+			}
+			out["branches"] = names
+		}
+	}
+
+	// Issues: number, title, author, labels, created_at
+	if s := raw["issues"]; s != "" {
+		var issues []map[string]any
+		if json.Unmarshal([]byte(s), &issues) == nil {
+			compact := make([]map[string]any, 0, len(issues))
+			for _, i := range issues {
+				c := map[string]any{"number": i["number"], "title": i["title"]}
+				if u, ok := i["user"].(map[string]any); ok {
+					if login, ok := u["login"].(string); ok {
+						c["author"] = login
+					}
+				}
+				if v, ok := i["created_at"].(string); ok && len(v) >= 10 {
+					c["date"] = v[:10]
+				}
+				if labels, ok := i["labels"].([]any); ok && len(labels) > 0 {
+					names := make([]string, 0, len(labels))
+					for _, l := range labels {
+						if lm, ok := l.(map[string]any); ok {
+							if name, ok := lm["name"].(string); ok {
+								names = append(names, name)
+							}
+						}
+					}
+					if len(names) > 0 {
+						c["labels"] = names
+					}
+				}
+				compact = append(compact, c)
+			}
+			out["issues"] = compact
+		}
+	}
+
+	// PRs: number, title, author, draft, created_at
+	if s := raw["prs"]; s != "" {
+		var prs []map[string]any
+		if json.Unmarshal([]byte(s), &prs) == nil {
+			compact := make([]map[string]any, 0, len(prs))
+			for _, p := range prs {
+				c := map[string]any{"number": p["number"], "title": p["title"]}
+				if u, ok := p["user"].(map[string]any); ok {
+					if login, ok := u["login"].(string); ok {
+						c["author"] = login
+					}
+				}
+				if v, ok := p["draft"].(bool); ok && v {
+					c["draft"] = true
+				}
+				if v, ok := p["created_at"].(string); ok && len(v) >= 10 {
+					c["date"] = v[:10]
+				}
+				compact = append(compact, c)
+			}
+			out["prs"] = compact
+		}
+	}
+
+	return toJSON(out)
+}
+
+// =============================================================================
+// Composite: describe_pr
+// =============================================================================
+
+func describePR(ctx context.Context, params map[string]any) (string, error) {
+	owner, _ := params["owner"].(string)
+	repoName, _ := params["repo"].(string)
+	prNumber, _ := params["pr_number"].(float64)
+
+	type result struct {
+		key string
+		val string
+		err error
+	}
+
+	ch := make(chan result, 2)
+	var wg sync.WaitGroup
+
+	calls := []struct {
+		key    string
+		params map[string]any
+		fn     toolHandler
+	}{
+		{"pr", map[string]any{"owner": owner, "repo": repoName, "pr_number": prNumber}, getPR},
+		{"files", map[string]any{"owner": owner, "repo": repoName, "pr_number": prNumber, "per_page": float64(30)}, listPRFiles},
+	}
+
+	for _, c := range calls {
+		wg.Add(1)
+		go func(key string, fn toolHandler, p map[string]any) {
+			defer wg.Done()
+			v, err := fn(ctx, p)
+			ch <- result{key: key, val: v, err: err}
+		}(c.key, c.fn, c.params)
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	raw := make(map[string]string, 2)
+	for r := range ch {
+		if r.err != nil {
+			raw[r.key] = ""
+		} else {
+			raw[r.key] = r.val
+		}
+	}
+
+	out := map[string]any{
+		"_note": "Partial data. Use get_pr and list_pr_files for full details including patch diffs.",
+	}
+
+	// PR: essential fields (no html_url, truncate body)
+	if s := raw["pr"]; s != "" {
+		var pr map[string]any
+		if json.Unmarshal([]byte(s), &pr) == nil {
+			p := map[string]any{}
+			for _, k := range []string{"number", "title", "state", "draft", "merged"} {
+				if v, ok := pr[k]; ok && v != nil {
+					p[k] = v
+				}
+			}
+			if v, ok := pr["created_at"].(string); ok && len(v) >= 10 {
+				p["created"] = v[:10]
+			}
+			if v, ok := pr["updated_at"].(string); ok && len(v) >= 10 {
+				p["updated"] = v[:10]
+			}
+			if v, ok := pr["merged_at"].(string); ok && len(v) >= 10 {
+				p["merged_at"] = v[:10]
+			}
+			if u, ok := pr["user"].(map[string]any); ok {
+				if login, ok := u["login"].(string); ok {
+					p["author"] = login
+				}
+			}
+			if head, ok := pr["head"].(map[string]any); ok {
+				if ref, ok := head["ref"].(string); ok {
+					p["head"] = ref
+				}
+			}
+			if base, ok := pr["base"].(map[string]any); ok {
+				if ref, ok := base["ref"].(string); ok {
+					p["base"] = ref
+				}
+			}
+			// body: truncate to 3000 chars
+			if body, ok := pr["body"].(string); ok && body != "" {
+				if len(body) > 3000 {
+					p["body"] = body[:3000] + "...(truncated)"
+				} else {
+					p["body"] = body
+				}
+			}
+			out["pr"] = p
+		}
+	}
+
+	// Files: filename, status, additions, deletions (no patch)
+	if s := raw["files"]; s != "" {
+		var files []map[string]any
+		if json.Unmarshal([]byte(s), &files) == nil {
+			compact := make([]map[string]any, 0, len(files))
+			for _, f := range files {
+				c := map[string]any{"file": f["filename"]}
+				if v, ok := f["status"].(string); ok {
+					c["status"] = v
+				}
+				if v, ok := f["additions"].(float64); ok {
+					c["add"] = int(v)
+				}
+				if v, ok := f["deletions"].(float64); ok {
+					c["del"] = int(v)
+				}
+				compact = append(compact, c)
+			}
+			out["files"] = compact
+		}
+	}
+
+	return toJSON(out)
 }

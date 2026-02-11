@@ -61,9 +61,17 @@
 | `list_workflow_runs` | GET | `/repos/{owner}/{repo}/actions/runs` | **owner**, **repo**, workflow_id, status, per_page |
 | | GET | `/repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs` | (workflow_id 指定時に自動選択) |
 
+### Composite Tools
+
+| Tool | 構成 API | Params (required **bold**) |
+|------|----------|---------------------------|
+| `describe_user` | get_user, list_repos(5), list_starred_repos(5) | (none) |
+| `describe_repo` | get_repo, get_file_content(README.md), list_branches(10), list_issues(open,10), list_prs(open,10) | **owner**, **repo** |
+| `describe_pr` | get_pr, list_pr_files(30) | **owner**, **repo**, **pr_number** |
+
 ## Summary
 
-- **Total**: 21 tools (GET: 16, POST: 3, PATCH: 1)
+- **Total**: 24 tools (GET: 16, POST: 3, PATCH: 1, Composite: 3 + list_workflow_runs の 2 endpoint)
 - **ogen operations**: 22 (list_workflow_runs が 2 エンドポイントにマッピング)
 
 ## Response Schemas
@@ -91,6 +99,46 @@ subset spec で定義しているスキーマ:
 | UpdateIssueRequest | update_issue |
 | CreateCommentRequest | add_issue_comment |
 | CreatePRRequest | create_pr |
+
+## Composite Tool Response Format
+
+すべて Level 2 (Field Selection) で JSON を返す。各 API は goroutine で並行呼出。
+
+### describe_user
+
+```json
+{
+  "profile": { "login", "name", "bio", "public_repos", "followers", "following", "created_at" },
+  "repos": [{ "full_name", "description", "language", "stargazers_count", "fork" }],
+  "starred": [{ "full_name", "description", "language", "stargazers_count" }],
+  "_note": "..."
+}
+```
+
+### describe_repo
+
+```json
+{
+  "repo": { "full_name", "description", "language", "visibility", "stargazers_count", "forks_count",
+            "open_issues_count", "default_branch", "archived", "fork", "topics", "created", "last_push" },
+  "readme": "(content text, max 2000 chars)",
+  "branches": ["name", ...],
+  "issues": [{ "number", "title", "author", "date", "labels" }],
+  "prs": [{ "number", "title", "author", "draft", "date" }],
+  "_note": "..."
+}
+```
+
+### describe_pr
+
+```json
+{
+  "pr": { "number", "title", "state", "draft", "merged", "created", "updated", "merged_at",
+          "author", "head", "base", "body (max 3000 chars)" },
+  "files": [{ "file", "status", "add", "del" }],
+  "_note": "..."
+}
+```
 
 ## Notes
 
