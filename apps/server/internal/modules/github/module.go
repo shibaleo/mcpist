@@ -5,21 +5,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/githubapi"
+	gen "mcpist/server/pkg/githubapi/gen"
 )
 
-const (
-	githubAPIBase    = "https://api.github.com"
-	githubAPIVersion = "2022-11-28"
-)
-
-var client = httpclient.New()
+const githubAPIVersion = "2022-11-28"
 
 // GitHubModule implements the Module interface for GitHub API
 type GitHubModule struct{}
@@ -95,26 +90,6 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-func headers(ctx context.Context) map[string]string {
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return map[string]string{}
-	}
-
-	h := map[string]string{
-		"Accept":               "application/vnd.github+json",
-		"X-GitHub-Api-Version": githubAPIVersion,
-	}
-
-	// Both oauth2 and api_key use Bearer token
-	switch creds.AuthType {
-	case store.AuthTypeOAuth2, store.AuthTypeAPIKey:
-		h["Authorization"] = "Bearer " + creds.AccessToken
-	}
-
-	return h
-}
-
 // =============================================================================
 // Tool Definitions
 // =============================================================================
@@ -125,13 +100,16 @@ var toolDefinitions = []modules.Tool{
 		ID:   "github:get_user",
 		Name: "get_user",
 		Descriptions: modules.LocalizedText{
-			"en-US": "Get information about the authenticated GitHub user.",
-			"ja-JP": "認証済みGitHubユーザーの情報を取得します。",
+			"en-US": "Get a GitHub user's profile by username.",
+			"ja-JP": "GitHubユーザーのプロフィールをユーザー名で取得します。",
 		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
-			Type:       "object",
-			Properties: map[string]modules.Property{},
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"username": {Type: "string", Description: "GitHub username"},
+			},
+			Required: []string{"username"},
 		},
 	},
 	// Repositories
@@ -139,18 +117,40 @@ var toolDefinitions = []modules.Tool{
 		ID:   "github:list_repos",
 		Name: "list_repos",
 		Descriptions: modules.LocalizedText{
-			"en-US": "List repositories for the authenticated user.",
-			"ja-JP": "認証済みユーザーのリポジトリを一覧表示します。",
+			"en-US": "List repositories for a user.",
+			"ja-JP": "ユーザーのリポジトリを一覧表示します。",
 		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"type":     {Type: "string", Description: "Type of repositories (all, owner, public, private). Default: owner"},
+				"username": {Type: "string", Description: "GitHub username"},
+				"type":     {Type: "string", Description: "Type of repositories (all, owner, member). Default: owner"},
 				"sort":     {Type: "string", Description: "Sort by (created, updated, pushed, full_name). Default: updated"},
 				"per_page": {Type: "number", Description: "Results per page. Default: 30"},
 				"page":     {Type: "number", Description: "Page number. Default: 1"},
 			},
+			Required: []string{"username"},
+		},
+	},
+	{
+		ID:   "github:list_starred_repos",
+		Name: "list_starred_repos",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List repositories starred by a user.",
+			"ja-JP": "ユーザーがスターしたリポジトリを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"username":  {Type: "string", Description: "GitHub username"},
+				"sort":      {Type: "string", Description: "Sort by (created, updated). Default: created"},
+				"direction": {Type: "string", Description: "Sort direction (asc, desc). Default: desc"},
+				"per_page":  {Type: "number", Description: "Results per page. Default: 30"},
+				"page":      {Type: "number", Description: "Page number. Default: 1"},
+			},
+			Required: []string{"username"},
 		},
 	},
 	{
@@ -505,6 +505,42 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"owner", "repo"},
 		},
 	},
+	// User (continued)
+	{
+		ID:   "github:list_orgs",
+		Name: "list_orgs",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List organizations for a user.",
+			"ja-JP": "ユーザーの所属組織を一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"username": {Type: "string", Description: "GitHub username"},
+				"per_page": {Type: "number", Description: "Results per page. Default: 30"},
+			},
+			Required: []string{"username"},
+		},
+	},
+	{
+		ID:   "github:list_public_events",
+		Name: "list_public_events",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List recent public events for a user.",
+			"ja-JP": "ユーザーの最近の公開イベントを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"username": {Type: "string", Description: "GitHub username"},
+				"per_page": {Type: "number", Description: "Results per page. Default: 30"},
+				"page":     {Type: "number", Description: "Page number. Default: 1"},
+			},
+			Required: []string{"username"},
+		},
+	},
 }
 
 // =============================================================================
@@ -514,26 +550,59 @@ var toolDefinitions = []modules.Tool{
 type toolHandler func(ctx context.Context, params map[string]any) (string, error)
 
 var toolHandlers = map[string]toolHandler{
-	"get_user":           getUser,
-	"list_repos":         listRepos,
-	"get_repo":           getRepo,
-	"list_branches":      listBranches,
-	"list_commits":       listCommits,
-	"get_file_content":   getFileContent,
-	"list_issues":        listIssues,
-	"get_issue":          getIssue,
-	"create_issue":       createIssue,
-	"update_issue":       updateIssue,
-	"add_issue_comment":  addIssueComment,
-	"list_prs":           listPRs,
-	"get_pr":             getPR,
-	"create_pr":          createPR,
-	"list_pr_files":      listPRFiles,
-	"search_repos":       searchRepos,
-	"search_code":        searchCode,
-	"search_issues":      searchIssues,
-	"list_workflows":     listWorkflows,
-	"list_workflow_runs": listWorkflowRuns,
+	"get_user":            getUser,
+	"list_repos":          listRepos,
+	"list_starred_repos":  listStarredRepos,
+	"get_repo":            getRepo,
+	"list_branches":       listBranches,
+	"list_commits":        listCommits,
+	"get_file_content":    getFileContent,
+	"list_issues":         listIssues,
+	"get_issue":           getIssue,
+	"create_issue":        createIssue,
+	"update_issue":        updateIssue,
+	"add_issue_comment":   addIssueComment,
+	"list_prs":            listPRs,
+	"get_pr":              getPR,
+	"create_pr":           createPR,
+	"list_pr_files":       listPRFiles,
+	"search_repos":        searchRepos,
+	"search_code":         searchCode,
+	"search_issues":       searchIssues,
+	"list_workflows":      listWorkflows,
+	"list_workflow_runs":  listWorkflowRuns,
+	"list_orgs":           listOrgs,
+	"list_public_events":  listPublicEvents,
+}
+
+// =============================================================================
+// ogen client helper
+// =============================================================================
+
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
+	creds := getCredentials(ctx)
+	if creds == nil {
+		return nil, fmt.Errorf("no credentials available")
+	}
+	return githubapi.NewClient(creds.AccessToken)
+}
+
+func toJSON(v any) (string, error) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+	return string(b), nil
+}
+
+func toStringSlice(v []interface{}) []string {
+	out := make([]string, 0, len(v))
+	for _, item := range v {
+		if s, ok := item.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // =============================================================================
@@ -541,12 +610,53 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func getUser(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := githubAPIBase + "/user"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	username, _ := params["username"].(string)
+	res, err := c.UsersGetByName(ctx, gen.UsersGetByNameParams{Username: username})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func listOrgs(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	username, _ := params["username"].(string)
+	p := gen.OrgsListForUserParams{Username: username}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	res, err := c.OrgsListForUser(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func listPublicEvents(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	username, _ := params["username"].(string)
+	p := gen.ActivityListPublicEventsForUserParams{Username: username}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.ActivityListPublicEventsForUser(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -554,119 +664,142 @@ func getUser(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listRepos(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-	if t, ok := params["type"].(string); ok && t != "" {
-		query.Set("type", t)
-	} else {
-		query.Set("type", "owner")
-	}
-	if sort, ok := params["sort"].(string); ok && sort != "" {
-		query.Set("sort", sort)
-	} else {
-		query.Set("sort", "updated")
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	query.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	query.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/user/repos?%s", githubAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	username, _ := params["username"].(string)
+	p := gen.ReposListForUserParams{Username: username}
+	if t, ok := params["type"].(string); ok && t != "" {
+		p.Type.SetTo(gen.ReposListForUserType(t))
+	}
+	if sort, ok := params["sort"].(string); ok && sort != "" {
+		p.Sort.SetTo(gen.ReposListForUserSort(sort))
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.ReposListForUser(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func listStarredRepos(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	username, _ := params["username"].(string)
+	p := gen.ActivityListReposStarredByUserParams{Username: username}
+	if sort, ok := params["sort"].(string); ok && sort != "" {
+		p.Sort.SetTo(gen.ActivityListReposStarredByUserSort(sort))
+	}
+	if dir, ok := params["direction"].(string); ok && dir != "" {
+		p.Direction.SetTo(gen.ActivityListReposStarredByUserDirection(dir))
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.ActivityListReposStarredByUser(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getRepo(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	endpoint := fmt.Sprintf("%s/repos/%s/%s", githubAPIBase, owner, repo)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+
+	res, err := c.ReposGet(ctx, gen.ReposGetParams{Owner: owner, Repo: repo})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func listBranches(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/branches?per_page=%d", githubAPIBase, owner, repo, perPage)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	p := gen.ReposListBranchesParams{Owner: owner, Repo: repo}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	res, err := c.ReposListBranches(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func listCommits(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	query := url.Values{}
-	if sha, ok := params["sha"].(string); ok && sha != "" {
-		query.Set("sha", sha)
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	query.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	query.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/commits?%s", githubAPIBase, owner, repo, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	p := gen.ReposListCommitsParams{Owner: owner, Repo: repo}
+	if sha, ok := params["sha"].(string); ok && sha != "" {
+		p.Sha.SetTo(sha)
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.ReposListCommits(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getFileContent(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	path, _ := params["path"].(string)
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/contents/%s", githubAPIBase, owner, repo, path)
-	if ref, ok := params["ref"].(string); ok && ref != "" {
-		endpoint += "?ref=" + url.QueryEscape(ref)
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	// Try to decode base64 content
-	var result map[string]interface{}
-	if err := json.Unmarshal(respBody, &result); err == nil {
-		if content, ok := result["content"].(string); ok {
-			if encoding, ok := result["encoding"].(string); ok && encoding == "base64" {
-				decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(content, "\n", ""))
-				if err == nil {
-					result["content"] = string(decoded)
-					result["encoding"] = "utf-8"
-				}
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	path, _ := params["path"].(string)
+	p := gen.ReposGetContentParams{Owner: owner, Repo: repo, Path: path}
+	if ref, ok := params["ref"].(string); ok && ref != "" {
+		p.Ref.SetTo(ref)
+	}
+	res, err := c.ReposGetContent(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	// Decode base64 content inline
+	if enc, ok := res.Encoding.Get(); ok && enc == "base64" {
+		if content, ok := res.Content.Get(); ok {
+			decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(content, "\n", ""))
+			if err == nil {
+				res.Content.SetTo(string(decoded))
+				res.Encoding.SetTo("utf-8")
 			}
 		}
-		return httpclient.PrettyJSONFromInterface(result), nil
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -674,111 +807,114 @@ func getFileContent(ctx context.Context, params map[string]any) (string, error) 
 // =============================================================================
 
 func listIssues(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	query := url.Values{}
-	if state, ok := params["state"].(string); ok && state != "" {
-		query.Set("state", state)
-	} else {
-		query.Set("state", "open")
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	query.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	query.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/issues?%s", githubAPIBase, owner, repo, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	p := gen.IssuesListForRepoParams{Owner: owner, Repo: repo}
+	if state, ok := params["state"].(string); ok && state != "" {
+		p.State.SetTo(gen.IssuesListForRepoState(state))
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.IssuesListForRepo(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getIssue(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	issueNumber, _ := params["issue_number"].(float64)
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/issues/%d", githubAPIBase, owner, repo, int(issueNumber))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	issueNumber, _ := params["issue_number"].(float64)
+	res, err := c.IssuesGet(ctx, gen.IssuesGetParams{Owner: owner, Repo: repo, IssueNumber: int(issueNumber)})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createIssue(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	owner, _ := params["owner"].(string)
 	repo, _ := params["repo"].(string)
 	title, _ := params["title"].(string)
-
-	body := map[string]interface{}{"title": title}
+	req := &gen.CreateIssueRequest{Title: title}
 	if b, ok := params["body"].(string); ok {
-		body["body"] = b
+		req.Body.SetTo(b)
 	}
 	if labels, ok := params["labels"].([]interface{}); ok {
-		body["labels"] = labels
+		req.Labels = toStringSlice(labels)
 	}
 	if assignees, ok := params["assignees"].([]interface{}); ok {
-		body["assignees"] = assignees
+		req.Assignees = toStringSlice(assignees)
 	}
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/issues", githubAPIBase, owner, repo)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.IssuesCreate(ctx, req, gen.IssuesCreateParams{Owner: owner, Repo: repo})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func updateIssue(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	issueNumber, _ := params["issue_number"].(float64)
-
-	body := make(map[string]interface{})
-	if title, ok := params["title"].(string); ok {
-		body["title"] = title
-	}
-	if b, ok := params["body"].(string); ok {
-		body["body"] = b
-	}
-	if state, ok := params["state"].(string); ok {
-		body["state"] = state
-	}
-	if labels, ok := params["labels"].([]interface{}); ok {
-		body["labels"] = labels
-	}
-	if assignees, ok := params["assignees"].([]interface{}); ok {
-		body["assignees"] = assignees
-	}
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/issues/%d", githubAPIBase, owner, repo, int(issueNumber))
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	issueNumber, _ := params["issue_number"].(float64)
+	req := &gen.UpdateIssueRequest{}
+	if title, ok := params["title"].(string); ok {
+		req.Title.SetTo(title)
+	}
+	if b, ok := params["body"].(string); ok {
+		req.Body.SetTo(b)
+	}
+	if state, ok := params["state"].(string); ok {
+		req.State.SetTo(state)
+	}
+	if labels, ok := params["labels"].([]interface{}); ok {
+		req.Labels = toStringSlice(labels)
+	}
+	if assignees, ok := params["assignees"].([]interface{}); ok {
+		req.Assignees = toStringSlice(assignees)
+	}
+	res, err := c.IssuesUpdate(ctx, req, gen.IssuesUpdateParams{Owner: owner, Repo: repo, IssueNumber: int(issueNumber)})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func addIssueComment(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	owner, _ := params["owner"].(string)
 	repo, _ := params["repo"].(string)
 	issueNumber, _ := params["issue_number"].(float64)
 	body, _ := params["body"].(string)
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/issues/%d/comments", githubAPIBase, owner, repo, int(issueNumber))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), map[string]string{"body": body})
+	res, err := c.IssuesCreateComment(ctx, &gen.CreateCommentRequest{Body: body}, gen.IssuesCreateCommentParams{Owner: owner, Repo: repo, IssueNumber: int(issueNumber)})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -786,86 +922,85 @@ func addIssueComment(ctx context.Context, params map[string]any) (string, error)
 // =============================================================================
 
 func listPRs(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	query := url.Values{}
-	if state, ok := params["state"].(string); ok && state != "" {
-		query.Set("state", state)
-	} else {
-		query.Set("state", "open")
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	query.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	query.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/pulls?%s", githubAPIBase, owner, repo, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	p := gen.PullsListForRepoParams{Owner: owner, Repo: repo}
+	if state, ok := params["state"].(string); ok && state != "" {
+		p.State.SetTo(gen.PullsListForRepoState(state))
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.PullsListForRepo(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getPR(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	prNumber, _ := params["pr_number"].(float64)
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", githubAPIBase, owner, repo, int(prNumber))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	prNumber, _ := params["pr_number"].(float64)
+	res, err := c.PullsGet(ctx, gen.PullsGetParams{Owner: owner, Repo: repo, PullNumber: int(prNumber)})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createPR(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	owner, _ := params["owner"].(string)
 	repo, _ := params["repo"].(string)
 	title, _ := params["title"].(string)
 	head, _ := params["head"].(string)
-	base, _ := params["base"].(string)
-
-	body := map[string]interface{}{
-		"title": title,
-		"head":  head,
-		"base":  base,
-	}
+	baseBranch, _ := params["base"].(string)
+	req := &gen.CreatePRRequest{Title: title, Head: head, Base: baseBranch}
 	if b, ok := params["body"].(string); ok {
-		body["body"] = b
+		req.Body.SetTo(b)
 	}
 	if draft, ok := params["draft"].(bool); ok {
-		body["draft"] = draft
+		req.Draft.SetTo(draft)
 	}
-
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/pulls", githubAPIBase, owner, repo)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.PullsCreate(ctx, req, gen.PullsCreateParams{Owner: owner, Repo: repo})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func listPRFiles(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	prNumber, _ := params["pr_number"].(float64)
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/files?per_page=%d", githubAPIBase, owner, repo, int(prNumber), perPage)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	prNumber, _ := params["pr_number"].(float64)
+	p := gen.PullsListFilesParams{Owner: owner, Repo: repo, PullNumber: int(prNumber)}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	res, err := c.PullsListFiles(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -873,78 +1008,69 @@ func listPRFiles(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func searchRepos(ctx context.Context, params map[string]any) (string, error) {
-	query, _ := params["query"].(string)
-	q := url.Values{}
-	q.Set("q", query)
-	if sort, ok := params["sort"].(string); ok && sort != "" {
-		q.Set("sort", sort)
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	q.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	q.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/search/repositories?%s", githubAPIBase, q.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	query, _ := params["query"].(string)
+	p := gen.SearchReposParams{Q: query}
+	if sort, ok := params["sort"].(string); ok && sort != "" {
+		p.Sort.SetTo(sort)
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.SearchRepos(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func searchCode(ctx context.Context, params map[string]any) (string, error) {
-	query, _ := params["query"].(string)
-	q := url.Values{}
-	q.Set("q", query)
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	q.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	q.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/search/code?%s", githubAPIBase, q.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	query, _ := params["query"].(string)
+	p := gen.SearchCodeParams{Q: query}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.SearchCode(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func searchIssues(ctx context.Context, params map[string]any) (string, error) {
-	query, _ := params["query"].(string)
-	q := url.Values{}
-	q.Set("q", query)
-	if sort, ok := params["sort"].(string); ok && sort != "" {
-		q.Set("sort", sort)
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	q.Set("per_page", fmt.Sprintf("%d", perPage))
-	page := 1
-	if p, ok := params["page"].(float64); ok {
-		page = int(p)
-	}
-	q.Set("page", fmt.Sprintf("%d", page))
-
-	endpoint := fmt.Sprintf("%s/search/issues?%s", githubAPIBase, q.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	query, _ := params["query"].(string)
+	p := gen.SearchIssuesParams{Q: query}
+	if sort, ok := params["sort"].(string); ok && sort != "" {
+		p.Sort.SetTo(sort)
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	if pg, ok := params["page"].(float64); ok {
+		p.Page.SetTo(int(pg))
+	}
+	res, err := c.SearchIssues(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -952,43 +1078,57 @@ func searchIssues(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listWorkflows(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	endpoint := fmt.Sprintf("%s/repos/%s/%s/actions/workflows?per_page=%d", githubAPIBase, owner, repo, perPage)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+	p := gen.ActionsListWorkflowsParams{Owner: owner, Repo: repo}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	res, err := c.ActionsListWorkflows(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func listWorkflowRuns(ctx context.Context, params map[string]any) (string, error) {
-	owner, _ := params["owner"].(string)
-	repo, _ := params["repo"].(string)
-	query := url.Values{}
-	if status, ok := params["status"].(string); ok && status != "" {
-		query.Set("status", status)
-	}
-	perPage := 30
-	if pp, ok := params["per_page"].(float64); ok {
-		perPage = int(pp)
-	}
-	query.Set("per_page", fmt.Sprintf("%d", perPage))
-
-	var endpoint string
-	if workflowID, ok := params["workflow_id"].(string); ok && workflowID != "" {
-		endpoint = fmt.Sprintf("%s/repos/%s/%s/actions/workflows/%s/runs?%s", githubAPIBase, owner, repo, workflowID, query.Encode())
-	} else {
-		endpoint = fmt.Sprintf("%s/repos/%s/%s/actions/runs?%s", githubAPIBase, owner, repo, query.Encode())
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	owner, _ := params["owner"].(string)
+	repo, _ := params["repo"].(string)
+
+	// Use filtered endpoint if workflow_id is provided
+	if workflowID, ok := params["workflow_id"].(string); ok && workflowID != "" {
+		p := gen.ActionsListWorkflowRunsByIdParams{Owner: owner, Repo: repo, WorkflowID: workflowID}
+		if status, ok := params["status"].(string); ok && status != "" {
+			p.Status.SetTo(status)
+		}
+		if pp, ok := params["per_page"].(float64); ok {
+			p.PerPage.SetTo(int(pp))
+		}
+		res, err := c.ActionsListWorkflowRunsById(ctx, p)
+		if err != nil {
+			return "", err
+		}
+		return toJSON(res)
+	}
+
+	p := gen.ActionsListWorkflowRunsParams{Owner: owner, Repo: repo}
+	if status, ok := params["status"].(string); ok && status != "" {
+		p.Status.SetTo(status)
+	}
+	if pp, ok := params["per_page"].(float64); ok {
+		p.PerPage.SetTo(int(pp))
+	}
+	res, err := c.ActionsListWorkflowRuns(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
