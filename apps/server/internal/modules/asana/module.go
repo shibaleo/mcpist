@@ -10,20 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/asanaapi"
+	gen "mcpist/server/pkg/asanaapi/gen"
 )
 
 const (
-	asanaAPIBase       = "https://app.asana.com/api/1.0"
 	asanaVersion       = "1.0"
 	asanaTokenURL      = "https://app.asana.com/-/oauth_token"
 	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
 )
-
-var client = httpclient.New()
 
 // AsanaModule implements the Module interface for Asana API
 type AsanaModule struct{}
@@ -176,23 +174,34 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 	return nil
 }
 
-func headers(ctx context.Context) map[string]string {
+// =============================================================================
+// ogen client helpers
+// =============================================================================
+
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
+	return asanaapi.NewClient(creds.AccessToken)
+}
 
-	h := map[string]string{
-		"Content-Type": "application/json",
-		"Accept":       "application/json",
+func toJSON(v any) (string, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
 	}
+	return string(b), nil
+}
 
-	// OAuth2 or PAT uses Bearer token
-	if creds.AuthType == store.AuthTypeOAuth2 || creds.AuthType == store.AuthTypeAPIKey {
-		h["Authorization"] = "Bearer " + creds.AccessToken
+func toStringSlice(v []interface{}) []string {
+	out := make([]string, 0, len(v))
+	for _, item := range v {
+		if s, ok := item.(string); ok {
+			out = append(out, s)
+		}
 	}
-
-	return h
+	return out
 }
 
 // =============================================================================
@@ -668,31 +677,19 @@ var toolHandlers = map[string]toolHandler{
 }
 
 // =============================================================================
-// Helper: Extract data from Asana response
-// =============================================================================
-
-func extractData(respBody []byte) ([]byte, error) {
-	var response struct {
-		Data json.RawMessage `json:"data"`
-	}
-	if err := json.Unmarshal(respBody, &response); err != nil {
-		return respBody, nil // Return as-is if not standard format
-	}
-	return response.Data, nil
-}
-
-// =============================================================================
 // User
 // =============================================================================
 
 func getMe(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := asanaAPIBase + "/users/me"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	res, err := c.GetMe(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 // =============================================================================
@@ -700,24 +697,28 @@ func getMe(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listWorkspaces(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := asanaAPIBase + "/workspaces"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	res, err := c.ListWorkspaces(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func getWorkspace(ctx context.Context, params map[string]any) (string, error) {
-	workspaceGID, _ := params["workspace_gid"].(string)
-	endpoint := fmt.Sprintf("%s/workspaces/%s", asanaAPIBase, url.PathEscape(workspaceGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	workspaceGID, _ := params["workspace_gid"].(string)
+	res, err := c.GetWorkspace(ctx, gen.GetWorkspaceParams{WorkspaceGid: workspaceGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 // =============================================================================
@@ -725,126 +726,129 @@ func getWorkspace(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listProjects(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	workspaceGID, _ := params["workspace_gid"].(string)
 	teamGID, _ := params["team_gid"].(string)
 
-	var endpoint string
+	var archived gen.OptBool
+	if a, ok := params["archived"].(bool); ok {
+		archived = gen.NewOptBool(a)
+	}
+
 	if teamGID != "" {
-		endpoint = fmt.Sprintf("%s/teams/%s/projects", asanaAPIBase, url.PathEscape(teamGID))
-	} else {
-		endpoint = fmt.Sprintf("%s/workspaces/%s/projects", asanaAPIBase, url.PathEscape(workspaceGID))
+		res, err := c.ListProjectsByTeam(ctx, gen.ListProjectsByTeamParams{
+			TeamGid:  teamGID,
+			Archived: archived,
+		})
+		if err != nil {
+			return "", err
+		}
+		return toJSON(res.Data)
 	}
 
-	if archived, ok := params["archived"].(bool); ok && archived {
-		query.Set("archived", "true")
-	}
-
-	if len(query) > 0 {
-		endpoint += "?" + query.Encode()
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.ListProjectsByWorkspace(ctx, gen.ListProjectsByWorkspaceParams{
+		WorkspaceGid: workspaceGID,
+		Archived:     archived,
+	})
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	return toJSON(res.Data)
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
-	projectGID, _ := params["project_gid"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s", asanaAPIBase, url.PathEscape(projectGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	projectGID, _ := params["project_gid"].(string)
+	res, err := c.GetProject(ctx, gen.GetProjectParams{ProjectGid: projectGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func createProject(ctx context.Context, params map[string]any) (string, error) {
-	project := map[string]interface{}{}
-
-	if name, ok := params["name"].(string); ok {
-		project["name"] = name
-	}
-	if workspaceGID, ok := params["workspace_gid"].(string); ok && workspaceGID != "" {
-		project["workspace"] = workspaceGID
-	}
-	if teamGID, ok := params["team_gid"].(string); ok && teamGID != "" {
-		project["team"] = teamGID
-	}
-	if notes, ok := params["notes"].(string); ok {
-		project["notes"] = notes
-	}
-	if color, ok := params["color"].(string); ok {
-		project["color"] = color
-	}
-	if defaultView, ok := params["default_view"].(string); ok {
-		project["default_view"] = defaultView
-	}
-	if dueOn, ok := params["due_on"].(string); ok {
-		project["due_on"] = dueOn
-	}
-
-	body := map[string]interface{}{"data": project}
-	endpoint := asanaAPIBase + "/projects"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	reqData := gen.CreateProjectRequestData{}
+	if name, ok := params["name"].(string); ok {
+		reqData.Name.SetTo(name)
+	}
+	if workspaceGID, ok := params["workspace_gid"].(string); ok && workspaceGID != "" {
+		reqData.Workspace.SetTo(workspaceGID)
+	}
+	if teamGID, ok := params["team_gid"].(string); ok && teamGID != "" {
+		reqData.Team.SetTo(teamGID)
+	}
+	if notes, ok := params["notes"].(string); ok {
+		reqData.Notes.SetTo(notes)
+	}
+	if color, ok := params["color"].(string); ok {
+		reqData.Color.SetTo(color)
+	}
+	if defaultView, ok := params["default_view"].(string); ok {
+		reqData.DefaultView.SetTo(defaultView)
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		reqData.DueOn.SetTo(dueOn)
+	}
+	res, err := c.CreateProject(ctx, &gen.CreateProjectRequest{Data: reqData})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func updateProject(ctx context.Context, params map[string]any) (string, error) {
-	projectGID, _ := params["project_gid"].(string)
-
-	project := map[string]interface{}{}
-
-	if name, ok := params["name"].(string); ok && name != "" {
-		project["name"] = name
-	}
-	if notes, ok := params["notes"].(string); ok {
-		project["notes"] = notes
-	}
-	if color, ok := params["color"].(string); ok {
-		project["color"] = color
-	}
-	if defaultView, ok := params["default_view"].(string); ok {
-		project["default_view"] = defaultView
-	}
-	if dueOn, ok := params["due_on"].(string); ok {
-		project["due_on"] = dueOn
-	}
-	if archived, ok := params["archived"].(bool); ok {
-		project["archived"] = archived
-	}
-
-	body := map[string]interface{}{"data": project}
-	endpoint := fmt.Sprintf("%s/projects/%s", asanaAPIBase, url.PathEscape(projectGID))
-	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	projectGID, _ := params["project_gid"].(string)
+	reqData := gen.UpdateProjectRequestData{}
+	if name, ok := params["name"].(string); ok && name != "" {
+		reqData.Name.SetTo(name)
+	}
+	if notes, ok := params["notes"].(string); ok {
+		reqData.Notes.SetTo(notes)
+	}
+	if color, ok := params["color"].(string); ok {
+		reqData.Color.SetTo(color)
+	}
+	if defaultView, ok := params["default_view"].(string); ok {
+		reqData.DefaultView.SetTo(defaultView)
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		reqData.DueOn.SetTo(dueOn)
+	}
+	if archived, ok := params["archived"].(bool); ok {
+		reqData.Archived.SetTo(archived)
+	}
+	res, err := c.UpdateProject(ctx, &gen.UpdateProjectRequest{Data: reqData}, gen.UpdateProjectParams{ProjectGid: projectGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func deleteProject(ctx context.Context, params map[string]any) (string, error) {
-	projectGID, _ := params["project_gid"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s", asanaAPIBase, url.PathEscape(projectGID))
-
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
-			return `{"success": true, "message": "Project deleted"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Project deleted"}`, nil
+	projectGID, _ := params["project_gid"].(string)
+	_, err = c.DeleteProject(ctx, gen.DeleteProjectParams{ProjectGid: projectGID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Project deleted"}`, nil
 }
 
 // =============================================================================
@@ -852,33 +856,32 @@ func deleteProject(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listSections(ctx context.Context, params map[string]any) (string, error) {
-	projectGID, _ := params["project_gid"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/sections", asanaAPIBase, url.PathEscape(projectGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	projectGID, _ := params["project_gid"].(string)
+	res, err := c.ListSections(ctx, gen.ListSectionsParams{ProjectGid: projectGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func createSection(ctx context.Context, params map[string]any) (string, error) {
-	projectGID, _ := params["project_gid"].(string)
-	name, _ := params["name"].(string)
-
-	body := map[string]interface{}{
-		"data": map[string]interface{}{
-			"name": name,
-		},
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/sections", asanaAPIBase, url.PathEscape(projectGID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	projectGID, _ := params["project_gid"].(string)
+	name, _ := params["name"].(string)
+	reqData := gen.CreateSectionRequestData{}
+	reqData.Name.SetTo(name)
+	res, err := c.CreateSection(ctx, &gen.CreateSectionRequest{Data: reqData}, gen.CreateSectionParams{ProjectGid: projectGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 // =============================================================================
@@ -886,202 +889,200 @@ func createSection(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listTasks(ctx context.Context, params map[string]any) (string, error) {
-	var endpoint string
-	query := url.Values{}
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 
 	projectGID, hasProject := params["project_gid"].(string)
 	sectionGID, hasSection := params["section_gid"].(string)
 	assigneeGID, hasAssignee := params["assignee_gid"].(string)
 	workspaceGID, _ := params["workspace_gid"].(string)
 
+	var completedSince gen.OptString
+	if completed, ok := params["completed"].(bool); ok && completed {
+		completedSince = gen.NewOptString("2000-01-01T00:00:00Z")
+	}
+
+	optFields := gen.NewOptString("name,completed,due_on,due_at,assignee.name,notes")
+
 	if hasSection && sectionGID != "" {
-		endpoint = fmt.Sprintf("%s/sections/%s/tasks", asanaAPIBase, url.PathEscape(sectionGID))
-	} else if hasProject && projectGID != "" {
-		endpoint = fmt.Sprintf("%s/projects/%s/tasks", asanaAPIBase, url.PathEscape(projectGID))
-	} else if hasAssignee && assigneeGID != "" && workspaceGID != "" {
-		endpoint = asanaAPIBase + "/tasks"
-		query.Set("assignee", assigneeGID)
-		query.Set("workspace", workspaceGID)
-	} else {
-		return "", fmt.Errorf("must provide project_gid, section_gid, or (assignee_gid + workspace_gid)")
-	}
-
-	if completed, ok := params["completed"].(bool); ok {
-		if completed {
-			query.Set("completed_since", "2000-01-01T00:00:00Z")
+		res, err := c.ListTasksBySection(ctx, gen.ListTasksBySectionParams{
+			SectionGid:     sectionGID,
+			CompletedSince: completedSince,
+			OptFields:      optFields,
+		})
+		if err != nil {
+			return "", err
 		}
+		return toJSON(res.Data)
 	}
 
-	// Add opt_fields for useful task info
-	query.Set("opt_fields", "name,completed,due_on,due_at,assignee.name,notes")
-
-	if len(query) > 0 {
-		if strings.Contains(endpoint, "?") {
-			endpoint += "&" + query.Encode()
-		} else {
-			endpoint += "?" + query.Encode()
+	if hasProject && projectGID != "" {
+		res, err := c.ListTasksByProject(ctx, gen.ListTasksByProjectParams{
+			ProjectGid:     projectGID,
+			CompletedSince: completedSince,
+			OptFields:      optFields,
+		})
+		if err != nil {
+			return "", err
 		}
+		return toJSON(res.Data)
 	}
 
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
-	if err != nil {
-		return "", err
+	if hasAssignee && assigneeGID != "" && workspaceGID != "" {
+		res, err := c.ListTasksByAssignee(ctx, gen.ListTasksByAssigneeParams{
+			Assignee:       assigneeGID,
+			Workspace:      workspaceGID,
+			CompletedSince: completedSince,
+			OptFields:      optFields,
+		})
+		if err != nil {
+			return "", err
+		}
+		return toJSON(res.Data)
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+
+	return "", fmt.Errorf("must provide project_gid, section_gid, or (assignee_gid + workspace_gid)")
 }
 
 func getTask(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	taskGID, _ := params["task_gid"].(string)
+	res, err := c.GetTask(ctx, gen.GetTaskParams{TaskGid: taskGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
-	task := map[string]interface{}{}
-
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	reqData := gen.CreateTaskRequestData{}
 	if name, ok := params["name"].(string); ok {
-		task["name"] = name
+		reqData.Name.SetTo(name)
 	}
 	if workspaceGID, ok := params["workspace_gid"].(string); ok && workspaceGID != "" {
-		task["workspace"] = workspaceGID
+		reqData.Workspace.SetTo(workspaceGID)
 	}
 	if projects, ok := params["projects"].([]interface{}); ok && len(projects) > 0 {
-		task["projects"] = projects
+		reqData.Projects = toStringSlice(projects)
 	}
 	if notes, ok := params["notes"].(string); ok {
-		task["notes"] = notes
+		reqData.Notes.SetTo(notes)
 	}
 	if htmlNotes, ok := params["html_notes"].(string); ok {
-		task["html_notes"] = htmlNotes
+		reqData.HTMLNotes.SetTo(htmlNotes)
 	}
 	if dueOn, ok := params["due_on"].(string); ok {
-		task["due_on"] = dueOn
+		reqData.DueOn.SetTo(dueOn)
 	}
 	if dueAt, ok := params["due_at"].(string); ok {
-		task["due_at"] = dueAt
+		reqData.DueAt.SetTo(dueAt)
 	}
 	if startOn, ok := params["start_on"].(string); ok {
-		task["start_on"] = startOn
+		reqData.StartOn.SetTo(startOn)
 	}
 	if assigneeGID, ok := params["assignee_gid"].(string); ok {
-		task["assignee"] = assigneeGID
+		reqData.Assignee.SetTo(assigneeGID)
 	}
 	if tags, ok := params["tags"].([]interface{}); ok && len(tags) > 0 {
-		task["tags"] = tags
+		reqData.Tags = toStringSlice(tags)
 	}
 	if parentGID, ok := params["parent_gid"].(string); ok && parentGID != "" {
-		task["parent"] = parentGID
+		reqData.Parent.SetTo(parentGID)
 	}
 
-	body := map[string]interface{}{"data": task}
-
-	// If section_gid provided, add to section after creation
-	sectionGID, hasSection := params["section_gid"].(string)
-
-	endpoint := asanaAPIBase + "/tasks"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.CreateTask(ctx, &gen.CreateTaskRequest{Data: reqData})
 	if err != nil {
 		return "", err
 	}
 
 	// Add to section if specified
+	sectionGID, hasSection := params["section_gid"].(string)
 	if hasSection && sectionGID != "" {
-		var taskResp struct {
-			Data struct {
-				GID string `json:"gid"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(respBody, &taskResp); err == nil && taskResp.Data.GID != "" {
-			sectionEndpoint := fmt.Sprintf("%s/sections/%s/addTask", asanaAPIBase, url.PathEscape(sectionGID))
-			sectionBody := map[string]interface{}{
-				"data": map[string]interface{}{
-					"task": taskResp.Data.GID,
-				},
+		if taskData, ok := res.Data.Get(); ok {
+			if taskGID, ok := taskData.Gid.Get(); ok && taskGID != "" {
+				addReqData := gen.AddTaskToSectionRequestData{}
+				addReqData.Task.SetTo(taskGID)
+				c.AddTaskToSection(ctx, &gen.AddTaskToSectionRequest{Data: addReqData}, gen.AddTaskToSectionParams{SectionGid: sectionGID})
 			}
-			client.DoJSON("POST", sectionEndpoint, headers(ctx), sectionBody)
 		}
 	}
 
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	return toJSON(res.Data)
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-
-	task := map[string]interface{}{}
-
-	if name, ok := params["name"].(string); ok && name != "" {
-		task["name"] = name
-	}
-	if notes, ok := params["notes"].(string); ok {
-		task["notes"] = notes
-	}
-	if htmlNotes, ok := params["html_notes"].(string); ok {
-		task["html_notes"] = htmlNotes
-	}
-	if dueOn, ok := params["due_on"].(string); ok {
-		task["due_on"] = dueOn
-	}
-	if dueAt, ok := params["due_at"].(string); ok {
-		task["due_at"] = dueAt
-	}
-	if startOn, ok := params["start_on"].(string); ok {
-		task["start_on"] = startOn
-	}
-	if completed, ok := params["completed"].(bool); ok {
-		task["completed"] = completed
-	}
-	if assigneeGID, ok := params["assignee_gid"].(string); ok {
-		task["assignee"] = assigneeGID
-	}
-
-	body := map[string]interface{}{"data": task}
-	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
-	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	taskGID, _ := params["task_gid"].(string)
+	reqData := gen.UpdateTaskRequestData{}
+	if name, ok := params["name"].(string); ok && name != "" {
+		reqData.Name.SetTo(name)
+	}
+	if notes, ok := params["notes"].(string); ok {
+		reqData.Notes.SetTo(notes)
+	}
+	if htmlNotes, ok := params["html_notes"].(string); ok {
+		reqData.HTMLNotes.SetTo(htmlNotes)
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		reqData.DueOn.SetTo(dueOn)
+	}
+	if dueAt, ok := params["due_at"].(string); ok {
+		reqData.DueAt.SetTo(dueAt)
+	}
+	if startOn, ok := params["start_on"].(string); ok {
+		reqData.StartOn.SetTo(startOn)
+	}
+	if completed, ok := params["completed"].(bool); ok {
+		reqData.Completed.SetTo(completed)
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok {
+		reqData.Assignee.SetTo(assigneeGID)
+	}
+	res, err := c.UpdateTask(ctx, &gen.UpdateTaskRequest{Data: reqData}, gen.UpdateTaskParams{TaskGid: taskGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-
-	body := map[string]interface{}{
-		"data": map[string]interface{}{
-			"completed": true,
-		},
-	}
-
-	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
-	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	taskGID, _ := params["task_gid"].(string)
+	reqData := gen.UpdateTaskRequestData{}
+	reqData.Completed.SetTo(true)
+	res, err := c.UpdateTask(ctx, &gen.UpdateTaskRequest{Data: reqData}, gen.UpdateTaskParams{TaskGid: taskGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func deleteTask(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s", asanaAPIBase, url.PathEscape(taskGID))
-
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
-			return `{"success": true, "message": "Task deleted"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Task deleted"}`, nil
+	taskGID, _ := params["task_gid"].(string)
+	_, err = c.DeleteTask(ctx, gen.DeleteTaskParams{TaskGid: taskGID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Task deleted"}`, nil
 }
 
 // =============================================================================
@@ -1089,42 +1090,45 @@ func deleteTask(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listSubtasks(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s/subtasks?opt_fields=name,completed,due_on,assignee.name", asanaAPIBase, url.PathEscape(taskGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	taskGID, _ := params["task_gid"].(string)
+	res, err := c.ListSubtasks(ctx, gen.ListSubtasksParams{
+		TaskGid:   taskGID,
+		OptFields: gen.NewOptString("name,completed,due_on,assignee.name"),
+	})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func createSubtask(ctx context.Context, params map[string]any) (string, error) {
-	parentGID, _ := params["parent_gid"].(string)
-
-	subtask := map[string]interface{}{}
-
-	if name, ok := params["name"].(string); ok {
-		subtask["name"] = name
-	}
-	if notes, ok := params["notes"].(string); ok {
-		subtask["notes"] = notes
-	}
-	if dueOn, ok := params["due_on"].(string); ok {
-		subtask["due_on"] = dueOn
-	}
-	if assigneeGID, ok := params["assignee_gid"].(string); ok {
-		subtask["assignee"] = assigneeGID
-	}
-
-	body := map[string]interface{}{"data": subtask}
-	endpoint := fmt.Sprintf("%s/tasks/%s/subtasks", asanaAPIBase, url.PathEscape(parentGID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	parentGID, _ := params["parent_gid"].(string)
+	reqData := gen.CreateSubtaskRequestData{}
+	if name, ok := params["name"].(string); ok {
+		reqData.Name.SetTo(name)
+	}
+	if notes, ok := params["notes"].(string); ok {
+		reqData.Notes.SetTo(notes)
+	}
+	if dueOn, ok := params["due_on"].(string); ok {
+		reqData.DueOn.SetTo(dueOn)
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok {
+		reqData.Assignee.SetTo(assigneeGID)
+	}
+	res, err := c.CreateSubtask(ctx, &gen.CreateSubtaskRequest{Data: reqData}, gen.CreateSubtaskParams{TaskGid: parentGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 // =============================================================================
@@ -1132,33 +1136,32 @@ func createSubtask(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listStories(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s/stories", asanaAPIBase, url.PathEscape(taskGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	taskGID, _ := params["task_gid"].(string)
+	res, err := c.ListStories(ctx, gen.ListStoriesParams{TaskGid: taskGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func addComment(ctx context.Context, params map[string]any) (string, error) {
-	taskGID, _ := params["task_gid"].(string)
-	text, _ := params["text"].(string)
-
-	body := map[string]interface{}{
-		"data": map[string]interface{}{
-			"text": text,
-		},
-	}
-
-	endpoint := fmt.Sprintf("%s/tasks/%s/stories", asanaAPIBase, url.PathEscape(taskGID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	taskGID, _ := params["task_gid"].(string)
+	text, _ := params["text"].(string)
+	reqData := gen.CreateStoryRequestData{}
+	reqData.Text.SetTo(text)
+	res, err := c.CreateStory(ctx, &gen.CreateStoryRequest{Data: reqData}, gen.CreateStoryParams{TaskGid: taskGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 // =============================================================================
@@ -1166,37 +1169,36 @@ func addComment(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listTags(ctx context.Context, params map[string]any) (string, error) {
-	workspaceGID, _ := params["workspace_gid"].(string)
-	endpoint := fmt.Sprintf("%s/workspaces/%s/tags", asanaAPIBase, url.PathEscape(workspaceGID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	workspaceGID, _ := params["workspace_gid"].(string)
+	res, err := c.ListTags(ctx, gen.ListTagsParams{WorkspaceGid: workspaceGID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 func createTag(ctx context.Context, params map[string]any) (string, error) {
-	workspaceGID, _ := params["workspace_gid"].(string)
-	name, _ := params["name"].(string)
-
-	tag := map[string]interface{}{
-		"name":      name,
-		"workspace": workspaceGID,
-	}
-
-	if color, ok := params["color"].(string); ok {
-		tag["color"] = color
-	}
-
-	body := map[string]interface{}{"data": tag}
-	endpoint := asanaAPIBase + "/tags"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	workspaceGID, _ := params["workspace_gid"].(string)
+	name, _ := params["name"].(string)
+	reqData := gen.CreateTagRequestData{}
+	reqData.Name.SetTo(name)
+	reqData.Workspace.SetTo(workspaceGID)
+	if color, ok := params["color"].(string); ok {
+		reqData.Color.SetTo(color)
+	}
+	res, err := c.CreateTag(ctx, &gen.CreateTagRequest{Data: reqData})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
 
 // =============================================================================
@@ -1204,45 +1206,45 @@ func createTag(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func searchTasks(ctx context.Context, params map[string]any) (string, error) {
-	workspaceGID, _ := params["workspace_gid"].(string)
-	query := url.Values{}
-
-	if text, ok := params["text"].(string); ok && text != "" {
-		query.Set("text", text)
-	}
-	if completed, ok := params["completed"].(bool); ok {
-		query.Set("completed", fmt.Sprintf("%v", completed))
-	}
-	if isSubtask, ok := params["is_subtask"].(bool); ok {
-		query.Set("is_subtask", fmt.Sprintf("%v", isSubtask))
-	}
-	if assigneeGID, ok := params["assignee_gid"].(string); ok && assigneeGID != "" {
-		query.Set("assignee.any", assigneeGID)
-	}
-	if projectsGID, ok := params["projects_gid"].(string); ok && projectsGID != "" {
-		query.Set("projects.any", projectsGID)
-	}
-	if dueOnBefore, ok := params["due_on_before"].(string); ok && dueOnBefore != "" {
-		query.Set("due_on.before", dueOnBefore)
-	}
-	if dueOnAfter, ok := params["due_on_after"].(string); ok && dueOnAfter != "" {
-		query.Set("due_on.after", dueOnAfter)
-	}
-	if sortBy, ok := params["sort_by"].(string); ok && sortBy != "" {
-		query.Set("sort_by", sortBy)
-	}
-	if sortAscending, ok := params["sort_ascending"].(bool); ok && sortAscending {
-		query.Set("sort_ascending", "true")
-	}
-
-	// Add opt_fields
-	query.Set("opt_fields", "name,completed,due_on,due_at,assignee.name,notes,projects.name")
-
-	endpoint := fmt.Sprintf("%s/workspaces/%s/tasks/search?%s", asanaAPIBase, url.PathEscape(workspaceGID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	data, _ := extractData(respBody)
-	return httpclient.PrettyJSON(data), nil
+	workspaceGID, _ := params["workspace_gid"].(string)
+	p := gen.SearchTasksParams{
+		WorkspaceGid: workspaceGID,
+		OptFields:    gen.NewOptString("name,completed,due_on,due_at,assignee.name,notes,projects.name"),
+	}
+	if text, ok := params["text"].(string); ok && text != "" {
+		p.Text = gen.NewOptString(text)
+	}
+	if completed, ok := params["completed"].(bool); ok {
+		p.Completed = gen.NewOptBool(completed)
+	}
+	if isSubtask, ok := params["is_subtask"].(bool); ok {
+		p.IsSubtask = gen.NewOptBool(isSubtask)
+	}
+	if assigneeGID, ok := params["assignee_gid"].(string); ok && assigneeGID != "" {
+		p.AssigneeAny = gen.NewOptString(assigneeGID)
+	}
+	if projectsGID, ok := params["projects_gid"].(string); ok && projectsGID != "" {
+		p.ProjectsAny = gen.NewOptString(projectsGID)
+	}
+	if dueOnBefore, ok := params["due_on_before"].(string); ok && dueOnBefore != "" {
+		p.DueOnBefore = gen.NewOptString(dueOnBefore)
+	}
+	if dueOnAfter, ok := params["due_on_after"].(string); ok && dueOnAfter != "" {
+		p.DueOnAfter = gen.NewOptString(dueOnAfter)
+	}
+	if sortBy, ok := params["sort_by"].(string); ok && sortBy != "" {
+		p.SortBy = gen.NewOptString(sortBy)
+	}
+	if sortAscending, ok := params["sort_ascending"].(bool); ok && sortAscending {
+		p.SortAscending = gen.NewOptBool(true)
+	}
+	res, err := c.SearchTasks(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Data)
 }
