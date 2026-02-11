@@ -1134,6 +1134,30 @@
             "readOnlyHint": true,
             "openWorldHint": false
           }
+        },
+        {
+          "id": "github:describe_repo",
+          "name": "describe_repo",
+          "descriptions": {
+            "en-US": "Comprehensive repository analysis. Fetches repo info, topics, README, branches, open issues, and open PRs in parallel.",
+            "ja-JP": "リポジトリの総合分析。リポジトリ情報、トピック、README、ブランチ、オープンIssue、オープンPRを並列取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "github:describe_pr",
+          "name": "describe_pr",
+          "descriptions": {
+            "en-US": "Comprehensive pull request analysis. Fetches PR details, changed files, reviews, and comments in parallel.",
+            "ja-JP": "プルリクエストの総合分析。PR詳細、変更ファイル、レビュー、コメントを並列取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
         }
       ]
     },
