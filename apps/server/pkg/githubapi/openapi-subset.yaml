@@ -1,0 +1,1273 @@
+openapi: 3.0.3
+info:
+  title: GitHub REST API (mcpist subset)
+  description: Subset of GitHub REST API used by mcpist GitHub module
+  version: "2022-11-28"
+servers:
+  - url: https://api.github.com
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    SimpleUser:
+      type: object
+      required: [id, login]
+      properties:
+        id:
+          type: integer
+          format: int64
+        login:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          format: uri
+        html_url:
+          type: string
+          format: uri
+        type:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        public_repos:
+          type: integer
+        public_gists:
+          type: integer
+        followers:
+          type: integer
+        following:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RepositoryOwner:
+      type: object
+      required: [login, id]
+      properties:
+        login:
+          type: string
+        id:
+          type: integer
+          format: int64
+        avatar_url:
+          type: string
+          format: uri
+        html_url:
+          type: string
+          format: uri
+        type:
+          type: string
+    Repository:
+      type: object
+      required: [id, name, full_name, private, owner, html_url]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        full_name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        private:
+          type: boolean
+        html_url:
+          type: string
+          format: uri
+        owner:
+          $ref: '#/components/schemas/RepositoryOwner'
+        fork:
+          type: boolean
+        language:
+          type: string
+          nullable: true
+        stargazers_count:
+          type: integer
+        watchers_count:
+          type: integer
+        forks_count:
+          type: integer
+        open_issues_count:
+          type: integer
+        default_branch:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+        archived:
+          type: boolean
+        disabled:
+          type: boolean
+        visibility:
+          type: string
+        pushed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    Branch:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        protected:
+          type: boolean
+    Commit:
+      type: object
+      required: [sha, html_url]
+      properties:
+        sha:
+          type: string
+        html_url:
+          type: string
+          format: uri
+        commit:
+          type: object
+          properties:
+            message:
+              type: string
+            author:
+              type: object
+              properties:
+                name:
+                  type: string
+                date:
+                  type: string
+                  format: date-time
+        author:
+          $ref: '#/components/schemas/RepositoryOwner'
+    FileContent:
+      type: object
+      required: [name, path, type]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        sha:
+          type: string
+        size:
+          type: integer
+        type:
+          type: string
+        content:
+          type: string
+        encoding:
+          type: string
+        html_url:
+          type: string
+          format: uri
+    IssueUser:
+      type: object
+      required: [login, id]
+      properties:
+        login:
+          type: string
+        id:
+          type: integer
+          format: int64
+    Label:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+    Issue:
+      type: object
+      required: [id, number, title, state, html_url]
+      properties:
+        id:
+          type: integer
+          format: int64
+        number:
+          type: integer
+        title:
+          type: string
+        state:
+          type: string
+        body:
+          type: string
+          nullable: true
+        html_url:
+          type: string
+          format: uri
+        user:
+          $ref: '#/components/schemas/IssueUser'
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        assignees:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueUser'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+    IssueComment:
+      type: object
+      required: [id, body, html_url]
+      properties:
+        id:
+          type: integer
+          format: int64
+        body:
+          type: string
+        html_url:
+          type: string
+          format: uri
+        user:
+          $ref: '#/components/schemas/IssueUser'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    PullRequest:
+      type: object
+      required: [id, number, title, state, html_url]
+      properties:
+        id:
+          type: integer
+          format: int64
+        number:
+          type: integer
+        title:
+          type: string
+        state:
+          type: string
+        body:
+          type: string
+          nullable: true
+        html_url:
+          type: string
+          format: uri
+        user:
+          $ref: '#/components/schemas/IssueUser'
+        draft:
+          type: boolean
+        merged:
+          type: boolean
+        head:
+          type: object
+          properties:
+            ref:
+              type: string
+            sha:
+              type: string
+        base:
+          type: object
+          properties:
+            ref:
+              type: string
+            sha:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        merged_at:
+          type: string
+          format: date-time
+          nullable: true
+    PullRequestFile:
+      type: object
+      required: [filename, status]
+      properties:
+        sha:
+          type: string
+        filename:
+          type: string
+        status:
+          type: string
+        additions:
+          type: integer
+        deletions:
+          type: integer
+        changes:
+          type: integer
+        patch:
+          type: string
+    SearchResultRepositories:
+      type: object
+      required: [total_count, items]
+      properties:
+        total_count:
+          type: integer
+        incomplete_results:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Repository'
+    SearchResultCode:
+      type: object
+      required: [total_count, items]
+      properties:
+        total_count:
+          type: integer
+        incomplete_results:
+          type: boolean
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              path:
+                type: string
+              sha:
+                type: string
+              html_url:
+                type: string
+                format: uri
+              repository:
+                $ref: '#/components/schemas/Repository'
+    SearchResultIssues:
+      type: object
+      required: [total_count, items]
+      properties:
+        total_count:
+          type: integer
+        incomplete_results:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+    Workflow:
+      type: object
+      required: [id, name, state]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        path:
+          type: string
+        state:
+          type: string
+        html_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    WorkflowsResponse:
+      type: object
+      required: [total_count, workflows]
+      properties:
+        total_count:
+          type: integer
+        workflows:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workflow'
+    WorkflowRun:
+      type: object
+      required: [id, name, status, html_url]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        head_branch:
+          type: string
+        head_sha:
+          type: string
+        status:
+          type: string
+        conclusion:
+          type: string
+          nullable: true
+        html_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    WorkflowRunsResponse:
+      type: object
+      required: [total_count, workflow_runs]
+      properties:
+        total_count:
+          type: integer
+        workflow_runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowRun'
+    Organization:
+      type: object
+      required: [id, login]
+      properties:
+        login:
+          type: string
+        id:
+          type: integer
+          format: int64
+        description:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          format: uri
+    PublicEvent:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        repo:
+          type: object
+          properties:
+            name:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+    # Request bodies
+    CreateIssueRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        assignees:
+          type: array
+          items:
+            type: string
+    UpdateIssueRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        state:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        assignees:
+          type: array
+          items:
+            type: string
+    CreateCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+    CreatePRRequest:
+      type: object
+      required: [title, head, base]
+      properties:
+        title:
+          type: string
+        head:
+          type: string
+        base:
+          type: string
+        body:
+          type: string
+        draft:
+          type: boolean
+paths:
+  # ============ User ============
+  /users/{username}:
+    get:
+      operationId: usersGetByName
+      summary: Get a user by username
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleUser'
+  /users/{username}/repos:
+    get:
+      operationId: reposListForUser
+      summary: List repositories for a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, owner, member]
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created, updated, pushed, full_name]
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repository'
+  /users/{username}/starred:
+    get:
+      operationId: activityListReposStarredByUser
+      summary: List repositories starred by a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created, updated]
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repository'
+  /users/{username}/orgs:
+    get:
+      operationId: orgsListForUser
+      summary: List organizations for a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+  /users/{username}/events/public:
+    get:
+      operationId: activityListPublicEventsForUser
+      summary: List public events for a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicEvent'
+  # ============ Repositories ============
+  /repos/{owner}/{repo}:
+    get:
+      operationId: reposGet
+      summary: Get a repository
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+  /repos/{owner}/{repo}/branches:
+    get:
+      operationId: reposListBranches
+      summary: List branches
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Branch'
+  /repos/{owner}/{repo}/commits:
+    get:
+      operationId: reposListCommits
+      summary: List commits
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sha
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Commit'
+  /repos/{owner}/{repo}/contents/{path}:
+    get:
+      operationId: reposGetContent
+      summary: Get repository content
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: ref
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileContent'
+  # ============ Issues ============
+  /repos/{owner}/{repo}/issues:
+    get:
+      operationId: issuesListForRepo
+      summary: List repository issues
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, all]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+    post:
+      operationId: issuesCreate
+      summary: Create an issue
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIssueRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+  /repos/{owner}/{repo}/issues/{issue_number}:
+    get:
+      operationId: issuesGet
+      summary: Get an issue
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: issue_number
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+    patch:
+      operationId: issuesUpdate
+      summary: Update an issue
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: issue_number
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIssueRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+  /repos/{owner}/{repo}/issues/{issue_number}/comments:
+    post:
+      operationId: issuesCreateComment
+      summary: Create an issue comment
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: issue_number
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueComment'
+  # ============ Pull Requests ============
+  /repos/{owner}/{repo}/pulls:
+    get:
+      operationId: pullsListForRepo
+      summary: List pull requests
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, all]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PullRequest'
+    post:
+      operationId: pullsCreate
+      summary: Create a pull request
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePRRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+  /repos/{owner}/{repo}/pulls/{pull_number}:
+    get:
+      operationId: pullsGet
+      summary: Get a pull request
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pull_number
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullRequest'
+  /repos/{owner}/{repo}/pulls/{pull_number}/files:
+    get:
+      operationId: pullsListFiles
+      summary: List pull request files
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pull_number
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PullRequestFile'
+  # ============ Search ============
+  /search/repositories:
+    get:
+      operationId: searchRepos
+      summary: Search repositories
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultRepositories'
+  /search/code:
+    get:
+      operationId: searchCode
+      summary: Search code
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultCode'
+  /search/issues:
+    get:
+      operationId: searchIssues
+      summary: Search issues and pull requests
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResultIssues'
+  # ============ Actions ============
+  /repos/{owner}/{repo}/actions/workflows:
+    get:
+      operationId: actionsListWorkflows
+      summary: List repository workflows
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowsResponse'
+  /repos/{owner}/{repo}/actions/runs:
+    get:
+      operationId: actionsListWorkflowRuns
+      summary: List workflow runs for a repository
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRunsResponse'
+  /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs:
+    get:
+      operationId: actionsListWorkflowRunsById
+      summary: List workflow runs for a specific workflow
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowRunsResponse'

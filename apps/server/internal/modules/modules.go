@@ -380,6 +380,18 @@ func Run(ctx context.Context, moduleName, toolName string, params map[string]int
 		}, nil
 	}
 
+	// Validate params against tool's InputSchema
+	if tool, found := findTool(m.Tools(), toolName); found {
+		validated, err := ValidateParams(tool.InputSchema, params)
+		if err != nil {
+			return &ToolCallResult{
+				Content: []ContentBlock{{Type: "text", Text: err.Error()}},
+				IsError: true,
+			}, nil
+		}
+		params = validated
+	}
+
 	result, err := m.ExecuteTool(ctx, toolName, params)
 	durationMs := time.Since(start).Milliseconds()
 	requestID := middleware.GetRequestID(ctx)

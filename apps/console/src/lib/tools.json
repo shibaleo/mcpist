@@ -843,8 +843,8 @@
           "id": "github:get_user",
           "name": "get_user",
           "descriptions": {
-            "en-US": "Get information about the authenticated GitHub user.",
-            "ja-JP": "認証済みGitHubユーザーの情報を取得します。"
+            "en-US": "Get a GitHub user's profile by username.",
+            "ja-JP": "GitHubユーザーのプロフィールをユーザー名で取得します。"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -855,8 +855,20 @@
           "id": "github:list_repos",
           "name": "list_repos",
           "descriptions": {
-            "en-US": "List repositories for the authenticated user.",
-            "ja-JP": "認証済みユーザーのリポジトリを一覧表示します。"
+            "en-US": "List repositories for a user.",
+            "ja-JP": "ユーザーのリポジトリを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "github:list_starred_repos",
+          "name": "list_starred_repos",
+          "descriptions": {
+            "en-US": "List repositories starred by a user.",
+            "ja-JP": "ユーザーがスターしたリポジトリを一覧表示します。"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -1081,6 +1093,30 @@
           "descriptions": {
             "en-US": "List workflow runs in a repository.",
             "ja-JP": "リポジトリ内のワークフロー実行を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "github:list_orgs",
+          "name": "list_orgs",
+          "descriptions": {
+            "en-US": "List organizations for a user.",
+            "ja-JP": "ユーザーの所属組織を一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "github:list_public_events",
+          "name": "list_public_events",
+          "descriptions": {
+            "en-US": "List recent public events for a user.",
+            "ja-JP": "ユーザーの最近の公開イベントを一覧表示します。"
           },
           "annotations": {
             "readOnlyHint": true,
