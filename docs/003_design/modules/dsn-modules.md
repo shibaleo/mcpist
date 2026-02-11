@@ -72,7 +72,7 @@ ogen を使うモジュールと使わないモジュールで、ハンドラの
 
 ## File Structure
 
-### ogen 採用モジュール (GitHub, Supabase, Grafana)
+### ogen 採用モジュール (GitHub, Supabase, Grafana, Asana)
 
 ```
 apps/server/
@@ -92,6 +92,12 @@ apps/server/
 │   ├── ogen.yaml                     # ogen 設定
 │   ├── client.go                     # SecuritySource アダプタ (Bearer/Basic, 動的URL)
 │   └── gen/                          # ogen 自動生成 (編集不可)
+├── pkg/asanaapi/                     # Asana API Client 層
+│   ├── openapi-subset.yaml           # ★ subset spec (26 operations, data envelope)
+│   ├── ogen.yaml                     # ogen 設定
+│   ├── client.go                     # SecuritySource アダプタ (Bearer, 固定URL)
+│   ├── client_test.go                # 統合テスト (実API呼出)
+│   └── gen/                          # ogen 自動生成 (編集不可)
 ├── internal/modules/
 │   ├── types.go                      # Module interface, Tool, InputSchema
 │   ├── modules.go                    # Registry, Run() with validation
@@ -101,8 +107,10 @@ apps/server/
 │   │   └── module.go                 # GitHub Module Interface 層
 │   ├── supabase/
 │   │   └── module.go                 # Supabase Module Interface 層 (18 tools)
-│   └── grafana/
-│       └── module.go                 # Grafana Module Interface 層 (16 tools)
+│   ├── grafana/
+│   │   └── module.go                 # Grafana Module Interface 層 (16 tools)
+│   └── asana/
+│       └── module.go                 # Asana Module Interface 層 (23 tools)
 ```
 
 ### 手書きモジュール (Notion 等)
