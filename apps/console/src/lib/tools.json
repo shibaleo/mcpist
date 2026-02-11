@@ -3592,6 +3592,30 @@
             "readOnlyHint": true,
             "openWorldHint": false
           }
+        },
+        {
+          "id": "supabase:describe_project",
+          "name": "describe_project",
+          "descriptions": {
+            "en-US": "Get a comprehensive overview of a Supabase project: settings, tables, API keys, edge functions, and storage.",
+            "ja-JP": "Supabaseプロジェクトの全体像を取得：設定、テーブル、APIキー、Edge Functions、ストレージ。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "supabase:inspect_health",
+          "name": "inspect_health",
+          "descriptions": {
+            "en-US": "Get security and performance recommendations for a Supabase project.",
+            "ja-JP": "Supabaseプロジェクトのセキュリティとパフォーマンスの推奨事項を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
         }
       ]
     },

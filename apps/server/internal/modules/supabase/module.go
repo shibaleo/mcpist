@@ -2,19 +2,17 @@ package supabase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
+	"sync"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/supabaseapi"
+	gen "mcpist/server/pkg/supabaseapi/gen"
 )
-
-const supabaseAPIBase = "https://api.supabase.com/v1"
-
-var client = httpclient.New()
 
 // SupabaseModule implements the Module interface for Supabase API
 type SupabaseModule struct{}
@@ -75,7 +73,7 @@ func (m *SupabaseModule) ReadResource(ctx context.Context, uri string) (string, 
 }
 
 // =============================================================================
-// Token and Headers
+// ogen client helper
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -90,21 +88,20 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
+	return supabaseapi.NewClient(creds.AccessToken)
+}
 
-	h := map[string]string{}
-
-	// Supabase uses API Key (Bearer token)
-	switch creds.AuthType {
-	case store.AuthTypeAPIKey:
-		h["Authorization"] = "Bearer " + creds.AccessToken
+func toJSON(v any) (string, error) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
 	}
-
-	return h
+	return string(b), nil
 }
 
 // =============================================================================
@@ -392,6 +389,39 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"project_ref"},
 		},
 	},
+	// Composite Tools
+	{
+		ID:   "supabase:describe_project",
+		Name: "describe_project",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get a comprehensive overview of a Supabase project: settings, tables, API keys, edge functions, and storage.",
+			"ja-JP": "Supabaseプロジェクトの全体像を取得：設定、テーブル、APIキー、Edge Functions、ストレージ。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_ref": {Type: "string", Description: "Project reference"},
+			},
+			Required: []string{"project_ref"},
+		},
+	},
+	{
+		ID:   "supabase:inspect_health",
+		Name: "inspect_health",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get security and performance recommendations for a Supabase project.",
+			"ja-JP": "Supabaseプロジェクトのセキュリティとパフォーマンスの推奨事項を取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"project_ref": {Type: "string", Description: "Project reference"},
+			},
+			Required: []string{"project_ref"},
+		},
+	},
 }
 
 // =============================================================================
@@ -418,6 +448,8 @@ var toolHandlers = map[string]toolHandler{
 	"get_edge_function":         getEdgeFunction,
 	"list_storage_buckets":      listStorageBuckets,
 	"get_storage_config":        getStorageConfig,
+	"describe_project":          describeProject,
+	"inspect_health":            inspectHealth,
 }
 
 // =============================================================================
@@ -425,36 +457,62 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func listOrganizations(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := supabaseAPIBase + "/organizations"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListOrganizations(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func listProjects(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := supabaseAPIBase + "/projects"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListProjects(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.GetProject(ctx, gen.GetProjectParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
 // Database Tools
 // =============================================================================
+
+func executeQuery(ctx context.Context, projectRef, query string) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	res, err := c.RunDatabaseQuery(ctx, &gen.RunQueryRequest{Query: query}, gen.RunDatabaseQueryParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	// res is jx.Raw (raw JSON bytes), pretty-print it
+	var parsed any
+	if json.Unmarshal(res, &parsed) == nil {
+		return toJSON(parsed)
+	}
+	return string(res), nil
+}
 
 func listTables(ctx context.Context, params map[string]any) (string, error) {
 	projectRef, _ := params["project_ref"].(string)
@@ -494,16 +552,6 @@ func runQuery(ctx context.Context, params map[string]any) (string, error) {
 	return executeQuery(ctx, projectRef, query)
 }
 
-func executeQuery(ctx context.Context, projectRef, query string) (string, error) {
-	endpoint := fmt.Sprintf("%s/projects/%s/database/query", supabaseAPIBase, projectRef)
-	payload := map[string]string{"query": query}
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), payload)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
-}
-
 func listMigrations(ctx context.Context, params map[string]any) (string, error) {
 	projectRef, _ := params["project_ref"].(string)
 	query := `
@@ -531,58 +579,72 @@ func applyMigration(ctx context.Context, params map[string]any) (string, error) 
 // =============================================================================
 
 func getLogs(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	projectRef, _ := params["project_ref"].(string)
 	service, _ := params["service"].(string)
 
-	serviceMap := map[string]string{
-		"api":           "api_logs",
+	// Map service name to log source table for SQL query
+	sourceMap := map[string]string{
+		"api":           "edge_logs",
 		"postgres":      "postgres_logs",
-		"edge-function": "function_logs",
+		"edge-function": "function_edge_logs",
 		"auth":          "auth_logs",
 		"storage":       "storage_logs",
 		"realtime":      "realtime_logs",
 	}
 
-	collection, exists := serviceMap[service]
+	source, exists := sourceMap[service]
 	if !exists {
 		return "", fmt.Errorf("invalid service: %s. Valid services: api, postgres, edge-function, auth, storage, realtime", service)
 	}
 
-	query := url.Values{}
-	query.Set("collection", collection)
+	p := gen.GetLogsParams{
+		Ref: projectRef,
+	}
+	p.SQL.SetTo(fmt.Sprintf("select id, timestamp, event_message, metadata from %s limit 100", source))
+
 	if startTime, ok := params["start_time"].(string); ok && startTime != "" {
-		query.Set("start", startTime)
+		p.IsoTimestampStart.SetTo(startTime)
 	}
 	if endTime, ok := params["end_time"].(string); ok && endTime != "" {
-		query.Set("end", endTime)
+		p.IsoTimestampEnd.SetTo(endTime)
 	}
 
-	endpoint := fmt.Sprintf("%s/projects/%s/analytics/endpoints/logs.all?%s", supabaseAPIBase, projectRef, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.GetLogs(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func getSecurityAdvisors(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/advisors/security", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.GetSecurityAdvisors(ctx, gen.GetSecurityAdvisorsParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getPerformanceAdvisors(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/advisors/performance", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.GetPerformanceAdvisors(ctx, gen.GetPerformanceAdvisorsParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -596,23 +658,29 @@ func getProjectURL(ctx context.Context, params map[string]any) (string, error) {
 }
 
 func getAPIKeys(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/api-keys", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.GetApiKeys(ctx, gen.GetApiKeysParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func generateTypescriptTypes(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/types/typescript", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.GenerateTypescriptTypes(ctx, gen.GenerateTypescriptTypesParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -620,24 +688,30 @@ func generateTypescriptTypes(ctx context.Context, params map[string]any) (string
 // =============================================================================
 
 func listEdgeFunctions(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/functions", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.ListEdgeFunctions(ctx, gen.ListEdgeFunctionsParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getEdgeFunction(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	slug, _ := params["slug"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/functions/%s", supabaseAPIBase, projectRef, slug)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	slug, _ := params["slug"].(string)
+	res, err := c.GetEdgeFunction(ctx, gen.GetEdgeFunctionParams{Ref: projectRef, Slug: slug})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -645,21 +719,236 @@ func getEdgeFunction(ctx context.Context, params map[string]any) (string, error)
 // =============================================================================
 
 func listStorageBuckets(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/storage/buckets", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.ListStorageBuckets(ctx, gen.ListStorageBucketsParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getStorageConfig(ctx context.Context, params map[string]any) (string, error) {
-	projectRef, _ := params["project_ref"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s/config/storage", supabaseAPIBase, projectRef)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectRef, _ := params["project_ref"].(string)
+	res, err := c.GetStorageConfig(ctx, gen.GetStorageConfigParams{Ref: projectRef})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+// =============================================================================
+// Composite Tools
+// =============================================================================
+
+// describeProject returns a comprehensive overview of a Supabase project.
+// Calls: getProject, listTables(SQL), getApiKeys, listEdgeFunctions, listStorageBuckets, getStorageConfig
+// All calls are parallel with goroutines.
+func describeProject(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	projectRef, _ := params["project_ref"].(string)
+
+	type result struct {
+		key string
+		val any
+		err error
+	}
+
+	ch := make(chan result, 6)
+	var wg sync.WaitGroup
+
+	// 1. getProject
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.GetProject(ctx, gen.GetProjectParams{Ref: projectRef})
+		ch <- result{"project", res, err}
+	}()
+
+	// 2. listTables (SQL via runDatabaseQuery)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		query := `SELECT schemaname as schema, tablename as name,
+			(SELECT count(*)::int FROM information_schema.columns
+			 WHERE table_schema = t.schemaname AND table_name = t.tablename) as column_count
+			FROM pg_tables t WHERE schemaname NOT IN ('pg_catalog','information_schema','supabase_migrations','extensions','graphql','graphql_public','realtime','_realtime','_analytics','vault','pgsodium','pgsodium_masks','pgtle','cron','net')
+			ORDER BY schemaname, tablename`
+		res, err := c.RunDatabaseQuery(ctx, &gen.RunQueryRequest{Query: query}, gen.RunDatabaseQueryParams{Ref: projectRef})
+		if err != nil {
+			ch <- result{"tables", nil, err}
+			return
+		}
+		var parsed any
+		json.Unmarshal(res, &parsed)
+		ch <- result{"tables", parsed, nil}
+	}()
+
+	// 3. getApiKeys
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.GetApiKeys(ctx, gen.GetApiKeysParams{Ref: projectRef})
+		if err != nil {
+			ch <- result{"api_keys", nil, err}
+			return
+		}
+		keys := make([]map[string]any, 0, len(res))
+		for _, k := range res {
+			m := map[string]any{"name": k.Name}
+			if k.Type.Set && !k.Type.Null {
+				m["type"] = k.Type.Value
+			}
+			keys = append(keys, m)
+		}
+		ch <- result{"api_keys", keys, nil}
+	}()
+
+	// 4. listEdgeFunctions
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.ListEdgeFunctions(ctx, gen.ListEdgeFunctionsParams{Ref: projectRef})
+		if err != nil {
+			ch <- result{"edge_functions", nil, err}
+			return
+		}
+		funcs := make([]map[string]any, 0, len(res))
+		for _, f := range res {
+			funcs = append(funcs, map[string]any{
+				"slug":    f.Slug,
+				"name":    f.Name,
+				"status":  f.Status,
+				"version": f.Version,
+			})
+		}
+		ch <- result{"edge_functions", funcs, nil}
+	}()
+
+	// 5. listStorageBuckets
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.ListStorageBuckets(ctx, gen.ListStorageBucketsParams{Ref: projectRef})
+		if err != nil {
+			ch <- result{"storage_buckets", nil, err}
+			return
+		}
+		buckets := make([]map[string]any, 0, len(res))
+		for _, b := range res {
+			buckets = append(buckets, map[string]any{
+				"name":   b.Name,
+				"public": b.Public,
+			})
+		}
+		ch <- result{"storage_buckets", buckets, nil}
+	}()
+
+	// 6. getStorageConfig
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.GetStorageConfig(ctx, gen.GetStorageConfigParams{Ref: projectRef})
+		ch <- result{"storage_config", res, err}
+	}()
+
+	go func() { wg.Wait(); close(ch) }()
+
+	out := map[string]any{}
+	for r := range ch {
+		if r.err != nil {
+			continue // skip failed calls
+		}
+		if r.key == "project" {
+			p := r.val.(*gen.Project)
+			out["project"] = map[string]any{
+				"name":       p.Name,
+				"ref":        p.Ref,
+				"region":     p.Region,
+				"status":     p.Status,
+				"created_at": p.CreatedAt,
+				"url":        fmt.Sprintf("https://%s.supabase.co", projectRef),
+			}
+		} else if r.key == "storage_config" {
+			sc := r.val.(*gen.StorageConfig)
+			out[r.key] = map[string]any{
+				"file_size_limit": sc.FileSizeLimit,
+			}
+		} else {
+			out[r.key] = r.val
+		}
+	}
+
+	out["_note"] = "Use individual tools for details: get_project, list_tables, get_api_keys, list_edge_functions, list_storage_buckets, get_storage_config"
+	return toJSON(out)
+}
+
+// inspectHealth returns security and performance recommendations for a project.
+// Calls: getSecurityAdvisors, getPerformanceAdvisors (parallel).
+func inspectHealth(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	projectRef, _ := params["project_ref"].(string)
+
+	type result struct {
+		key string
+		val any
+		err error
+	}
+
+	ch := make(chan result, 2)
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.GetSecurityAdvisors(ctx, gen.GetSecurityAdvisorsParams{Ref: projectRef})
+		ch <- result{"security", res, err}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		res, err := c.GetPerformanceAdvisors(ctx, gen.GetPerformanceAdvisorsParams{Ref: projectRef})
+		ch <- result{"performance", res, err}
+	}()
+
+	go func() { wg.Wait(); close(ch) }()
+
+	out := map[string]any{}
+	for r := range ch {
+		if r.err != nil {
+			continue
+		}
+		advisors := r.val.(*gen.AdvisorsResponse)
+		lints := make([]map[string]any, 0, len(advisors.Lints))
+		for _, l := range advisors.Lints {
+			m := map[string]any{
+				"name":        l.Name,
+				"level":       l.Level,
+				"title":       l.Title,
+				"description": l.Description,
+			}
+			if len(l.Categories) > 0 {
+				m["categories"] = l.Categories
+			}
+			lints = append(lints, m)
+		}
+		out[r.key] = lints
+	}
+
+	out["_note"] = "Use get_security_advisors or get_performance_advisors for full details"
+	return toJSON(out)
 }

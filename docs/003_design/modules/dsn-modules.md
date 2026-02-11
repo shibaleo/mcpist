@@ -64,7 +64,7 @@ mcpist が **何を返すか** を宣言するスキーマ定義である。
 
 | 条件 | 採用可否 |
 |------|----------|
-| 公式 OpenAPI spec が存在する API (GitHub, Jira) | ogen 推奨 |
+| 公式 OpenAPI spec が存在する API (GitHub, Supabase, Jira, Grafana) | ogen 推奨 |
 | OpenAPI spec がない/不完全な API (Notion, Trello) | 手書き httpclient |
 
 ogen を使うモジュールと使わないモジュールで、ハンドラのワークロードが大きく変わらないようにする。
@@ -72,32 +72,30 @@ ogen を使うモジュールと使わないモジュールで、ハンドラの
 
 ## File Structure
 
-### ogen 採用モジュール (GitHub)
+### ogen 採用モジュール (GitHub, Supabase)
 
 ```
 apps/server/
-├── pkg/githubapi/                    # API Client 層
+├── pkg/githubapi/                    # GitHub API Client 層
 │   ├── openapi-subset.yaml           # ★ subset spec (ツール設計書)
 │   ├── ogen.yaml                     # ogen 設定 (server 生成無効化)
 │   ├── client.go                     # SecuritySource アダプタ
 │   └── gen/                          # ogen 自動生成 (編集不可)
-│       ├── oas_client_gen.go         # 型付きクライアントメソッド
-│       ├── oas_schemas_gen.go        # レスポンス/リクエスト型
-│       ├── oas_parameters_gen.go     # パスパラメータ/クエリ型
-│       ├── oas_json_gen.go           # JSON エンコーダ/デコーダ
-│       ├── oas_security_gen.go       # Bearer 認証
-│       ├── oas_validators_gen.go     # レスポンスバリデータ
-│       ├── oas_request_encoders_gen.go
-│       ├── oas_response_decoders_gen.go
-│       ├── oas_operations_gen.go     # オペレーション名定数
-│       └── oas_cfg_gen.go            # クライアント設定
+├── pkg/supabaseapi/                  # Supabase Management API Client 層
+│   ├── openapi-subset.yaml           # ★ subset spec (13 endpoints)
+│   ├── ogen.yaml                     # ogen 設定
+│   ├── client.go                     # SecuritySource アダプタ (Bearer, 固定URL)
+│   ├── client_test.go                # 統合テスト (実API呼出)
+│   └── gen/                          # ogen 自動生成 (編集不可)
 ├── internal/modules/
 │   ├── types.go                      # Module interface, Tool, InputSchema
 │   ├── modules.go                    # Registry, Run() with validation
 │   ├── validate.go                   # ValidateParams(), checkType()
 │   ├── validate_test.go
-│   └── github/
-│       └── module.go                 # Module Interface 層 (ハンドラ群)
+│   ├── github/
+│   │   └── module.go                 # GitHub Module Interface 層
+│   └── supabase/
+│       └── module.go                 # Supabase Module Interface 層 (19 tools)
 ```
 
 ### 手書きモジュール (Notion 等)
@@ -266,7 +264,8 @@ ogen モジュールでは Level 1 で十分なため Level 3 は不要。
 ```
 1. openapi-subset.yaml を編集 (エンドポイント追加/フィールド変更)
 2. ogen 再生成:
-   ogen.exe -package gen -target pkg/githubapi/gen -config pkg/githubapi/ogen.yaml -clean openapi-subset.yaml
+   cd apps/server/pkg/<service>api
+   ogen.exe -package gen -target gen -config ogen.yaml -clean openapi-subset.yaml
 3. module.go にハンドラ追加
 4. go build ./... で検証
 ```
