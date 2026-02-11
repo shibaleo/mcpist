@@ -186,23 +186,9 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	return asanaapi.NewClient(creds.AccessToken)
 }
 
-func toJSON(v any) (string, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal response: %w", err)
-	}
-	return string(b), nil
-}
+var toJSON = modules.ToJSON
 
-func toStringSlice(v []interface{}) []string {
-	out := make([]string, 0, len(v))
-	for _, item := range v {
-		if s, ok := item.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
-}
+var toStringSlice = modules.ToStringSlice
 
 // =============================================================================
 // Tool Definitions

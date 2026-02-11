@@ -96,13 +96,7 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	return supabaseapi.NewClient(creds.AccessToken)
 }
 
-func toJSON(v any) (string, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal response: %w", err)
-	}
-	return string(b), nil
-}
+var toJSON = modules.ToJSON
 
 // =============================================================================
 // Tool Definitions

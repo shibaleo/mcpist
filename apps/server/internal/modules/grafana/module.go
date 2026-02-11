@@ -109,13 +109,7 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	}
 }
 
-func toJSON(v any) (string, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal response: %w", err)
-	}
-	return string(b), nil
-}
+var toJSON = modules.ToJSON
 
 // toRaw converts any value to jx.Raw (JSON bytes).
 func toRaw(v any) (jx.Raw, error) {
