@@ -1,0 +1,633 @@
+openapi: 3.0.3
+info:
+  title: Todoist API (mcpist subset)
+  description: Subset of Todoist API v1 used by mcpist Todoist module
+  version: "1"
+servers:
+  - url: https://api.todoist.com/api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Project ============
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        childOrder:
+          type: integer
+        isArchived:
+          type: boolean
+        isDeleted:
+          type: boolean
+        isFavorite:
+          type: boolean
+        isShared:
+          type: boolean
+        inboxProject:
+          type: boolean
+        viewStyle:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+
+    ProjectListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        nextCursor:
+          type: string
+          nullable: true
+
+    # ============ Section ============
+    Section:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        name:
+          type: string
+        sectionOrder:
+          type: integer
+        isArchived:
+          type: boolean
+        isDeleted:
+          type: boolean
+
+    SectionListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+        nextCursor:
+          type: string
+          nullable: true
+
+    # ============ Due ============
+    Due:
+      type: object
+      properties:
+        string:
+          type: string
+        date:
+          type: string
+        isRecurring:
+          type: boolean
+        datetime:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        lang:
+          type: string
+          nullable: true
+
+    # ============ Duration ============
+    Duration:
+      type: object
+      properties:
+        amount:
+          type: integer
+        unit:
+          type: string
+
+    # ============ Task ============
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        sectionId:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          nullable: true
+        content:
+          type: string
+        description:
+          type: string
+        checked:
+          type: boolean
+        labels:
+          type: array
+          items:
+            type: string
+        priority:
+          type: integer
+        childOrder:
+          type: integer
+        due:
+          allOf:
+            - $ref: '#/components/schemas/Due'
+          nullable: true
+        duration:
+          allOf:
+            - $ref: '#/components/schemas/Duration'
+          nullable: true
+        noteCount:
+          type: integer
+        url:
+          type: string
+        addedAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
+        responsibleUid:
+          type: string
+          nullable: true
+
+    TaskListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        nextCursor:
+          type: string
+          nullable: true
+
+    # ============ Comment ============
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+          nullable: true
+        projectId:
+          type: string
+          nullable: true
+        postedAt:
+          type: string
+        content:
+          type: string
+        fileAttachment: {}
+
+    CommentListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        nextCursor:
+          type: string
+          nullable: true
+
+    # ============ Label ============
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        order:
+          type: integer
+          nullable: true
+        isFavorite:
+          type: boolean
+
+    LabelListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        nextCursor:
+          type: string
+          nullable: true
+
+    # ============ Collaborator ============
+    Collaborator:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+
+paths:
+  # =====================================================================
+  # Projects
+  # =====================================================================
+  /projects:
+    get:
+      operationId: listProjects
+      summary: List all projects
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+
+  /projects/{projectId}:
+    get:
+      operationId: getProject
+      summary: Get a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  # =====================================================================
+  # Sections
+  # =====================================================================
+  /sections:
+    get:
+      operationId: listSections
+      summary: List sections
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SectionListResponse'
+
+  # =====================================================================
+  # Tasks
+  # =====================================================================
+  /tasks:
+    get:
+      operationId: listTasks
+      summary: List active tasks
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+        - name: sectionId
+          in: query
+          schema:
+            type: string
+        - name: parentId
+          in: query
+          schema:
+            type: string
+        - name: label
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+    post:
+      operationId: createTask
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                description:
+                  type: string
+                projectId:
+                  type: string
+                sectionId:
+                  type: string
+                parentId:
+                  type: string
+                priority:
+                  type: integer
+                dueString:
+                  type: string
+                dueDate:
+                  type: string
+                dueDatetime:
+                  type: string
+                labels:
+                  type: array
+                  items:
+                    type: string
+                assigneeId:
+                  type: string
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{taskId}:
+    get:
+      operationId: getTask
+      summary: Get a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    post:
+      operationId: updateTask
+      summary: Update a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                description:
+                  type: string
+                priority:
+                  type: integer
+                dueString:
+                  type: string
+                dueDate:
+                  type: string
+                dueDatetime:
+                  type: string
+                labels:
+                  type: array
+                  items:
+                    type: string
+                assigneeId:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      operationId: deleteTask
+      summary: Delete a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  /tasks/{taskId}/close:
+    post:
+      operationId: closeTask
+      summary: Close a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Closed
+
+  /tasks/{taskId}/reopen:
+    post:
+      operationId: reopenTask
+      summary: Reopen a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Reopened
+
+  # =====================================================================
+  # Comments
+  # =====================================================================
+  /comments:
+    get:
+      operationId: listComments
+      summary: List comments
+      parameters:
+        - name: taskId
+          in: query
+          schema:
+            type: string
+        - name: projectId
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+    post:
+      operationId: createComment
+      summary: Create a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                taskId:
+                  type: string
+                projectId:
+                  type: string
+                content:
+                  type: string
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  /comments/{commentId}:
+    get:
+      operationId: getComment
+      summary: Get a comment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+    post:
+      operationId: updateComment
+      summary: Update a comment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+    delete:
+      operationId: deleteComment
+      summary: Delete a comment
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  # =====================================================================
+  # Labels
+  # =====================================================================
+  /labels:
+    get:
+      operationId: listLabels
+      summary: List all labels
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelListResponse'

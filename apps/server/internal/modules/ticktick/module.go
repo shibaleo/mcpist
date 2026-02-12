@@ -3,20 +3,16 @@ package ticktick
 import (
 	"context"
 	"fmt"
-	"strings"
+	"log"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/ticktickapi"
+	gen "mcpist/server/pkg/ticktickapi/gen"
 )
 
-const (
-	ticktickAPIBase = "https://api.ticktick.com/open/v1"
-	ticktickVersion = "v1"
-)
-
-var client = httpclient.New()
+const ticktickVersion = "v1"
 
 // TickTickModule implements the Module interface for TickTick API
 type TickTickModule struct{}
@@ -77,54 +73,51 @@ func (m *TickTickModule) ReadResource(ctx context.Context, uri string) (string, 
 }
 
 // =============================================================================
-// Token and Headers
+// ogen client helpers
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
+		log.Printf("[ticktick] No auth context")
 		return nil
 	}
 	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "ticktick")
 	if err != nil {
+		log.Printf("[ticktick] GetModuleToken error: %v", err)
 		return nil
 	}
 	return credentials
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
+	return ticktickapi.NewClient(creds.AccessToken)
+}
 
-	return map[string]string{
-		"Authorization": "Bearer " + creds.AccessToken,
-		"Content-Type":  "application/json",
-	}
+var toJSON = modules.ToJSON
+var toStringSlice = modules.ToStringSlice
+
+// =============================================================================
+// Format parameter definitions
+// =============================================================================
+
+var formatRead = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full TickTick API response. Default returns compact output.",
+}
+
+var formatWrite = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full TickTick API response. Default returns a compact summary.",
 }
 
 // =============================================================================
 // Tool Definitions
 // =============================================================================
-
-type toolHandler func(ctx context.Context, params map[string]any) (string, error)
-
-var toolHandlers = map[string]toolHandler{
-	// Project tools
-	"list_projects":    listProjects,
-	"get_project":      getProject,
-	"get_project_data": getProjectData,
-	"create_project":   createProject,
-	"update_project":   updateProject,
-	"delete_project":   deleteProject,
-	// Task tools
-	"get_task":      getTask,
-	"create_task":   createTask,
-	"update_task":   updateTask,
-	"complete_task": completeTask,
-	"delete_task":   deleteTask,
-}
 
 var toolDefinitions = []modules.Tool{
 	// -------------------------------------------------------------------------
@@ -138,8 +131,10 @@ var toolDefinitions = []modules.Tool{
 			"ja-JP": "ユーザーのすべてのプロジェクトを一覧表示します。",
 		},
 		InputSchema: modules.InputSchema{
-			Type:       "object",
-			Properties: map[string]modules.Property{},
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"format": formatRead,
+			},
 		},
 		Annotations: modules.AnnotateReadOnly,
 	},
@@ -154,6 +149,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
+				"format":     formatRead,
 			},
 			Required: []string{"project_id"},
 		},
@@ -170,6 +166,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
+				"format":     formatRead,
 			},
 			Required: []string{"project_id"},
 		},
@@ -189,6 +186,7 @@ var toolDefinitions = []modules.Tool{
 				"color":     {Type: "string", Description: "Color code (optional)"},
 				"view_mode": {Type: "string", Description: "View mode: list, kanban, timeline (optional)"},
 				"kind":      {Type: "string", Description: "Project kind: TASK or NOTE (optional, default: TASK)"},
+				"format":    formatWrite,
 			},
 			Required: []string{"name"},
 		},
@@ -209,6 +207,7 @@ var toolDefinitions = []modules.Tool{
 				"color":      {Type: "string", Description: "New color code (optional)"},
 				"view_mode":  {Type: "string", Description: "View mode: list, kanban, timeline (optional)"},
 				"kind":       {Type: "string", Description: "Project kind: TASK or NOTE (optional)"},
+				"format":     formatWrite,
 			},
 			Required: []string{"project_id"},
 		},
@@ -246,6 +245,7 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
 				"task_id":    {Type: "string", Description: "Task ID"},
+				"format":     formatRead,
 			},
 			Required: []string{"project_id", "task_id"},
 		},
@@ -273,7 +273,8 @@ var toolDefinitions = []modules.Tool{
 				"repeat_flag": {Type: "string", Description: "Recurrence rule in RRULE format (optional)"},
 				"priority":    {Type: "number", Description: "Priority: 0 (none), 1 (low), 3 (medium), 5 (high) (optional)"},
 				"sort_order":  {Type: "number", Description: "Sort order value (optional)"},
-				"items": {Type: "array", Description: `Subtask items as array of objects: [{"title": "subtask1", "status": 0}] (optional). status: 0=normal, 2=completed`},
+				"items":       {Type: "array", Description: `Subtask items as array of objects: [{"title": "subtask1", "status": 0}] (optional). status: 0=normal, 2=completed`},
+				"format":      formatWrite,
 			},
 			Required: []string{"title"},
 		},
@@ -303,6 +304,7 @@ var toolDefinitions = []modules.Tool{
 				"priority":    {Type: "number", Description: "Priority: 0 (none), 1 (low), 3 (medium), 5 (high) (optional)"},
 				"sort_order":  {Type: "number", Description: "Sort order value (optional)"},
 				"items":       {Type: "array", Description: "Subtask items (optional)"},
+				"format":      formatWrite,
 			},
 			Required: []string{"task_id", "project_id"},
 		},
@@ -345,113 +347,149 @@ var toolDefinitions = []modules.Tool{
 }
 
 // =============================================================================
+// Tool Handlers
+// =============================================================================
+
+type toolHandler func(ctx context.Context, params map[string]any) (string, error)
+
+var toolHandlers = map[string]toolHandler{
+	// Project tools
+	"list_projects":    listProjects,
+	"get_project":      getProject,
+	"get_project_data": getProjectData,
+	"create_project":   createProject,
+	"update_project":   updateProject,
+	"delete_project":   deleteProject,
+	// Task tools
+	"get_task":      getTask,
+	"create_task":   createTask,
+	"update_task":   updateTask,
+	"complete_task": completeTask,
+	"delete_task":   deleteTask,
+}
+
+// =============================================================================
 // Project Handlers
 // =============================================================================
 
 func listProjects(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := ticktickAPIBase + "/project"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListProjects(ctx)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_projects", jsonStr), nil
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
-	if projectID == "" {
-		return "", fmt.Errorf("project_id is required")
-	}
-	endpoint := ticktickAPIBase + "/project/" + projectID
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetProject(ctx, gen.GetProjectParams{ProjectId: projectID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_project", jsonStr), nil
 }
 
 func getProjectData(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
-	if projectID == "" {
-		return "", fmt.Errorf("project_id is required")
-	}
-	endpoint := ticktickAPIBase + "/project/" + projectID + "/data"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetProjectData(ctx, gen.GetProjectDataParams{ProjectId: projectID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_project_data", jsonStr), nil
 }
 
 func createProject(ctx context.Context, params map[string]any) (string, error) {
 	name, _ := params["name"].(string)
-	if name == "" {
-		return "", fmt.Errorf("name is required")
-	}
-
-	body := map[string]any{"name": name}
-	if color, ok := params["color"].(string); ok && color != "" {
-		body["color"] = color
-	}
-	if viewMode, ok := params["view_mode"].(string); ok && viewMode != "" {
-		body["viewMode"] = viewMode
-	}
-	if kind, ok := params["kind"].(string); ok && kind != "" {
-		body["kind"] = kind
-	}
-
-	endpoint := ticktickAPIBase + "/project"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := gen.CreateProjectReq{Name: name}
+	if v, ok := params["color"].(string); ok && v != "" {
+		req.Color.SetTo(v)
+	}
+	if v, ok := params["view_mode"].(string); ok && v != "" {
+		req.ViewMode.SetTo(v)
+	}
+	if v, ok := params["kind"].(string); ok && v != "" {
+		req.Kind.SetTo(v)
+	}
+	res, err := c.CreateProject(ctx, &req)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "kind", "viewMode")
 }
 
 func updateProject(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
-	if projectID == "" {
-		return "", fmt.Errorf("project_id is required")
-	}
-
-	body := map[string]any{}
-	if name, ok := params["name"].(string); ok && name != "" {
-		body["name"] = name
-	}
-	if color, ok := params["color"].(string); ok && color != "" {
-		body["color"] = color
-	}
-	if viewMode, ok := params["view_mode"].(string); ok && viewMode != "" {
-		body["viewMode"] = viewMode
-	}
-	if kind, ok := params["kind"].(string); ok && kind != "" {
-		body["kind"] = kind
-	}
-
-	endpoint := ticktickAPIBase + "/project/" + projectID
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := gen.UpdateProjectReq{}
+	if v, ok := params["name"].(string); ok && v != "" {
+		req.Name.SetTo(v)
+	}
+	if v, ok := params["color"].(string); ok && v != "" {
+		req.Color.SetTo(v)
+	}
+	if v, ok := params["view_mode"].(string); ok && v != "" {
+		req.ViewMode.SetTo(v)
+	}
+	if v, ok := params["kind"].(string); ok && v != "" {
+		req.Kind.SetTo(v)
+	}
+	res, err := c.UpdateProject(ctx, &req, gen.UpdateProjectParams{ProjectId: projectID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "kind", "viewMode")
 }
 
 func deleteProject(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
-	if projectID == "" {
-		return "", fmt.Errorf("project_id is required")
-	}
-
-	endpoint := ticktickAPIBase + "/project/" + projectID
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	result := strings.TrimSpace(string(respBody))
-	if result == "" || result == "null" {
-		return `{"deleted": true}`, nil
+	err = c.DeleteProject(ctx, gen.DeleteProjectParams{ProjectId: projectID})
+	if err != nil {
+		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return `{"success":true,"message":"Project deleted"}`, nil
 }
 
 // =============================================================================
@@ -461,160 +499,181 @@ func deleteProject(ctx context.Context, params map[string]any) (string, error) {
 func getTask(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
 	taskID, _ := params["task_id"].(string)
-	if projectID == "" || taskID == "" {
-		return "", fmt.Errorf("project_id and task_id are required")
-	}
-
-	endpoint := ticktickAPIBase + "/project/" + projectID + "/task/" + taskID
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetTask(ctx, gen.GetTaskParams{ProjectId: projectID, TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_task", jsonStr), nil
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
 	title, _ := params["title"].(string)
-	if title == "" {
-		return "", fmt.Errorf("title is required")
-	}
-
-	body := map[string]any{"title": title}
-
-	// Optional string fields
-	for _, field := range []struct{ param, api string }{
-		{"project_id", "projectId"},
-		{"content", "content"},
-		{"desc", "desc"},
-		{"start_date", "startDate"},
-		{"due_date", "dueDate"},
-		{"time_zone", "timeZone"},
-		{"repeat_flag", "repeatFlag"},
-	} {
-		if v, ok := params[field.param].(string); ok && v != "" {
-			body[field.api] = v
-		}
-	}
-
-	// Optional boolean field
-	if v, ok := params["is_all_day"].(bool); ok {
-		body["isAllDay"] = v
-	}
-
-	// Optional number fields
-	if v, ok := params["priority"].(float64); ok {
-		body["priority"] = int(v)
-	}
-	if v, ok := params["sort_order"].(float64); ok {
-		body["sortOrder"] = int64(v)
-	}
-
-	// Optional array fields
-	if v, ok := params["reminders"]; ok && v != nil {
-		body["reminders"] = v
-	}
-	if v, ok := params["items"]; ok && v != nil {
-		body["items"] = v
-	}
-
-	endpoint := ticktickAPIBase + "/task"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := gen.CreateTaskReq{Title: title}
+	if v, ok := params["project_id"].(string); ok && v != "" {
+		req.ProjectId.SetTo(v)
+	}
+	if v, ok := params["content"].(string); ok && v != "" {
+		req.Content.SetTo(v)
+	}
+	if v, ok := params["desc"].(string); ok && v != "" {
+		req.Desc.SetTo(v)
+	}
+	if v, ok := params["is_all_day"].(bool); ok {
+		req.IsAllDay.SetTo(v)
+	}
+	if v, ok := params["start_date"].(string); ok && v != "" {
+		req.StartDate.SetTo(v)
+	}
+	if v, ok := params["due_date"].(string); ok && v != "" {
+		req.DueDate.SetTo(v)
+	}
+	if v, ok := params["time_zone"].(string); ok && v != "" {
+		req.TimeZone.SetTo(v)
+	}
+	if v, ok := params["reminders"].([]interface{}); ok && len(v) > 0 {
+		req.Reminders = toStringSlice(v)
+	}
+	if v, ok := params["repeat_flag"].(string); ok && v != "" {
+		req.RepeatFlag.SetTo(v)
+	}
+	if v, ok := params["priority"].(float64); ok {
+		req.Priority.SetTo(int(v))
+	}
+	if v, ok := params["sort_order"].(float64); ok {
+		req.SortOrder.SetTo(int64(v))
+	}
+	if v, ok := params["items"].([]interface{}); ok && len(v) > 0 {
+		req.Items = toChecklistItems(v)
+	}
+	res, err := c.CreateTask(ctx, &req)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "title", "projectId", "priority", "dueDate", "status")
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
 	projectID, _ := params["project_id"].(string)
-	if taskID == "" || projectID == "" {
-		return "", fmt.Errorf("task_id and project_id are required")
-	}
-
-	body := map[string]any{
-		"id":        taskID,
-		"projectId": projectID,
-	}
-
-	// Optional string fields
-	for _, field := range []struct{ param, api string }{
-		{"title", "title"},
-		{"content", "content"},
-		{"desc", "desc"},
-		{"start_date", "startDate"},
-		{"due_date", "dueDate"},
-		{"time_zone", "timeZone"},
-		{"repeat_flag", "repeatFlag"},
-	} {
-		if v, ok := params[field.param].(string); ok && v != "" {
-			body[field.api] = v
-		}
-	}
-
-	// Optional boolean field
-	if v, ok := params["is_all_day"].(bool); ok {
-		body["isAllDay"] = v
-	}
-
-	// Optional number fields
-	if v, ok := params["priority"].(float64); ok {
-		body["priority"] = int(v)
-	}
-	if v, ok := params["sort_order"].(float64); ok {
-		body["sortOrder"] = int64(v)
-	}
-
-	// Optional array fields
-	if v, ok := params["reminders"]; ok && v != nil {
-		body["reminders"] = v
-	}
-	if v, ok := params["items"]; ok && v != nil {
-		body["items"] = v
-	}
-
-	endpoint := ticktickAPIBase + "/task/" + taskID
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := gen.UpdateTaskReq{
+		ID:        taskID,
+		ProjectId: projectID,
+	}
+	if v, ok := params["title"].(string); ok && v != "" {
+		req.Title.SetTo(v)
+	}
+	if v, ok := params["content"].(string); ok && v != "" {
+		req.Content.SetTo(v)
+	}
+	if v, ok := params["desc"].(string); ok && v != "" {
+		req.Desc.SetTo(v)
+	}
+	if v, ok := params["is_all_day"].(bool); ok {
+		req.IsAllDay.SetTo(v)
+	}
+	if v, ok := params["start_date"].(string); ok && v != "" {
+		req.StartDate.SetTo(v)
+	}
+	if v, ok := params["due_date"].(string); ok && v != "" {
+		req.DueDate.SetTo(v)
+	}
+	if v, ok := params["time_zone"].(string); ok && v != "" {
+		req.TimeZone.SetTo(v)
+	}
+	if v, ok := params["reminders"].([]interface{}); ok && len(v) > 0 {
+		req.Reminders = toStringSlice(v)
+	}
+	if v, ok := params["repeat_flag"].(string); ok && v != "" {
+		req.RepeatFlag.SetTo(v)
+	}
+	if v, ok := params["priority"].(float64); ok {
+		req.Priority.SetTo(int(v))
+	}
+	if v, ok := params["sort_order"].(float64); ok {
+		req.SortOrder.SetTo(int64(v))
+	}
+	if v, ok := params["items"].([]interface{}); ok && len(v) > 0 {
+		req.Items = toChecklistItems(v)
+	}
+	res, err := c.UpdateTask(ctx, &req, gen.UpdateTaskParams{TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "title", "projectId", "priority", "dueDate", "status")
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
 	taskID, _ := params["task_id"].(string)
-	if projectID == "" || taskID == "" {
-		return "", fmt.Errorf("project_id and task_id are required")
-	}
-
-	endpoint := ticktickAPIBase + "/project/" + projectID + "/task/" + taskID + "/complete"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	result := strings.TrimSpace(string(respBody))
-	if result == "" || result == "null" {
-		return `{"completed": true}`, nil
+	err = c.CompleteTask(ctx, gen.CompleteTaskParams{ProjectId: projectID, TaskId: taskID})
+	if err != nil {
+		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return `{"success":true,"message":"Task completed"}`, nil
 }
 
 func deleteTask(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
 	taskID, _ := params["task_id"].(string)
-	if projectID == "" || taskID == "" {
-		return "", fmt.Errorf("project_id and task_id are required")
-	}
-
-	endpoint := ticktickAPIBase + "/project/" + projectID + "/task/" + taskID
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	result := strings.TrimSpace(string(respBody))
-	if result == "" || result == "null" {
-		return `{"deleted": true}`, nil
+	err = c.DeleteTask(ctx, gen.DeleteTaskParams{ProjectId: projectID, TaskId: taskID})
+	if err != nil {
+		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return `{"success":true,"message":"Task deleted"}`, nil
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+// toChecklistItems converts []interface{} from MCP params to []gen.ChecklistItem.
+func toChecklistItems(v []interface{}) []gen.ChecklistItem {
+	items := make([]gen.ChecklistItem, 0, len(v))
+	for _, raw := range v {
+		m, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		item := gen.ChecklistItem{}
+		if t, ok := m["title"].(string); ok {
+			item.Title.SetTo(t)
+		}
+		if s, ok := m["status"].(float64); ok {
+			item.Status.SetTo(int(s))
+		}
+		items = append(items, item)
+	}
+	return items
 }

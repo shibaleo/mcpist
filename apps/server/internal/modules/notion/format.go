@@ -191,6 +191,7 @@ func queryDatabaseToCSV(jsonStr string) string {
 	}
 
 	var sb strings.Builder
+	sb.WriteString("```csv\n")
 	// Header
 	sb.WriteString(strings.Join(columns, ","))
 	sb.WriteString("\n")
@@ -214,15 +215,16 @@ func queryDatabaseToCSV(jsonStr string) string {
 		sb.WriteString(strings.Join(vals, ","))
 		sb.WriteString("\n")
 	}
+	sb.WriteString("```")
 
 	// Pagination
 	if hasMore, ok := data["has_more"].(bool); ok && hasMore {
 		if cursor, ok := data["next_cursor"].(string); ok {
-			sb.WriteString(fmt.Sprintf("# next_cursor=%s\n", cursor))
+			sb.WriteString(fmt.Sprintf("\n# next_cursor=%s", cursor))
 		}
 	}
 
-	return strings.TrimSuffix(sb.String(), "\n")
+	return sb.String()
 }
 
 // searchToCSV converts search results to CSV
@@ -238,7 +240,7 @@ func searchToCSV(jsonStr string) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString("id,type,title\n")
+	sb.WriteString("```csv\nid,type,title\n")
 
 	for _, item := range results {
 		obj, ok := item.(map[string]any)
@@ -253,14 +255,15 @@ func searchToCSV(jsonStr string) string {
 		}
 		sb.WriteString(fmt.Sprintf("%s,%s,%s\n", csvEscape(id), objType, csvEscape(title)))
 	}
+	sb.WriteString("```")
 
 	if hasMore, ok := data["has_more"].(bool); ok && hasMore {
 		if cursor, ok := data["next_cursor"].(string); ok {
-			sb.WriteString(fmt.Sprintf("# next_cursor=%s\n", cursor))
+			sb.WriteString(fmt.Sprintf("\n# next_cursor=%s", cursor))
 		}
 	}
 
-	return strings.TrimSuffix(sb.String(), "\n")
+	return sb.String()
 }
 
 // databaseSchemaToCSV converts database schema to CSV of property names and types
@@ -282,7 +285,7 @@ func databaseSchemaToCSV(jsonStr string) string {
 		return sb.String()
 	}
 
-	sb.WriteString("name,type,details\n")
+	sb.WriteString("```csv\nname,type,details\n")
 
 	names := make([]string, 0, len(props))
 	for name := range props {
@@ -299,8 +302,9 @@ func databaseSchemaToCSV(jsonStr string) string {
 		details := extractSchemaDetails(prop, propType)
 		sb.WriteString(fmt.Sprintf("%s,%s,%s\n", csvEscape(name), propType, csvEscape(details)))
 	}
+	sb.WriteString("```")
 
-	return strings.TrimSuffix(sb.String(), "\n")
+	return sb.String()
 }
 
 // extractSchemaDetails extracts type-specific details from a property schema
@@ -352,7 +356,7 @@ func usersToCSV(jsonStr string) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString("id,name,type,email\n")
+	sb.WriteString("```csv\nid,name,type,email\n")
 
 	for _, item := range results {
 		user, ok := item.(map[string]any)
@@ -368,8 +372,9 @@ func usersToCSV(jsonStr string) string {
 		}
 		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", csvEscape(id), csvEscape(name), userType, csvEscape(email)))
 	}
+	sb.WriteString("```")
 
-	return strings.TrimSuffix(sb.String(), "\n")
+	return sb.String()
 }
 
 // userToCSV converts single user to CSV
@@ -388,8 +393,9 @@ func userToCSV(jsonStr string) string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString("id,name,type,email\n")
-	sb.WriteString(fmt.Sprintf("%s,%s,%s,%s", csvEscape(id), csvEscape(name), userType, csvEscape(email)))
+	sb.WriteString("```csv\nid,name,type,email\n")
+	sb.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", csvEscape(id), csvEscape(name), userType, csvEscape(email)))
+	sb.WriteString("```")
 	return sb.String()
 }
 

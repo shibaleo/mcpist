@@ -4,20 +4,27 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/url"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/trelloapi"
+	gen "mcpist/server/pkg/trelloapi/gen"
 )
 
-const (
-	trelloAPIBase = "https://api.trello.com/1"
-	trelloVersion = "1"
-)
+const trelloVersion = "1"
 
-var client = httpclient.New()
+var toJSON = modules.ToJSON
+
+// format parameter variants for tool definitions
+var formatRead = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Trello API response. Default returns compact output.",
+}
+var formatWrite = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Trello API response. Default returns a compact summary.",
+}
 
 // TrelloModule implements the Module interface for Trello API
 type TrelloModule struct{}
@@ -74,11 +81,11 @@ func (m *TrelloModule) Resources() []modules.Resource {
 
 // ReadResource reads a resource by URI (not implemented)
 func (m *TrelloModule) ReadResource(ctx context.Context, uri string) (string, error) {
-	return "", fmt.Errorf("resources not supported")
+	return "", fmt.Errorf("not implemented")
 }
 
 // =============================================================================
-// Token and Headers
+// Client / Auth
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -92,37 +99,18 @@ func getCredentials(ctx context.Context) *store.Credentials {
 		log.Printf("[trello] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[trello] Got credentials: auth_type=%s", credentials.AuthType)
 	return credentials
 }
 
-// addAuth adds API key and token to the URL query parameters
-func addAuth(endpoint string, ctx context.Context) string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return endpoint
+		return nil, fmt.Errorf("no credentials available")
 	}
-
-	// Trello uses API Key + Token as query parameters
-	apiKey := creds.APIKey
-	token := creds.AccessToken
-
-	if apiKey == "" || token == "" {
-		log.Printf("[trello] Missing API key or token")
-		return endpoint
+	if creds.APIKey == "" || creds.AccessToken == "" {
+		return nil, fmt.Errorf("missing API key or token")
 	}
-
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		return endpoint
-	}
-
-	q := u.Query()
-	q.Set("key", apiKey)
-	q.Set("token", token)
-	u.RawQuery = q.Encode()
-
-	return u.String()
+	return trelloapi.NewClient(creds.APIKey, creds.AccessToken)
 }
 
 // =============================================================================
@@ -140,8 +128,10 @@ var toolDefinitions = []modules.Tool{
 		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
-			Type:       "object",
-			Properties: map[string]modules.Property{},
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"format": formatRead,
+			},
 		},
 	},
 	{
@@ -156,6 +146,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"board_id": {Type: "string", Description: "Board ID"},
+				"format":   formatRead,
 			},
 			Required: []string{"board_id"},
 		},
@@ -173,6 +164,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"board_id": {Type: "string", Description: "Board ID"},
+				"format":   formatRead,
 			},
 			Required: []string{"board_id"},
 		},
@@ -191,6 +183,7 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"board_id": {Type: "string", Description: "Board ID (required if list_id not specified)"},
 				"list_id":  {Type: "string", Description: "List ID (optional, filters cards by list)"},
+				"format":   formatRead,
 			},
 		},
 	},
@@ -206,6 +199,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
+				"format":  formatRead,
 			},
 			Required: []string{"card_id"},
 		},
@@ -221,13 +215,14 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"list_id":     {Type: "string", Description: "List ID to add the card to"},
-				"name":        {Type: "string", Description: "Card name/title"},
-				"desc":        {Type: "string", Description: "Card description"},
-				"pos":         {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
-				"due":         {Type: "string", Description: "Due date (ISO 8601 format)"},
-				"labels":      {Type: "string", Description: "Comma-separated label IDs"},
-				"member_ids":  {Type: "string", Description: "Comma-separated member IDs"},
+				"list_id":    {Type: "string", Description: "List ID to add the card to"},
+				"name":       {Type: "string", Description: "Card name/title"},
+				"desc":       {Type: "string", Description: "Card description"},
+				"pos":        {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"due":        {Type: "string", Description: "Due date (ISO 8601 format)"},
+				"labels":     {Type: "string", Description: "Comma-separated label IDs"},
+				"member_ids": {Type: "string", Description: "Comma-separated member IDs"},
+				"format":     formatWrite,
 			},
 			Required: []string{"list_id", "name"},
 		},
@@ -243,12 +238,13 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"card_id":  {Type: "string", Description: "Card ID"},
-				"name":     {Type: "string", Description: "New card name"},
-				"desc":     {Type: "string", Description: "New card description"},
-				"closed":   {Type: "boolean", Description: "Archive the card"},
-				"due":      {Type: "string", Description: "Due date (ISO 8601 format)"},
-				"list_id":  {Type: "string", Description: "Move to different list"},
+				"card_id": {Type: "string", Description: "Card ID"},
+				"name":    {Type: "string", Description: "New card name"},
+				"desc":    {Type: "string", Description: "New card description"},
+				"closed":  {Type: "boolean", Description: "Archive the card"},
+				"due":     {Type: "string", Description: "Due date (ISO 8601 format)"},
+				"list_id": {Type: "string", Description: "Move to different list"},
+				"format":  formatWrite,
 			},
 			Required: []string{"card_id"},
 		},
@@ -266,7 +262,8 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
 				"list_id": {Type: "string", Description: "Target list ID"},
-				"pos":     {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"pos":    {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"format": formatWrite,
 			},
 			Required: []string{"card_id", "list_id"},
 		},
@@ -300,6 +297,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
+				"format":  formatRead,
 			},
 			Required: []string{"card_id"},
 		},
@@ -317,7 +315,8 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
 				"name":    {Type: "string", Description: "Checklist name"},
-				"pos":     {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"pos":    {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"format": formatWrite,
 			},
 			Required: []string{"card_id", "name"},
 		},
@@ -351,6 +350,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"checklist_id": {Type: "string", Description: "Checklist ID"},
+				"format":       formatRead,
 			},
 			Required: []string{"checklist_id"},
 		},
@@ -369,7 +369,8 @@ var toolDefinitions = []modules.Tool{
 				"checklist_id": {Type: "string", Description: "Checklist ID"},
 				"name":         {Type: "string", Description: "Item name/text"},
 				"pos":          {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
-				"checked":      {Type: "boolean", Description: "Initial checked state (default: false)"},
+				"checked": {Type: "boolean", Description: "Initial checked state (default: false)"},
+				"format":  formatWrite,
 			},
 			Required: []string{"checklist_id", "name"},
 		},
@@ -385,11 +386,12 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"card_id":  {Type: "string", Description: "Card ID that contains the checklist"},
-				"item_id":  {Type: "string", Description: "Checklist item ID"},
-				"name":     {Type: "string", Description: "New item name"},
-				"state":    {Type: "string", Description: "State: 'complete' or 'incomplete'"},
-				"pos":      {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"card_id": {Type: "string", Description: "Card ID that contains the checklist"},
+				"item_id": {Type: "string", Description: "Checklist item ID"},
+				"name":    {Type: "string", Description: "New item name"},
+				"state":   {Type: "string", Description: "State: 'complete' or 'incomplete'"},
+				"pos":    {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
+				"format": formatWrite,
 			},
 			Required: []string{"card_id", "item_id"},
 		},
@@ -420,19 +422,15 @@ var toolDefinitions = []modules.Tool{
 type toolHandler func(ctx context.Context, params map[string]any) (string, error)
 
 var toolHandlers = map[string]toolHandler{
-	// Boards
-	"list_boards": listBoards,
-	"get_board":   getBoard,
-	// Lists
-	"get_lists": getLists,
-	// Cards
-	"get_cards":    getCards,
-	"get_card":     getCard,
-	"create_card":  createCard,
-	"update_card":  updateCard,
-	"move_card":    moveCard,
-	"delete_card":  deleteCard,
-	// Checklists
+	"list_boards":           listBoards,
+	"get_board":             getBoard,
+	"get_lists":             getLists,
+	"get_cards":             getCards,
+	"get_card":              getCard,
+	"create_card":           createCard,
+	"update_card":           updateCard,
+	"move_card":             moveCard,
+	"delete_card":           deleteCard,
 	"get_checklists":        getChecklists,
 	"create_checklist":      createChecklist,
 	"delete_checklist":      deleteChecklist,
@@ -447,22 +445,40 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func listBoards(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := addAuth(trelloAPIBase+"/members/me/boards?fields=id,name,desc,url,closed", ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	p := gen.ListBoardsParams{}
+	p.Fields.SetTo("id,name,desc,url,closed")
+	res, err := c.ListBoards(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_boards", jsonStr), nil
 }
 
 func getBoard(ctx context.Context, params map[string]any) (string, error) {
-	boardID, _ := params["board_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/boards/%s?fields=id,name,desc,url,closed", trelloAPIBase, url.PathEscape(boardID)), ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	boardID, _ := params["board_id"].(string)
+	p := gen.GetBoardParams{BoardId: boardID}
+	p.Fields.SetTo("id,name,desc,url,closed")
+	res, err := c.GetBoard(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_board", jsonStr), nil
 }
 
 // =============================================================================
@@ -470,13 +486,22 @@ func getBoard(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getLists(ctx context.Context, params map[string]any) (string, error) {
-	boardID, _ := params["board_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/boards/%s/lists?fields=id,name,closed,pos", trelloAPIBase, url.PathEscape(boardID)), ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	boardID, _ := params["board_id"].(string)
+	p := gen.GetListsParams{BoardId: boardID}
+	p.Fields.SetTo("id,name,closed,pos")
+	res, err := c.GetLists(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_lists", jsonStr), nil
 }
 
 // =============================================================================
@@ -484,132 +509,176 @@ func getLists(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getCards(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	listID, hasListID := params["list_id"].(string)
 	boardID, hasBoardID := params["board_id"].(string)
 
-	var endpoint string
 	if hasListID && listID != "" {
-		endpoint = fmt.Sprintf("%s/lists/%s/cards?fields=id,name,desc,due,closed,pos,labels", trelloAPIBase, url.PathEscape(listID))
-	} else if hasBoardID && boardID != "" {
-		endpoint = fmt.Sprintf("%s/boards/%s/cards?fields=id,name,desc,due,closed,pos,labels,idList", trelloAPIBase, url.PathEscape(boardID))
-	} else {
-		return "", fmt.Errorf("either board_id or list_id is required")
+		p := gen.GetCardsByListParams{ListId: listID}
+		p.Fields.SetTo("id,name,desc,due,closed,pos,labels")
+		res, err := c.GetCardsByList(ctx, p)
+		if err != nil {
+			return "", err
+		}
+		jsonStr, err := toJSON(res)
+		if err != nil {
+			return "", err
+		}
+		return compactReadResult(params, "get_cards", jsonStr), nil
 	}
 
-	endpoint = addAuth(endpoint, ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
-	if err != nil {
-		return "", err
+	if hasBoardID && boardID != "" {
+		p := gen.GetCardsByBoardParams{BoardId: boardID}
+		p.Fields.SetTo("id,name,desc,due,closed,pos,labels,idList")
+		res, err := c.GetCardsByBoard(ctx, p)
+		if err != nil {
+			return "", err
+		}
+		jsonStr, err := toJSON(res)
+		if err != nil {
+			return "", err
+		}
+		return compactReadResult(params, "get_cards", jsonStr), nil
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	return "", fmt.Errorf("either board_id or list_id is required")
 }
 
 func getCard(ctx context.Context, params map[string]any) (string, error) {
-	cardID, _ := params["card_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/cards/%s?fields=id,name,desc,due,closed,pos,labels,idList,idBoard&checklists=all", trelloAPIBase, url.PathEscape(cardID)), ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	cardID, _ := params["card_id"].(string)
+	p := gen.GetCardParams{CardId: cardID}
+	p.Fields.SetTo("id,name,desc,due,closed,pos,labels,idList,idBoard")
+	p.Checklists.SetTo("all")
+	res, err := c.GetCard(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_card", jsonStr), nil
 }
 
 func createCard(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	listID, _ := params["list_id"].(string)
 	name, _ := params["name"].(string)
 
-	query := url.Values{}
-	query.Set("idList", listID)
-	query.Set("name", name)
-
-	if desc, ok := params["desc"].(string); ok && desc != "" {
-		query.Set("desc", desc)
+	p := gen.CreateCardParams{IdList: listID, Name: name}
+	if v, ok := params["desc"].(string); ok && v != "" {
+		p.Desc.SetTo(v)
 	}
-	if pos, ok := params["pos"].(string); ok && pos != "" {
-		query.Set("pos", pos)
+	if v, ok := params["pos"].(string); ok && v != "" {
+		p.Pos.SetTo(v)
 	}
-	if due, ok := params["due"].(string); ok && due != "" {
-		query.Set("due", due)
+	if v, ok := params["due"].(string); ok && v != "" {
+		p.Due.SetTo(v)
 	}
-	if labels, ok := params["labels"].(string); ok && labels != "" {
-		query.Set("idLabels", labels)
+	if v, ok := params["labels"].(string); ok && v != "" {
+		p.IdLabels.SetTo(v)
 	}
-	if memberIDs, ok := params["member_ids"].(string); ok && memberIDs != "" {
-		query.Set("idMembers", memberIDs)
+	if v, ok := params["member_ids"].(string); ok && v != "" {
+		p.IdMembers.SetTo(v)
 	}
 
-	endpoint := addAuth(trelloAPIBase+"/cards?"+query.Encode(), ctx)
-	respBody, err := client.DoJSON("POST", endpoint, nil, nil)
+	res, err := c.CreateCard(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "idList")
 }
 
 func updateCard(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	cardID, _ := params["card_id"].(string)
 
-	query := url.Values{}
-
-	if name, ok := params["name"].(string); ok && name != "" {
-		query.Set("name", name)
+	p := gen.UpdateCardParams{CardId: cardID}
+	if v, ok := params["name"].(string); ok && v != "" {
+		p.Name.SetTo(v)
 	}
-	if desc, ok := params["desc"].(string); ok {
-		query.Set("desc", desc)
+	if v, ok := params["desc"].(string); ok {
+		p.Desc.SetTo(v)
 	}
 	if closed, ok := params["closed"].(bool); ok {
 		if closed {
-			query.Set("closed", "true")
+			p.Closed.SetTo("true")
 		} else {
-			query.Set("closed", "false")
+			p.Closed.SetTo("false")
 		}
 	}
-	if due, ok := params["due"].(string); ok && due != "" {
-		query.Set("due", due)
+	if v, ok := params["due"].(string); ok && v != "" {
+		p.Due.SetTo(v)
 	}
-	if listID, ok := params["list_id"].(string); ok && listID != "" {
-		query.Set("idList", listID)
+	if v, ok := params["list_id"].(string); ok && v != "" {
+		p.IdList.SetTo(v)
 	}
 
-	endpoint := addAuth(fmt.Sprintf("%s/cards/%s?%s", trelloAPIBase, url.PathEscape(cardID), query.Encode()), ctx)
-	respBody, err := client.DoJSON("PUT", endpoint, nil, nil)
+	res, err := c.UpdateCard(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "idList")
 }
 
 func moveCard(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	cardID, _ := params["card_id"].(string)
 	listID, _ := params["list_id"].(string)
 
-	query := url.Values{}
-	query.Set("idList", listID)
-
-	if pos, ok := params["pos"].(string); ok && pos != "" {
-		query.Set("pos", pos)
+	p := gen.UpdateCardParams{CardId: cardID}
+	p.IdList.SetTo(listID)
+	if v, ok := params["pos"].(string); ok && v != "" {
+		p.Pos.SetTo(v)
 	}
 
-	endpoint := addAuth(fmt.Sprintf("%s/cards/%s?%s", trelloAPIBase, url.PathEscape(cardID), query.Encode()), ctx)
-	respBody, err := client.DoJSON("PUT", endpoint, nil, nil)
+	res, err := c.UpdateCard(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "idList")
 }
 
 func deleteCard(ctx context.Context, params map[string]any) (string, error) {
-	cardID, _ := params["card_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/cards/%s", trelloAPIBase, url.PathEscape(cardID)), ctx)
-	_, err := client.DoJSON("DELETE", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 200 OK (success)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
-			return `{"success": true, "message": "Card deleted"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Card deleted"}`, nil
+	cardID, _ := params["card_id"].(string)
+	err = c.DeleteCard(ctx, gen.DeleteCardParams{CardId: cardID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Card deleted"}`, nil
 }
 
 // =============================================================================
@@ -617,46 +686,57 @@ func deleteCard(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getChecklists(ctx context.Context, params map[string]any) (string, error) {
-	cardID, _ := params["card_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/cards/%s/checklists", trelloAPIBase, url.PathEscape(cardID)), ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	cardID, _ := params["card_id"].(string)
+	res, err := c.GetChecklists(ctx, gen.GetChecklistsParams{CardId: cardID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_checklists", jsonStr), nil
 }
 
 func createChecklist(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	cardID, _ := params["card_id"].(string)
 	name, _ := params["name"].(string)
 
-	query := url.Values{}
-	query.Set("idCard", cardID)
-	query.Set("name", name)
-
-	if pos, ok := params["pos"].(string); ok && pos != "" {
-		query.Set("pos", pos)
+	p := gen.CreateChecklistParams{IdCard: cardID, Name: name}
+	if v, ok := params["pos"].(string); ok && v != "" {
+		p.Pos.SetTo(v)
 	}
 
-	endpoint := addAuth(trelloAPIBase+"/checklists?"+query.Encode(), ctx)
-	respBody, err := client.DoJSON("POST", endpoint, nil, nil)
+	res, err := c.CreateChecklist(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "idCard")
 }
 
 func deleteChecklist(ctx context.Context, params map[string]any) (string, error) {
-	checklistID, _ := params["checklist_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/checklists/%s", trelloAPIBase, url.PathEscape(checklistID)), ctx)
-	_, err := client.DoJSON("DELETE", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
-			return `{"success": true, "message": "Checklist deleted"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Checklist deleted"}`, nil
+	checklistID, _ := params["checklist_id"].(string)
+	err = c.DeleteChecklist(ctx, gen.DeleteChecklistParams{ChecklistId: checklistID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Checklist deleted"}`, nil
 }
 
 // =============================================================================
@@ -664,71 +744,89 @@ func deleteChecklist(ctx context.Context, params map[string]any) (string, error)
 // =============================================================================
 
 func getChecklistItems(ctx context.Context, params map[string]any) (string, error) {
-	checklistID, _ := params["checklist_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/checklists/%s/checkItems", trelloAPIBase, url.PathEscape(checklistID)), ctx)
-	respBody, err := client.DoJSON("GET", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	checklistID, _ := params["checklist_id"].(string)
+	res, err := c.GetChecklistItems(ctx, gen.GetChecklistItemsParams{ChecklistId: checklistID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_checklist_items", jsonStr), nil
 }
 
 func addChecklistItem(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	checklistID, _ := params["checklist_id"].(string)
 	name, _ := params["name"].(string)
 
-	query := url.Values{}
-	query.Set("name", name)
-
-	if pos, ok := params["pos"].(string); ok && pos != "" {
-		query.Set("pos", pos)
+	p := gen.AddChecklistItemParams{ChecklistId: checklistID, Name: name}
+	if v, ok := params["pos"].(string); ok && v != "" {
+		p.Pos.SetTo(v)
 	}
 	if checked, ok := params["checked"].(bool); ok && checked {
-		query.Set("checked", "true")
+		p.Checked.SetTo("true")
 	}
 
-	endpoint := addAuth(fmt.Sprintf("%s/checklists/%s/checkItems?%s", trelloAPIBase, url.PathEscape(checklistID), query.Encode()), ctx)
-	respBody, err := client.DoJSON("POST", endpoint, nil, nil)
+	res, err := c.AddChecklistItem(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "state")
 }
 
 func updateChecklistItem(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	cardID, _ := params["card_id"].(string)
 	itemID, _ := params["item_id"].(string)
 
-	query := url.Values{}
+	p := gen.UpdateChecklistItemParams{CardId: cardID, CheckItemId: itemID}
+	if v, ok := params["name"].(string); ok && v != "" {
+		p.Name.SetTo(v)
+	}
+	if v, ok := params["state"].(string); ok && v != "" {
+		p.State.SetTo(v)
+	}
+	if v, ok := params["pos"].(string); ok && v != "" {
+		p.Pos.SetTo(v)
+	}
 
-	if name, ok := params["name"].(string); ok && name != "" {
-		query.Set("name", name)
-	}
-	if state, ok := params["state"].(string); ok && state != "" {
-		query.Set("state", state)
-	}
-	if pos, ok := params["pos"].(string); ok && pos != "" {
-		query.Set("pos", pos)
-	}
-
-	endpoint := addAuth(fmt.Sprintf("%s/cards/%s/checkItem/%s?%s", trelloAPIBase, url.PathEscape(cardID), url.PathEscape(itemID), query.Encode()), ctx)
-	respBody, err := client.DoJSON("PUT", endpoint, nil, nil)
+	res, err := c.UpdateChecklistItem(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "name", "state")
 }
 
 func deleteChecklistItem(ctx context.Context, params map[string]any) (string, error) {
-	checklistID, _ := params["checklist_id"].(string)
-	itemID, _ := params["item_id"].(string)
-	endpoint := addAuth(fmt.Sprintf("%s/checklists/%s/checkItems/%s", trelloAPIBase, url.PathEscape(checklistID), url.PathEscape(itemID)), ctx)
-	_, err := client.DoJSON("DELETE", endpoint, nil, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 200 {
-			return `{"success": true, "message": "Checklist item deleted"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Checklist item deleted"}`, nil
+	checklistID, _ := params["checklist_id"].(string)
+	itemID, _ := params["item_id"].(string)
+	err = c.DeleteChecklistItem(ctx, gen.DeleteChecklistItemParams{ChecklistId: checklistID, CheckItemId: itemID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Checklist item deleted"}`, nil
 }

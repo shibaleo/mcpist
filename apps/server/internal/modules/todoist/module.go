@@ -8,23 +8,18 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/todoistapi"
+	gen "mcpist/server/pkg/todoistapi/gen"
 )
 
 const (
-	todoistAPIBase     = "https://api.todoist.com/rest/v2"
-	todoistSyncAPIBase = "https://api.todoist.com/sync/v9"
-	todoistVersion     = "v2"
-	todoistTokenURL    = "https://todoist.com/oauth/access_token"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry (if applicable)
+	todoistVersion  = "v1"
+	todoistTokenURL = "https://todoist.com/oauth/access_token"
 )
-
-var client = httpclient.New()
 
 // TodoistModule implements the Module interface for Todoist API
 type TodoistModule struct{}
@@ -85,7 +80,7 @@ func (m *TodoistModule) ReadResource(ctx context.Context, uri string) (string, e
 }
 
 // =============================================================================
-// Token and Headers
+// ogen client helpers
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -99,30 +94,32 @@ func getCredentials(ctx context.Context) *store.Credentials {
 		log.Printf("[todoist] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[todoist] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
-
-	// Note: Todoist OAuth2 does NOT provide refresh tokens by default
-	// Tokens are long-lived but may need re-authorization if revoked
-
 	return credentials
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
+	return todoistapi.NewClient(creds.AccessToken)
+}
 
-	h := map[string]string{
-		"Content-Type": "application/json",
-	}
+var toJSON = modules.ToJSON
+var toStringSlice = modules.ToStringSlice
 
-	// OAuth2 uses Bearer token
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		h["Authorization"] = "Bearer " + creds.AccessToken
-	}
+// =============================================================================
+// Format parameter definitions
+// =============================================================================
 
-	return h
+var formatRead = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Todoist API response. Default returns compact output.",
+}
+
+var formatWrite = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Todoist API response. Default returns a compact summary.",
 }
 
 // =============================================================================
@@ -140,8 +137,10 @@ var toolDefinitions = []modules.Tool{
 		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
-			Type:       "object",
-			Properties: map[string]modules.Property{},
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"format": formatRead,
+			},
 		},
 	},
 	{
@@ -156,6 +155,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
+				"format":     formatRead,
 			},
 			Required: []string{"project_id"},
 		},
@@ -175,7 +175,7 @@ var toolDefinitions = []modules.Tool{
 				"project_id": {Type: "string", Description: "Filter tasks by project ID"},
 				"section_id": {Type: "string", Description: "Filter tasks by section ID"},
 				"label":      {Type: "string", Description: "Filter tasks by label name"},
-				"filter":     {Type: "string", Description: "Filter string (e.g., 'today', 'overdue', 'priority 1')"},
+				"format":     formatRead,
 			},
 		},
 	},
@@ -191,6 +191,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"task_id": {Type: "string", Description: "Task ID"},
+				"format":  formatRead,
 			},
 			Required: []string{"task_id"},
 		},
@@ -206,17 +207,18 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"content":     {Type: "string", Description: "Task content (required)"},
-				"description": {Type: "string", Description: "Task description"},
-				"project_id":  {Type: "string", Description: "Project ID (default: Inbox)"},
-				"section_id":  {Type: "string", Description: "Section ID"},
-				"parent_id":   {Type: "string", Description: "Parent task ID for subtasks"},
-				"priority":    {Type: "number", Description: "Priority: 1 (normal) to 4 (urgent)"},
-				"due_string":  {Type: "string", Description: "Due date in natural language (e.g., 'tomorrow', 'next Monday')"},
-				"due_date":    {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
-				"due_datetime": {Type: "string", Description: "Due datetime (RFC3339 format)"},
-				"labels":      {Type: "array", Description: "Array of label names"},
-				"assignee_id": {Type: "string", Description: "Assignee user ID (for shared projects)"},
+				"content":      {Type: "string", Description: "Task content (required)"},
+				"description":  {Type: "string", Description: "Task description"},
+				"project_id":   {Type: "string", Description: "Project ID (default: Inbox)"},
+				"section_id":   {Type: "string", Description: "Section ID"},
+				"parent_id":    {Type: "string", Description: "Parent task ID for subtasks"},
+				"priority":     {Type: "number", Description: "Priority: 1 (normal) to 4 (urgent)"},
+				"due_string":   {Type: "string", Description: "Due date in natural language (e.g., 'tomorrow', 'next Monday')"},
+				"due_date":     {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+				"due_datetime":  {Type: "string", Description: "Due datetime (RFC3339 format)"},
+				"labels":       {Type: "array", Description: "Array of label names"},
+				"assignee_id":  {Type: "string", Description: "Assignee user ID (for shared projects)"},
+				"format":       formatWrite,
 			},
 			Required: []string{"content"},
 		},
@@ -232,15 +234,16 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"task_id":     {Type: "string", Description: "Task ID (required)"},
-				"content":     {Type: "string", Description: "New task content"},
-				"description": {Type: "string", Description: "New task description"},
-				"priority":    {Type: "number", Description: "Priority: 1 (normal) to 4 (urgent)"},
-				"due_string":  {Type: "string", Description: "Due date in natural language"},
-				"due_date":    {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
-				"due_datetime": {Type: "string", Description: "Due datetime (RFC3339 format)"},
-				"labels":      {Type: "array", Description: "Array of label names"},
-				"assignee_id": {Type: "string", Description: "Assignee user ID"},
+				"task_id":      {Type: "string", Description: "Task ID (required)"},
+				"content":      {Type: "string", Description: "New task content"},
+				"description":  {Type: "string", Description: "New task description"},
+				"priority":     {Type: "number", Description: "Priority: 1 (normal) to 4 (urgent)"},
+				"due_string":   {Type: "string", Description: "Due date in natural language"},
+				"due_date":     {Type: "string", Description: "Due date (YYYY-MM-DD format)"},
+				"due_datetime":  {Type: "string", Description: "Due datetime (RFC3339 format)"},
+				"labels":       {Type: "array", Description: "Array of label names"},
+				"assignee_id":  {Type: "string", Description: "Assignee user ID"},
+				"format":       formatWrite,
 			},
 			Required: []string{"task_id"},
 		},
@@ -293,23 +296,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"task_id"},
 		},
 	},
-	// Quick Add
-	{
-		ID:   "todoist:quick_add",
-		Name: "quick_add",
-		Descriptions: modules.LocalizedText{
-			"en-US": "Add a task using natural language (Todoist Quick Add syntax). Supports #project, @label, p1-p4 priority, dates.",
-			"ja-JP": "自然言語でタスクを追加します（Todoistクイック追加構文）。#プロジェクト、@ラベル、p1-p4優先度、日付をサポート。",
-		},
-		Annotations: modules.AnnotateCreate,
-		InputSchema: modules.InputSchema{
-			Type: "object",
-			Properties: map[string]modules.Property{
-				"text": {Type: "string", Description: "Quick add text (e.g., 'Buy milk #Shopping @errands tomorrow p2')"},
-			},
-			Required: []string{"text"},
-		},
-	},
 	// Sections
 	{
 		ID:   "todoist:list_sections",
@@ -323,6 +309,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID (optional, lists all sections if omitted)"},
+				"format":     formatRead,
 			},
 		},
 	},
@@ -336,8 +323,10 @@ var toolDefinitions = []modules.Tool{
 		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
-			Type:       "object",
-			Properties: map[string]modules.Property{},
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"format": formatRead,
+			},
 		},
 	},
 }
@@ -349,18 +338,17 @@ var toolDefinitions = []modules.Tool{
 type toolHandler func(ctx context.Context, params map[string]any) (string, error)
 
 var toolHandlers = map[string]toolHandler{
-	"list_projects":  listProjects,
-	"get_project":    getProject,
-	"list_tasks":     listTasks,
-	"get_task":       getTask,
-	"create_task":    createTask,
-	"update_task":    updateTask,
-	"complete_task":  completeTask,
-	"reopen_task":    reopenTask,
-	"delete_task":    deleteTask,
-	"quick_add":      quickAdd,
-	"list_sections":  listSections,
-	"list_labels":    listLabels,
+	"list_projects": listProjects,
+	"get_project":   getProject,
+	"list_tasks":    listTasks,
+	"get_task":      getTask,
+	"create_task":   createTask,
+	"update_task":   updateTask,
+	"complete_task": completeTask,
+	"reopen_task":   reopenTask,
+	"delete_task":   deleteTask,
+	"list_sections": listSections,
+	"list_labels":   listLabels,
 }
 
 // =============================================================================
@@ -368,22 +356,36 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func listProjects(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := todoistAPIBase + "/projects"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListProjects(ctx, gen.ListProjectsParams{})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res.Results)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_projects", jsonStr), nil
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
 	projectID, _ := params["project_id"].(string)
-	endpoint := fmt.Sprintf("%s/projects/%s", todoistAPIBase, url.PathEscape(projectID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetProject(ctx, gen.GetProjectParams{ProjectId: projectID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_project", jsonStr), nil
 }
 
 // =============================================================================
@@ -391,223 +393,175 @@ func getProject(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listTasks(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-
-	if projectID, ok := params["project_id"].(string); ok && projectID != "" {
-		query.Set("project_id", projectID)
-	}
-	if sectionID, ok := params["section_id"].(string); ok && sectionID != "" {
-		query.Set("section_id", sectionID)
-	}
-	if label, ok := params["label"].(string); ok && label != "" {
-		query.Set("label", label)
-	}
-	if filter, ok := params["filter"].(string); ok && filter != "" {
-		query.Set("filter", filter)
-	}
-
-	endpoint := todoistAPIBase + "/tasks"
-	if len(query) > 0 {
-		endpoint += "?" + query.Encode()
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	p := gen.ListTasksParams{}
+	if v, ok := params["project_id"].(string); ok && v != "" {
+		p.ProjectId.SetTo(v)
+	}
+	if v, ok := params["section_id"].(string); ok && v != "" {
+		p.SectionId.SetTo(v)
+	}
+	if v, ok := params["label"].(string); ok && v != "" {
+		p.Label.SetTo(v)
+	}
+	res, err := c.ListTasks(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res.Results)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_tasks", jsonStr), nil
 }
 
 func getTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s", todoistAPIBase, url.PathEscape(taskID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetTask(ctx, gen.GetTaskParams{TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_task", jsonStr), nil
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
 	content, _ := params["content"].(string)
-
-	task := map[string]interface{}{
-		"content": content,
-	}
-
-	if description, ok := params["description"].(string); ok && description != "" {
-		task["description"] = description
-	}
-	if projectID, ok := params["project_id"].(string); ok && projectID != "" {
-		task["project_id"] = projectID
-	}
-	if sectionID, ok := params["section_id"].(string); ok && sectionID != "" {
-		task["section_id"] = sectionID
-	}
-	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
-		task["parent_id"] = parentID
-	}
-	if priority, ok := params["priority"].(float64); ok {
-		task["priority"] = int(priority)
-	}
-	if dueString, ok := params["due_string"].(string); ok && dueString != "" {
-		task["due_string"] = dueString
-	}
-	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
-		task["due_date"] = dueDate
-	}
-	if dueDatetime, ok := params["due_datetime"].(string); ok && dueDatetime != "" {
-		task["due_datetime"] = dueDatetime
-	}
-	if labels, ok := params["labels"].([]interface{}); ok && len(labels) > 0 {
-		labelStrings := make([]string, len(labels))
-		for i, l := range labels {
-			labelStrings[i], _ = l.(string)
-		}
-		task["labels"] = labelStrings
-	}
-	if assigneeID, ok := params["assignee_id"].(string); ok && assigneeID != "" {
-		task["assignee_id"] = assigneeID
-	}
-
-	endpoint := todoistAPIBase + "/tasks"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), task)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := gen.CreateTaskReq{Content: content}
+	if v, ok := params["description"].(string); ok && v != "" {
+		req.Description.SetTo(v)
+	}
+	if v, ok := params["project_id"].(string); ok && v != "" {
+		req.ProjectId.SetTo(v)
+	}
+	if v, ok := params["section_id"].(string); ok && v != "" {
+		req.SectionId.SetTo(v)
+	}
+	if v, ok := params["parent_id"].(string); ok && v != "" {
+		req.ParentId.SetTo(v)
+	}
+	if v, ok := params["priority"].(float64); ok {
+		req.Priority.SetTo(int(v))
+	}
+	if v, ok := params["due_string"].(string); ok && v != "" {
+		req.DueString.SetTo(v)
+	}
+	if v, ok := params["due_date"].(string); ok && v != "" {
+		req.DueDate.SetTo(v)
+	}
+	if v, ok := params["due_datetime"].(string); ok && v != "" {
+		req.DueDatetime.SetTo(v)
+	}
+	if v, ok := params["labels"].([]interface{}); ok && len(v) > 0 {
+		req.Labels = toStringSlice(v)
+	}
+	if v, ok := params["assignee_id"].(string); ok && v != "" {
+		req.AssigneeId.SetTo(v)
+	}
+	res, err := c.CreateTask(ctx, &req)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "content", "projectId", "due", "priority", "labels")
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
-
-	task := map[string]interface{}{}
-
-	if content, ok := params["content"].(string); ok && content != "" {
-		task["content"] = content
-	}
-	if description, ok := params["description"].(string); ok {
-		task["description"] = description
-	}
-	if priority, ok := params["priority"].(float64); ok {
-		task["priority"] = int(priority)
-	}
-	if dueString, ok := params["due_string"].(string); ok && dueString != "" {
-		task["due_string"] = dueString
-	}
-	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
-		task["due_date"] = dueDate
-	}
-	if dueDatetime, ok := params["due_datetime"].(string); ok && dueDatetime != "" {
-		task["due_datetime"] = dueDatetime
-	}
-	if labels, ok := params["labels"].([]interface{}); ok {
-		labelStrings := make([]string, len(labels))
-		for i, l := range labels {
-			labelStrings[i], _ = l.(string)
-		}
-		task["labels"] = labelStrings
-	}
-	if assigneeID, ok := params["assignee_id"].(string); ok {
-		task["assignee_id"] = assigneeID
-	}
-
-	endpoint := fmt.Sprintf("%s/tasks/%s", todoistAPIBase, url.PathEscape(taskID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), task)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := gen.UpdateTaskReq{}
+	if v, ok := params["content"].(string); ok && v != "" {
+		req.Content.SetTo(v)
+	}
+	if v, ok := params["description"].(string); ok {
+		req.Description.SetTo(v)
+	}
+	if v, ok := params["priority"].(float64); ok {
+		req.Priority.SetTo(int(v))
+	}
+	if v, ok := params["due_string"].(string); ok && v != "" {
+		req.DueString.SetTo(v)
+	}
+	if v, ok := params["due_date"].(string); ok && v != "" {
+		req.DueDate.SetTo(v)
+	}
+	if v, ok := params["due_datetime"].(string); ok && v != "" {
+		req.DueDatetime.SetTo(v)
+	}
+	if v, ok := params["labels"].([]interface{}); ok {
+		req.Labels = toStringSlice(v)
+	}
+	if v, ok := params["assignee_id"].(string); ok {
+		req.AssigneeId.SetTo(v)
+	}
+	res, err := c.UpdateTask(ctx, &req, gen.UpdateTaskParams{TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "content", "projectId", "due", "priority", "labels")
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s/close", todoistAPIBase, url.PathEscape(taskID))
-
-	_, err := client.DoJSON("POST", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 204 No Content (success)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "Task completed"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Task completed"}`, nil
+	err = c.CloseTask(ctx, gen.CloseTaskParams{TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Task completed"}`, nil
 }
 
 func reopenTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s/reopen", todoistAPIBase, url.PathEscape(taskID))
-
-	_, err := client.DoJSON("POST", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 204 No Content (success)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "Task reopened"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Task reopened"}`, nil
+	err = c.ReopenTask(ctx, gen.ReopenTaskParams{TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Task reopened"}`, nil
 }
 
 func deleteTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
-	endpoint := fmt.Sprintf("%s/tasks/%s", todoistAPIBase, url.PathEscape(taskID))
-
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 204 No Content (success)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "Task deleted"}`, nil
-		}
 		return "", err
 	}
-	return `{"success": true, "message": "Task deleted"}`, nil
-}
-
-// =============================================================================
-// Quick Add (Sync API)
-// =============================================================================
-
-func quickAdd(ctx context.Context, params map[string]any) (string, error) {
-	text, _ := params["text"].(string)
-
-	// Quick Add uses the Sync API
-	endpoint := todoistSyncAPIBase + "/quick/add"
-
-	// Quick add uses form data, not JSON
-	data := url.Values{}
-	data.Set("text", text)
-
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return "", fmt.Errorf("no credentials available")
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(data.Encode()))
+	err = c.DeleteTask(ctx, gen.DeleteTaskParams{TaskId: taskID})
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Bearer "+creds.AccessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("quick add request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("quick add failed: status %d", resp.StatusCode)
-	}
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	return `{"success":true,"message":"Task deleted"}`, nil
 }
 
 // =============================================================================
@@ -615,17 +569,23 @@ func quickAdd(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listSections(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := todoistAPIBase + "/sections"
-
-	if projectID, ok := params["project_id"].(string); ok && projectID != "" {
-		endpoint += "?project_id=" + url.QueryEscape(projectID)
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	p := gen.ListSectionsParams{}
+	if v, ok := params["project_id"].(string); ok && v != "" {
+		p.ProjectId.SetTo(v)
+	}
+	res, err := c.ListSections(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res.Results)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_sections", jsonStr), nil
 }
 
 // =============================================================================
@@ -633,12 +593,19 @@ func listSections(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listLabels(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := todoistAPIBase + "/labels"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListLabels(ctx, gen.ListLabelsParams{})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res.Results)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_labels", jsonStr), nil
 }
 
 // =============================================================================
@@ -646,7 +613,6 @@ func listLabels(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 // ExchangeCodeForToken exchanges an authorization code for an access token
-// Note: This is typically called from the Console OAuth callback, not directly from MCP
 func ExchangeCodeForToken(ctx context.Context, code, clientID, clientSecret string) (string, error) {
 	data := url.Values{}
 	data.Set("client_id", clientID)
@@ -679,6 +645,3 @@ func ExchangeCodeForToken(ctx context.Context, code, clientID, clientSecret stri
 
 	return tokenResp.AccessToken, nil
 }
-
-// Unused import workaround
-var _ = time.Now
