@@ -1,0 +1,501 @@
+openapi: 3.0.3
+info:
+  title: Trello API (mcpist subset)
+  description: Subset of Trello API used by mcpist Trello module
+  version: "1"
+servers:
+  - url: https://api.trello.com/1
+security:
+  - apiKey: []
+    apiToken: []
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: query
+      name: key
+    apiToken:
+      type: apiKey
+      in: query
+      name: token
+  schemas:
+    Board:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        desc:
+          type: string
+        url:
+          type: string
+        closed:
+          type: boolean
+
+    TrelloList:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        closed:
+          type: boolean
+        pos:
+          type: number
+
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+
+    Card:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        desc:
+          type: string
+        due:
+          type: string
+          nullable: true
+        closed:
+          type: boolean
+        pos:
+          type: number
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        idList:
+          type: string
+        idBoard:
+          type: string
+        checklists:
+          type: array
+          items:
+            $ref: '#/components/schemas/Checklist'
+
+    CheckItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+        pos:
+          type: number
+
+    Checklist:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        pos:
+          type: number
+        idCard:
+          type: string
+        checkItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckItem'
+
+paths:
+  # ==================== Boards ====================
+  /members/me/boards:
+    get:
+      operationId: listBoards
+      parameters:
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Board'
+
+  /boards/{boardId}:
+    get:
+      operationId: getBoard
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+
+  # ==================== Lists ====================
+  /boards/{boardId}/lists:
+    get:
+      operationId: getLists
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrelloList'
+
+  # ==================== Cards ====================
+  /lists/{listId}/cards:
+    get:
+      operationId: getCardsByList
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Card'
+
+  /boards/{boardId}/cards:
+    get:
+      operationId: getCardsByBoard
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Card'
+
+  /cards/{cardId}:
+    get:
+      operationId: getCard
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+        - name: checklists
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+    put:
+      operationId: updateCard
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: desc
+          in: query
+          schema:
+            type: string
+        - name: closed
+          in: query
+          schema:
+            type: string
+        - name: due
+          in: query
+          schema:
+            type: string
+        - name: idList
+          in: query
+          schema:
+            type: string
+        - name: pos
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+    delete:
+      operationId: deleteCard
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted successfully
+
+  /cards:
+    post:
+      operationId: createCard
+      parameters:
+        - name: idList
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: desc
+          in: query
+          schema:
+            type: string
+        - name: pos
+          in: query
+          schema:
+            type: string
+        - name: due
+          in: query
+          schema:
+            type: string
+        - name: idLabels
+          in: query
+          schema:
+            type: string
+        - name: idMembers
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+
+  # ==================== Checklists ====================
+  /cards/{cardId}/checklists:
+    get:
+      operationId: getChecklists
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Checklist'
+
+  /checklists:
+    post:
+      operationId: createChecklist
+      parameters:
+        - name: idCard
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: pos
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checklist'
+
+  /checklists/{checklistId}:
+    delete:
+      operationId: deleteChecklist
+      parameters:
+        - name: checklistId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted successfully
+
+  # ==================== Checklist Items ====================
+  /checklists/{checklistId}/checkItems:
+    get:
+      operationId: getChecklistItems
+      parameters:
+        - name: checklistId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CheckItem'
+    post:
+      operationId: addChecklistItem
+      parameters:
+        - name: checklistId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: pos
+          in: query
+          schema:
+            type: string
+        - name: checked
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckItem'
+
+  /cards/{cardId}/checkItem/{checkItemId}:
+    put:
+      operationId: updateChecklistItem
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: checkItemId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: pos
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckItem'
+
+  /checklists/{checklistId}/checkItems/{checkItemId}:
+    delete:
+      operationId: deleteChecklistItem
+      parameters:
+        - name: checklistId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: checkItemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted successfully
