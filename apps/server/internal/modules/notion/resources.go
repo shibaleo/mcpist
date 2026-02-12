@@ -2,11 +2,12 @@ package notion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/modules"
+	gen "mcpist/server/pkg/notionapi/gen"
 )
 
 // resourceDefinitions returns available Notion resources
@@ -41,7 +42,6 @@ func resourceDefinitions() []modules.Resource {
 
 // readResource reads a Notion resource by URI
 func readResource(ctx context.Context, uri string) (string, error) {
-	// Parse URI: notion://pages/{page_id}, notion://databases/{database_id}, etc.
 	if !strings.HasPrefix(uri, "notion://") {
 		return "", fmt.Errorf("invalid URI scheme: %s", uri)
 	}
@@ -75,55 +75,80 @@ func readResource(ctx context.Context, uri string) (string, error) {
 }
 
 func readPage(ctx context.Context, pageID string) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	// Get page metadata
-	endpoint := fmt.Sprintf("%s/pages/%s", notionAPIBase, pageID)
-	pageData, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	pageRes, err := c.GetPage(ctx, gen.GetPageParams{PageID: pageID})
 	if err != nil {
 		return "", err
 	}
 
 	// Get page content (blocks)
-	blocksEndpoint := fmt.Sprintf("%s/blocks/%s/children?page_size=100", notionAPIBase, pageID)
-	blocksData, err := client.DoJSON("GET", blocksEndpoint, headers(ctx), nil)
+	p := gen.GetBlockChildrenParams{BlockID: pageID}
+	p.PageSize.SetTo(100)
+	blocksRes, err := c.GetBlockChildren(ctx, p)
 	if err != nil {
 		return "", err
 	}
 
 	// Combine into single response
-	result := map[string]interface{}{
+	pageJSON, _ := json.Marshal(pageRes)
+	blocksJSON, _ := json.Marshal(blocksRes)
+
+	var pageData, blocksData any
+	json.Unmarshal(pageJSON, &pageData)
+	json.Unmarshal(blocksJSON, &blocksData)
+
+	result := map[string]any{
 		"page":   pageData,
 		"blocks": blocksData,
 	}
-
-	return httpclient.PrettyJSONFromInterface(result), nil
+	return toJSON(result)
 }
 
 func readDatabaseSchema(ctx context.Context, databaseID string) (string, error) {
-	endpoint := fmt.Sprintf("%s/databases/%s", notionAPIBase, databaseID)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSONFromInterface(respBody), nil
+	res, err := c.GetDatabase(ctx, gen.GetDatabaseParams{DatabaseID: databaseID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func readDatabaseRows(ctx context.Context, databaseID string) (string, error) {
-	endpoint := fmt.Sprintf("%s/databases/%s/query", notionAPIBase, databaseID)
-	body := map[string]interface{}{
-		"page_size": 100,
-	}
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSONFromInterface(respBody), nil
+
+	body := map[string]any{"page_size": 100}
+	bodyJSON, _ := json.Marshal(body)
+	var req gen.QueryDatabaseRequest
+	json.Unmarshal(bodyJSON, &req)
+
+	res, err := c.QueryDatabase(ctx, &req, gen.QueryDatabaseParams{DatabaseID: databaseID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func readBlockChildren(ctx context.Context, blockID string) (string, error) {
-	endpoint := fmt.Sprintf("%s/blocks/%s/children?page_size=100", notionAPIBase, blockID)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSONFromInterface(respBody), nil
+	p := gen.GetBlockChildrenParams{BlockID: blockID}
+	p.PageSize.SetTo(100)
+	res, err := c.GetBlockChildren(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }

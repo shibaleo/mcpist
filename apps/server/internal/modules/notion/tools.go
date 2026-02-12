@@ -4,11 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 
-	"mcpist/server/internal/httpclient"
+	"github.com/go-faster/jx"
+
 	"mcpist/server/internal/modules"
+	gen "mcpist/server/pkg/notionapi/gen"
 )
+
+var toJSON = modules.ToJSON
+
+// format parameter variants for read-only tools
+var formatMD = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Notion API response. Default returns compact Markdown.",
+}
+var formatCSV = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Notion API response. Default returns compact CSV.",
+}
+var formatWrite = modules.Property{
+	Type:        "string",
+	Description: "Set \"json\" to get the full Notion API response. Default returns a compact summary.",
+}
 
 // toolDefinitions returns all Notion tool definitions
 func toolDefinitions() []modules.Tool {
@@ -31,12 +48,13 @@ func toolDefinitions() []modules.Tool {
 					},
 					"filter_type": {
 						Type:        "string",
-						Description: "Filter results to only pages or only databases (page or database)",
+						Description: "Filter by object type: \"page\" or \"database\"",
 					},
 					"page_size": {
 						Type:        "number",
-						Description: "Number of results to return (max 100, default 10)",
+						Description: "Number of results (1-100, default 10)",
 					},
+					"format": formatCSV,
 				},
 			},
 		},
@@ -45,8 +63,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:get_page",
 			Name: "get_page",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Retrieve a Notion page by ID. Returns page properties and metadata.",
-				"ja-JP": "IDでNotionページを取得します。ページのプロパティとメタデータを返します。",
+				"en-US": "Retrieve a Notion page's properties and metadata by ID. Use get_page_content to read block content.",
+				"ja-JP": "IDでNotionページのプロパティとメタデータを取得します。ブロックコンテンツを読むにはget_page_contentを使用してください。",
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
@@ -54,8 +72,9 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"page_id": {
 						Type:        "string",
-						Description: "The ID of the page to retrieve (UUID format)",
+						Description: "Page ID (UUID format, e.g. \"a1b2c3d4-e5f6-...\")",
 					},
+					"format": formatMD,
 				},
 				Required: []string{"page_id"},
 			},
@@ -64,8 +83,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:get_page_content",
 			Name: "get_page_content",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
-				"ja-JP": "Notionページのコンテンツ（ブロック）を取得します。実際のテキストコンテンツを読み取るために使用します。",
+				"en-US": "Get the block content of a Notion page. Returns child blocks (text, headings, lists, etc.).",
+				"ja-JP": "Notionページのブロックコンテンツを取得します。子ブロック（テキスト、見出し、リストなど）を返します。",
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
@@ -73,16 +92,17 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"page_id": {
 						Type:        "string",
-						Description: "The ID of the page to get content from",
+						Description: "Page ID (UUID format)",
 					},
 					"page_size": {
 						Type:        "number",
-						Description: "Number of blocks to return per request (max 100, default 100)",
+						Description: "Blocks per request (1-100, default 100)",
 					},
 					"fetch_all": {
 						Type:        "boolean",
-						Description: "If true, automatically fetches all blocks using pagination (default false)",
+						Description: "Fetch all blocks via pagination (default false)",
 					},
+					"format": formatMD,
 				},
 				Required: []string{"page_id"},
 			},
@@ -91,29 +111,30 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:create_page",
 			Name: "create_page",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Create a new page in Notion. Can create as a child of another page or in a database.",
-				"ja-JP": "Notionに新しいページを作成します。別のページの子として、またはデータベース内に作成できます。",
+				"en-US": "Create a new Notion page. Specify exactly one of parent_page_id or parent_database_id.",
+				"ja-JP": "Notionページを新規作成します。parent_page_idまたはparent_database_idのいずれか1つを指定してください。",
 			},
 			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
+					"title": {
+						Type:        "string",
+						Description: "Page title text",
+					},
 					"parent_page_id": {
 						Type:        "string",
-						Description: "Parent page ID (use this OR parent_database_id)",
+						Description: "Create as child of this page. Mutually exclusive with parent_database_id.",
 					},
 					"parent_database_id": {
 						Type:        "string",
-						Description: "Parent database ID (use this OR parent_page_id)",
-					},
-					"title": {
-						Type:        "string",
-						Description: "Page title",
+						Description: "Create as row in this database. Mutually exclusive with parent_page_id.",
 					},
 					"properties": {
 						Type:        "object",
-						Description: "Page properties (for database pages). Keys are property names.",
+						Description: "Database row properties (only when using parent_database_id). Keys are property names, values follow Notion property value format.",
 					},
+					"format": formatWrite,
 				},
 				Required: []string{"title"},
 			},
@@ -122,32 +143,33 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:update_page",
 			Name: "update_page",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Update a Notion page's properties.",
-				"ja-JP": "Notionページのプロパティを更新します。",
+				"en-US": "Update a Notion page's properties. Use append_blocks to modify block content.",
+				"ja-JP": "Notionページのプロパティを更新します。ブロックコンテンツの変更にはappend_blocksを使用してください。",
 			},
+			Annotations: modules.AnnotateUpdate,
 			InputSchema: modules.InputSchema{
 				Type: "object",
 				Properties: map[string]modules.Property{
 					"page_id": {
 						Type:        "string",
-						Description: "The ID of the page to update",
+						Description: "Page ID to update (UUID format)",
 					},
 					"properties": {
 						Type:        "object",
-						Description: "Properties to update. Keys are property names.",
+						Description: "Properties to update. Keys are property names, values follow Notion property value format.",
 					},
+					"format": formatWrite,
 				},
 				Required: []string{"page_id", "properties"},
 			},
-			Annotations: modules.AnnotateUpdate,
 		},
 		// Databases
 		{
 			ID:   "notion:get_database",
 			Name: "get_database",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Retrieve a Notion database schema and metadata.",
-				"ja-JP": "Notionデータベースのスキーマとメタデータを取得します。",
+				"en-US": "Retrieve a Notion database's schema (property definitions) and metadata. Use query_database to get rows.",
+				"ja-JP": "Notionデータベースのスキーマ（プロパティ定義）とメタデータを取得します。行の取得にはquery_databaseを使用してください。",
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
@@ -155,8 +177,9 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"database_id": {
 						Type:        "string",
-						Description: "The ID of the database to retrieve",
+						Description: "Database ID (UUID format)",
 					},
+					"format": formatCSV,
 				},
 				Required: []string{"database_id"},
 			},
@@ -165,8 +188,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:query_database",
 			Name: "query_database",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Query a Notion database with optional filters and sorts. Returns pages in the database.",
-				"ja-JP": "オプションのフィルターとソートでNotionデータベースをクエリします。データベース内のページを返します。",
+				"en-US": "Query a Notion database to get rows (pages). Supports Notion filter and sort syntax.",
+				"ja-JP": "Notionデータベースの行（ページ）を取得します。Notionフィルター・ソート構文に対応しています。",
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
@@ -174,20 +197,21 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"database_id": {
 						Type:        "string",
-						Description: "The ID of the database to query",
+						Description: "Database ID (UUID format)",
 					},
 					"filter": {
 						Type:        "object",
-						Description: "Filter object (Notion filter format)",
+						Description: "Notion filter object. Example: {\"property\":\"Status\",\"select\":{\"equals\":\"Done\"}}",
 					},
 					"sorts": {
 						Type:        "array",
-						Description: "Sort specifications array",
+						Description: "Sort array. Example: [{\"property\":\"Created\",\"direction\":\"descending\"}]",
 					},
 					"page_size": {
 						Type:        "number",
-						Description: "Number of results to return (max 100, default 10)",
+						Description: "Number of rows (1-100, default 10)",
 					},
+					"format": formatCSV,
 				},
 				Required: []string{"database_id"},
 			},
@@ -197,8 +221,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:append_blocks",
 			Name: "append_blocks",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
-				"ja-JP": "ページまたはブロックにコンテンツブロックを追加します。テキスト、見出し、リストなどを追加するために使用します。",
+				"en-US": "Append content blocks to a Notion page or block.",
+				"ja-JP": "Notionページまたはブロックにコンテンツブロックを追加します。",
 			},
 			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
@@ -206,12 +230,13 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"block_id": {
 						Type:        "string",
-						Description: "The ID of the page or block to append to",
+						Description: "Page or block ID to append to (UUID format)",
 					},
 					"blocks": {
 						Type:        "array",
-						Description: "Array of block objects to append. Each block needs type (paragraph, heading_1, heading_2, heading_3, bulleted_list_item, numbered_list_item, to_do, toggle, code, quote, callout, divider) and content (text).",
+						Description: "Simplified block array. Each element: {\"type\":\"<block_type>\",\"content\":\"<text>\"}. Supported types: paragraph, heading_1, heading_2, heading_3, bulleted_list_item, numbered_list_item, to_do, toggle, code, quote, callout, divider.",
 					},
+					"format": formatWrite,
 				},
 				Required: []string{"block_id", "blocks"},
 			},
@@ -220,8 +245,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:delete_block",
 			Name: "delete_block",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Delete a block from Notion. This also deletes all children of the block.",
-				"ja-JP": "Notionからブロックを削除します。ブロックのすべての子も削除されます。",
+				"en-US": "Delete a block and all its children from Notion.",
+				"ja-JP": "Notionからブロックとそのすべての子ブロックを削除します。",
 			},
 			Annotations: modules.AnnotateDelete,
 			InputSchema: modules.InputSchema{
@@ -229,8 +254,9 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"block_id": {
 						Type:        "string",
-						Description: "The ID of the block to delete",
+						Description: "Block ID to delete (UUID format)",
 					},
+					"format": formatWrite,
 				},
 				Required: []string{"block_id"},
 			},
@@ -249,12 +275,13 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"block_id": {
 						Type:        "string",
-						Description: "The ID of the page or block to get comments from",
+						Description: "Page or block ID to list comments from (UUID format)",
 					},
 					"page_size": {
 						Type:        "number",
-						Description: "Number of comments to return (max 100, default 50)",
+						Description: "Number of comments (1-100, default 50)",
 					},
+					"format": formatMD,
 				},
 				Required: []string{"block_id"},
 			},
@@ -263,8 +290,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:add_comment",
 			Name: "add_comment",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Add a comment to a Notion page.",
-				"ja-JP": "Notionページにコメントを追加します。",
+				"en-US": "Add a text comment to a Notion page.",
+				"ja-JP": "Notionページにテキストコメントを追加します。",
 			},
 			Annotations: modules.AnnotateCreate,
 			InputSchema: modules.InputSchema{
@@ -272,12 +299,13 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"page_id": {
 						Type:        "string",
-						Description: "The ID of the page to comment on",
+						Description: "Page ID to comment on (UUID format)",
 					},
 					"content": {
 						Type:        "string",
-						Description: "Comment text content",
+						Description: "Comment text",
 					},
+					"format": formatWrite,
 				},
 				Required: []string{"page_id", "content"},
 			},
@@ -296,8 +324,9 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"page_size": {
 						Type:        "number",
-						Description: "Number of users to return (max 100, default 50)",
+						Description: "Number of users (1-100, default 50)",
 					},
+					"format": formatCSV,
 				},
 			},
 		},
@@ -305,8 +334,8 @@ func toolDefinitions() []modules.Tool {
 			ID:   "notion:get_user",
 			Name: "get_user",
 			Descriptions: modules.LocalizedText{
-				"en-US": "Get information about a Notion user.",
-				"ja-JP": "Notionユーザーの情報を取得します。",
+				"en-US": "Get information about a specific Notion user by ID.",
+				"ja-JP": "IDで特定のNotionユーザーの情報を取得します。",
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
@@ -314,8 +343,9 @@ func toolDefinitions() []modules.Tool {
 				Properties: map[string]modules.Property{
 					"user_id": {
 						Type:        "string",
-						Description: "The ID of the user to retrieve",
+						Description: "User ID (UUID format)",
 					},
+					"format": formatCSV,
 				},
 				Required: []string{"user_id"},
 			},
@@ -329,8 +359,10 @@ func toolDefinitions() []modules.Tool {
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
-				Type:       "object",
-				Properties: map[string]modules.Property{},
+				Type: "object",
+				Properties: map[string]modules.Property{
+					"format": formatCSV,
+				},
 			},
 		},
 	}
@@ -359,21 +391,18 @@ var toolHandlers = map[string]func(ctx context.Context, params map[string]any) (
 // =============================================================================
 
 func search(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := notionAPIBase + "/search"
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 
-	body := make(map[string]interface{})
-
+	req := gen.SearchRequest{}
 	if query, ok := params["query"].(string); ok && query != "" {
-		body["query"] = query
+		req.Query.SetTo(query)
 	}
-
 	if filterType, ok := params["filter_type"].(string); ok && filterType != "" {
-		body["filter"] = map[string]interface{}{
-			"property": "object",
-			"value":    filterType,
-		}
+		req.Filter = jx.Raw(fmt.Sprintf(`{"property":"object","value":"%s"}`, filterType))
 	}
-
 	pageSize := 10
 	if ps, ok := params["page_size"].(float64); ok {
 		pageSize = int(ps)
@@ -381,14 +410,17 @@ func search(ctx context.Context, params map[string]any) (string, error) {
 			pageSize = 100
 		}
 	}
-	body["page_size"] = pageSize
+	req.PageSize.SetTo(pageSize)
 
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.Search(ctx, &req)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "search", "csv", jsonStr), nil
 }
 
 // =============================================================================
@@ -396,26 +428,28 @@ func search(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getPage(ctx context.Context, params map[string]any) (string, error) {
-	pageID, ok := params["page_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("page_id must be a string")
-	}
-
-	endpoint := fmt.Sprintf("%s/pages/%s", notionAPIBase, pageID)
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	pageID, _ := params["page_id"].(string)
+	res, err := c.GetPage(ctx, gen.GetPageParams{PageID: pageID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_page", "md", jsonStr), nil
 }
 
 func getPageContent(ctx context.Context, params map[string]any) (string, error) {
-	pageID, ok := params["page_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("page_id must be a string")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
+	pageID, _ := params["page_id"].(string)
 
 	pageSize := 100
 	if ps, ok := params["page_size"].(float64); ok {
@@ -432,63 +466,75 @@ func getPageContent(ctx context.Context, params map[string]any) (string, error) 
 
 	// Single request mode (default)
 	if !fetchAll {
-		endpoint := fmt.Sprintf("%s/blocks/%s/children?page_size=%d", notionAPIBase, pageID, pageSize)
-		respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+		p := gen.GetBlockChildrenParams{BlockID: pageID}
+		p.PageSize.SetTo(pageSize)
+		res, err := c.GetBlockChildren(ctx, p)
 		if err != nil {
 			return "", err
 		}
-		return httpclient.PrettyJSON(respBody), nil
+		jsonStr, err := toJSON(res)
+		if err != nil {
+			return "", err
+		}
+		return compactReadResult(params, "get_page_content", "md", jsonStr), nil
 	}
 
 	// Fetch all mode - loop until has_more is false
-	var allBlocks []interface{}
+	var allResults []json.RawMessage
 	nextCursor := ""
 
 	for {
-		endpoint := fmt.Sprintf("%s/blocks/%s/children?page_size=%d", notionAPIBase, pageID, pageSize)
+		p := gen.GetBlockChildrenParams{BlockID: pageID}
+		p.PageSize.SetTo(pageSize)
 		if nextCursor != "" {
-			endpoint += "&start_cursor=" + nextCursor
+			p.StartCursor.SetTo(nextCursor)
 		}
 
-		respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+		res, err := c.GetBlockChildren(ctx, p)
 		if err != nil {
 			return "", err
 		}
 
-		var response struct {
-			Results    []interface{} `json:"results"`
-			HasMore    bool          `json:"has_more"`
-			NextCursor *string       `json:"next_cursor"`
+		// Extract results from PaginatedList
+		resJSON, err := json.Marshal(res)
+		if err != nil {
+			return "", err
 		}
-
-		if err := json.Unmarshal(respBody, &response); err != nil {
-			return "", fmt.Errorf("failed to parse response: %w", err)
+		var parsed struct {
+			Results    []json.RawMessage `json:"results"`
+			HasMore    bool              `json:"has_more"`
+			NextCursor *string           `json:"next_cursor"`
 		}
+		json.Unmarshal(resJSON, &parsed)
 
-		allBlocks = append(allBlocks, response.Results...)
+		allResults = append(allResults, parsed.Results...)
 
-		if !response.HasMore || response.NextCursor == nil {
+		if !parsed.HasMore || parsed.NextCursor == nil {
 			break
 		}
-		nextCursor = *response.NextCursor
+		nextCursor = *parsed.NextCursor
 	}
 
 	// Build combined response
-	result := map[string]interface{}{
+	result := map[string]any{
 		"object":   "list",
-		"results":  allBlocks,
+		"results":  allResults,
 		"has_more": false,
 	}
-
-	return httpclient.PrettyJSONFromInterface(result), nil
+	jsonStr, err := toJSON(result)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_page_content", "md", jsonStr), nil
 }
 
 func createPage(ctx context.Context, params map[string]any) (string, error) {
-	title, ok := params["title"].(string)
-	if !ok {
-		return "", fmt.Errorf("title must be a string")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
 
+	title, _ := params["title"].(string)
 	parentPageID, hasParentPage := params["parent_page_id"].(string)
 	parentDatabaseID, hasParentDB := params["parent_database_id"].(string)
 
@@ -496,74 +542,74 @@ func createPage(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("either parent_page_id or parent_database_id is required")
 	}
 
-	body := make(map[string]interface{})
+	// Build request as raw JSON since parent/properties are any types
+	body := make(map[string]any)
 
 	if hasParentDB && parentDatabaseID != "" {
-		body["parent"] = map[string]interface{}{
-			"database_id": parentDatabaseID,
-		}
-		// For database pages, set title in Name or Title property
-		properties := make(map[string]interface{})
-		if props, ok := params["properties"].(map[string]interface{}); ok {
+		body["parent"] = map[string]any{"database_id": parentDatabaseID}
+		properties := make(map[string]any)
+		if props, ok := params["properties"].(map[string]any); ok {
 			properties = props
 		}
-		// Add Name property with title if not already set
 		if _, hasName := properties["Name"]; !hasName {
 			if _, hasTitle := properties["Title"]; !hasTitle {
-				properties["Name"] = map[string]interface{}{
-					"title": []map[string]interface{}{
-						{"text": map[string]interface{}{"content": title}},
+				properties["Name"] = map[string]any{
+					"title": []map[string]any{
+						{"text": map[string]any{"content": title}},
 					},
 				}
 			}
 		}
 		body["properties"] = properties
 	} else {
-		body["parent"] = map[string]interface{}{
-			"page_id": parentPageID,
-		}
-		body["properties"] = map[string]interface{}{
-			"title": map[string]interface{}{
-				"title": []map[string]interface{}{
-					{"text": map[string]interface{}{"content": title}},
+		body["parent"] = map[string]any{"page_id": parentPageID}
+		body["properties"] = map[string]any{
+			"title": map[string]any{
+				"title": []map[string]any{
+					{"text": map[string]any{"content": title}},
 				},
 			},
 		}
 	}
 
-	endpoint := notionAPIBase + "/pages"
+	// Marshal to gen.CreatePageRequest via JSON round-trip
+	bodyJSON, _ := json.Marshal(body)
+	var req gen.CreatePageRequest
+	json.Unmarshal(bodyJSON, &req)
 
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.CreatePage(ctx, &req)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "url")
 }
 
 func updatePage(ctx context.Context, params map[string]any) (string, error) {
-	pageID, ok := params["page_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("page_id must be a string")
-	}
-
-	properties, ok := params["properties"].(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("properties must be an object")
-	}
-
-	body := map[string]interface{}{
-		"properties": properties,
-	}
-
-	endpoint := fmt.Sprintf("%s/pages/%s", notionAPIBase, pageID)
-
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
+	pageID, _ := params["page_id"].(string)
+	properties, _ := params["properties"].(map[string]any)
 
-	return httpclient.PrettyJSON(respBody), nil
+	body := map[string]any{"properties": properties}
+	bodyJSON, _ := json.Marshal(body)
+	var req gen.UpdatePageRequest
+	json.Unmarshal(bodyJSON, &req)
+
+	res, err := c.UpdatePage(ctx, &req, gen.UpdatePageParams{PageID: pageID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id", "url")
 }
 
 // =============================================================================
@@ -571,37 +617,36 @@ func updatePage(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getDatabase(ctx context.Context, params map[string]any) (string, error) {
-	databaseID, ok := params["database_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("database_id must be a string")
-	}
-
-	endpoint := fmt.Sprintf("%s/databases/%s", notionAPIBase, databaseID)
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	databaseID, _ := params["database_id"].(string)
+	res, err := c.GetDatabase(ctx, gen.GetDatabaseParams{DatabaseID: databaseID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_database", "csv", jsonStr), nil
 }
 
 func queryDatabase(ctx context.Context, params map[string]any) (string, error) {
-	databaseID, ok := params["database_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("database_id must be a string")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
+	databaseID, _ := params["database_id"].(string)
 
-	body := make(map[string]interface{})
-
-	if filter, ok := params["filter"].(map[string]interface{}); ok {
+	body := make(map[string]any)
+	if filter, ok := params["filter"].(map[string]any); ok {
 		body["filter"] = filter
 	}
-
-	if sorts, ok := params["sorts"].([]interface{}); ok {
+	if sorts, ok := params["sorts"].([]any); ok {
 		body["sorts"] = sorts
 	}
-
 	pageSize := 10
 	if ps, ok := params["page_size"].(float64); ok {
 		pageSize = int(ps)
@@ -611,14 +656,19 @@ func queryDatabase(ctx context.Context, params map[string]any) (string, error) {
 	}
 	body["page_size"] = pageSize
 
-	endpoint := fmt.Sprintf("%s/databases/%s/query", notionAPIBase, databaseID)
+	bodyJSON, _ := json.Marshal(body)
+	var req gen.QueryDatabaseRequest
+	json.Unmarshal(bodyJSON, &req)
 
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.QueryDatabase(ctx, &req, gen.QueryDatabaseParams{DatabaseID: databaseID})
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "query_database", "csv", jsonStr), nil
 }
 
 // =============================================================================
@@ -626,20 +676,39 @@ func queryDatabase(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func appendBlocks(ctx context.Context, params map[string]any) (string, error) {
-	blockID, ok := params["block_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("block_id must be a string")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
-
-	blocksInput, ok := params["blocks"].([]interface{})
+	blockID, _ := params["block_id"].(string)
+	blocksInput, ok := params["blocks"].([]any)
 	if !ok {
 		return "", fmt.Errorf("blocks must be an array")
 	}
 
-	children := make([]map[string]interface{}, 0, len(blocksInput))
+	children := buildBlockChildren(blocksInput)
+
+	body := map[string]any{"children": children}
+	bodyJSON, _ := json.Marshal(body)
+	var req gen.AppendBlockChildrenRequest
+	json.Unmarshal(bodyJSON, &req)
+
+	res, err := c.AppendBlockChildren(ctx, &req, gen.AppendBlockChildrenParams{BlockID: blockID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactBlockListResult(params, jsonStr)
+}
+
+func buildBlockChildren(blocksInput []any) []map[string]any {
+	children := make([]map[string]any, 0, len(blocksInput))
 
 	for _, b := range blocksInput {
-		block, ok := b.(map[string]interface{})
+		block, ok := b.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -649,131 +718,67 @@ func appendBlocks(ctx context.Context, params map[string]any) (string, error) {
 		checked, _ := block["checked"].(bool)
 		language, _ := block["language"].(string)
 
-		richText := []map[string]interface{}{}
+		richText := []map[string]any{}
 		if content != "" {
-			richText = []map[string]interface{}{
-				{"type": "text", "text": map[string]interface{}{"content": content}},
+			richText = []map[string]any{
+				{"type": "text", "text": map[string]any{"content": content}},
 			}
 		}
 
-		var notionBlock map[string]interface{}
+		var notionBlock map[string]any
 
 		switch blockType {
 		case "paragraph":
-			notionBlock = map[string]interface{}{
-				"object":    "block",
-				"type":      "paragraph",
-				"paragraph": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "paragraph", "paragraph": map[string]any{"rich_text": richText}}
 		case "heading_1":
-			notionBlock = map[string]interface{}{
-				"object":    "block",
-				"type":      "heading_1",
-				"heading_1": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "heading_1", "heading_1": map[string]any{"rich_text": richText}}
 		case "heading_2":
-			notionBlock = map[string]interface{}{
-				"object":    "block",
-				"type":      "heading_2",
-				"heading_2": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "heading_2", "heading_2": map[string]any{"rich_text": richText}}
 		case "heading_3":
-			notionBlock = map[string]interface{}{
-				"object":    "block",
-				"type":      "heading_3",
-				"heading_3": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "heading_3", "heading_3": map[string]any{"rich_text": richText}}
 		case "bulleted_list_item":
-			notionBlock = map[string]interface{}{
-				"object":             "block",
-				"type":               "bulleted_list_item",
-				"bulleted_list_item": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "bulleted_list_item", "bulleted_list_item": map[string]any{"rich_text": richText}}
 		case "numbered_list_item":
-			notionBlock = map[string]interface{}{
-				"object":             "block",
-				"type":               "numbered_list_item",
-				"numbered_list_item": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "numbered_list_item", "numbered_list_item": map[string]any{"rich_text": richText}}
 		case "to_do":
-			notionBlock = map[string]interface{}{
-				"object": "block",
-				"type":   "to_do",
-				"to_do":  map[string]interface{}{"rich_text": richText, "checked": checked},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "to_do", "to_do": map[string]any{"rich_text": richText, "checked": checked}}
 		case "toggle":
-			notionBlock = map[string]interface{}{
-				"object": "block",
-				"type":   "toggle",
-				"toggle": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "toggle", "toggle": map[string]any{"rich_text": richText}}
 		case "code":
 			if language == "" {
 				language = "plain text"
 			}
-			notionBlock = map[string]interface{}{
-				"object": "block",
-				"type":   "code",
-				"code":   map[string]interface{}{"rich_text": richText, "language": language},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "code", "code": map[string]any{"rich_text": richText, "language": language}}
 		case "quote":
-			notionBlock = map[string]interface{}{
-				"object": "block",
-				"type":   "quote",
-				"quote":  map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "quote", "quote": map[string]any{"rich_text": richText}}
 		case "callout":
-			notionBlock = map[string]interface{}{
-				"object":  "block",
-				"type":    "callout",
-				"callout": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "callout", "callout": map[string]any{"rich_text": richText}}
 		case "divider":
-			notionBlock = map[string]interface{}{
-				"object":  "block",
-				"type":    "divider",
-				"divider": map[string]interface{}{},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "divider", "divider": map[string]any{}}
 		default:
-			// Default to paragraph
-			notionBlock = map[string]interface{}{
-				"object":    "block",
-				"type":      "paragraph",
-				"paragraph": map[string]interface{}{"rich_text": richText},
-			}
+			notionBlock = map[string]any{"object": "block", "type": "paragraph", "paragraph": map[string]any{"rich_text": richText}}
 		}
 
 		children = append(children, notionBlock)
 	}
-
-	body := map[string]interface{}{
-		"children": children,
-	}
-
-	endpoint := fmt.Sprintf("%s/blocks/%s/children", notionAPIBase, blockID)
-
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	return children
 }
 
 func deleteBlock(ctx context.Context, params map[string]any) (string, error) {
-	blockID, ok := params["block_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("block_id must be a string")
-	}
-
-	endpoint := fmt.Sprintf("%s/blocks/%s", notionAPIBase, blockID)
-
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	blockID, _ := params["block_id"].(string)
+	res, err := c.DeleteBlock(ctx, gen.DeleteBlockParams{BlockID: blockID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id")
 }
 
 // =============================================================================
@@ -781,61 +786,60 @@ func deleteBlock(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listComments(ctx context.Context, params map[string]any) (string, error) {
-	blockID, ok := params["block_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("block_id must be a string")
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
 	}
-
-	pageSize := 50
+	blockID, _ := params["block_id"].(string)
+	p := gen.ListCommentsParams{BlockID: blockID}
 	if ps, ok := params["page_size"].(float64); ok {
-		pageSize = int(ps)
+		pageSize := int(ps)
 		if pageSize > 100 {
 			pageSize = 100
 		}
+		p.PageSize.SetTo(pageSize)
+	} else {
+		p.PageSize.SetTo(50)
 	}
 
-	query := url.Values{}
-	query.Set("block_id", blockID)
-	query.Set("page_size", fmt.Sprintf("%d", pageSize))
-
-	endpoint := fmt.Sprintf("%s/comments?%s", notionAPIBase, query.Encode())
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.ListComments(ctx, p)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_comments", "md", jsonStr), nil
 }
 
 func addComment(ctx context.Context, params map[string]any) (string, error) {
-	pageID, ok := params["page_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("page_id must be a string")
-	}
-
-	content, ok := params["content"].(string)
-	if !ok {
-		return "", fmt.Errorf("content must be a string")
-	}
-
-	body := map[string]interface{}{
-		"parent": map[string]interface{}{
-			"page_id": pageID,
-		},
-		"rich_text": []map[string]interface{}{
-			{"text": map[string]interface{}{"content": content}},
-		},
-	}
-
-	endpoint := notionAPIBase + "/comments"
-
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
+	pageID, _ := params["page_id"].(string)
+	content, _ := params["content"].(string)
 
-	return httpclient.PrettyJSON(respBody), nil
+	body := map[string]any{
+		"parent": map[string]any{"page_id": pageID},
+		"rich_text": []map[string]any{
+			{"text": map[string]any{"content": content}},
+		},
+	}
+	bodyJSON, _ := json.Marshal(body)
+	var req gen.AddCommentRequest
+	json.Unmarshal(bodyJSON, &req)
+
+	res, err := c.AddComment(ctx, &req)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactWriteResult(params, jsonStr, "id")
 }
 
 // =============================================================================
@@ -843,50 +847,61 @@ func addComment(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listUsers(ctx context.Context, params map[string]any) (string, error) {
-	pageSize := 50
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	p := gen.ListUsersParams{}
 	if ps, ok := params["page_size"].(float64); ok {
-		pageSize = int(ps)
+		pageSize := int(ps)
 		if pageSize > 100 {
 			pageSize = 100
 		}
+		p.PageSize.SetTo(pageSize)
+	} else {
+		p.PageSize.SetTo(50)
 	}
 
-	endpoint := fmt.Sprintf("%s/users?page_size=%d", notionAPIBase, pageSize)
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.ListUsers(ctx, p)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "list_users", "csv", jsonStr), nil
 }
 
 func getUser(ctx context.Context, params map[string]any) (string, error) {
-	userID, ok := params["user_id"].(string)
-	if !ok {
-		return "", fmt.Errorf("user_id must be a string")
-	}
-
-	endpoint := fmt.Sprintf("%s/users/%s", notionAPIBase, userID)
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	userID, _ := params["user_id"].(string)
+	res, err := c.GetUser(ctx, gen.GetUserParams{UserID: userID})
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_user", "csv", jsonStr), nil
 }
 
 func getBotUser(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := notionAPIBase + "/users/me"
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetBotUser(ctx)
+	if err != nil {
+		return "", err
+	}
+	jsonStr, err := toJSON(res)
+	if err != nil {
+		return "", err
+	}
+	return compactReadResult(params, "get_bot_user", "csv", jsonStr), nil
 }
-
-// Ensure json package is used
-var _ = json.Marshal
