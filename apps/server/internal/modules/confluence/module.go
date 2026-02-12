@@ -2,24 +2,19 @@ package confluence
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
-	"net/url"
 	"regexp"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/confluenceapi"
+	gen "mcpist/server/pkg/confluenceapi/gen"
 )
 
 const (
-	confluenceAPIV2      = "/wiki/api/v2"
-	confluenceAPIV1      = "/wiki/rest/api"
 	confluenceAPIVersion = "v2"
 )
-
-var client = httpclient.New()
 
 // ConfluenceModule implements the Module interface for Confluence API
 type ConfluenceModule struct{}
@@ -80,7 +75,7 @@ func (m *ConfluenceModule) ReadResource(ctx context.Context, uri string) (string
 }
 
 // =============================================================================
-// Token and Headers
+// ogen client helper
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -95,74 +90,32 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
-	}
-
-	h := map[string]string{
-		"Accept": "application/json",
+		return nil, fmt.Errorf("no credentials available")
 	}
 
 	switch creds.AuthType {
 	case store.AuthTypeBasic:
-		// Basic auth: username:password
-		auth := base64.StdEncoding.EncodeToString([]byte(creds.Username + ":" + creds.Password))
-		h["Authorization"] = "Basic " + auth
-	case store.AuthTypeOAuth2:
-		// Bearer token (OAuth 2.0)
-		h["Authorization"] = "Bearer " + creds.AccessToken
-	}
-
-	return h
-}
-
-func baseURLV2(ctx context.Context) string {
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return ""
-	}
-
-	// OAuth 2.0の場合は api.atlassian.com 経由
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		cloudID := creds.Metadata["cloud_id"]
-		if cloudID == "" {
-			return ""
+		domain, _ := creds.Metadata["domain"].(string)
+		if domain == "" {
+			return nil, fmt.Errorf("confluence domain not configured")
 		}
-		return fmt.Sprintf("https://api.atlassian.com/ex/confluence/%s%s", cloudID, confluenceAPIV2)
-	}
-
-	// Basic認証の場合は直接ドメインにアクセス
-	domain := creds.Metadata["domain"]
-	if domain == "" {
-		return ""
-	}
-	return fmt.Sprintf("https://%s%s", domain, confluenceAPIV2)
-}
-
-func baseURLV1(ctx context.Context) string {
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return ""
-	}
-
-	// OAuth 2.0の場合は api.atlassian.com 経由
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		cloudID := creds.Metadata["cloud_id"]
+		serverURL := fmt.Sprintf("https://%s", domain)
+		return confluenceapi.NewBasicClient(serverURL, creds.Username, creds.Password)
+	default:
+		// OAuth 2.0
+		cloudID, _ := creds.Metadata["cloud_id"].(string)
 		if cloudID == "" {
-			return ""
+			return nil, fmt.Errorf("confluence cloud_id not configured")
 		}
-		return fmt.Sprintf("https://api.atlassian.com/ex/confluence/%s%s", cloudID, confluenceAPIV1)
+		serverURL := fmt.Sprintf("https://api.atlassian.com/ex/confluence/%s", cloudID)
+		return confluenceapi.NewBearerClient(serverURL, creds.AccessToken)
 	}
-
-	// Basic認証の場合は直接ドメインにアクセス
-	domain := creds.Metadata["domain"]
-	if domain == "" {
-		return ""
-	}
-	return fmt.Sprintf("https://%s%s", domain, confluenceAPIV1)
 }
+
+var toJSON = modules.ToJSON
 
 // =============================================================================
 // Tool Definitions
@@ -404,40 +357,45 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func listSpaces(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-	limit := 25
-	if l, ok := params["limit"].(float64); ok {
-		limit = int(l)
-	}
-	query.Set("limit", fmt.Sprintf("%d", limit))
-	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
-		query.Set("cursor", cursor)
-	}
-
-	endpoint := fmt.Sprintf("%s/spaces?%s", baseURLV2(ctx), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	p := gen.ListSpacesParams{}
+	if l, ok := params["limit"].(float64); ok {
+		p.Limit.SetTo(int(l))
+	}
+	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
+		p.Cursor.SetTo(cursor)
+	}
+	res, err := c.ListSpaces(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
+var numericRegex = regexp.MustCompile(`^\d+$`)
+
 func getSpace(ctx context.Context, params map[string]any) (string, error) {
-	spaceIDOrKey, _ := params["space_id_or_key"].(string)
-	numericRegex := regexp.MustCompile(`^\d+$`)
-	var endpoint string
-
-	if numericRegex.MatchString(spaceIDOrKey) {
-		endpoint = fmt.Sprintf("%s/spaces/%s", baseURLV2(ctx), spaceIDOrKey)
-	} else {
-		endpoint = fmt.Sprintf("%s/space/%s", baseURLV1(ctx), spaceIDOrKey)
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	spaceIDOrKey, _ := params["space_id_or_key"].(string)
+
+	if numericRegex.MatchString(spaceIDOrKey) {
+		res, err := c.GetSpaceById(ctx, gen.GetSpaceByIdParams{SpaceId: spaceIDOrKey})
+		if err != nil {
+			return "", err
+		}
+		return toJSON(res)
+	}
+	res, err := c.GetSpaceByKey(ctx, gen.GetSpaceByKeyParams{SpaceKey: spaceIDOrKey})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -445,101 +403,114 @@ func getSpace(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getPages(ctx context.Context, params map[string]any) (string, error) {
-	spaceID, _ := params["space_id"].(string)
-	query := url.Values{}
-	limit := 25
-	if l, ok := params["limit"].(float64); ok {
-		limit = int(l)
-	}
-	query.Set("limit", fmt.Sprintf("%d", limit))
-	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
-		query.Set("cursor", cursor)
-	}
-
-	endpoint := fmt.Sprintf("%s/spaces/%s/pages?%s", baseURLV2(ctx), spaceID, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	spaceID, _ := params["space_id"].(string)
+	p := gen.GetPagesParams{SpaceId: spaceID}
+	if l, ok := params["limit"].(float64); ok {
+		p.Limit.SetTo(int(l))
+	}
+	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
+		p.Cursor.SetTo(cursor)
+	}
+	res, err := c.GetPages(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getPage(ctx context.Context, params map[string]any) (string, error) {
-	pageID, _ := params["page_id"].(string)
-	bodyFormat := "storage"
-	if bf, ok := params["body_format"].(string); ok && bf != "" {
-		bodyFormat = bf
-	}
-
-	endpoint := fmt.Sprintf("%s/pages/%s?body-format=%s", baseURLV2(ctx), pageID, bodyFormat)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	pageID, _ := params["page_id"].(string)
+	p := gen.GetPageParams{PageId: pageID}
+	if bf, ok := params["body_format"].(string); ok && bf != "" {
+		p.BodyFormat.SetTo(bf)
+	} else {
+		p.BodyFormat.SetTo("storage")
+	}
+	res, err := c.GetPage(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createPage(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	spaceID, _ := params["space_id"].(string)
 	title, _ := params["title"].(string)
 	body, _ := params["body"].(string)
 
-	payload := map[string]interface{}{
-		"spaceId": spaceID,
-		"title":   title,
-		"status":  "current",
-		"body": map[string]interface{}{
-			"representation": "storage",
-			"value":          body,
+	req := gen.CreatePageRequest{
+		SpaceId: spaceID,
+		Title:   title,
+		Status:  "current",
+		Body: gen.PageBody{
+			Representation: gen.NewOptString("storage"),
+			Value:          gen.NewOptString(body),
 		},
 	}
 	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
-		payload["parentId"] = parentID
+		req.ParentId.SetTo(parentID)
 	}
 
-	endpoint := baseURLV2(ctx) + "/pages"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), payload)
+	res, err := c.CreatePage(ctx, &req)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func updatePage(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	pageID, _ := params["page_id"].(string)
 	title, _ := params["title"].(string)
 	body, _ := params["body"].(string)
 	version, _ := params["version"].(float64)
 
-	payload := map[string]interface{}{
-		"id":     pageID,
-		"title":  title,
-		"status": "current",
-		"body": map[string]interface{}{
-			"representation": "storage",
-			"value":          body,
+	req := gen.UpdatePageRequest{
+		ID:     pageID,
+		Title:  title,
+		Status: "current",
+		Body: gen.PageBody{
+			Representation: gen.NewOptString("storage"),
+			Value:          gen.NewOptString(body),
 		},
-		"version": map[string]interface{}{
-			"number": int(version),
+		Version: gen.VersionInput{
+			Number: gen.NewOptInt(int(version)),
 		},
 	}
 
-	endpoint := fmt.Sprintf("%s/pages/%s", baseURLV2(ctx), pageID)
-	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), payload)
+	res, err := c.UpdatePage(ctx, &req, gen.UpdatePageParams{PageId: pageID})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func deletePage(ctx context.Context, params map[string]any) (string, error) {
-	pageID, _ := params["page_id"].(string)
-	endpoint := fmt.Sprintf("%s/pages/%s", baseURLV2(ctx), pageID)
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return `{"deleted": true}`, nil
+	pageID, _ := params["page_id"].(string)
+	err = c.DeletePage(ctx, gen.DeletePageParams{PageId: pageID})
+	if err != nil {
+		return "", err
+	}
+	return `{"deleted":true}`, nil
 }
 
 // =============================================================================
@@ -547,28 +518,23 @@ func deletePage(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func search(ctx context.Context, params map[string]any) (string, error) {
-	cql, _ := params["cql"].(string)
-	query := url.Values{}
-	query.Set("cql", cql)
-
-	limit := 25
-	if l, ok := params["limit"].(float64); ok {
-		limit = int(l)
-	}
-	query.Set("limit", fmt.Sprintf("%d", limit))
-
-	start := 0
-	if s, ok := params["start"].(float64); ok {
-		start = int(s)
-	}
-	query.Set("start", fmt.Sprintf("%d", start))
-
-	endpoint := fmt.Sprintf("%s/search?%s", baseURLV1(ctx), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	cql, _ := params["cql"].(string)
+	p := gen.SearchContentParams{Cql: cql}
+	if l, ok := params["limit"].(float64); ok {
+		p.Limit.SetTo(int(l))
+	}
+	if s, ok := params["start"].(float64); ok {
+		p.Start.SetTo(int(s))
+	}
+	res, err := c.SearchContent(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -576,42 +542,45 @@ func search(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getPageComments(ctx context.Context, params map[string]any) (string, error) {
-	pageID, _ := params["page_id"].(string)
-	query := url.Values{}
-	limit := 25
-	if l, ok := params["limit"].(float64); ok {
-		limit = int(l)
-	}
-	query.Set("limit", fmt.Sprintf("%d", limit))
-	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
-		query.Set("cursor", cursor)
-	}
-
-	endpoint := fmt.Sprintf("%s/pages/%s/footer-comments?%s", baseURLV2(ctx), pageID, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	pageID, _ := params["page_id"].(string)
+	p := gen.GetPageCommentsParams{PageId: pageID}
+	if l, ok := params["limit"].(float64); ok {
+		p.Limit.SetTo(int(l))
+	}
+	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
+		p.Cursor.SetTo(cursor)
+	}
+	res, err := c.GetPageComments(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func addPageComment(ctx context.Context, params map[string]any) (string, error) {
-	pageID, _ := params["page_id"].(string)
-	body, _ := params["body"].(string)
-
-	payload := map[string]interface{}{
-		"body": map[string]interface{}{
-			"representation": "storage",
-			"value":          body,
-		},
-	}
-
-	endpoint := fmt.Sprintf("%s/pages/%s/footer-comments", baseURLV2(ctx), pageID)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), payload)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	pageID, _ := params["page_id"].(string)
+	body, _ := params["body"].(string)
+
+	req := gen.CreateCommentRequest{
+		PageId: pageID,
+		Body: gen.PageBody{
+			Representation: gen.NewOptString("storage"),
+			Value:          gen.NewOptString(body),
+		},
+	}
+	res, err := c.AddPageComment(ctx, &req)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -619,27 +588,30 @@ func addPageComment(ctx context.Context, params map[string]any) (string, error) 
 // =============================================================================
 
 func getPageLabels(ctx context.Context, params map[string]any) (string, error) {
-	pageID, _ := params["page_id"].(string)
-	endpoint := fmt.Sprintf("%s/pages/%s/labels", baseURLV2(ctx), pageID)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	pageID, _ := params["page_id"].(string)
+	res, err := c.GetPageLabels(ctx, gen.GetPageLabelsParams{PageId: pageID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func addPageLabel(ctx context.Context, params map[string]any) (string, error) {
-	pageID, _ := params["page_id"].(string)
-	label, _ := params["label"].(string)
-
-	payload := map[string]interface{}{
-		"name": label,
-	}
-
-	endpoint := fmt.Sprintf("%s/pages/%s/labels", baseURLV2(ctx), pageID)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), payload)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	pageID, _ := params["page_id"].(string)
+	label, _ := params["label"].(string)
+
+	req := gen.AddLabelRequestArray{{Name: label}}
+	res, err := c.AddPageLabel(ctx, req, gen.AddPageLabelParams{PageId: pageID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
