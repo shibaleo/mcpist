@@ -57,10 +57,15 @@ func (m *NotionModule) ExecuteTool(ctx context.Context, name string, params map[
 	return handler(ctx, params)
 }
 
-// ToCompact converts JSON result to compact format (TOON or Markdown)
+// ToCompact converts JSON result to compact format (MD or CSV)
 // Implements modules.CompactConverter interface
 func (m *NotionModule) ToCompact(toolName string, jsonResult string) string {
-	return ToTOON(toolName, jsonResult)
+	switch toolName {
+	case "get_page", "get_page_content", "list_comments":
+		return formatResult(toolName, "md", jsonResult)
+	default:
+		return formatResult(toolName, "csv", jsonResult)
+	}
 }
 
 // Resources returns all available resources

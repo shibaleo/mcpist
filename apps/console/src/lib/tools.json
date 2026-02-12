@@ -3113,8 +3113,8 @@
           "id": "notion:get_page",
           "name": "get_page",
           "descriptions": {
-            "en-US": "Retrieve a Notion page by ID. Returns page properties and metadata.",
-            "ja-JP": "IDでNotionページを取得します。ページのプロパティとメタデータを返します。"
+            "en-US": "Retrieve a Notion page's properties and metadata by ID. Use get_page_content to read block content.",
+            "ja-JP": "IDでNotionページのプロパティとメタデータを取得します。ブロックコンテンツを読むにはget_page_contentを使用してください。"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -3125,8 +3125,8 @@
           "id": "notion:get_page_content",
           "name": "get_page_content",
           "descriptions": {
-            "en-US": "Get the content (blocks) of a Notion page. Use this to read the actual text content.",
-            "ja-JP": "Notionページのコンテンツ（ブロック）を取得します。実際のテキストコンテンツを読み取るために使用します。"
+            "en-US": "Get the block content of a Notion page. Returns child blocks (text, headings, lists, etc.).",
+            "ja-JP": "Notionページのブロックコンテンツを取得します。子ブロック（テキスト、見出し、リストなど）を返します。"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -3137,8 +3137,8 @@
           "id": "notion:create_page",
           "name": "create_page",
           "descriptions": {
-            "en-US": "Create a new page in Notion. Can create as a child of another page or in a database.",
-            "ja-JP": "Notionに新しいページを作成します。別のページの子として、またはデータベース内に作成できます。"
+            "en-US": "Create a new Notion page. Specify exactly one of parent_page_id or parent_database_id.",
+            "ja-JP": "Notionページを新規作成します。parent_page_idまたはparent_database_idのいずれか1つを指定してください。"
           },
           "annotations": {
             "readOnlyHint": false,
@@ -3151,8 +3151,8 @@
           "id": "notion:update_page",
           "name": "update_page",
           "descriptions": {
-            "en-US": "Update a Notion page's properties.",
-            "ja-JP": "Notionページのプロパティを更新します。"
+            "en-US": "Update a Notion page's properties. Use append_blocks to modify block content.",
+            "ja-JP": "Notionページのプロパティを更新します。ブロックコンテンツの変更にはappend_blocksを使用してください。"
           },
           "annotations": {
             "readOnlyHint": false,
@@ -3165,8 +3165,8 @@
           "id": "notion:get_database",
           "name": "get_database",
           "descriptions": {
-            "en-US": "Retrieve a Notion database schema and metadata.",
-            "ja-JP": "Notionデータベースのスキーマとメタデータを取得します。"
+            "en-US": "Retrieve a Notion database's schema (property definitions) and metadata. Use query_database to get rows.",
+            "ja-JP": "Notionデータベースのスキーマ（プロパティ定義）とメタデータを取得します。行の取得にはquery_databaseを使用してください。"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -3177,8 +3177,8 @@
           "id": "notion:query_database",
           "name": "query_database",
           "descriptions": {
-            "en-US": "Query a Notion database with optional filters and sorts. Returns pages in the database.",
-            "ja-JP": "オプションのフィルターとソートでNotionデータベースをクエリします。データベース内のページを返します。"
+            "en-US": "Query a Notion database to get rows (pages). Supports Notion filter and sort syntax.",
+            "ja-JP": "Notionデータベースの行（ページ）を取得します。Notionフィルター・ソート構文に対応しています。"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -3189,8 +3189,8 @@
           "id": "notion:append_blocks",
           "name": "append_blocks",
           "descriptions": {
-            "en-US": "Append content blocks to a page or block. Use to add text, headings, lists, etc.",
-            "ja-JP": "ページまたはブロックにコンテンツブロックを追加します。テキスト、見出し、リストなどを追加するために使用します。"
+            "en-US": "Append content blocks to a Notion page or block.",
+            "ja-JP": "Notionページまたはブロックにコンテンツブロックを追加します。"
           },
           "annotations": {
             "readOnlyHint": false,
@@ -3203,8 +3203,8 @@
           "id": "notion:delete_block",
           "name": "delete_block",
           "descriptions": {
-            "en-US": "Delete a block from Notion. This also deletes all children of the block.",
-            "ja-JP": "Notionからブロックを削除します。ブロックのすべての子も削除されます。"
+            "en-US": "Delete a block and all its children from Notion.",
+            "ja-JP": "Notionからブロックとそのすべての子ブロックを削除します。"
           },
           "annotations": {
             "readOnlyHint": false,
@@ -3229,8 +3229,8 @@
           "id": "notion:add_comment",
           "name": "add_comment",
           "descriptions": {
-            "en-US": "Add a comment to a Notion page.",
-            "ja-JP": "Notionページにコメントを追加します。"
+            "en-US": "Add a text comment to a Notion page.",
+            "ja-JP": "Notionページにテキストコメントを追加します。"
           },
           "annotations": {
             "readOnlyHint": false,
@@ -3255,8 +3255,8 @@
           "id": "notion:get_user",
           "name": "get_user",
           "descriptions": {
-            "en-US": "Get information about a Notion user.",
-            "ja-JP": "Notionユーザーの情報を取得します。"
+            "en-US": "Get information about a specific Notion user by ID.",
+            "ja-JP": "IDで特定のNotionユーザーの情報を取得します。"
           },
           "annotations": {
             "readOnlyHint": true,
