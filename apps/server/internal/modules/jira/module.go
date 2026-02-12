@@ -2,22 +2,23 @@ package jira
 
 import (
 	"context"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"net/url"
+	"strings"
 
-	"mcpist/server/internal/httpclient"
+	"github.com/go-faster/jx"
+
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/jiraapi"
+	gen "mcpist/server/pkg/jiraapi/gen"
 )
 
 const (
 	jiraAPIPath    = "/rest/api/3"
 	jiraAPIVersion = "3"
 )
-
-var client = httpclient.New()
 
 // JiraModule implements the Module interface for Jira API
 type JiraModule struct{}
@@ -78,7 +79,7 @@ func (m *JiraModule) ReadResource(ctx context.Context, uri string) (string, erro
 }
 
 // =============================================================================
-// Token and Headers
+// ogen client helper
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -93,50 +94,40 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
-	}
-
-	h := map[string]string{
-		"Accept": "application/json",
+		return nil, fmt.Errorf("no credentials available")
 	}
 
 	switch creds.AuthType {
 	case store.AuthTypeBasic:
-		// Basic auth: username:password
-		auth := base64.StdEncoding.EncodeToString([]byte(creds.Username + ":" + creds.Password))
-		h["Authorization"] = "Basic " + auth
-	case store.AuthTypeOAuth2:
-		// Bearer token (OAuth 2.0)
-		h["Authorization"] = "Bearer " + creds.AccessToken
+		domain, _ := creds.Metadata["domain"].(string)
+		if domain == "" {
+			return nil, fmt.Errorf("jira domain not configured")
+		}
+		serverURL := fmt.Sprintf("https://%s%s", domain, jiraAPIPath)
+		return jiraapi.NewBasicClient(serverURL, creds.Username, creds.Password)
+	default:
+		// OAuth 2.0
+		cloudID, _ := creds.Metadata["cloud_id"].(string)
+		if cloudID == "" {
+			return nil, fmt.Errorf("jira cloud_id not configured")
+		}
+		serverURL := fmt.Sprintf("https://api.atlassian.com/ex/jira/%s%s", cloudID, jiraAPIPath)
+		return jiraapi.NewBearerClient(serverURL, creds.AccessToken)
 	}
-
-	return h
 }
 
-func baseURL(ctx context.Context) string {
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return ""
-	}
+var toJSON = modules.ToJSON
 
-	// OAuth 2.0の場合は api.atlassian.com 経由
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		cloudID := creds.Metadata["cloud_id"]
-		if cloudID == "" {
-			return ""
-		}
-		return fmt.Sprintf("https://api.atlassian.com/ex/jira/%s%s", cloudID, jiraAPIPath)
+// toRaw converts any value to jx.Raw (JSON bytes).
+func toRaw(v any) (jx.Raw, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
 	}
-
-	// Basic認証の場合は直接ドメインにアクセス
-	domain := creds.Metadata["domain"]
-	if domain == "" {
-		return ""
-	}
-	return fmt.Sprintf("https://%s%s", domain, jiraAPIPath)
+	return jx.Raw(b), nil
 }
 
 // =============================================================================
@@ -365,12 +356,15 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func getMyself(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := baseURL(ctx) + "/myself"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetMyself(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -378,30 +372,35 @@ func getMyself(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listProjects(ctx context.Context, params map[string]any) (string, error) {
-	startAt := 0
-	if sa, ok := params["start_at"].(float64); ok {
-		startAt = int(sa)
-	}
-	maxResults := 50
-	if mr, ok := params["max_results"].(float64); ok {
-		maxResults = int(mr)
-	}
-	endpoint := fmt.Sprintf("%s/project/search?startAt=%d&maxResults=%d", baseURL(ctx), startAt, maxResults)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	p := gen.SearchProjectsParams{}
+	if sa, ok := params["start_at"].(float64); ok {
+		p.StartAt.SetTo(int(sa))
+	}
+	if mr, ok := params["max_results"].(float64); ok {
+		p.MaxResults.SetTo(int(mr))
+	}
+	res, err := c.SearchProjects(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
-	projectKey, _ := params["project_key"].(string)
-	endpoint := fmt.Sprintf("%s/project/%s", baseURL(ctx), projectKey)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	projectKey, _ := params["project_key"].(string)
+	res, err := c.GetProject(ctx, gen.GetProjectParams{ProjectIdOrKey: projectKey})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -409,22 +408,18 @@ func getProject(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func search(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	jql, _ := params["jql"].(string)
-	query := url.Values{}
-	query.Set("jql", jql)
-
-	startAt := 0
+	p := gen.SearchIssuesUsingJqlParams{Jql: jql}
 	if sa, ok := params["start_at"].(float64); ok {
-		startAt = int(sa)
+		p.StartAt.SetTo(int(sa))
 	}
-	query.Set("startAt", fmt.Sprintf("%d", startAt))
-
-	maxResults := 50
 	if mr, ok := params["max_results"].(float64); ok {
-		maxResults = int(mr)
+		p.MaxResults.SetTo(int(mr))
 	}
-	query.Set("maxResults", fmt.Sprintf("%d", maxResults))
-
 	if fields, ok := params["fields"].([]interface{}); ok && len(fields) > 0 {
 		fieldStrs := make([]string, 0, len(fields))
 		for _, f := range fields {
@@ -433,23 +428,25 @@ func search(ctx context.Context, params map[string]any) (string, error) {
 			}
 		}
 		if len(fieldStrs) > 0 {
-			query.Set("fields", joinStrings(fieldStrs, ","))
+			p.Fields.SetTo(strings.Join(fieldStrs, ","))
 		}
 	} else {
-		query.Set("fields", "summary,status,priority,assignee,created,updated")
+		p.Fields.SetTo("summary,status,priority,assignee,created,updated")
 	}
-
-	endpoint := fmt.Sprintf("%s/search/jql?%s", baseURL(ctx), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.SearchIssuesUsingJql(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func getIssue(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	issueKey, _ := params["issue_key"].(string)
-	query := url.Values{}
+	p := gen.GetIssueParams{IssueIdOrKey: issueKey}
 	if fields, ok := params["fields"].([]interface{}); ok && len(fields) > 0 {
 		fieldStrs := make([]string, 0, len(fields))
 		for _, f := range fields {
@@ -458,42 +455,38 @@ func getIssue(ctx context.Context, params map[string]any) (string, error) {
 			}
 		}
 		if len(fieldStrs) > 0 {
-			query.Set("fields", joinStrings(fieldStrs, ","))
+			p.Fields.SetTo(strings.Join(fieldStrs, ","))
 		}
 	}
-
-	queryStr := ""
-	if len(query) > 0 {
-		queryStr = "?" + query.Encode()
-	}
-
-	endpoint := fmt.Sprintf("%s/issue/%s%s", baseURL(ctx), issueKey, queryStr)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	res, err := c.GetIssue(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func createIssue(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	projectKey, _ := params["project_key"].(string)
 	issueType, _ := params["issue_type"].(string)
 	summary, _ := params["summary"].(string)
 
-	fields := map[string]interface{}{
-		"project":   map[string]string{"key": projectKey},
-		"issuetype": map[string]string{"name": issueType},
-		"summary":   summary,
-	}
+	fields := gen.IssueFields{}
+	fields.Project, _ = toRaw(map[string]string{"key": projectKey})
+	fields.Issuetype, _ = toRaw(map[string]string{"name": issueType})
+	fields.Summary.SetTo(summary)
 
 	if description, ok := params["description"].(string); ok && description != "" {
-		fields["description"] = adfDocument(description)
+		fields.Description, _ = toRaw(adfDocument(description))
 	}
 	if assigneeID, ok := params["assignee_account_id"].(string); ok && assigneeID != "" {
-		fields["assignee"] = map[string]string{"accountId": assigneeID}
+		fields.Assignee, _ = toRaw(map[string]string{"accountId": assigneeID})
 	}
 	if priority, ok := params["priority"].(string); ok && priority != "" {
-		fields["priority"] = map[string]string{"name": priority}
+		fields.Priority, _ = toRaw(map[string]string{"name": priority})
 	}
 	if labels, ok := params["labels"].([]interface{}); ok && len(labels) > 0 {
 		labelStrs := make([]string, 0, len(labels))
@@ -502,36 +495,38 @@ func createIssue(ctx context.Context, params map[string]any) (string, error) {
 				labelStrs = append(labelStrs, ls)
 			}
 		}
-		fields["labels"] = labelStrs
+		fields.Labels = labelStrs
 	}
 	if parentKey, ok := params["parent_key"].(string); ok && parentKey != "" {
-		fields["parent"] = map[string]string{"key": parentKey}
+		fields.Parent, _ = toRaw(map[string]string{"key": parentKey})
 	}
 
-	body := map[string]interface{}{"fields": fields}
-	endpoint := baseURL(ctx) + "/issue"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	res, err := c.CreateIssue(ctx, &gen.CreateIssueRequest{Fields: fields})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func updateIssue(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	issueKey, _ := params["issue_key"].(string)
-	fields := make(map[string]interface{})
 
+	fields := gen.IssueFields{}
 	if summary, ok := params["summary"].(string); ok {
-		fields["summary"] = summary
+		fields.Summary.SetTo(summary)
 	}
 	if description, ok := params["description"].(string); ok {
-		fields["description"] = adfDocument(description)
+		fields.Description, _ = toRaw(adfDocument(description))
 	}
 	if assigneeID, ok := params["assignee_account_id"].(string); ok {
-		fields["assignee"] = map[string]string{"accountId": assigneeID}
+		fields.Assignee, _ = toRaw(map[string]string{"accountId": assigneeID})
 	}
 	if priority, ok := params["priority"].(string); ok {
-		fields["priority"] = map[string]string{"name": priority}
+		fields.Priority, _ = toRaw(map[string]string{"name": priority})
 	}
 	if labels, ok := params["labels"].([]interface{}); ok {
 		labelStrs := make([]string, 0, len(labels))
@@ -540,16 +535,14 @@ func updateIssue(ctx context.Context, params map[string]any) (string, error) {
 				labelStrs = append(labelStrs, ls)
 			}
 		}
-		fields["labels"] = labelStrs
+		fields.Labels = labelStrs
 	}
 
-	body := map[string]interface{}{"fields": fields}
-	endpoint := fmt.Sprintf("%s/issue/%s", baseURL(ctx), issueKey)
-	_, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	err = c.UpdateIssue(ctx, &gen.UpdateIssueRequest{Fields: gen.OptIssueFields{Value: fields, Set: true}}, gen.UpdateIssueParams{IssueIdOrKey: issueKey})
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(`{"updated": true, "issue_key": "%s"}`, issueKey), nil
+	return fmt.Sprintf(`{"updated":true,"issue_key":"%s"}`, issueKey), nil
 }
 
 // =============================================================================
@@ -557,37 +550,44 @@ func updateIssue(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getTransitions(ctx context.Context, params map[string]any) (string, error) {
-	issueKey, _ := params["issue_key"].(string)
-	endpoint := fmt.Sprintf("%s/issue/%s/transitions", baseURL(ctx), issueKey)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	issueKey, _ := params["issue_key"].(string)
+	res, err := c.GetTransitions(ctx, gen.GetTransitionsParams{IssueIdOrKey: issueKey})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func transitionIssue(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	issueKey, _ := params["issue_key"].(string)
 	transitionID, _ := params["transition_id"].(string)
 
-	body := map[string]interface{}{
-		"transition": map[string]string{"id": transitionID},
+	req := gen.DoTransitionRequest{
+		Transition: gen.TransitionRef{ID: transitionID},
 	}
 
 	if comment, ok := params["comment"].(string); ok && comment != "" {
-		body["update"] = map[string]interface{}{
+		update := map[string]interface{}{
 			"comment": []map[string]interface{}{
 				{"add": map[string]interface{}{"body": adfDocument(comment)}},
 			},
 		}
+		req.Update, _ = toRaw(update)
 	}
 
-	endpoint := fmt.Sprintf("%s/issue/%s/transitions", baseURL(ctx), issueKey)
-	_, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	err = c.DoTransition(ctx, &req, gen.DoTransitionParams{IssueIdOrKey: issueKey})
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(`{"transitioned": true, "issue_key": "%s", "transition_id": "%s"}`, issueKey, transitionID), nil
+	return fmt.Sprintf(`{"transitioned":true,"issue_key":"%s","transition_id":"%s"}`, issueKey, transitionID), nil
 }
 
 // =============================================================================
@@ -595,37 +595,39 @@ func transitionIssue(ctx context.Context, params map[string]any) (string, error)
 // =============================================================================
 
 func getComments(ctx context.Context, params map[string]any) (string, error) {
-	issueKey, _ := params["issue_key"].(string)
-	startAt := 0
-	if sa, ok := params["start_at"].(float64); ok {
-		startAt = int(sa)
-	}
-	maxResults := 50
-	if mr, ok := params["max_results"].(float64); ok {
-		maxResults = int(mr)
-	}
-	endpoint := fmt.Sprintf("%s/issue/%s/comment?startAt=%d&maxResults=%d", baseURL(ctx), issueKey, startAt, maxResults)
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	issueKey, _ := params["issue_key"].(string)
+	p := gen.GetCommentsParams{IssueIdOrKey: issueKey}
+	if sa, ok := params["start_at"].(float64); ok {
+		p.StartAt.SetTo(int(sa))
+	}
+	if mr, ok := params["max_results"].(float64); ok {
+		p.MaxResults.SetTo(int(mr))
+	}
+	res, err := c.GetComments(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func addComment(ctx context.Context, params map[string]any) (string, error) {
-	issueKey, _ := params["issue_key"].(string)
-	body, _ := params["body"].(string)
-
-	payload := map[string]interface{}{
-		"body": adfDocument(body),
-	}
-
-	endpoint := fmt.Sprintf("%s/issue/%s/comment", baseURL(ctx), issueKey)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), payload)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	issueKey, _ := params["issue_key"].(string)
+	body, _ := params["body"].(string)
+
+	adfBody, _ := toRaw(adfDocument(body))
+	res, err := c.AddComment(ctx, &gen.AddCommentRequest{Body: adfBody}, gen.AddCommentParams{IssueIdOrKey: issueKey})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -646,16 +648,4 @@ func adfDocument(text string) map[string]interface{} {
 			},
 		},
 	}
-}
-
-// joinStrings joins strings with a separator
-func joinStrings(strs []string, sep string) string {
-	result := ""
-	for i, s := range strs {
-		if i > 0 {
-			result += sep
-		}
-		result += s
-	}
-	return result
 }
