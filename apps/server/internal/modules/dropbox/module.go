@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
@@ -24,48 +22,28 @@ const (
 	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
 )
 
-var client = httpclient.New()
+var toJSON = modules.ToJSON
 
 // DropboxModule implements the Module interface for Dropbox API
 type DropboxModule struct{}
 
-// New creates a new DropboxModule instance
-func New() *DropboxModule {
-	return &DropboxModule{}
-}
+func New() *DropboxModule { return &DropboxModule{} }
 
-// Module descriptions in multiple languages
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Dropbox API - File and folder operations (list, search, upload, download, share)",
 	"ja-JP": "Dropbox API - ファイルとフォルダの操作（一覧、検索、アップロード、ダウンロード、共有）",
 }
 
-// Name returns the module name
-func (m *DropboxModule) Name() string {
-	return "dropbox"
-}
-
-// Descriptions returns the module descriptions in all languages
-func (m *DropboxModule) Descriptions() modules.LocalizedText {
-	return moduleDescriptions
-}
-
-// Description returns the module description for a specific language
+func (m *DropboxModule) Name() string                        { return "dropbox" }
+func (m *DropboxModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
 func (m *DropboxModule) Description(lang string) string {
 	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
-
-// APIVersion returns the Dropbox API version
-func (m *DropboxModule) APIVersion() string {
-	return dropboxVersion
-}
-
-// Tools returns all available tools
+func (m *DropboxModule) APIVersion() string { return dropboxVersion }
 func (m *DropboxModule) Tools() []modules.Tool {
 	return toolDefinitions
 }
 
-// ExecuteTool executes a tool by name and returns JSON response
 func (m *DropboxModule) ExecuteTool(ctx context.Context, name string, params map[string]any) (string, error) {
 	handler, ok := toolHandlers[name]
 	if !ok {
@@ -74,18 +52,18 @@ func (m *DropboxModule) ExecuteTool(ctx context.Context, name string, params map
 	return handler(ctx, params)
 }
 
-// Resources returns all available resources (none for Dropbox)
-func (m *DropboxModule) Resources() []modules.Resource {
-	return nil
+// ToCompact converts JSON result to compact format.
+func (m *DropboxModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
 }
 
-// ReadResource reads a resource by URI (not implemented)
+func (m *DropboxModule) Resources() []modules.Resource { return nil }
 func (m *DropboxModule) ReadResource(ctx context.Context, uri string) (string, error) {
 	return "", fmt.Errorf("resources not supported")
 }
 
 // =============================================================================
-// Token and Headers
+// Token Management
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -164,124 +142,9 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
 	}
 
-	err = store.GetTokenStore().UpdateModuleToken(ctx, userID, "dropbox", newCreds)
-	if err != nil {
-		// Continue anyway, the token is still valid for this request
-	}
+	_ = store.GetTokenStore().UpdateModuleToken(ctx, userID, "dropbox", newCreds)
 
 	return newCreds, nil
-}
-
-func headers(ctx context.Context) map[string]string {
-	creds := getCredentials(ctx)
-	if creds == nil {
-		return map[string]string{}
-	}
-
-	return map[string]string{
-		"Authorization": "Bearer " + creds.AccessToken,
-		"Content-Type":  "application/json",
-	}
-}
-
-// =============================================================================
-// Content Endpoint Helpers
-// =============================================================================
-
-// doContentDownload handles Dropbox content download endpoints.
-// Parameters are sent via Dropbox-API-Arg header, response body is file content.
-func doContentDownload(ctx context.Context, path string, apiArg interface{}) (string, error) {
-	argJSON, err := json.Marshal(apiArg)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal API arg: %w", err)
-	}
-
-	endpoint := dropboxContentBase + path
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	creds := getCredentials(contextFromRequest(ctx))
-	if creds != nil {
-		req.Header.Set("Authorization", "Bearer "+creds.AccessToken)
-	}
-	req.Header.Set("Dropbox-API-Arg", string(argJSON))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to download: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("download failed (status %d): %s", resp.StatusCode, string(body))
-	}
-
-	// Read content (limit to 1MB)
-	const maxSize = 1 * 1024 * 1024
-	content, err := io.ReadAll(io.LimitReader(resp.Body, maxSize+1))
-	if err != nil {
-		return "", fmt.Errorf("failed to read content: %w", err)
-	}
-	truncated := len(content) > maxSize
-	if truncated {
-		content = content[:maxSize]
-	}
-
-	// Metadata comes back in Dropbox-API-Result header
-	apiResult := resp.Header.Get("Dropbox-API-Result")
-
-	result := map[string]interface{}{
-		"content":   string(content),
-		"truncated": truncated,
-	}
-	if apiResult != "" {
-		result["metadata"] = json.RawMessage(apiResult)
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
-}
-
-// doContentUpload handles Dropbox content upload endpoints.
-// Parameters are sent via Dropbox-API-Arg header, request body is file content.
-func doContentUpload(ctx context.Context, path string, apiArg interface{}, content string) (string, error) {
-	argJSON, err := json.Marshal(apiArg)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal API arg: %w", err)
-	}
-
-	endpoint := dropboxContentBase + path
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(content))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	creds := getCredentials(contextFromRequest(ctx))
-	if creds != nil {
-		req.Header.Set("Authorization", "Bearer "+creds.AccessToken)
-	}
-	req.Header.Set("Dropbox-API-Arg", string(argJSON))
-	req.Header.Set("Content-Type", "application/octet-stream")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to upload: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("upload failed (status %d): %s", resp.StatusCode, string(respBody))
-	}
-	return httpclient.PrettyJSON(respBody), nil
-}
-
-// contextFromRequest returns the context as-is (for content endpoints that
-// need to pass through the original context for credential resolution).
-func contextFromRequest(ctx context.Context) context.Context {
-	return ctx
 }
 
 // =============================================================================
@@ -337,7 +200,6 @@ var toolDefinitions = []modules.Tool{
 				"include_media_info": {Type: "boolean", Description: "Include media info for photos/videos (default: false)"},
 				"limit":              {Type: "number", Description: "Maximum number of results (1-2000)"},
 			},
-			Required: []string{"path"},
 		},
 	},
 	{
@@ -583,49 +445,31 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func getCurrentAccount(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := dropboxAPIBase + "/users/get_current_account"
-	// Dropbox requires a JSON body (even "null") for no-param endpoints
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), json.RawMessage("null"))
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/users/get_current_account", json.RawMessage("null"))
 }
 
 func getSpaceUsage(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := dropboxAPIBase + "/users/get_space_usage"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), json.RawMessage("null"))
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/users/get_space_usage", json.RawMessage("null"))
 }
 
 func listFolder(ctx context.Context, params map[string]any) (string, error) {
 	path, _ := params["path"].(string)
 
-	body := map[string]interface{}{
-		"path": path,
+	body := map[string]any{"path": path}
+	if v, ok := params["recursive"].(bool); ok {
+		body["recursive"] = v
 	}
-	if recursive, ok := params["recursive"].(bool); ok {
-		body["recursive"] = recursive
+	if v, ok := params["include_deleted"].(bool); ok {
+		body["include_deleted"] = v
 	}
-	if includeDeleted, ok := params["include_deleted"].(bool); ok {
-		body["include_deleted"] = includeDeleted
+	if v, ok := params["include_media_info"].(bool); ok {
+		body["include_media_info"] = v
 	}
-	if includeMediaInfo, ok := params["include_media_info"].(bool); ok {
-		body["include_media_info"] = includeMediaInfo
-	}
-	if limit, ok := params["limit"].(float64); ok {
-		body["limit"] = int(limit)
+	if v, ok := params["limit"].(float64); ok {
+		body["limit"] = int(v)
 	}
 
-	endpoint := dropboxAPIBase + "/files/list_folder"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/list_folder", body)
 }
 
 func listFolderContinue(ctx context.Context, params map[string]any) (string, error) {
@@ -633,17 +477,7 @@ func listFolderContinue(ctx context.Context, params map[string]any) (string, err
 	if cursor == "" {
 		return "", fmt.Errorf("cursor is required")
 	}
-
-	body := map[string]interface{}{
-		"cursor": cursor,
-	}
-
-	endpoint := dropboxAPIBase + "/files/list_folder/continue"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/list_folder/continue", map[string]any{"cursor": cursor})
 }
 
 func getMetadata(ctx context.Context, params map[string]any) (string, error) {
@@ -652,22 +486,15 @@ func getMetadata(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("path is required")
 	}
 
-	body := map[string]interface{}{
-		"path": path,
+	body := map[string]any{"path": path}
+	if v, ok := params["include_media_info"].(bool); ok {
+		body["include_media_info"] = v
 	}
-	if includeMediaInfo, ok := params["include_media_info"].(bool); ok {
-		body["include_media_info"] = includeMediaInfo
-	}
-	if includeDeleted, ok := params["include_deleted"].(bool); ok {
-		body["include_deleted"] = includeDeleted
+	if v, ok := params["include_deleted"].(bool); ok {
+		body["include_deleted"] = v
 	}
 
-	endpoint := dropboxAPIBase + "/files/get_metadata"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/get_metadata", body)
 }
 
 func searchFiles(ctx context.Context, params map[string]any) (string, error) {
@@ -676,18 +503,16 @@ func searchFiles(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("query is required")
 	}
 
-	body := map[string]interface{}{
-		"query": query,
-	}
+	body := map[string]any{"query": query}
 
-	options := map[string]interface{}{}
-	if path, ok := params["path"].(string); ok && path != "" {
-		options["path"] = path
+	options := map[string]any{}
+	if v, ok := params["path"].(string); ok && v != "" {
+		options["path"] = v
 	}
-	if maxResults, ok := params["max_results"].(float64); ok {
-		options["max_results"] = int(maxResults)
+	if v, ok := params["max_results"].(float64); ok {
+		options["max_results"] = int(v)
 	}
-	if categories, ok := params["file_categories"].([]interface{}); ok && len(categories) > 0 {
+	if categories, ok := params["file_categories"].([]any); ok && len(categories) > 0 {
 		fcs := make([]map[string]string, 0, len(categories))
 		for _, c := range categories {
 			if cs, ok := c.(string); ok {
@@ -700,12 +525,7 @@ func searchFiles(ctx context.Context, params map[string]any) (string, error) {
 		body["options"] = options
 	}
 
-	endpoint := dropboxAPIBase + "/files/search_v2"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/search_v2", body)
 }
 
 func readFile(ctx context.Context, params map[string]any) (string, error) {
@@ -713,28 +533,18 @@ func readFile(ctx context.Context, params map[string]any) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("path is required")
 	}
-
-	apiArg := map[string]string{
-		"path": path,
-	}
-	return doContentDownload(ctx, "/files/download", apiArg)
+	return doContentDownload(ctx, "/files/download", map[string]string{"path": path})
 }
 
 func listSharedLinks(ctx context.Context, params map[string]any) (string, error) {
-	body := map[string]interface{}{}
-	if path, ok := params["path"].(string); ok && path != "" {
-		body["path"] = path
+	body := map[string]any{}
+	if v, ok := params["path"].(string); ok && v != "" {
+		body["path"] = v
 	}
-	if cursor, ok := params["cursor"].(string); ok && cursor != "" {
-		body["cursor"] = cursor
+	if v, ok := params["cursor"].(string); ok && v != "" {
+		body["cursor"] = v
 	}
-
-	endpoint := dropboxAPIBase + "/sharing/list_shared_links"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/sharing/list_shared_links", body)
 }
 
 // =============================================================================
@@ -748,18 +558,15 @@ func writeFile(ctx context.Context, params map[string]any) (string, error) {
 	}
 	content, _ := params["content"].(string)
 
-	apiArg := map[string]interface{}{
-		"path": path,
-		"mode": "add",
+	apiArg := map[string]any{"path": path, "mode": "add"}
+	if v, ok := params["mode"].(string); ok && v != "" {
+		apiArg["mode"] = v
 	}
-	if mode, ok := params["mode"].(string); ok && mode != "" {
-		apiArg["mode"] = mode
+	if v, ok := params["autorename"].(bool); ok {
+		apiArg["autorename"] = v
 	}
-	if autorename, ok := params["autorename"].(bool); ok {
-		apiArg["autorename"] = autorename
-	}
-	if mute, ok := params["mute"].(bool); ok {
-		apiArg["mute"] = mute
+	if v, ok := params["mute"].(bool); ok {
+		apiArg["mute"] = v
 	}
 
 	return doContentUpload(ctx, "/files/upload", apiArg, content)
@@ -771,19 +578,12 @@ func createFolder(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("path is required")
 	}
 
-	body := map[string]interface{}{
-		"path": path,
-	}
-	if autorename, ok := params["autorename"].(bool); ok {
-		body["autorename"] = autorename
+	body := map[string]any{"path": path}
+	if v, ok := params["autorename"].(bool); ok {
+		body["autorename"] = v
 	}
 
-	endpoint := dropboxAPIBase + "/files/create_folder_v2"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/create_folder_v2", body)
 }
 
 func copyFile(ctx context.Context, params map[string]any) (string, error) {
@@ -796,20 +596,12 @@ func copyFile(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("to_path is required")
 	}
 
-	body := map[string]interface{}{
-		"from_path": fromPath,
-		"to_path":   toPath,
-	}
-	if autorename, ok := params["autorename"].(bool); ok {
-		body["autorename"] = autorename
+	body := map[string]any{"from_path": fromPath, "to_path": toPath}
+	if v, ok := params["autorename"].(bool); ok {
+		body["autorename"] = v
 	}
 
-	endpoint := dropboxAPIBase + "/files/copy_v2"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/copy_v2", body)
 }
 
 func moveFile(ctx context.Context, params map[string]any) (string, error) {
@@ -822,20 +614,12 @@ func moveFile(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("to_path is required")
 	}
 
-	body := map[string]interface{}{
-		"from_path": fromPath,
-		"to_path":   toPath,
-	}
-	if autorename, ok := params["autorename"].(bool); ok {
-		body["autorename"] = autorename
+	body := map[string]any{"from_path": fromPath, "to_path": toPath}
+	if v, ok := params["autorename"].(bool); ok {
+		body["autorename"] = v
 	}
 
-	endpoint := dropboxAPIBase + "/files/move_v2"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/move_v2", body)
 }
 
 func deleteFile(ctx context.Context, params map[string]any) (string, error) {
@@ -843,17 +627,7 @@ func deleteFile(ctx context.Context, params map[string]any) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("path is required")
 	}
-
-	body := map[string]interface{}{
-		"path": path,
-	}
-
-	endpoint := dropboxAPIBase + "/files/delete_v2"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/delete_v2", map[string]any{"path": path})
 }
 
 func createSharedLink(ctx context.Context, params map[string]any) (string, error) {
@@ -862,21 +636,12 @@ func createSharedLink(ctx context.Context, params map[string]any) (string, error
 		return "", fmt.Errorf("path is required")
 	}
 
-	body := map[string]interface{}{
-		"path": path,
-	}
-	if vis, ok := params["requested_visibility"].(string); ok && vis != "" {
-		body["settings"] = map[string]interface{}{
-			"requested_visibility": vis,
-		}
+	body := map[string]any{"path": path}
+	if v, ok := params["requested_visibility"].(string); ok && v != "" {
+		body["settings"] = map[string]any{"requested_visibility": v}
 	}
 
-	endpoint := dropboxAPIBase + "/sharing/create_shared_link_with_settings"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/sharing/create_shared_link_with_settings", body)
 }
 
 func listRevisions(ctx context.Context, params map[string]any) (string, error) {
@@ -885,20 +650,13 @@ func listRevisions(ctx context.Context, params map[string]any) (string, error) {
 		return "", fmt.Errorf("path is required")
 	}
 
-	body := map[string]interface{}{
-		"path": path,
+	body := map[string]any{"path": path}
+	if v, ok := params["mode"].(string); ok && v != "" {
+		body["mode"] = v
 	}
-	if mode, ok := params["mode"].(string); ok && mode != "" {
-		body["mode"] = mode
-	}
-	if limit, ok := params["limit"].(float64); ok {
-		body["limit"] = int(limit)
+	if v, ok := params["limit"].(float64); ok {
+		body["limit"] = int(v)
 	}
 
-	endpoint := dropboxAPIBase + "/files/list_revisions"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
-	if err != nil {
-		return "", err
-	}
-	return httpclient.PrettyJSON(respBody), nil
+	return doPost(ctx, "/files/list_revisions", body)
 }
