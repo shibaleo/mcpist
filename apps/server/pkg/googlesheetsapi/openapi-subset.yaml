@@ -1,0 +1,474 @@
+openapi: 3.0.3
+info:
+  title: Google Sheets API (mcpist subset)
+  description: Subset of Google Sheets API v4 used by mcpist google_sheets module
+  version: "v4"
+servers:
+  - url: https://sheets.googleapis.com/v4
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Spreadsheet ============
+    Spreadsheet:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+        properties:
+          type: object
+          additionalProperties: true
+          nullable: true
+        sheets:
+          type: array
+          nullable: true
+          items:
+            type: object
+            additionalProperties: true
+
+    CreateSpreadsheetRequest:
+      type: object
+      properties:
+        properties:
+          type: object
+          additionalProperties: true
+          nullable: true
+        sheets:
+          type: array
+          nullable: true
+          items:
+            type: object
+            additionalProperties: true
+
+    # ============ BatchUpdate ============
+    BatchUpdateRequest:
+      type: object
+      required: [requests]
+      properties:
+        requests:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    BatchUpdateResponse:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+        replies:
+          type: array
+          nullable: true
+          items:
+            type: object
+            additionalProperties: true
+
+    # ============ Values ============
+    ValueRange:
+      type: object
+      properties:
+        range:
+          type: string
+          nullable: true
+        majorDimension:
+          type: string
+          nullable: true
+        values:
+          type: array
+          nullable: true
+          items:
+            type: array
+            items: {}
+
+    UpdateValuesResponse:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+          nullable: true
+        updatedRange:
+          type: string
+          nullable: true
+        updatedRows:
+          type: integer
+          nullable: true
+        updatedColumns:
+          type: integer
+          nullable: true
+        updatedCells:
+          type: integer
+          nullable: true
+
+    AppendValuesResponse:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+          nullable: true
+        tableRange:
+          type: string
+          nullable: true
+        updates:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    BatchGetValuesResponse:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+          nullable: true
+        valueRanges:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/ValueRange'
+
+    BatchUpdateValuesRequest:
+      type: object
+      properties:
+        valueInputOption:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValueRange'
+
+    BatchUpdateValuesResponse:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+          nullable: true
+        totalUpdatedRows:
+          type: integer
+          nullable: true
+        totalUpdatedColumns:
+          type: integer
+          nullable: true
+        totalUpdatedCells:
+          type: integer
+          nullable: true
+        totalUpdatedSheets:
+          type: integer
+          nullable: true
+
+    ClearValuesResponse:
+      type: object
+      properties:
+        spreadsheetId:
+          type: string
+          nullable: true
+        clearedRange:
+          type: string
+          nullable: true
+
+    # ============ CopyTo ============
+    CopySheetToRequest:
+      type: object
+      properties:
+        destinationSpreadsheetId:
+          type: string
+
+    SheetProperties:
+      type: object
+      properties:
+        sheetId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        index:
+          type: integer
+          nullable: true
+        sheetType:
+          type: string
+          nullable: true
+
+paths:
+  # ============ Spreadsheets ============
+  /spreadsheets/{spreadsheetId}:
+    get:
+      operationId: getSpreadsheet
+      summary: Get spreadsheet metadata
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Spreadsheet'
+
+  /spreadsheets:
+    post:
+      operationId: createSpreadsheet
+      summary: Create a new spreadsheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpreadsheetRequest'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Spreadsheet'
+
+  /spreadsheets/{spreadsheetId}:batchUpdate:
+    post:
+      operationId: batchUpdate
+      summary: Apply batch updates to a spreadsheet
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'
+
+  /spreadsheets/{spreadsheetId}/sheets/{sheetId}:copyTo:
+    post:
+      operationId: copySheetTo
+      summary: Copy a sheet to another spreadsheet
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sheetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopySheetToRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SheetProperties'
+
+  # ============ Values ============
+  /spreadsheets/{spreadsheetId}/values/{range}:
+    get:
+      operationId: getValues
+      summary: Get cell values from a range
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: range
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: valueRenderOption
+          in: query
+          schema:
+            type: string
+        - name: dateTimeRenderOption
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValueRange'
+    put:
+      operationId: updateValues
+      summary: Update cell values in a range
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: range
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: valueInputOption
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValueRange'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateValuesResponse'
+
+  /spreadsheets/{spreadsheetId}/values/{range}:append:
+    post:
+      operationId: appendValues
+      summary: Append rows to a table
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: range
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: valueInputOption
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: insertDataOption
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValueRange'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppendValuesResponse'
+
+  /spreadsheets/{spreadsheetId}/values/{range}:clear:
+    post:
+      operationId: clearValues
+      summary: Clear cell contents in a range
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: range
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearValuesResponse'
+
+  /spreadsheets/{spreadsheetId}/values:batchGet:
+    get:
+      operationId: batchGetValues
+      summary: Get values from multiple ranges
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: ranges
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: valueRenderOption
+          in: query
+          schema:
+            type: string
+        - name: dateTimeRenderOption
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchGetValuesResponse'
+
+  /spreadsheets/{spreadsheetId}/values:batchUpdate:
+    post:
+      operationId: batchUpdateValues
+      summary: Update values in multiple ranges
+      parameters:
+        - name: spreadsheetId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateValuesRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateValuesResponse'

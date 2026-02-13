@@ -4,67 +4,50 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/googletasksapi"
+	gen "mcpist/server/pkg/googletasksapi/gen"
 )
 
 const (
-	googleTasksAPIBase = "https://tasks.googleapis.com/tasks/v1"
 	googleTasksVersion = "v1"
 	googleTokenURL     = "https://oauth2.googleapis.com/token"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
+	tokenRefreshBuffer = 5 * 60
 )
 
-var client = httpclient.New()
+var toJSON = modules.ToJSON
 
 // GoogleTasksModule implements the Module interface for Google Tasks API
 type GoogleTasksModule struct{}
 
-// New creates a new GoogleTasksModule instance
-func New() *GoogleTasksModule {
-	return &GoogleTasksModule{}
-}
+func New() *GoogleTasksModule { return &GoogleTasksModule{} }
 
-// Module descriptions in multiple languages
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Google Tasks API - List, create, update, and delete tasks",
 	"ja-JP": "Google Tasks API - タスクの一覧表示、作成、更新、削除",
 }
 
-// Name returns the module name
-func (m *GoogleTasksModule) Name() string {
-	return "google_tasks"
-}
-
-// Descriptions returns the module descriptions in all languages
-func (m *GoogleTasksModule) Descriptions() modules.LocalizedText {
-	return moduleDescriptions
-}
-
-// Description returns the module description for a specific language
+func (m *GoogleTasksModule) Name() string                        { return "google_tasks" }
+func (m *GoogleTasksModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
 func (m *GoogleTasksModule) Description(lang string) string {
 	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
-
-// APIVersion returns the Google Tasks API version
-func (m *GoogleTasksModule) APIVersion() string {
-	return googleTasksVersion
+func (m *GoogleTasksModule) APIVersion() string            { return googleTasksVersion }
+func (m *GoogleTasksModule) Tools() []modules.Tool         { return toolDefinitions }
+func (m *GoogleTasksModule) Resources() []modules.Resource { return nil }
+func (m *GoogleTasksModule) ReadResource(ctx context.Context, uri string) (string, error) {
+	return "", fmt.Errorf("resources not supported")
 }
 
-// Tools returns all available tools
-func (m *GoogleTasksModule) Tools() []modules.Tool {
-	return toolDefinitions
-}
-
-// ExecuteTool executes a tool by name and returns JSON response
 func (m *GoogleTasksModule) ExecuteTool(ctx context.Context, name string, params map[string]any) (string, error) {
 	handler, ok := toolHandlers[name]
 	if !ok {
@@ -73,18 +56,13 @@ func (m *GoogleTasksModule) ExecuteTool(ctx context.Context, name string, params
 	return handler(ctx, params)
 }
 
-// Resources returns all available resources (none for Google Tasks)
-func (m *GoogleTasksModule) Resources() []modules.Resource {
-	return nil
-}
-
-// ReadResource reads a resource by URI (not implemented)
-func (m *GoogleTasksModule) ReadResource(ctx context.Context, uri string) (string, error) {
-	return "", fmt.Errorf("resources not supported")
+// ToCompact converts JSON result to compact format.
+func (m *GoogleTasksModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
 }
 
 // =============================================================================
-// Token and Headers
+// Token and Client
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -98,16 +76,13 @@ func getCredentials(ctx context.Context) *store.Credentials {
 		log.Printf("[google_tasks] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[google_tasks] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
 
-	// Check if token needs refresh (OAuth2 only)
 	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
 		if needsRefresh(credentials) {
 			log.Printf("[google_tasks] Token expired or expiring soon, refreshing...")
 			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
 			if err != nil {
 				log.Printf("[google_tasks] Token refresh failed: %v", err)
-				// Return original credentials and let the API call fail
 				return credentials
 			}
 			log.Printf("[google_tasks] Token refreshed successfully")
@@ -118,26 +93,19 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-// needsRefresh checks if the token is expired or will expire soon
 func needsRefresh(creds *store.Credentials) bool {
 	if creds.ExpiresAt == 0 {
-		// No expiry information, assume token is valid
 		return false
 	}
-	now := time.Now().Unix()
-	// Refresh if expired or expiring within buffer period
-	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
+	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
 }
 
-// refreshToken exchanges the refresh token for a new access token
 func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	// Get OAuth app credentials (client_id, client_secret) - shared with google_calendar
 	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "google")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
 	}
 
-	// Exchange refresh token for new access token
 	data := url.Values{}
 	data.Set("client_id", oauthApp.ClientID)
 	data.Set("client_secret", oauthApp.ClientSecret)
@@ -157,53 +125,39 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed: status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("token refresh failed: status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var tokenResp struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int64  `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-		Scope       string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
 
-	// Update credentials with new access token
 	newCreds := &store.Credentials{
 		AuthType:     store.AuthTypeOAuth2,
 		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: creds.RefreshToken, // Keep the same refresh token
+		RefreshToken: creds.RefreshToken,
 		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
 	}
 
-	// Save updated credentials to Vault - use "google_tasks" as module name
 	err = store.GetTokenStore().UpdateModuleToken(ctx, userID, "google_tasks", newCreds)
 	if err != nil {
 		log.Printf("[google_tasks] Failed to save refreshed token: %v", err)
-		// Continue anyway, the token is still valid for this request
 	}
 
 	return newCreds, nil
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
-
-	h := map[string]string{
-		"Accept": "application/json",
-	}
-
-	// OAuth2 uses Bearer token
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		h["Authorization"] = "Bearer " + creds.AccessToken
-	}
-
-	return h
+	return googletasksapi.NewClient(creds.AccessToken)
 }
 
 // =============================================================================
@@ -211,7 +165,6 @@ func headers(ctx context.Context) map[string]string {
 // =============================================================================
 
 var toolDefinitions = []modules.Tool{
-	// Task Lists
 	{
 		ID:   "google_tasks:list_task_lists",
 		Name: "list_task_lists",
@@ -241,7 +194,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"task_list_id"},
 		},
 	},
-	// Tasks
 	{
 		ID:   "google_tasks:list_tasks",
 		Name: "list_tasks",
@@ -397,22 +349,28 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func listTaskLists(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := googleTasksAPIBase + "/users/@me/lists"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListTaskLists(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getTaskList(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
-	endpoint := fmt.Sprintf("%s/users/@me/lists/%s", googleTasksAPIBase, url.PathEscape(taskListID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetTaskList(ctx, gen.GetTaskListParams{TaskListId: taskListID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
@@ -422,150 +380,150 @@ func getTaskList(ctx context.Context, params map[string]any) (string, error) {
 func listTasks(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 
-	query := url.Values{}
+	p := gen.ListTasksParams{
+		TaskListId:    taskListID,
+		MaxResults:    gen.NewOptInt(100),
+		ShowCompleted: gen.NewOptBool(true),
+		ShowHidden:    gen.NewOptBool(false),
+	}
 
-	// Max results
-	maxResults := 100
 	if mr, ok := params["max_results"].(float64); ok {
-		maxResults = int(mr)
+		p.MaxResults = gen.NewOptInt(int(mr))
 	}
-	query.Set("maxResults", fmt.Sprintf("%d", maxResults))
-
-	// Show completed
-	showCompleted := true
 	if sc, ok := params["show_completed"].(bool); ok {
-		showCompleted = sc
+		p.ShowCompleted = gen.NewOptBool(sc)
 	}
-	query.Set("showCompleted", fmt.Sprintf("%t", showCompleted))
-
-	// Show hidden
-	showHidden := false
 	if sh, ok := params["show_hidden"].(bool); ok {
-		showHidden = sh
+		p.ShowHidden = gen.NewOptBool(sh)
 	}
-	query.Set("showHidden", fmt.Sprintf("%t", showHidden))
-
-	// Due date filters
-	if dueMin, ok := params["due_min"].(string); ok && dueMin != "" {
-		query.Set("dueMin", dueMin)
+	if dm, ok := params["due_min"].(string); ok && dm != "" {
+		p.DueMin = gen.NewOptString(dm)
 	}
-	if dueMax, ok := params["due_max"].(string); ok && dueMax != "" {
-		query.Set("dueMax", dueMax)
+	if dx, ok := params["due_max"].(string); ok && dx != "" {
+		p.DueMax = gen.NewOptString(dx)
 	}
 
-	endpoint := fmt.Sprintf("%s/lists/%s/tasks?%s", googleTasksAPIBase, url.PathEscape(taskListID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListTasks(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getTask(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 	taskID, _ := params["task_id"].(string)
 
-	endpoint := fmt.Sprintf("%s/lists/%s/tasks/%s", googleTasksAPIBase, url.PathEscape(taskListID), url.PathEscape(taskID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetTask(ctx, gen.GetTaskParams{TaskListId: taskListID, TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 	title, _ := params["title"].(string)
 
-	// Build task body
-	task := map[string]interface{}{
-		"title": title,
+	req := &gen.TaskRequest{
+		Title: gen.NewOptNilString(title),
 	}
-
 	if notes, ok := params["notes"].(string); ok && notes != "" {
-		task["notes"] = notes
+		req.Notes = gen.NewOptNilString(notes)
 	}
 	if due, ok := params["due"].(string); ok && due != "" {
-		task["due"] = due
+		req.Due = gen.NewOptNilString(due)
 	}
 
-	// Build endpoint with optional parent parameter
-	endpoint := fmt.Sprintf("%s/lists/%s/tasks", googleTasksAPIBase, url.PathEscape(taskListID))
+	p := gen.CreateTaskParams{TaskListId: taskListID}
 	if parent, ok := params["parent"].(string); ok && parent != "" {
-		endpoint += "?parent=" + url.QueryEscape(parent)
+		p.Parent = gen.NewOptString(parent)
 	}
 
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), task)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.CreateTask(ctx, req, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 	taskID, _ := params["task_id"].(string)
 
-	// First, get the existing task
-	getEndpoint := fmt.Sprintf("%s/lists/%s/tasks/%s", googleTasksAPIBase, url.PathEscape(taskListID), url.PathEscape(taskID))
-	existingBody, err := client.DoJSON("GET", getEndpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	var task map[string]interface{}
-	if err := json.Unmarshal(existingBody, &task); err != nil {
-		return "", fmt.Errorf("failed to parse existing task: %w", err)
+	// Get existing task to preserve fields
+	existing, err := c.GetTask(ctx, gen.GetTaskParams{TaskListId: taskListID, TaskId: taskID})
+	if err != nil {
+		return "", err
 	}
 
-	// Update fields
+	req := &gen.TaskRequest{
+		Title:  existing.Title,
+		Notes:  existing.Notes,
+		Status: existing.Status,
+		Due:    existing.Due,
+	}
+
+	// Override with provided params
 	if title, ok := params["title"].(string); ok && title != "" {
-		task["title"] = title
+		req.Title = gen.NewOptNilString(title)
 	}
 	if notes, ok := params["notes"].(string); ok {
-		task["notes"] = notes
+		req.Notes = gen.NewOptNilString(notes)
 	}
 	if due, ok := params["due"].(string); ok {
 		if due == "" {
-			delete(task, "due")
+			req.Due = gen.OptNilString{}
 		} else {
-			task["due"] = due
+			req.Due = gen.NewOptNilString(due)
 		}
 	}
 	if status, ok := params["status"].(string); ok && status != "" {
-		task["status"] = status
+		req.Status = gen.NewOptNilString(status)
 		if status == "completed" {
-			task["completed"] = time.Now().UTC().Format(time.RFC3339)
+			req.Completed = gen.NewOptNilString(time.Now().UTC().Format(time.RFC3339))
 		} else {
-			delete(task, "completed")
+			req.Completed = gen.OptNilString{}
 		}
 	}
 
-	// PATCH to update
-	respBody, err := client.DoJSON("PATCH", getEndpoint, headers(ctx), task)
+	res, err := c.UpdateTask(ctx, req, gen.UpdateTaskParams{TaskListId: taskListID, TaskId: taskID})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func deleteTask(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 	taskID, _ := params["task_id"].(string)
 
-	endpoint := fmt.Sprintf("%s/lists/%s/tasks/%s", googleTasksAPIBase, url.PathEscape(taskListID), url.PathEscape(taskID))
-
-	// DoJSON handles DELETE requests - Google Tasks API returns 204 No Content on success
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 204 No Content (success for DELETE)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "Task deleted"}`, nil
-		}
 		return "", err
 	}
-
-	return `{"success": true, "message": "Task deleted"}`, nil
+	err = c.DeleteTask(ctx, gen.DeleteTaskParams{TaskListId: taskListID, TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Task deleted"}`, nil
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
@@ -573,80 +531,78 @@ func completeTask(ctx context.Context, params map[string]any) (string, error) {
 	taskID, _ := params["task_id"].(string)
 	completed, _ := params["completed"].(bool)
 
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	// Get existing task
-	getEndpoint := fmt.Sprintf("%s/lists/%s/tasks/%s", googleTasksAPIBase, url.PathEscape(taskListID), url.PathEscape(taskID))
-	existingBody, err := client.DoJSON("GET", getEndpoint, headers(ctx), nil)
+	existing, err := c.GetTask(ctx, gen.GetTaskParams{TaskListId: taskListID, TaskId: taskID})
 	if err != nil {
 		return "", err
 	}
 
-	var task map[string]interface{}
-	if err := json.Unmarshal(existingBody, &task); err != nil {
-		return "", fmt.Errorf("failed to parse existing task: %w", err)
+	req := &gen.TaskRequest{
+		Title: existing.Title,
+		Notes: existing.Notes,
+		Due:   existing.Due,
 	}
 
-	// Update status
 	if completed {
-		task["status"] = "completed"
-		task["completed"] = time.Now().UTC().Format(time.RFC3339)
+		req.Status = gen.NewOptNilString("completed")
+		req.Completed = gen.NewOptNilString(time.Now().UTC().Format(time.RFC3339))
 	} else {
-		task["status"] = "needsAction"
-		delete(task, "completed")
+		req.Status = gen.NewOptNilString("needsAction")
+		req.Completed = gen.OptNilString{}
 	}
 
-	// PATCH to update
-	respBody, err := client.DoJSON("PATCH", getEndpoint, headers(ctx), task)
+	res, err := c.UpdateTask(ctx, req, gen.UpdateTaskParams{TaskListId: taskListID, TaskId: taskID})
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
 
 func clearCompleted(ctx context.Context, params map[string]any) (string, error) {
 	taskListID, _ := params["task_list_id"].(string)
 
-	// First, list all completed tasks
-	listEndpoint := fmt.Sprintf("%s/lists/%s/tasks?showCompleted=true&showHidden=false", googleTasksAPIBase, url.PathEscape(taskListID))
-	respBody, err := client.DoJSON("GET", listEndpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	var taskList struct {
-		Items []struct {
-			ID     string `json:"id"`
-			Status string `json:"status"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(respBody, &taskList); err != nil {
-		return "", fmt.Errorf("failed to parse task list: %w", err)
+	// List all tasks including completed
+	res, err := c.ListTasks(ctx, gen.ListTasksParams{
+		TaskListId:    taskListID,
+		ShowCompleted: gen.NewOptBool(true),
+		ShowHidden:    gen.NewOptBool(false),
+	})
+	if err != nil {
+		return "", err
 	}
 
 	// Delete each completed task
 	deletedCount := 0
-	for _, task := range taskList.Items {
-		if task.Status == "completed" {
-			deleteEndpoint := fmt.Sprintf("%s/lists/%s/tasks/%s", googleTasksAPIBase, url.PathEscape(taskListID), url.PathEscape(task.ID))
-			_, err := client.DoJSON("DELETE", deleteEndpoint, headers(ctx), nil)
+	for _, task := range res.Items {
+		if s, ok := task.Status.Get(); ok && s == "completed" {
+			id, ok := task.ID.Get()
+			if !ok {
+				continue
+			}
+			err := c.DeleteTask(ctx, gen.DeleteTaskParams{TaskListId: taskListID, TaskId: id})
 			if err != nil {
-				// Check if it's a 204 No Content (success)
-				if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-					deletedCount++
-					continue
-				}
-				// Log error but continue deleting other tasks
-				log.Printf("[google_tasks] Failed to delete task %s: %v", task.ID, err)
+				log.Printf("[google_tasks] Failed to delete task %s: %v", id, err)
 				continue
 			}
 			deletedCount++
 		}
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"success":       true,
 		"deleted_count": deletedCount,
 		"message":       fmt.Sprintf("Deleted %d completed tasks", deletedCount),
 	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	b, _ := json.Marshal(result)
+	return string(b), nil
 }

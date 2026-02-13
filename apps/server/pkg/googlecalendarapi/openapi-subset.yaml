@@ -1,0 +1,384 @@
+openapi: 3.0.3
+info:
+  title: Google Calendar API (mcpist subset)
+  description: Subset of Google Calendar API v3 used by mcpist google_calendar module
+  version: "v3"
+servers:
+  - url: https://www.googleapis.com/calendar/v3
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ EventDateTime ============
+    EventDateTime:
+      type: object
+      properties:
+        date:
+          type: string
+          nullable: true
+          description: "Date for all-day events (YYYY-MM-DD)"
+        dateTime:
+          type: string
+          nullable: true
+          description: "Date-time (RFC3339)"
+        timeZone:
+          type: string
+          nullable: true
+
+    # ============ EventAttendee ============
+    EventAttendee:
+      type: object
+      properties:
+        email:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        responseStatus:
+          type: string
+          nullable: true
+        self:
+          type: boolean
+          nullable: true
+        organizer:
+          type: boolean
+          nullable: true
+
+    # ============ Event ============
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          nullable: true
+        htmlLink:
+          type: string
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        start:
+          $ref: '#/components/schemas/EventDateTime'
+          nullable: true
+        end:
+          $ref: '#/components/schemas/EventDateTime'
+          nullable: true
+        attendees:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/EventAttendee'
+        created:
+          type: string
+          nullable: true
+        updated:
+          type: string
+          nullable: true
+        creator:
+          type: object
+          nullable: true
+          properties:
+            email:
+              type: string
+            displayName:
+              type: string
+              nullable: true
+        organizer:
+          type: object
+          nullable: true
+          properties:
+            email:
+              type: string
+            displayName:
+              type: string
+              nullable: true
+
+    # ============ CalendarListEntry ============
+    CalendarListEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        timeZone:
+          type: string
+          nullable: true
+        primary:
+          type: boolean
+          nullable: true
+        accessRole:
+          type: string
+          nullable: true
+        backgroundColor:
+          type: string
+          nullable: true
+
+    # ============ Calendar ============
+    Calendar:
+      type: object
+      properties:
+        id:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        timeZone:
+          type: string
+          nullable: true
+
+    # ============ List Responses ============
+    CalendarListResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarListEntry'
+
+    EventListResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        nextPageToken:
+          type: string
+          nullable: true
+
+    # ============ Create/Update Event Request ============
+    EventRequest:
+      type: object
+      properties:
+        summary:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        start:
+          $ref: '#/components/schemas/EventDateTime'
+          nullable: true
+        end:
+          $ref: '#/components/schemas/EventDateTime'
+          nullable: true
+        attendees:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/EventAttendee'
+
+paths:
+  /users/me/calendarList:
+    get:
+      operationId: listCalendars
+      summary: List calendars
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarListResponse'
+
+  /calendars/{calendarId}:
+    get:
+      operationId: getCalendar
+      summary: Get a calendar
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Calendar'
+
+  /calendars/{calendarId}/events:
+    get:
+      operationId: listEvents
+      summary: List events
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timeMin
+          in: query
+          schema:
+            type: string
+        - name: timeMax
+          in: query
+          schema:
+            type: string
+        - name: maxResults
+          in: query
+          schema:
+            type: integer
+        - name: singleEvents
+          in: query
+          schema:
+            type: boolean
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+    post:
+      operationId: createEvent
+      summary: Create an event
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+
+  /calendars/{calendarId}/events/{eventId}:
+    get:
+      operationId: getEvent
+      summary: Get an event
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+    put:
+      operationId: updateEvent
+      summary: Update an event
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+    delete:
+      operationId: deleteEvent
+      summary: Delete an event
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Event deleted
+
+  /calendars/{calendarId}/events/quickAdd:
+    post:
+      operationId: quickAdd
+      summary: Quick add an event from text
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: text
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
