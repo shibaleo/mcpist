@@ -4,68 +4,54 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"mcpist/server/internal/httpclient"
+	"github.com/go-faster/jx"
+
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/googleappsscriptapi"
+	gen "mcpist/server/pkg/googleappsscriptapi/gen"
+	"mcpist/server/pkg/googledriveapi"
+	driveGen "mcpist/server/pkg/googledriveapi/gen"
 )
 
 const (
-	appsScriptAPIBase  = "https://script.googleapis.com/v1"
-	googleDriveAPIBase = "https://www.googleapis.com/drive/v3"
 	appsScriptVersion  = "v1"
 	googleTokenURL     = "https://oauth2.googleapis.com/token"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
+	tokenRefreshBuffer = 5 * 60
 )
 
-var client = httpclient.New()
+var toJSON = modules.ToJSON
 
 // GoogleAppsScriptModule implements the Module interface for Google Apps Script API
 type GoogleAppsScriptModule struct{}
 
-// New creates a new GoogleAppsScriptModule instance
-func New() *GoogleAppsScriptModule {
-	return &GoogleAppsScriptModule{}
-}
+func New() *GoogleAppsScriptModule { return &GoogleAppsScriptModule{} }
 
-// Module descriptions in multiple languages
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Google Apps Script API - Manage script projects, deployments, versions, and executions",
 	"ja-JP": "Google Apps Script API - スクリプトプロジェクト、デプロイ、バージョン、実行の管理",
 }
 
-// Name returns the module name
-func (m *GoogleAppsScriptModule) Name() string {
-	return "google_apps_script"
-}
-
-// Descriptions returns the module descriptions in all languages
-func (m *GoogleAppsScriptModule) Descriptions() modules.LocalizedText {
-	return moduleDescriptions
-}
-
-// Description returns the module description for a specific language
+func (m *GoogleAppsScriptModule) Name() string                        { return "google_apps_script" }
+func (m *GoogleAppsScriptModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
 func (m *GoogleAppsScriptModule) Description(lang string) string {
 	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
-
-// APIVersion returns the Google Apps Script API version
-func (m *GoogleAppsScriptModule) APIVersion() string {
-	return appsScriptVersion
+func (m *GoogleAppsScriptModule) APIVersion() string           { return appsScriptVersion }
+func (m *GoogleAppsScriptModule) Tools() []modules.Tool        { return toolDefinitions }
+func (m *GoogleAppsScriptModule) Resources() []modules.Resource { return nil }
+func (m *GoogleAppsScriptModule) ReadResource(ctx context.Context, uri string) (string, error) {
+	return "", fmt.Errorf("resources not supported")
 }
 
-// Tools returns all available tools
-func (m *GoogleAppsScriptModule) Tools() []modules.Tool {
-	return toolDefinitions
-}
-
-// ExecuteTool executes a tool by name and returns JSON response
 func (m *GoogleAppsScriptModule) ExecuteTool(ctx context.Context, name string, params map[string]any) (string, error) {
 	handler, ok := toolHandlers[name]
 	if !ok {
@@ -74,18 +60,13 @@ func (m *GoogleAppsScriptModule) ExecuteTool(ctx context.Context, name string, p
 	return handler(ctx, params)
 }
 
-// Resources returns all available resources (none for Google Apps Script)
-func (m *GoogleAppsScriptModule) Resources() []modules.Resource {
-	return nil
-}
-
-// ReadResource reads a resource by URI (not implemented)
-func (m *GoogleAppsScriptModule) ReadResource(ctx context.Context, uri string) (string, error) {
-	return "", fmt.Errorf("resources not supported")
+// ToCompact converts JSON result to compact format.
+func (m *GoogleAppsScriptModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
 }
 
 // =============================================================================
-// Token and Headers
+// Token and Client
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -101,7 +82,6 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	}
 	log.Printf("[google_apps_script] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
 
-	// Check if token needs refresh (OAuth2 only)
 	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
 		if needsRefresh(credentials) {
 			log.Printf("[google_apps_script] Token expired or expiring soon, refreshing...")
@@ -118,16 +98,13 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-// needsRefresh checks if the token is expired or will expire soon
 func needsRefresh(creds *store.Credentials) bool {
 	if creds.ExpiresAt == 0 {
 		return false
 	}
-	now := time.Now().Unix()
-	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
+	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
 }
 
-// refreshToken exchanges the refresh token for a new access token
 func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
 	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "google")
 	if err != nil {
@@ -148,50 +125,52 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send refresh request: %w", err)
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed with status: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("token refresh failed: status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var tokenResp struct {
 		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-		TokenType   string `json:"token_type"`
+		ExpiresIn   int64  `json:"expires_in"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
 
-	expiresAt := time.Now().Unix() + int64(tokenResp.ExpiresIn)
-
 	newCreds := &store.Credentials{
-		AuthType:     creds.AuthType,
+		AuthType:     store.AuthTypeOAuth2,
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: creds.RefreshToken,
-		ExpiresAt:    store.FlexibleTime(expiresAt),
+		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
 	}
 
-	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "google_apps_script", newCreds); err != nil {
-		log.Printf("[google_apps_script] Failed to update token in store: %v", err)
+	err = store.GetTokenStore().UpdateModuleToken(ctx, userID, "google_apps_script", newCreds)
+	if err != nil {
+		log.Printf("[google_apps_script] Failed to save refreshed token: %v", err)
 	}
 
 	return newCreds, nil
 }
 
-// headers builds request headers with auth token
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		log.Printf("[google_apps_script] No credentials available")
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
-	return map[string]string{
-		"Authorization": "Bearer " + creds.AccessToken,
-		"Content-Type":  "application/json",
+	return googleappsscriptapi.NewClient(creds.AccessToken)
+}
+
+func newDriveClient(ctx context.Context) (*driveGen.Client, error) {
+	creds := getCredentials(ctx)
+	if creds == nil {
+		return nil, fmt.Errorf("no credentials available")
 	}
+	return googledriveapi.NewClient(creds.AccessToken)
 }
 
 // =============================================================================
@@ -280,7 +259,7 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"script_id": {Type: "string", Description: "Script project ID"},
-				"files": {Type: "array", Description: "Array of file objects: [{name, type, source}]. Type: 'SERVER_JS' for .gs files, 'HTML' for .html files, 'JSON' for appsscript.json"},
+				"files":     {Type: "array", Description: "Array of file objects: [{name, type, source}]. Type: 'SERVER_JS' for .gs files, 'HTML' for .html files, 'JSON' for appsscript.json"},
 			},
 			Required: []string{"script_id", "files"},
 		},
@@ -526,42 +505,40 @@ var toolDefinitions = []modules.Tool{
 type toolHandler func(ctx context.Context, params map[string]any) (string, error)
 
 var toolHandlers = map[string]toolHandler{
-	// Project operations
-	"list_projects":  listProjects,
-	"get_project":    getProject,
-	"create_project": createProject,
-	"get_content":    getContent,
-	"update_content": updateContent,
-	// Version operations
-	"list_versions":  listVersions,
-	"get_version":    getVersion,
-	"create_version": createVersion,
-	// Deployment operations
+	"list_projects":     listProjects,
+	"get_project":       getProject,
+	"create_project":    createProject,
+	"get_content":       getContent,
+	"update_content":    updateContent,
+	"list_versions":     listVersions,
+	"get_version":       getVersion,
+	"create_version":    createVersion,
 	"list_deployments":  listDeployments,
 	"get_deployment":    getDeployment,
 	"create_deployment": createDeployment,
 	"update_deployment": updateDeployment,
 	"delete_deployment": deleteDeployment,
-	// Execution operations
-	"run_function":    runFunction,
-	"list_executions": listExecutions,
-	// Process operations
-	"list_processes": listProcesses,
-	// Metrics operations
-	"get_metrics": getMetrics,
+	"run_function":      runFunction,
+	"list_executions":   listExecutions,
+	"list_processes":    listProcesses,
+	"get_metrics":       getMetrics,
 }
 
 // =============================================================================
 // Project Operations
 // =============================================================================
 
+// listProjects uses the Drive API to search for Apps Script files.
 func listProjects(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
+	cli, err := newDriveClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	q := "mimeType='application/vnd.google-apps.script'"
 	if searchQuery, ok := params["query"].(string); ok && searchQuery != "" {
 		q += fmt.Sprintf(" and name contains '%s'", searchQuery)
 	}
-	query.Set("q", q)
 
 	pageSize := 20
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
@@ -570,77 +547,102 @@ func listProjects(ctx context.Context, params map[string]any) (string, error) {
 			pageSize = 100
 		}
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-	query.Set("fields", "files(id,name,createdTime,modifiedTime,webViewLink)")
 
-	endpoint := fmt.Sprintf("%s/files?%s", googleDriveAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	resp, err := cli.ListFiles(ctx, driveGen.ListFilesParams{
+		Q:        driveGen.NewOptString(q),
+		PageSize: driveGen.NewOptInt(pageSize),
+		Fields:   driveGen.NewOptString("files(id,name,createdTime,modifiedTime,webViewLink)"),
+	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to list projects: %w", err)
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(resp)
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	endpoint := fmt.Sprintf("%s/projects/%s", appsScriptAPIBase, url.PathEscape(scriptID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	resp, err := cli.GetProject(ctx, gen.GetProjectParams{ScriptId: scriptID})
+	if err != nil {
+		return "", fmt.Errorf("failed to get project: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func createProject(ctx context.Context, params map[string]any) (string, error) {
-	title, _ := params["title"].(string)
-
-	body := map[string]interface{}{
-		"title": title,
-	}
-
-	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
-		body["parentId"] = parentID
-	}
-
-	endpoint := fmt.Sprintf("%s/projects", appsScriptAPIBase)
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	title, _ := params["title"].(string)
+
+	reqBody := &gen.CreateProjectRequest{Title: title}
+	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
+		reqBody.ParentId = gen.NewOptString(parentID)
+	}
+
+	resp, err := cli.CreateProject(ctx, reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to create project: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func getContent(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	endpoint := fmt.Sprintf("%s/projects/%s/content", appsScriptAPIBase, url.PathEscape(scriptID))
-
-	if versionNumber, ok := params["version_number"].(float64); ok && versionNumber > 0 {
-		endpoint += fmt.Sprintf("?versionNumber=%d", int(versionNumber))
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	p := gen.GetContentParams{ScriptId: scriptID}
+	if vn, ok := params["version_number"].(float64); ok && vn > 0 {
+		p.VersionNumber = gen.NewOptInt(int(vn))
+	}
+
+	resp, err := cli.GetContent(ctx, p)
+	if err != nil {
+		return "", fmt.Errorf("failed to get content: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func updateContent(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-	files, _ := params["files"].([]interface{})
-
-	body := map[string]interface{}{
-		"files": files,
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/content", appsScriptAPIBase, url.PathEscape(scriptID))
-	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+	filesRaw, _ := params["files"].([]interface{})
+
+	var files []gen.ScriptFileInput
+	for _, f := range filesRaw {
+		fm, ok := f.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		fi := gen.ScriptFileInput{}
+		if name, ok := fm["name"].(string); ok {
+			fi.Name = gen.NewOptString(name)
+		}
+		if typ, ok := fm["type"].(string); ok {
+			fi.Type = gen.NewOptString(typ)
+		}
+		if src, ok := fm["source"].(string); ok {
+			fi.Source = gen.NewOptString(src)
+		}
+		files = append(files, fi)
+	}
+
+	resp, err := cli.UpdateContent(ctx, &gen.UpdateContentRequest{Files: files}, gen.UpdateContentParams{ScriptId: scriptID})
+	if err != nil {
+		return "", fmt.Errorf("failed to update content: %w", err)
+	}
+	return toJSON(resp)
 }
 
 // =============================================================================
@@ -648,56 +650,66 @@ func updateContent(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listVersions(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	query := url.Values{}
-	pageSize := 50
-	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 50 {
-			pageSize = 50
-		}
-	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
-	if pageToken, ok := params["page_token"].(string); ok && pageToken != "" {
-		query.Set("pageToken", pageToken)
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/versions?%s", appsScriptAPIBase, url.PathEscape(scriptID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	p := gen.ListVersionsParams{ScriptId: scriptID}
+	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
+		size := int(ps)
+		if size > 50 {
+			size = 50
+		}
+		p.PageSize = gen.NewOptInt(size)
+	}
+	if pt, ok := params["page_token"].(string); ok && pt != "" {
+		p.PageToken = gen.NewOptString(pt)
+	}
+
+	resp, err := cli.ListVersions(ctx, p)
+	if err != nil {
+		return "", fmt.Errorf("failed to list versions: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func getVersion(ctx context.Context, params map[string]any) (string, error) {
+	cli, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	scriptID, _ := params["script_id"].(string)
 	versionNumber, _ := params["version_number"].(float64)
 
-	endpoint := fmt.Sprintf("%s/projects/%s/versions/%d", appsScriptAPIBase, url.PathEscape(scriptID), int(versionNumber))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	resp, err := cli.GetVersion(ctx, gen.GetVersionParams{
+		ScriptId:      scriptID,
+		VersionNumber: int(versionNumber),
+	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get version: %w", err)
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(resp)
 }
 
 func createVersion(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	body := map[string]interface{}{}
-	if description, ok := params["description"].(string); ok && description != "" {
-		body["description"] = description
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/versions", appsScriptAPIBase, url.PathEscape(scriptID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	reqBody := &gen.CreateVersionRequest{}
+	if desc, ok := params["description"].(string); ok && desc != "" {
+		reqBody.Description = gen.NewOptString(desc)
+	}
+
+	resp, err := cli.CreateVersion(ctx, reqBody, gen.CreateVersionParams{ScriptId: scriptID})
+	if err != nil {
+		return "", fmt.Errorf("failed to create version: %w", err)
+	}
+	return toJSON(resp)
 }
 
 // =============================================================================
@@ -705,102 +717,117 @@ func createVersion(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func listDeployments(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	query := url.Values{}
-	pageSize := 50
-	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 50 {
-			pageSize = 50
-		}
-	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
-	if pageToken, ok := params["page_token"].(string); ok && pageToken != "" {
-		query.Set("pageToken", pageToken)
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/deployments?%s", appsScriptAPIBase, url.PathEscape(scriptID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	p := gen.ListDeploymentsParams{ScriptId: scriptID}
+	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
+		size := int(ps)
+		if size > 50 {
+			size = 50
+		}
+		p.PageSize = gen.NewOptInt(size)
+	}
+	if pt, ok := params["page_token"].(string); ok && pt != "" {
+		p.PageToken = gen.NewOptString(pt)
+	}
+
+	resp, err := cli.ListDeployments(ctx, p)
+	if err != nil {
+		return "", fmt.Errorf("failed to list deployments: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func getDeployment(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-	deploymentID, _ := params["deployment_id"].(string)
-
-	endpoint := fmt.Sprintf("%s/projects/%s/deployments/%s", appsScriptAPIBase, url.PathEscape(scriptID), url.PathEscape(deploymentID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+	deploymentID, _ := params["deployment_id"].(string)
+
+	resp, err := cli.GetDeployment(ctx, gen.GetDeploymentParams{
+		ScriptId:     scriptID,
+		DeploymentId: deploymentID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get deployment: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func createDeployment(ctx context.Context, params map[string]any) (string, error) {
+	cli, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	scriptID, _ := params["script_id"].(string)
 	versionNumber, _ := params["version_number"].(float64)
 
-	body := map[string]interface{}{
-		"versionNumber": int(versionNumber),
+	reqBody := &gen.CreateDeploymentRequest{VersionNumber: int(versionNumber)}
+	if desc, ok := params["description"].(string); ok && desc != "" {
+		reqBody.Description = gen.NewOptString(desc)
 	}
 
-	if description, ok := params["description"].(string); ok && description != "" {
-		body["description"] = description
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/deployments", appsScriptAPIBase, url.PathEscape(scriptID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	resp, err := cli.CreateDeployment(ctx, reqBody, gen.CreateDeploymentParams{ScriptId: scriptID})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create deployment: %w", err)
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(resp)
 }
 
 func updateDeployment(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-	deploymentID, _ := params["deployment_id"].(string)
-
-	deploymentConfig := map[string]interface{}{
-		"scriptId": scriptID,
-	}
-
-	if versionNumber, ok := params["version_number"].(float64); ok && versionNumber > 0 {
-		deploymentConfig["versionNumber"] = int(versionNumber)
-	}
-	if description, ok := params["description"].(string); ok && description != "" {
-		deploymentConfig["description"] = description
-	}
-
-	body := map[string]interface{}{
-		"deploymentConfig": deploymentConfig,
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/deployments/%s", appsScriptAPIBase, url.PathEscape(scriptID), url.PathEscape(deploymentID))
-	respBody, err := client.DoJSON("PUT", endpoint, headers(ctx), body)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+	deploymentID, _ := params["deployment_id"].(string)
+
+	config := gen.DeploymentConfig{
+		ScriptId: gen.NewOptString(scriptID),
+	}
+	if vn, ok := params["version_number"].(float64); ok && vn > 0 {
+		config.VersionNumber = gen.NewOptInt(int(vn))
+	}
+	if desc, ok := params["description"].(string); ok && desc != "" {
+		config.Description = gen.NewOptString(desc)
+	}
+
+	reqBody := &gen.UpdateDeploymentRequest{
+		DeploymentConfig: gen.NewOptDeploymentConfig(config),
+	}
+
+	resp, err := cli.UpdateDeployment(ctx, reqBody, gen.UpdateDeploymentParams{
+		ScriptId:     scriptID,
+		DeploymentId: deploymentID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to update deployment: %w", err)
+	}
+	return toJSON(resp)
 }
 
 func deleteDeployment(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-	deploymentID, _ := params["deployment_id"].(string)
-
-	endpoint := fmt.Sprintf("%s/projects/%s/deployments/%s", appsScriptAPIBase, url.PathEscape(scriptID), url.PathEscape(deploymentID))
-	respBody, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	if respBody == nil {
-		return `{"success": true}`, nil
+	scriptID, _ := params["script_id"].(string)
+	deploymentID, _ := params["deployment_id"].(string)
+
+	err = cli.DeleteDeployment(ctx, gen.DeleteDeploymentParams{
+		ScriptId:     scriptID,
+		DeploymentId: deploymentID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to delete deployment: %w", err)
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return `{"success":true}`, nil
 }
 
 // =============================================================================
@@ -808,60 +835,63 @@ func deleteDeployment(ctx context.Context, params map[string]any) (string, error
 // =============================================================================
 
 func runFunction(ctx context.Context, params map[string]any) (string, error) {
+	cli, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 	scriptID, _ := params["script_id"].(string)
 	functionName, _ := params["function_name"].(string)
 
-	body := map[string]interface{}{
-		"function": functionName,
-	}
+	reqBody := &gen.ExecutionRequest{Function: functionName}
 
 	if parameters, ok := params["parameters"].([]interface{}); ok && len(parameters) > 0 {
-		body["parameters"] = parameters
+		for _, p := range parameters {
+			raw, err := json.Marshal(p)
+			if err != nil {
+				continue
+			}
+			reqBody.Parameters = append(reqBody.Parameters, jx.Raw(raw))
+		}
 	}
 
 	if devMode, ok := params["dev_mode"].(bool); ok && devMode {
-		body["devMode"] = true
+		reqBody.DevMode = gen.NewOptBool(true)
 	}
 
-	endpoint := fmt.Sprintf("%s/scripts/%s:run", appsScriptAPIBase, url.PathEscape(scriptID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	resp, err := cli.RunScript(ctx, reqBody, gen.RunScriptParams{ScriptId: scriptID})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to run function: %w", err)
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(resp)
 }
 
 func listExecutions(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	query := url.Values{}
-	query.Set("scriptId", scriptID)
-
-	pageSize := 20
-	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 50 {
-			pageSize = 50
-		}
-	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
-	if pageToken, ok := params["page_token"].(string); ok && pageToken != "" {
-		query.Set("pageToken", pageToken)
-	}
-
-	// Build filter for script processes
-	filter := fmt.Sprintf("scriptId=%s", scriptID)
-	if functionName, ok := params["function_name"].(string); ok && functionName != "" {
-		filter += fmt.Sprintf(" AND functionName=%s", functionName)
-	}
-
-	endpoint := fmt.Sprintf("%s/processes:listScriptProcesses?%s", appsScriptAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	p := gen.ListScriptProcessesParams{ScriptId: scriptID}
+	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
+		size := int(ps)
+		if size > 50 {
+			size = 50
+		}
+		p.PageSize = gen.NewOptInt(size)
+	}
+	if pt, ok := params["page_token"].(string); ok && pt != "" {
+		p.PageToken = gen.NewOptString(pt)
+	}
+	if fn, ok := params["function_name"].(string); ok && fn != "" {
+		p.ScriptProcessFilterFunctionName = gen.NewOptString(fn)
+	}
+
+	resp, err := cli.ListScriptProcesses(ctx, p)
+	if err != nil {
+		return "", fmt.Errorf("failed to list executions: %w", err)
+	}
+	return toJSON(resp)
 }
 
 // =============================================================================
@@ -869,54 +899,48 @@ func listExecutions(ctx context.Context, params map[string]any) (string, error) 
 // =============================================================================
 
 func listProcesses(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
+	cli, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
 
-	pageSize := 50
+	p := gen.ListProcessesParams{}
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 50 {
-			pageSize = 50
+		size := int(ps)
+		if size > 50 {
+			size = 50
 		}
+		p.PageSize = gen.NewOptInt(size)
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
-	if pageToken, ok := params["page_token"].(string); ok && pageToken != "" {
-		query.Set("pageToken", pageToken)
+	if pt, ok := params["page_token"].(string); ok && pt != "" {
+		p.PageToken = gen.NewOptString(pt)
 	}
-
-	// Build userProcessFilter
-	filterParts := []string{}
-	if scriptID, ok := params["script_id"].(string); ok && scriptID != "" {
-		filterParts = append(filterParts, fmt.Sprintf("userProcessFilter.scriptId=%s", scriptID))
+	if sid, ok := params["script_id"].(string); ok && sid != "" {
+		p.UserProcessFilterScriptId = gen.NewOptString(sid)
 	}
-	if functionName, ok := params["function_name"].(string); ok && functionName != "" {
-		filterParts = append(filterParts, fmt.Sprintf("userProcessFilter.functionName=%s", functionName))
+	if fn, ok := params["function_name"].(string); ok && fn != "" {
+		p.UserProcessFilterFunctionName = gen.NewOptString(fn)
 	}
 	if statuses, ok := params["statuses"].([]interface{}); ok && len(statuses) > 0 {
 		for _, s := range statuses {
 			if status, ok := s.(string); ok {
-				filterParts = append(filterParts, fmt.Sprintf("userProcessFilter.statuses=%s", status))
+				p.UserProcessFilterStatuses = append(p.UserProcessFilterStatuses, status)
 			}
 		}
 	}
 	if types, ok := params["types"].([]interface{}); ok && len(types) > 0 {
 		for _, t := range types {
 			if typ, ok := t.(string); ok {
-				filterParts = append(filterParts, fmt.Sprintf("userProcessFilter.types=%s", typ))
+				p.UserProcessFilterTypes = append(p.UserProcessFilterTypes, typ)
 			}
 		}
 	}
 
-	for _, part := range filterParts {
-		query.Add("userProcessFilter", part)
-	}
-
-	endpoint := fmt.Sprintf("%s/processes?%s", appsScriptAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	resp, err := cli.ListProcesses(ctx, p)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to list processes: %w", err)
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(resp)
 }
 
 // =============================================================================
@@ -924,27 +948,28 @@ func listProcesses(ctx context.Context, params map[string]any) (string, error) {
 // =============================================================================
 
 func getMetrics(ctx context.Context, params map[string]any) (string, error) {
-	scriptID, _ := params["script_id"].(string)
-
-	query := url.Values{}
-
-	// metricsGranularity is required (WEEKLY or DAILY)
-	granularity := "WEEKLY"
-	if g, ok := params["metrics_granularity"].(string); ok && g != "" {
-		granularity = g
-	}
-	query.Set("metricsGranularity", granularity)
-
-	// Optional deployment filter
-	if deploymentID, ok := params["deployment_id"].(string); ok && deploymentID != "" {
-		query.Set("metricsFilter.deploymentId", deploymentID)
-	}
-
-	endpoint := fmt.Sprintf("%s/projects/%s/metrics?%s", appsScriptAPIBase, url.PathEscape(scriptID), query.Encode())
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	cli, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	scriptID, _ := params["script_id"].(string)
+
+	granularity := gen.GetMetricsMetricsGranularityWEEKLY
+	if g, ok := params["metrics_granularity"].(string); ok && g == "DAILY" {
+		granularity = gen.GetMetricsMetricsGranularityDAILY
+	}
+
+	p := gen.GetMetricsParams{
+		ScriptId:           scriptID,
+		MetricsGranularity: granularity,
+	}
+	if deploymentID, ok := params["deployment_id"].(string); ok && deploymentID != "" {
+		p.MetricsFilterDeploymentId = gen.NewOptString(deploymentID)
+	}
+
+	resp, err := cli.GetMetrics(ctx, p)
+	if err != nil {
+		return "", fmt.Errorf("failed to get metrics: %w", err)
+	}
+	return toJSON(resp)
 }

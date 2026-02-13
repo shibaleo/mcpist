@@ -4,67 +4,53 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/googledriveapi"
+	gen "mcpist/server/pkg/googledriveapi/gen"
 )
 
 const (
-	googleDriveAPIBase = "https://www.googleapis.com/drive/v3"
 	googleDriveVersion = "v3"
 	googleTokenURL     = "https://oauth2.googleapis.com/token"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
+	tokenRefreshBuffer = 5 * 60
 )
 
-var client = httpclient.New()
+var toJSON = modules.ToJSON
+
+// Standard file fields to request via ogen fields param
+const ogenFileFields = "id,name,mimeType,size,createdTime,modifiedTime,parents,webViewLink,iconLink,trashed"
 
 // GoogleDriveModule implements the Module interface for Google Drive API
 type GoogleDriveModule struct{}
 
-// New creates a new GoogleDriveModule instance
-func New() *GoogleDriveModule {
-	return &GoogleDriveModule{}
-}
+func New() *GoogleDriveModule { return &GoogleDriveModule{} }
 
-// Module descriptions in multiple languages
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Google Drive API - List, search, read, and manage files and folders",
 	"ja-JP": "Google Drive API - ファイルとフォルダの一覧表示、検索、読み取り、管理",
 }
 
-// Name returns the module name
-func (m *GoogleDriveModule) Name() string {
-	return "google_drive"
-}
-
-// Descriptions returns the module descriptions in all languages
-func (m *GoogleDriveModule) Descriptions() modules.LocalizedText {
-	return moduleDescriptions
-}
-
-// Description returns the module description for a specific language
+func (m *GoogleDriveModule) Name() string                        { return "google_drive" }
+func (m *GoogleDriveModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
 func (m *GoogleDriveModule) Description(lang string) string {
 	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
-
-// APIVersion returns the Google Drive API version
-func (m *GoogleDriveModule) APIVersion() string {
-	return googleDriveVersion
+func (m *GoogleDriveModule) APIVersion() string            { return googleDriveVersion }
+func (m *GoogleDriveModule) Tools() []modules.Tool         { return toolDefinitions }
+func (m *GoogleDriveModule) Resources() []modules.Resource { return nil }
+func (m *GoogleDriveModule) ReadResource(ctx context.Context, uri string) (string, error) {
+	return "", fmt.Errorf("resources not supported")
 }
 
-// Tools returns all available tools
-func (m *GoogleDriveModule) Tools() []modules.Tool {
-	return toolDefinitions
-}
-
-// ExecuteTool executes a tool by name and returns JSON response
 func (m *GoogleDriveModule) ExecuteTool(ctx context.Context, name string, params map[string]any) (string, error) {
 	handler, ok := toolHandlers[name]
 	if !ok {
@@ -73,18 +59,13 @@ func (m *GoogleDriveModule) ExecuteTool(ctx context.Context, name string, params
 	return handler(ctx, params)
 }
 
-// Resources returns all available resources (none for Google Drive)
-func (m *GoogleDriveModule) Resources() []modules.Resource {
-	return nil
-}
-
-// ReadResource reads a resource by URI (not implemented)
-func (m *GoogleDriveModule) ReadResource(ctx context.Context, uri string) (string, error) {
-	return "", fmt.Errorf("resources not supported")
+// ToCompact converts JSON result to compact format.
+func (m *GoogleDriveModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
 }
 
 // =============================================================================
-// Token and Headers
+// Token and Client
 // =============================================================================
 
 func getCredentials(ctx context.Context) *store.Credentials {
@@ -98,16 +79,13 @@ func getCredentials(ctx context.Context) *store.Credentials {
 		log.Printf("[google_drive] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[google_drive] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
 
-	// Check if token needs refresh (OAuth2 only)
 	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
 		if needsRefresh(credentials) {
 			log.Printf("[google_drive] Token expired or expiring soon, refreshing...")
 			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
 			if err != nil {
 				log.Printf("[google_drive] Token refresh failed: %v", err)
-				// Return original credentials and let the API call fail
 				return credentials
 			}
 			log.Printf("[google_drive] Token refreshed successfully")
@@ -118,26 +96,19 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	return credentials
 }
 
-// needsRefresh checks if the token is expired or will expire soon
 func needsRefresh(creds *store.Credentials) bool {
 	if creds.ExpiresAt == 0 {
-		// No expiry information, assume token is valid
 		return false
 	}
-	now := time.Now().Unix()
-	// Refresh if expired or expiring within buffer period
-	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
+	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
 }
 
-// refreshToken exchanges the refresh token for a new access token
 func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	// Get OAuth app credentials (client_id, client_secret) - shared with other Google modules
 	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "google")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
 	}
 
-	// Exchange refresh token for new access token
 	data := url.Values{}
 	data.Set("client_id", oauthApp.ClientID)
 	data.Set("client_secret", oauthApp.ClientSecret)
@@ -157,53 +128,47 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed: status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("token refresh failed: status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var tokenResp struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int64  `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-		Scope       string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
 
-	// Update credentials with new access token
 	newCreds := &store.Credentials{
 		AuthType:     store.AuthTypeOAuth2,
 		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: creds.RefreshToken, // Keep the same refresh token
+		RefreshToken: creds.RefreshToken,
 		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
 	}
 
-	// Save updated credentials to Vault
 	err = store.GetTokenStore().UpdateModuleToken(ctx, userID, "google_drive", newCreds)
 	if err != nil {
 		log.Printf("[google_drive] Failed to save refreshed token: %v", err)
-		// Continue anyway, the token is still valid for this request
 	}
 
 	return newCreds, nil
 }
 
-func headers(ctx context.Context) map[string]string {
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
+	return googledriveapi.NewClient(creds.AccessToken)
+}
 
-	h := map[string]string{
-		"Accept": "application/json",
+func getAccessToken(ctx context.Context) (string, error) {
+	creds := getCredentials(ctx)
+	if creds == nil {
+		return "", fmt.Errorf("no credentials available")
 	}
-
-	// OAuth2 uses Bearer token
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		h["Authorization"] = "Bearer " + creds.AccessToken
-	}
-
-	return h
+	return creds.AccessToken, nil
 }
 
 // =============================================================================
@@ -211,7 +176,6 @@ func headers(ctx context.Context) map[string]string {
 // =============================================================================
 
 var toolDefinitions = []modules.Tool{
-	// Files
 	{
 		ID:   "google_drive:list_files",
 		Name: "list_files",
@@ -223,11 +187,11 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"query":       {Type: "string", Description: "Search query (Google Drive query syntax, e.g., \"name contains 'report'\" or \"mimeType='application/pdf'\")"},
-				"folder_id":   {Type: "string", Description: "Folder ID to list contents of. Use 'root' for the root folder."},
-				"page_size":   {Type: "number", Description: "Maximum number of files to return (1-1000). Default: 100"},
-				"page_token":  {Type: "string", Description: "Token for pagination"},
-				"order_by":    {Type: "string", Description: "Sort order (e.g., 'name', 'modifiedTime desc', 'folder,name')"},
+				"query":           {Type: "string", Description: "Search query (Google Drive query syntax, e.g., \"name contains 'report'\" or \"mimeType='application/pdf'\")"},
+				"folder_id":       {Type: "string", Description: "Folder ID to list contents of. Use 'root' for the root folder."},
+				"page_size":       {Type: "number", Description: "Maximum number of files to return (1-1000). Default: 100"},
+				"page_token":      {Type: "string", Description: "Token for pagination"},
+				"order_by":        {Type: "string", Description: "Sort order (e.g., 'name', 'modifiedTime desc', 'folder,name')"},
 				"include_trashed": {Type: "boolean", Description: "Include trashed files. Default: false"},
 			},
 		},
@@ -282,7 +246,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"file_id"},
 		},
 	},
-	// Folders
 	{
 		ID:   "google_drive:create_folder",
 		Name: "create_folder",
@@ -300,7 +263,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"name"},
 		},
 	},
-	// File operations
 	{
 		ID:   "google_drive:copy_file",
 		Name: "copy_file",
@@ -370,7 +332,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"file_id"},
 		},
 	},
-	// About
 	{
 		ID:   "google_drive:get_about",
 		Name: "get_about",
@@ -384,7 +345,6 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{},
 		},
 	},
-	// Upload & Update
 	{
 		ID:   "google_drive:upload_file",
 		Name: "upload_file",
@@ -421,7 +381,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"file_id", "content"},
 		},
 	},
-	// Sharing & Permissions
 	{
 		ID:   "google_drive:list_permissions",
 		Name: "list_permissions",
@@ -449,11 +408,11 @@ var toolDefinitions = []modules.Tool{
 		InputSchema: modules.InputSchema{
 			Type: "object",
 			Properties: map[string]modules.Property{
-				"file_id":       {Type: "string", Description: "File or folder ID to share"},
-				"type":          {Type: "string", Description: "Permission type: 'user', 'group', 'domain', or 'anyone'"},
-				"role":          {Type: "string", Description: "Role: 'reader', 'commenter', 'writer', or 'owner'"},
-				"email_address": {Type: "string", Description: "Email address (required for type='user' or 'group')"},
-				"domain":        {Type: "string", Description: "Domain (required for type='domain')"},
+				"file_id":           {Type: "string", Description: "File or folder ID to share"},
+				"type":              {Type: "string", Description: "Permission type: 'user', 'group', 'domain', or 'anyone'"},
+				"role":              {Type: "string", Description: "Role: 'reader', 'commenter', 'writer', or 'owner'"},
+				"email_address":     {Type: "string", Description: "Email address (required for type='user' or 'group')"},
+				"domain":            {Type: "string", Description: "Domain (required for type='domain')"},
 				"send_notification": {Type: "boolean", Description: "Send notification email. Default: true"},
 			},
 			Required: []string{"file_id", "type", "role"},
@@ -476,7 +435,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"file_id", "permission_id"},
 		},
 	},
-	// Comments
 	{
 		ID:   "google_drive:list_comments",
 		Name: "list_comments",
@@ -512,7 +470,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"file_id", "content"},
 		},
 	},
-	// Revisions
 	{
 		ID:   "google_drive:list_revisions",
 		Name: "list_revisions",
@@ -531,7 +488,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"file_id"},
 		},
 	},
-	// Trash operations
 	{
 		ID:   "google_drive:restore_file",
 		Name: "restore_file",
@@ -561,7 +517,6 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{},
 		},
 	},
-	// Shared Drives
 	{
 		ID:   "google_drive:list_shared_drives",
 		Name: "list_shared_drives",
@@ -578,7 +533,6 @@ var toolDefinitions = []modules.Tool{
 			},
 		},
 	},
-	// Export
 	{
 		ID:   "google_drive:export_file",
 		Name: "export_file",
@@ -629,484 +583,306 @@ var toolHandlers = map[string]toolHandler{
 	"export_file":         exportFile,
 }
 
-// Standard file fields to request
-const fileFields = "id,name,mimeType,size,createdTime,modifiedTime,parents,webViewLink,iconLink,trashed"
-
 // =============================================================================
-// Files
+// Files (ogen)
 // =============================================================================
 
 func listFiles(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-
-	// Build query string
 	var queryParts []string
-
 	if q, ok := params["query"].(string); ok && q != "" {
 		queryParts = append(queryParts, q)
 	}
-
 	if folderID, ok := params["folder_id"].(string); ok && folderID != "" {
 		queryParts = append(queryParts, fmt.Sprintf("'%s' in parents", folderID))
 	}
-
-	// Include trashed
-	includeTrashed := false
-	if it, ok := params["include_trashed"].(bool); ok {
-		includeTrashed = it
-	}
+	includeTrashed, _ := params["include_trashed"].(bool)
 	if !includeTrashed {
 		queryParts = append(queryParts, "trashed=false")
 	}
 
+	p := gen.ListFilesParams{
+		PageSize: gen.NewOptInt(100),
+		Fields:   gen.NewOptString(fmt.Sprintf("nextPageToken,files(%s)", ogenFileFields)),
+	}
 	if len(queryParts) > 0 {
-		query.Set("q", strings.Join(queryParts, " and "))
+		p.Q = gen.NewOptString(strings.Join(queryParts, " and "))
 	}
-
-	// Page size
-	pageSize := 100
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 1000 {
-			pageSize = 1000
+		size := int(ps)
+		if size > 1000 {
+			size = 1000
 		}
+		p.PageSize = gen.NewOptInt(size)
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
-	// Page token
 	if pt, ok := params["page_token"].(string); ok && pt != "" {
-		query.Set("pageToken", pt)
+		p.PageToken = gen.NewOptString(pt)
 	}
-
-	// Order by
 	if ob, ok := params["order_by"].(string); ok && ob != "" {
-		query.Set("orderBy", ob)
+		p.OrderBy = gen.NewOptString(ob)
 	}
 
-	// Fields
-	query.Set("fields", fmt.Sprintf("nextPageToken,files(%s)", fileFields))
-
-	endpoint := fmt.Sprintf("%s/files?%s", googleDriveAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListFiles(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func getFile(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
-
-	query := url.Values{}
-	query.Set("fields", fileFields)
-
-	endpoint := fmt.Sprintf("%s/files/%s?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetFile(ctx, gen.GetFileParams{
+		FileId: fileID,
+		Fields: gen.NewOptString(ogenFileFields),
+	})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func searchFiles(ctx context.Context, params map[string]any) (string, error) {
 	var queryParts []string
-
-	// Name search
 	if name, ok := params["name"].(string); ok && name != "" {
 		queryParts = append(queryParts, fmt.Sprintf("name contains '%s'", name))
 	}
-
-	// Full-text search
 	if fullText, ok := params["full_text"].(string); ok && fullText != "" {
 		queryParts = append(queryParts, fmt.Sprintf("fullText contains '%s'", fullText))
 	}
-
-	// MIME type filter
 	if mimeType, ok := params["mime_type"].(string); ok && mimeType != "" {
 		queryParts = append(queryParts, fmt.Sprintf("mimeType='%s'", mimeType))
 	}
-
-	// Exclude trashed
 	queryParts = append(queryParts, "trashed=false")
 
-	query := url.Values{}
+	p := gen.ListFilesParams{
+		PageSize: gen.NewOptInt(100),
+		Fields:   gen.NewOptString(fmt.Sprintf("files(%s)", ogenFileFields)),
+	}
 	if len(queryParts) > 0 {
-		query.Set("q", strings.Join(queryParts, " and "))
+		p.Q = gen.NewOptString(strings.Join(queryParts, " and "))
 	}
-
-	// Page size
-	pageSize := 100
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 1000 {
-			pageSize = 1000
+		size := int(ps)
+		if size > 1000 {
+			size = 1000
 		}
+		p.PageSize = gen.NewOptInt(size)
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-	query.Set("fields", fmt.Sprintf("files(%s)", fileFields))
 
-	endpoint := fmt.Sprintf("%s/files?%s", googleDriveAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
-}
-
-func readFile(ctx context.Context, params map[string]any) (string, error) {
-	fileID, _ := params["file_id"].(string)
-
-	// First, get file metadata to determine MIME type
-	metaEndpoint := fmt.Sprintf("%s/files/%s?fields=mimeType,name", googleDriveAPIBase, url.PathEscape(fileID))
-	metaBody, err := client.DoJSON("GET", metaEndpoint, headers(ctx), nil)
+	res, err := c.ListFiles(ctx, p)
 	if err != nil {
 		return "", err
 	}
-
-	var meta struct {
-		MimeType string `json:"mimeType"`
-		Name     string `json:"name"`
-	}
-	if err := json.Unmarshal(metaBody, &meta); err != nil {
-		return "", fmt.Errorf("failed to parse file metadata: %w", err)
-	}
-
-	// Determine export format for Google Workspace files
-	var endpoint string
-	switch meta.MimeType {
-	case "application/vnd.google-apps.document":
-		// Google Docs -> export as plain text
-		endpoint = fmt.Sprintf("%s/files/%s/export?mimeType=text/plain", googleDriveAPIBase, url.PathEscape(fileID))
-	case "application/vnd.google-apps.spreadsheet":
-		// Google Sheets -> export as CSV
-		endpoint = fmt.Sprintf("%s/files/%s/export?mimeType=text/csv", googleDriveAPIBase, url.PathEscape(fileID))
-	case "application/vnd.google-apps.presentation":
-		// Google Slides -> export as plain text
-		endpoint = fmt.Sprintf("%s/files/%s/export?mimeType=text/plain", googleDriveAPIBase, url.PathEscape(fileID))
-	default:
-		// Binary/text files -> download directly
-		endpoint = fmt.Sprintf("%s/files/%s?alt=media", googleDriveAPIBase, url.PathEscape(fileID))
-	}
-
-	// Make request
-	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	hdrs := headers(ctx)
-	for k, v := range hdrs {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to read file: status %d", resp.StatusCode)
-	}
-
-	// Read content (limit to 1MB for safety)
-	const maxSize = 1 * 1024 * 1024 // 1MB
-	content := make([]byte, maxSize)
-	n, err := resp.Body.Read(content)
-	if err != nil && err.Error() != "EOF" {
-		// Ignore EOF, it's expected
-		if n == 0 {
-			return "", fmt.Errorf("failed to read content: %w", err)
-		}
-	}
-
-	result := map[string]interface{}{
-		"name":      meta.Name,
-		"mime_type": meta.MimeType,
-		"content":   string(content[:n]),
-		"truncated": n >= maxSize,
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	return toJSON(res)
 }
 
 // =============================================================================
-// Folders
+// Folders (ogen)
 // =============================================================================
 
 func createFolder(ctx context.Context, params map[string]any) (string, error) {
 	name, _ := params["name"].(string)
 
-	body := map[string]interface{}{
-		"name":     name,
-		"mimeType": "application/vnd.google-apps.folder",
+	meta := &gen.FileMetadata{
+		Name:     gen.NewOptNilString(name),
+		MimeType: gen.NewOptNilString("application/vnd.google-apps.folder"),
 	}
-
 	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
-		body["parents"] = []string{parentID}
+		meta.Parents = gen.NewOptNilStringArray([]string{parentID})
 	}
 
-	endpoint := googleDriveAPIBase + "/files"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.CreateFile(ctx, meta)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
-// File Operations
+// File Operations (ogen)
 // =============================================================================
 
 func copyFile(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 
-	body := map[string]interface{}{}
-
+	req := &gen.CopyRequest{}
 	if name, ok := params["name"].(string); ok && name != "" {
-		body["name"] = name
+		req.Name = gen.NewOptNilString(name)
 	}
-
 	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
-		body["parents"] = []string{parentID}
+		req.Parents = gen.NewOptNilStringArray([]string{parentID})
 	}
 
-	endpoint := fmt.Sprintf("%s/files/%s/copy", googleDriveAPIBase, url.PathEscape(fileID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.CopyFile(ctx, req, gen.CopyFileParams{FileId: fileID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func moveFile(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 	newParentID, _ := params["new_parent_id"].(string)
 
-	query := url.Values{}
-	query.Set("addParents", newParentID)
-
-	if removeParentID, ok := params["remove_parent_id"].(string); ok && removeParentID != "" {
-		query.Set("removeParents", removeParentID)
-	} else {
-		// If remove_parent_id not specified, we need to get current parents
-		metaEndpoint := fmt.Sprintf("%s/files/%s?fields=parents", googleDriveAPIBase, url.PathEscape(fileID))
-		metaBody, err := client.DoJSON("GET", metaEndpoint, headers(ctx), nil)
-		if err != nil {
-			return "", err
-		}
-		var meta struct {
-			Parents []string `json:"parents"`
-		}
-		if err := json.Unmarshal(metaBody, &meta); err == nil && len(meta.Parents) > 0 {
-			query.Set("removeParents", strings.Join(meta.Parents, ","))
-		}
-	}
-
-	query.Set("fields", fileFields)
-
-	endpoint := fmt.Sprintf("%s/files/%s?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+
+	p := gen.UpdateFileParams{
+		FileId:     fileID,
+		AddParents: gen.NewOptString(newParentID),
+		Fields:     gen.NewOptString(ogenFileFields),
+	}
+
+	if removeParentID, ok := params["remove_parent_id"].(string); ok && removeParentID != "" {
+		p.RemoveParents = gen.NewOptString(removeParentID)
+	} else {
+		existing, err := c.GetFile(ctx, gen.GetFileParams{FileId: fileID, Fields: gen.NewOptString("parents")})
+		if err == nil && existing.Parents.Set {
+			p.RemoveParents = gen.NewOptString(strings.Join(existing.Parents.Value, ","))
+		}
+	}
+
+	res, err := c.UpdateFile(ctx, &gen.FileMetadata{}, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func renameFile(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 	newName, _ := params["new_name"].(string)
 
-	body := map[string]interface{}{
-		"name": newName,
-	}
-
-	query := url.Values{}
-	query.Set("fields", fileFields)
-
-	endpoint := fmt.Sprintf("%s/files/%s?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.UpdateFile(ctx,
+		&gen.FileMetadata{Name: gen.NewOptNilString(newName)},
+		gen.UpdateFileParams{FileId: fileID, Fields: gen.NewOptString(ogenFileFields)},
+	)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func deleteFile(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 
-	// Move to trash (soft delete)
-	body := map[string]interface{}{
-		"trashed": true,
-	}
-
-	query := url.Values{}
-	query.Set("fields", fileFields)
-
-	endpoint := fmt.Sprintf("%s/files/%s?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.UpdateFile(ctx,
+		&gen.FileMetadata{Trashed: gen.NewOptNilBool(true)},
+		gen.UpdateFileParams{FileId: fileID, Fields: gen.NewOptString(ogenFileFields)},
+	)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func restoreFile(ctx context.Context, params map[string]any) (string, error) {
+	fileID, _ := params["file_id"].(string)
+
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	res, err := c.UpdateFile(ctx,
+		&gen.FileMetadata{Trashed: gen.NewOptNilBool(false)},
+		gen.UpdateFileParams{FileId: fileID, Fields: gen.NewOptString(ogenFileFields)},
+	)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
-// About
+// About (ogen)
 // =============================================================================
 
 func getAbout(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-	query.Set("fields", "user,storageQuota")
-
-	endpoint := fmt.Sprintf("%s/about?%s", googleDriveAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetAbout(ctx, gen.GetAboutParams{Fields: gen.NewOptString("user,storageQuota")})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
-// Upload & Update
+// Upload & Update (manual HTTP — see httpclient.go)
 // =============================================================================
 
-const googleDriveUploadBase = "https://www.googleapis.com/upload/drive/v3"
-
 func uploadFile(ctx context.Context, params map[string]any) (string, error) {
+	token, err := getAccessToken(ctx)
+	if err != nil {
+		return "", err
+	}
 	name, _ := params["name"].(string)
 	content, _ := params["content"].(string)
-	mimeType := "text/plain"
-	if mt, ok := params["mime_type"].(string); ok && mt != "" {
-		mimeType = mt
-	}
-
-	// Build metadata
-	metadata := map[string]interface{}{
-		"name":     name,
-		"mimeType": mimeType,
-	}
-	if parentID, ok := params["parent_id"].(string); ok && parentID != "" {
-		metadata["parents"] = []string{parentID}
-	}
-
-	// Use multipart upload for simplicity
-	boundary := "========multipart_boundary========"
-
-	// Build multipart body
-	var body strings.Builder
-	body.WriteString("--")
-	body.WriteString(boundary)
-	body.WriteString("\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n")
-	metaJSON, _ := json.Marshal(metadata)
-	body.Write(metaJSON)
-	body.WriteString("\r\n--")
-	body.WriteString(boundary)
-	body.WriteString("\r\nContent-Type: ")
-	body.WriteString(mimeType)
-	body.WriteString("\r\n\r\n")
-	body.WriteString(content)
-	body.WriteString("\r\n--")
-	body.WriteString(boundary)
-	body.WriteString("--")
-
-	endpoint := fmt.Sprintf("%s/files?uploadType=multipart&fields=%s", googleDriveUploadBase, fileFields)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(body.String()))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	hdrs := headers(ctx)
-	for k, v := range hdrs {
-		req.Header.Set(k, v)
-	}
-	req.Header.Set("Content-Type", "multipart/related; boundary="+boundary)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to upload file: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to upload file: status %d", resp.StatusCode)
-	}
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	mimeType, _ := params["mime_type"].(string)
+	parentID, _ := params["parent_id"].(string)
+	return doUploadFile(ctx, token, name, content, mimeType, parentID)
 }
 
 func updateFileContent(ctx context.Context, params map[string]any) (string, error) {
-	fileID, _ := params["file_id"].(string)
-	content, _ := params["content"].(string)
-
-	// Get current file metadata to preserve mime type
-	metaEndpoint := fmt.Sprintf("%s/files/%s?fields=mimeType", googleDriveAPIBase, url.PathEscape(fileID))
-	metaBody, err := client.DoJSON("GET", metaEndpoint, headers(ctx), nil)
+	token, err := getAccessToken(ctx)
 	if err != nil {
 		return "", err
 	}
-	var meta struct {
-		MimeType string `json:"mimeType"`
-	}
-	json.Unmarshal(metaBody, &meta)
-	mimeType := meta.MimeType
-	if mimeType == "" {
-		mimeType = "text/plain"
-	}
-
-	endpoint := fmt.Sprintf("%s/files/%s?uploadType=media&fields=%s", googleDriveUploadBase, url.PathEscape(fileID), fileFields)
-
-	req, err := http.NewRequestWithContext(ctx, "PATCH", endpoint, strings.NewReader(content))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	hdrs := headers(ctx)
-	for k, v := range hdrs {
-		req.Header.Set(k, v)
-	}
-	req.Header.Set("Content-Type", mimeType)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to update file: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to update file: status %d", resp.StatusCode)
-	}
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	fileID, _ := params["file_id"].(string)
+	content, _ := params["content"].(string)
+	return doUpdateFileContent(ctx, token, fileID, content)
 }
 
 // =============================================================================
-// Permissions
+// Permissions (ogen)
 // =============================================================================
 
 func listPermissions(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 
-	query := url.Values{}
-	query.Set("fields", "permissions(id,type,role,emailAddress,domain,displayName)")
-
-	endpoint := fmt.Sprintf("%s/files/%s/permissions?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListPermissions(ctx, gen.ListPermissionsParams{
+		FileId: fileID,
+		Fields: gen.NewOptString("permissions(id,type,role,emailAddress,domain,displayName)"),
+	})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func shareFile(ctx context.Context, params map[string]any) (string, error) {
@@ -1114,279 +890,206 @@ func shareFile(ctx context.Context, params map[string]any) (string, error) {
 	permType, _ := params["type"].(string)
 	role, _ := params["role"].(string)
 
-	body := map[string]interface{}{
-		"type": permType,
-		"role": role,
+	req := &gen.PermissionRequest{
+		Type: gen.NewOptString(permType),
+		Role: gen.NewOptString(role),
 	}
-
 	if email, ok := params["email_address"].(string); ok && email != "" {
-		body["emailAddress"] = email
+		req.EmailAddress = gen.NewOptNilString(email)
 	}
 	if domain, ok := params["domain"].(string); ok && domain != "" {
-		body["domain"] = domain
+		req.Domain = gen.NewOptNilString(domain)
 	}
 
-	query := url.Values{}
-	query.Set("fields", "id,type,role,emailAddress,domain,displayName")
+	p := gen.CreatePermissionParams{
+		FileId: fileID,
+		Fields: gen.NewOptString("id,type,role,emailAddress,domain,displayName"),
+	}
 
-	// Send notification by default
 	sendNotification := true
 	if sn, ok := params["send_notification"].(bool); ok {
 		sendNotification = sn
 	}
 	if !sendNotification {
-		query.Set("sendNotificationEmail", "false")
+		p.SendNotificationEmail = gen.NewOptBool(false)
 	}
 
-	endpoint := fmt.Sprintf("%s/files/%s/permissions?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.CreatePermission(ctx, req, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func deletePermission(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 	permissionID, _ := params["permission_id"].(string)
 
-	endpoint := fmt.Sprintf("%s/files/%s/permissions/%s", googleDriveAPIBase, url.PathEscape(fileID), url.PathEscape(permissionID))
-
-	req, err := http.NewRequestWithContext(ctx, "DELETE", endpoint, nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", err
 	}
-
-	hdrs := headers(ctx)
-	for k, v := range hdrs {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+	err = c.DeletePermission(ctx, gen.DeletePermissionParams{FileId: fileID, PermissionId: permissionID})
 	if err != nil {
-		return "", fmt.Errorf("failed to delete permission: %w", err)
+		return "", err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to delete permission: status %d", resp.StatusCode)
-	}
-
-	result := map[string]interface{}{
-		"success": true,
-		"message": "Permission deleted successfully",
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	return `{"success":true,"message":"Permission deleted successfully"}`, nil
 }
 
 // =============================================================================
-// Comments
+// Comments (ogen)
 // =============================================================================
 
 func listComments(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 
-	query := url.Values{}
-	query.Set("fields", "comments(id,content,author,createdTime,modifiedTime,resolved)")
-
-	pageSize := 20
+	p := gen.ListCommentsParams{
+		FileId:   fileID,
+		PageSize: gen.NewOptInt(20),
+		Fields:   gen.NewOptString("comments(id,content,author,createdTime,modifiedTime,resolved)"),
+	}
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 100 {
-			pageSize = 100
+		size := int(ps)
+		if size > 100 {
+			size = 100
 		}
+		p.PageSize = gen.NewOptInt(size)
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
 	if pt, ok := params["page_token"].(string); ok && pt != "" {
-		query.Set("pageToken", pt)
+		p.PageToken = gen.NewOptString(pt)
 	}
 
-	endpoint := fmt.Sprintf("%s/files/%s/comments?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListComments(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createComment(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 	content, _ := params["content"].(string)
 
-	body := map[string]interface{}{
-		"content": content,
-	}
-
-	query := url.Values{}
-	query.Set("fields", "id,content,author,createdTime")
-
-	endpoint := fmt.Sprintf("%s/files/%s/comments?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.CreateComment(ctx,
+		&gen.CommentRequest{Content: gen.NewOptString(content)},
+		gen.CreateCommentParams{
+			FileId: fileID,
+			Fields: gen.NewOptString("id,content,author,createdTime"),
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
-// Revisions
+// Revisions (ogen)
 // =============================================================================
 
 func listRevisions(ctx context.Context, params map[string]any) (string, error) {
 	fileID, _ := params["file_id"].(string)
 
-	query := url.Values{}
-	query.Set("fields", "revisions(id,mimeType,modifiedTime,keepForever,size)")
-
-	pageSize := 100
+	p := gen.ListRevisionsParams{
+		FileId:   fileID,
+		PageSize: gen.NewOptInt(100),
+		Fields:   gen.NewOptString("revisions(id,mimeType,modifiedTime,keepForever,size)"),
+	}
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 1000 {
-			pageSize = 1000
+		size := int(ps)
+		if size > 1000 {
+			size = 1000
 		}
+		p.PageSize = gen.NewOptInt(size)
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
 	if pt, ok := params["page_token"].(string); ok && pt != "" {
-		query.Set("pageToken", pt)
+		p.PageToken = gen.NewOptString(pt)
 	}
 
-	endpoint := fmt.Sprintf("%s/files/%s/revisions?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
-}
-
-// =============================================================================
-// Trash Operations
-// =============================================================================
-
-func restoreFile(ctx context.Context, params map[string]any) (string, error) {
-	fileID, _ := params["file_id"].(string)
-
-	body := map[string]interface{}{
-		"trashed": false,
-	}
-
-	query := url.Values{}
-	query.Set("fields", fileFields)
-
-	endpoint := fmt.Sprintf("%s/files/%s?%s", googleDriveAPIBase, url.PathEscape(fileID), query.Encode())
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	res, err := c.ListRevisions(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	return toJSON(res)
 }
+
+// =============================================================================
+// Trash (manual HTTP — see httpclient.go)
+// =============================================================================
 
 func emptyTrash(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := fmt.Sprintf("%s/files/trash", googleDriveAPIBase)
-
-	req, err := http.NewRequestWithContext(ctx, "DELETE", endpoint, nil)
+	token, err := getAccessToken(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", err
 	}
-
-	hdrs := headers(ctx)
-	for k, v := range hdrs {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to empty trash: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to empty trash: status %d", resp.StatusCode)
-	}
-
-	result := map[string]interface{}{
-		"success": true,
-		"message": "Trash emptied successfully",
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	return doEmptyTrash(ctx, token)
 }
 
 // =============================================================================
-// Shared Drives
+// Shared Drives (ogen)
 // =============================================================================
 
 func listSharedDrives(ctx context.Context, params map[string]any) (string, error) {
-	query := url.Values{}
-
-	pageSize := 100
+	p := gen.ListDrivesParams{
+		PageSize: gen.NewOptInt(100),
+	}
 	if ps, ok := params["page_size"].(float64); ok && ps > 0 {
-		pageSize = int(ps)
-		if pageSize > 100 {
-			pageSize = 100
+		size := int(ps)
+		if size > 100 {
+			size = 100
 		}
+		p.PageSize = gen.NewOptInt(size)
 	}
-	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-
 	if pt, ok := params["page_token"].(string); ok && pt != "" {
-		query.Set("pageToken", pt)
+		p.PageToken = gen.NewOptString(pt)
 	}
 
-	endpoint := fmt.Sprintf("%s/drives?%s", googleDriveAPIBase, query.Encode())
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListDrives(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 // =============================================================================
-// Export
+// Read & Export (manual HTTP — see httpclient.go)
 // =============================================================================
 
+func readFile(ctx context.Context, params map[string]any) (string, error) {
+	token, err := getAccessToken(ctx)
+	if err != nil {
+		return "", err
+	}
+	fileID, _ := params["file_id"].(string)
+	return doReadFile(ctx, token, fileID)
+}
+
 func exportFile(ctx context.Context, params map[string]any) (string, error) {
+	token, err := getAccessToken(ctx)
+	if err != nil {
+		return "", err
+	}
 	fileID, _ := params["file_id"].(string)
 	mimeType, _ := params["mime_type"].(string)
-
-	endpoint := fmt.Sprintf("%s/files/%s/export?mimeType=%s", googleDriveAPIBase, url.PathEscape(fileID), url.QueryEscape(mimeType))
-
-	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	hdrs := headers(ctx)
-	for k, v := range hdrs {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to export file: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to export file: status %d", resp.StatusCode)
-	}
-
-	// Read content (limit to 1MB for safety)
-	const maxSize = 1 * 1024 * 1024 // 1MB
-	content := make([]byte, maxSize)
-	n, err := resp.Body.Read(content)
-	if err != nil && err.Error() != "EOF" {
-		if n == 0 {
-			return "", fmt.Errorf("failed to read content: %w", err)
-		}
-	}
-
-	result := map[string]interface{}{
-		"mime_type": mimeType,
-		"content":   string(content[:n]),
-		"truncated": n >= maxSize,
-	}
-	resultBytes, _ := json.Marshal(result)
-	return httpclient.PrettyJSON(resultBytes), nil
+	return doExportFile(ctx, token, fileID, mimeType)
 }
