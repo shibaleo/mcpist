@@ -74,12 +74,7 @@ func (m *NotionModule) ExecuteTool(ctx context.Context, name string, params map[
 // ToCompact converts JSON result to compact format (MD or CSV)
 // Implements modules.CompactConverter interface
 func (m *NotionModule) ToCompact(toolName string, jsonResult string) string {
-	switch toolName {
-	case "get_page", "get_page_content", "list_comments":
-		return formatResult(toolName, "md", jsonResult)
-	default:
-		return formatResult(toolName, "csv", jsonResult)
-	}
+	return formatCompact(toolName, jsonResult)
 }
 
 // Resources returns all available resources

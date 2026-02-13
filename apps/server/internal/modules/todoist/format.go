@@ -7,41 +7,6 @@ import (
 )
 
 // =============================================================================
-// Common response formatters — compact by default, format=json for raw
-// =============================================================================
-
-// compactReadResult returns compact format by default, raw JSON only when format=json.
-func compactReadResult(params map[string]any, toolName, jsonStr string) string {
-	if f, _ := params["format"].(string); f == "json" {
-		return jsonStr
-	}
-	return formatCompact(toolName, jsonStr)
-}
-
-// compactWriteResult extracts only the specified keys from a JSON response.
-// Returns raw JSON when params["format"] == "json".
-func compactWriteResult(params map[string]any, jsonStr string, keys ...string) (string, error) {
-	if f, _ := params["format"].(string); f == "json" {
-		return jsonStr, nil
-	}
-	var data map[string]any
-	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
-		return jsonStr, nil
-	}
-	result := make(map[string]any, len(keys))
-	for _, k := range keys {
-		if v, ok := data[k]; ok && v != nil {
-			result[k] = v
-		}
-	}
-	out, err := json.Marshal(result)
-	if err != nil {
-		return jsonStr, nil
-	}
-	return string(out), nil
-}
-
-// =============================================================================
 // Compact formatters per tool
 // =============================================================================
 
@@ -55,6 +20,8 @@ func formatCompact(toolName, jsonStr string) string {
 		return tasksToCSV(jsonStr)
 	case "get_task":
 		return taskToCompact(jsonStr)
+	case "create_task", "update_task":
+		return pickKeys(jsonStr, "id", "content", "projectId", "due", "priority", "labels")
 	case "list_sections":
 		return sectionsToCSV(jsonStr)
 	case "list_labels":
@@ -62,6 +29,25 @@ func formatCompact(toolName, jsonStr string) string {
 	default:
 		return jsonStr
 	}
+}
+
+// pickKeys extracts only the specified keys from a JSON object.
+func pickKeys(jsonStr string, keys ...string) string {
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+		return jsonStr
+	}
+	result := make(map[string]any, len(keys))
+	for _, k := range keys {
+		if v, ok := data[k]; ok && v != nil {
+			result[k] = v
+		}
+	}
+	out, err := json.Marshal(result)
+	if err != nil {
+		return jsonStr
+	}
+	return string(out)
 }
 
 // projectsToCSV: id,name,isFavorite,inboxProject,viewStyle

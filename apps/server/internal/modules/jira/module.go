@@ -68,6 +68,12 @@ func (m *JiraModule) ExecuteTool(ctx context.Context, name string, params map[st
 	return handler(ctx, params)
 }
 
+// ToCompact converts JSON result to compact format (MD or CSV)
+// Implements modules.CompactConverter interface
+func (m *JiraModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
+}
+
 // Resources returns all available resources (none for Jira)
 func (m *JiraModule) Resources() []modules.Resource {
 	return nil

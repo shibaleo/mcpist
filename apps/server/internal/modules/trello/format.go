@@ -7,41 +7,6 @@ import (
 )
 
 // =============================================================================
-// Common response formatters — compact by default, format=json for raw
-// =============================================================================
-
-// compactReadResult returns compact format by default, raw JSON only when format=json.
-func compactReadResult(params map[string]any, toolName, jsonStr string) string {
-	if f, _ := params["format"].(string); f == "json" {
-		return jsonStr
-	}
-	return formatCompact(toolName, jsonStr)
-}
-
-// compactWriteResult extracts only the specified keys from a JSON response.
-// Returns raw JSON when params["format"] == "json".
-func compactWriteResult(params map[string]any, jsonStr string, keys ...string) (string, error) {
-	if f, _ := params["format"].(string); f == "json" {
-		return jsonStr, nil
-	}
-	var data map[string]any
-	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
-		return jsonStr, nil
-	}
-	result := make(map[string]any, len(keys))
-	for _, k := range keys {
-		if v, ok := data[k]; ok && v != nil {
-			result[k] = v
-		}
-	}
-	out, err := json.Marshal(result)
-	if err != nil {
-		return jsonStr, nil
-	}
-	return string(out), nil
-}
-
-// =============================================================================
 // Compact formatters per tool
 // =============================================================================
 
@@ -61,9 +26,34 @@ func formatCompact(toolName, jsonStr string) string {
 		return checklistsToCSV(jsonStr)
 	case "get_checklist_items":
 		return checkItemsToCSV(jsonStr)
+	case "create_card", "update_card", "move_card":
+		return pickKeys(jsonStr, "id", "name", "idList")
+	case "create_checklist":
+		return pickKeys(jsonStr, "id", "name", "idCard")
+	case "add_checklist_item", "update_checklist_item":
+		return pickKeys(jsonStr, "id", "name", "state")
 	default:
 		return jsonStr
 	}
+}
+
+// pickKeys extracts specified keys from a JSON object.
+func pickKeys(jsonStr string, keys ...string) string {
+	var data map[string]any
+	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+		return jsonStr
+	}
+	result := make(map[string]any, len(keys))
+	for _, k := range keys {
+		if v, ok := data[k]; ok && v != nil {
+			result[k] = v
+		}
+	}
+	out, err := json.Marshal(result)
+	if err != nil {
+		return jsonStr
+	}
+	return string(out)
 }
 
 // boardsToCSV: id,name,closed

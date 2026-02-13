@@ -65,6 +65,12 @@ func (m *GitHubModule) ExecuteTool(ctx context.Context, name string, params map[
 	return handler(ctx, params)
 }
 
+// ToCompact converts JSON result to compact format (MD or CSV)
+// Implements modules.CompactConverter interface
+func (m *GitHubModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
+}
+
 // Resources returns all available resources (none for GitHub)
 func (m *GitHubModule) Resources() []modules.Resource {
 	return nil

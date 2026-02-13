@@ -64,6 +64,12 @@ func (m *ConfluenceModule) ExecuteTool(ctx context.Context, name string, params 
 	return handler(ctx, params)
 }
 
+// ToCompact converts JSON result to compact format (MD or CSV)
+// Implements modules.CompactConverter interface
+func (m *ConfluenceModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
+}
+
 // Resources returns all available resources (none for Confluence)
 func (m *ConfluenceModule) Resources() []modules.Resource {
 	return nil
