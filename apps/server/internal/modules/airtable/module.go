@@ -2,26 +2,19 @@ package airtable
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"net/url"
 	"strings"
-	"time"
 
+	"mcpist/server/internal/broker"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
 	"mcpist/server/pkg/airtableapi"
 	gen "mcpist/server/pkg/airtableapi/gen"
 )
 
 const (
-	airtableTokenURL   = "https://airtable.com/oauth2/v1/token"
 	airtableAPIVersion = "v0"
-	tokenRefreshBuffer = 5 * 60
 )
 
 // AirtableModule implements the Module interface for Airtable API
@@ -62,85 +55,16 @@ func (m *AirtableModule) ToCompact(toolName string, jsonResult string) string {
 // Token and Headers
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "airtable")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "airtable")
 	if err != nil {
 		return nil
 	}
-	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
-		if needsRefresh(credentials) {
-			log.Printf("[airtable] Token expired or expiring soon, refreshing...")
-			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
-			if err != nil {
-				log.Printf("[airtable] Token refresh failed: %v", err)
-				return credentials
-			}
-			log.Printf("[airtable] Token refreshed successfully")
-			return refreshed
-		}
-	}
 	return credentials
-}
-
-func needsRefresh(creds *store.Credentials) bool {
-	if creds.ExpiresAt == 0 {
-		return false
-	}
-	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
-}
-
-func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "airtable")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
-	}
-	basicAuth := base64.StdEncoding.EncodeToString([]byte(oauthApp.ClientID + ":" + oauthApp.ClientSecret))
-
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", creds.RefreshToken)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", airtableTokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create refresh request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Basic "+basicAuth)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send refresh request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed with status: %d", resp.StatusCode)
-	}
-
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int    `json:"expires_in"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	newCreds := &store.Credentials{
-		AuthType:     creds.AuthType,
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: tokenResp.RefreshToken,
-		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + int64(tokenResp.ExpiresIn)),
-	}
-
-	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "airtable", newCreds); err != nil {
-		log.Printf("[airtable] Failed to save refreshed token: %v", err)
-	}
-	return newCreds, nil
 }
 
 // =============================================================================

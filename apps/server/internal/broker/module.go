@@ -1,4 +1,4 @@
-package store
+package broker
 
 import (
 	"encoding/json"

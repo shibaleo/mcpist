@@ -8,7 +8,7 @@ import (
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 	"mcpist/server/pkg/grafanaapi"
 	gen "mcpist/server/pkg/grafanaapi/gen"
 
@@ -83,12 +83,12 @@ func (m *GrafanaModule) ReadResource(ctx context.Context, uri string) (string, e
 // ogen client helper
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "grafana")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "grafana")
 	if err != nil {
 		return nil
 	}
@@ -108,7 +108,7 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	serverURL := strings.TrimRight(base, "/")
 
 	switch creds.AuthType {
-	case store.AuthTypeBasic:
+	case broker.AuthTypeBasic:
 		return grafanaapi.NewBasicClient(serverURL, creds.Username, creds.Password)
 	default:
 		return grafanaapi.NewBearerClient(serverURL, creds.AccessToken)
@@ -422,6 +422,7 @@ var toolDefinitions = []modules.Tool{
 		},
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
+			Type: "object",
 			Properties: map[string]modules.Property{
 				"datasource_uid": {Type: "string", Description: "Data source UID (use list_datasources to find)"},
 				"expr":           {Type: "string", Description: "Query expression (LogQL for Loki, PromQL for Prometheus, etc.)"},

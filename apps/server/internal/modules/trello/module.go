@@ -7,7 +7,7 @@ import (
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 	"mcpist/server/pkg/trelloapi"
 	gen "mcpist/server/pkg/trelloapi/gen"
 )
@@ -84,13 +84,13 @@ func (m *TrelloModule) ReadResource(ctx context.Context, uri string) (string, er
 // Client / Auth
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		log.Printf("[trello] No auth context")
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "trello")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "trello")
 	if err != nil {
 		log.Printf("[trello] GetModuleToken error: %v", err)
 		return nil

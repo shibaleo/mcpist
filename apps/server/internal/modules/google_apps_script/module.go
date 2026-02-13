@@ -4,18 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/go-faster/jx"
 
+	"mcpist/server/internal/broker"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
 	"mcpist/server/pkg/googleappsscriptapi"
 	gen "mcpist/server/pkg/googleappsscriptapi/gen"
 	"mcpist/server/pkg/googledriveapi"
@@ -23,9 +18,7 @@ import (
 )
 
 const (
-	appsScriptVersion  = "v1"
-	googleTokenURL     = "https://oauth2.googleapis.com/token"
-	tokenRefreshBuffer = 5 * 60
+	appsScriptVersion = "v1"
 )
 
 var toJSON = modules.ToJSON
@@ -69,92 +62,18 @@ func (m *GoogleAppsScriptModule) ToCompact(toolName string, jsonResult string) s
 // Token and Client
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		log.Printf("[google_apps_script] No auth context")
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "google_apps_script")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "google_apps_script")
 	if err != nil {
 		log.Printf("[google_apps_script] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[google_apps_script] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
-
-	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
-		if needsRefresh(credentials) {
-			log.Printf("[google_apps_script] Token expired or expiring soon, refreshing...")
-			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
-			if err != nil {
-				log.Printf("[google_apps_script] Token refresh failed: %v", err)
-				return credentials
-			}
-			log.Printf("[google_apps_script] Token refreshed successfully")
-			return refreshed
-		}
-	}
-
 	return credentials
-}
-
-func needsRefresh(creds *store.Credentials) bool {
-	if creds.ExpiresAt == 0 {
-		return false
-	}
-	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
-}
-
-func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "google")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
-	}
-
-	data := url.Values{}
-	data.Set("client_id", oauthApp.ClientID)
-	data.Set("client_secret", oauthApp.ClientSecret)
-	data.Set("refresh_token", creds.RefreshToken)
-	data.Set("grant_type", "refresh_token")
-
-	req, err := http.NewRequestWithContext(ctx, "POST", googleTokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create refresh request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("token refresh failed: status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var tokenResp struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int64  `json:"expires_in"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	newCreds := &store.Credentials{
-		AuthType:     store.AuthTypeOAuth2,
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: creds.RefreshToken,
-		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
-	}
-
-	err = store.GetTokenStore().UpdateModuleToken(ctx, userID, "google_apps_script", newCreds)
-	if err != nil {
-		log.Printf("[google_apps_script] Failed to save refreshed token: %v", err)
-	}
-
-	return newCreds, nil
 }
 
 func newOgenClient(ctx context.Context) (*gen.Client, error) {

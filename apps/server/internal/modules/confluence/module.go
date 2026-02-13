@@ -7,7 +7,7 @@ import (
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 	"mcpist/server/pkg/confluenceapi"
 	gen "mcpist/server/pkg/confluenceapi/gen"
 )
@@ -84,12 +84,12 @@ func (m *ConfluenceModule) ReadResource(ctx context.Context, uri string) (string
 // ogen client helper
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "confluence")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "confluence")
 	if err != nil {
 		return nil
 	}
@@ -103,7 +103,7 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	}
 
 	switch creds.AuthType {
-	case store.AuthTypeBasic:
+	case broker.AuthTypeBasic:
 		domain, _ := creds.Metadata["domain"].(string)
 		if domain == "" {
 			return nil, fmt.Errorf("confluence domain not configured")

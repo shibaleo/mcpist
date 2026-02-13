@@ -2,25 +2,18 @@ package microsoft_todo
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
+	"mcpist/server/internal/broker"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
 	"mcpist/server/pkg/microsofttodoapi"
 	gen "mcpist/server/pkg/microsofttodoapi/gen"
 )
 
 const (
-	microsoftTokenURL  = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-	apiVersion         = "v1.0"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
+	apiVersion = "v1.0"
 )
 
 // MicrosoftTodoModule implements the Module interface for Microsoft To Do API
@@ -66,95 +59,18 @@ func (m *MicrosoftTodoModule) ToCompact(toolName string, jsonResult string) stri
 // Token and Headers
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		log.Printf("[microsoft_todo] No auth context")
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "microsoft_todo")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "microsoft_todo")
 	if err != nil {
 		log.Printf("[microsoft_todo] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[microsoft_todo] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
-
-	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
-		if needsRefresh(credentials) {
-			log.Printf("[microsoft_todo] Token expired or expiring soon, refreshing...")
-			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
-			if err != nil {
-				log.Printf("[microsoft_todo] Token refresh failed: %v", err)
-				return credentials
-			}
-			log.Printf("[microsoft_todo] Token refreshed successfully")
-			return refreshed
-		}
-	}
 	return credentials
-}
-
-func needsRefresh(creds *store.Credentials) bool {
-	if creds.ExpiresAt == 0 {
-		return false
-	}
-	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
-}
-
-func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "microsoft")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
-	}
-
-	data := url.Values{}
-	data.Set("client_id", oauthApp.ClientID)
-	data.Set("client_secret", oauthApp.ClientSecret)
-	data.Set("refresh_token", creds.RefreshToken)
-	data.Set("grant_type", "refresh_token")
-	data.Set("scope", "offline_access Tasks.ReadWrite")
-
-	req, err := http.NewRequestWithContext(ctx, "POST", microsoftTokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create refresh request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed: status %d", resp.StatusCode)
-	}
-
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int64  `json:"expires_in"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	refreshTokenToSave := creds.RefreshToken
-	if tokenResp.RefreshToken != "" {
-		refreshTokenToSave = tokenResp.RefreshToken
-	}
-
-	newCreds := &store.Credentials{
-		AuthType:     store.AuthTypeOAuth2,
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: refreshTokenToSave,
-		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
-	}
-
-	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "microsoft_todo", newCreds); err != nil {
-		log.Printf("[microsoft_todo] Failed to save refreshed token: %v", err)
-	}
-	return newCreds, nil
 }
 
 // =============================================================================

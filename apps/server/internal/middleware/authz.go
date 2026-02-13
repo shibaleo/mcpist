@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"mcpist/server/internal/observability"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 )
 
 // ContextKey is the type for context keys
@@ -34,7 +34,7 @@ type AuthContext struct {
 	EnabledModules     []string            // Modules with at least one enabled tool (derived by RPC)
 	EnabledTools       map[string][]string // module -> []tool_id (whitelist)
 	Language           string              // BCP47 language code (e.g., "en-US", "ja-JP")
-	ModuleDescriptions store.ModuleDescriptions
+	ModuleDescriptions broker.ModuleDescriptions
 }
 
 // TotalCredits returns the sum of free and paid credits
@@ -45,12 +45,12 @@ func (ctx *AuthContext) TotalCredits() int {
 // Authorizer handles authorization checks
 type Authorizer struct {
 	gatewaySecret string
-	store         *store.UserStore
+	store         *broker.UserStore
 }
 
 // NewAuthorizer creates a new authorizer.
 // Panics if GATEWAY_SECRET is not set — required in all environments.
-func NewAuthorizer(userStore *store.UserStore) *Authorizer {
+func NewAuthorizer(userStore *broker.UserStore) *Authorizer {
 	secret := os.Getenv("GATEWAY_SECRET")
 	if secret == "" {
 		log.Fatal("GATEWAY_SECRET is not set. Set it via environment variable or .env.dev")
