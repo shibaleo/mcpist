@@ -69,6 +69,12 @@ func (m *TodoistModule) ExecuteTool(ctx context.Context, name string, params map
 	return handler(ctx, params)
 }
 
+// ToCompact converts JSON result to compact format.
+// Implements modules.CompactConverter interface.
+func (m *TodoistModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
+}
+
 // Resources returns all available resources (none for Todoist)
 func (m *TodoistModule) Resources() []modules.Resource {
 	return nil
@@ -109,20 +115,6 @@ var toJSON = modules.ToJSON
 var toStringSlice = modules.ToStringSlice
 
 // =============================================================================
-// Format parameter definitions
-// =============================================================================
-
-var formatRead = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Todoist API response. Default returns compact output.",
-}
-
-var formatWrite = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Todoist API response. Default returns a compact summary.",
-}
-
-// =============================================================================
 // Tool Definitions
 // =============================================================================
 
@@ -138,9 +130,7 @@ var toolDefinitions = []modules.Tool{
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
-			Properties: map[string]modules.Property{
-				"format": formatRead,
-			},
+			Properties: map[string]modules.Property{},
 		},
 	},
 	{
@@ -155,7 +145,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
-				"format":     formatRead,
 			},
 			Required: []string{"project_id"},
 		},
@@ -175,7 +164,6 @@ var toolDefinitions = []modules.Tool{
 				"project_id": {Type: "string", Description: "Filter tasks by project ID"},
 				"section_id": {Type: "string", Description: "Filter tasks by section ID"},
 				"label":      {Type: "string", Description: "Filter tasks by label name"},
-				"format":     formatRead,
 			},
 		},
 	},
@@ -191,7 +179,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"task_id": {Type: "string", Description: "Task ID"},
-				"format":  formatRead,
 			},
 			Required: []string{"task_id"},
 		},
@@ -218,7 +205,6 @@ var toolDefinitions = []modules.Tool{
 				"due_datetime":  {Type: "string", Description: "Due datetime (RFC3339 format)"},
 				"labels":       {Type: "array", Description: "Array of label names"},
 				"assignee_id":  {Type: "string", Description: "Assignee user ID (for shared projects)"},
-				"format":       formatWrite,
 			},
 			Required: []string{"content"},
 		},
@@ -243,7 +229,6 @@ var toolDefinitions = []modules.Tool{
 				"due_datetime":  {Type: "string", Description: "Due datetime (RFC3339 format)"},
 				"labels":       {Type: "array", Description: "Array of label names"},
 				"assignee_id":  {Type: "string", Description: "Assignee user ID"},
-				"format":       formatWrite,
 			},
 			Required: []string{"task_id"},
 		},
@@ -309,7 +294,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID (optional, lists all sections if omitted)"},
-				"format":     formatRead,
 			},
 		},
 	},
@@ -324,9 +308,7 @@ var toolDefinitions = []modules.Tool{
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
-			Properties: map[string]modules.Property{
-				"format": formatRead,
-			},
+			Properties: map[string]modules.Property{},
 		},
 	},
 }
@@ -368,7 +350,7 @@ func listProjects(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_projects", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
@@ -385,7 +367,7 @@ func getProject(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_project", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -415,7 +397,7 @@ func listTasks(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_tasks", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getTask(ctx context.Context, params map[string]any) (string, error) {
@@ -432,7 +414,7 @@ func getTask(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_task", jsonStr), nil
+	return jsonStr, nil
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
@@ -480,7 +462,7 @@ func createTask(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "content", "projectId", "due", "priority", "labels")
+	return jsonStr, nil
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
@@ -522,7 +504,7 @@ func updateTask(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "content", "projectId", "due", "priority", "labels")
+	return jsonStr, nil
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
@@ -585,7 +567,7 @@ func listSections(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_sections", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -605,7 +587,7 @@ func listLabels(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_labels", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================

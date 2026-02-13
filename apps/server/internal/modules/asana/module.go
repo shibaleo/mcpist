@@ -71,6 +71,12 @@ func (m *AsanaModule) ExecuteTool(ctx context.Context, name string, params map[s
 	return handler(ctx, params)
 }
 
+// ToCompact converts JSON result to compact format (MD or CSV)
+// Implements modules.CompactConverter interface
+func (m *AsanaModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
+}
+
 // Resources returns all available resources (none for Asana)
 func (m *AsanaModule) Resources() []modules.Resource {
 	return nil

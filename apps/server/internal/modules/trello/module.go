@@ -16,16 +16,6 @@ const trelloVersion = "1"
 
 var toJSON = modules.ToJSON
 
-// format parameter variants for tool definitions
-var formatRead = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Trello API response. Default returns compact output.",
-}
-var formatWrite = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Trello API response. Default returns a compact summary.",
-}
-
 // TrelloModule implements the Module interface for Trello API
 type TrelloModule struct{}
 
@@ -72,6 +62,12 @@ func (m *TrelloModule) ExecuteTool(ctx context.Context, name string, params map[
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
 	return handler(ctx, params)
+}
+
+// ToCompact converts JSON result to compact format.
+// Implements modules.CompactConverter interface.
+func (m *TrelloModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
 }
 
 // Resources returns all available resources (none for Trello)
@@ -129,9 +125,7 @@ var toolDefinitions = []modules.Tool{
 		Annotations: modules.AnnotateReadOnly,
 		InputSchema: modules.InputSchema{
 			Type: "object",
-			Properties: map[string]modules.Property{
-				"format": formatRead,
-			},
+			Properties: map[string]modules.Property{},
 		},
 	},
 	{
@@ -146,7 +140,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"board_id": {Type: "string", Description: "Board ID"},
-				"format":   formatRead,
 			},
 			Required: []string{"board_id"},
 		},
@@ -164,7 +157,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"board_id": {Type: "string", Description: "Board ID"},
-				"format":   formatRead,
 			},
 			Required: []string{"board_id"},
 		},
@@ -183,7 +175,6 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"board_id": {Type: "string", Description: "Board ID (required if list_id not specified)"},
 				"list_id":  {Type: "string", Description: "List ID (optional, filters cards by list)"},
-				"format":   formatRead,
 			},
 		},
 	},
@@ -199,7 +190,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
-				"format":  formatRead,
 			},
 			Required: []string{"card_id"},
 		},
@@ -222,7 +212,6 @@ var toolDefinitions = []modules.Tool{
 				"due":        {Type: "string", Description: "Due date (ISO 8601 format)"},
 				"labels":     {Type: "string", Description: "Comma-separated label IDs"},
 				"member_ids": {Type: "string", Description: "Comma-separated member IDs"},
-				"format":     formatWrite,
 			},
 			Required: []string{"list_id", "name"},
 		},
@@ -244,7 +233,6 @@ var toolDefinitions = []modules.Tool{
 				"closed":  {Type: "boolean", Description: "Archive the card"},
 				"due":     {Type: "string", Description: "Due date (ISO 8601 format)"},
 				"list_id": {Type: "string", Description: "Move to different list"},
-				"format":  formatWrite,
 			},
 			Required: []string{"card_id"},
 		},
@@ -262,8 +250,7 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
 				"list_id": {Type: "string", Description: "Target list ID"},
-				"pos":    {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
-				"format": formatWrite,
+				"pos": {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
 			},
 			Required: []string{"card_id", "list_id"},
 		},
@@ -297,7 +284,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
-				"format":  formatRead,
 			},
 			Required: []string{"card_id"},
 		},
@@ -315,8 +301,7 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"card_id": {Type: "string", Description: "Card ID"},
 				"name":    {Type: "string", Description: "Checklist name"},
-				"pos":    {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
-				"format": formatWrite,
+				"pos": {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
 			},
 			Required: []string{"card_id", "name"},
 		},
@@ -350,7 +335,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"checklist_id": {Type: "string", Description: "Checklist ID"},
-				"format":       formatRead,
 			},
 			Required: []string{"checklist_id"},
 		},
@@ -370,7 +354,6 @@ var toolDefinitions = []modules.Tool{
 				"name":         {Type: "string", Description: "Item name/text"},
 				"pos":          {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
 				"checked": {Type: "boolean", Description: "Initial checked state (default: false)"},
-				"format":  formatWrite,
 			},
 			Required: []string{"checklist_id", "name"},
 		},
@@ -390,8 +373,7 @@ var toolDefinitions = []modules.Tool{
 				"item_id": {Type: "string", Description: "Checklist item ID"},
 				"name":    {Type: "string", Description: "New item name"},
 				"state":   {Type: "string", Description: "State: 'complete' or 'incomplete'"},
-				"pos":    {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
-				"format": formatWrite,
+				"pos": {Type: "string", Description: "Position: 'top', 'bottom', or a positive number"},
 			},
 			Required: []string{"card_id", "item_id"},
 		},
@@ -459,7 +441,7 @@ func listBoards(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_boards", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getBoard(ctx context.Context, params map[string]any) (string, error) {
@@ -478,7 +460,7 @@ func getBoard(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_board", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -501,7 +483,7 @@ func getLists(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_lists", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -528,7 +510,7 @@ func getCards(ctx context.Context, params map[string]any) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return compactReadResult(params, "get_cards", jsonStr), nil
+		return jsonStr, nil
 	}
 
 	if hasBoardID && boardID != "" {
@@ -542,7 +524,7 @@ func getCards(ctx context.Context, params map[string]any) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return compactReadResult(params, "get_cards", jsonStr), nil
+		return jsonStr, nil
 	}
 
 	return "", fmt.Errorf("either board_id or list_id is required")
@@ -565,7 +547,7 @@ func getCard(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_card", jsonStr), nil
+	return jsonStr, nil
 }
 
 func createCard(ctx context.Context, params map[string]any) (string, error) {
@@ -601,7 +583,7 @@ func createCard(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "idList")
+	return jsonStr, nil
 }
 
 func updateCard(ctx context.Context, params map[string]any) (string, error) {
@@ -640,7 +622,7 @@ func updateCard(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "idList")
+	return jsonStr, nil
 }
 
 func moveCard(ctx context.Context, params map[string]any) (string, error) {
@@ -665,7 +647,7 @@ func moveCard(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "idList")
+	return jsonStr, nil
 }
 
 func deleteCard(ctx context.Context, params map[string]any) (string, error) {
@@ -699,7 +681,7 @@ func getChecklists(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_checklists", jsonStr), nil
+	return jsonStr, nil
 }
 
 func createChecklist(ctx context.Context, params map[string]any) (string, error) {
@@ -723,7 +705,7 @@ func createChecklist(ctx context.Context, params map[string]any) (string, error)
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "idCard")
+	return jsonStr, nil
 }
 
 func deleteChecklist(ctx context.Context, params map[string]any) (string, error) {
@@ -757,7 +739,7 @@ func getChecklistItems(ctx context.Context, params map[string]any) (string, erro
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_checklist_items", jsonStr), nil
+	return jsonStr, nil
 }
 
 func addChecklistItem(ctx context.Context, params map[string]any) (string, error) {
@@ -784,7 +766,7 @@ func addChecklistItem(ctx context.Context, params map[string]any) (string, error
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "state")
+	return jsonStr, nil
 }
 
 func updateChecklistItem(ctx context.Context, params map[string]any) (string, error) {
@@ -814,7 +796,7 @@ func updateChecklistItem(ctx context.Context, params map[string]any) (string, er
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "state")
+	return jsonStr, nil
 }
 
 func deleteChecklistItem(ctx context.Context, params map[string]any) (string, error) {

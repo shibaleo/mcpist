@@ -585,26 +585,35 @@ func extractPropertyValue(prop any) string {
 }
 
 // =============================================================================
-// Common response formatters — compact by default, format=json for raw
+// Compact format dispatcher — called by ToCompact (format layer)
 // =============================================================================
 
-// compactReadResult returns compact format by default, raw JSON only when format=json.
-func compactReadResult(params map[string]any, toolName, defaultFmt, jsonStr string) string {
-	if f, _ := params["format"].(string); f == "json" {
+// formatCompact is the single entry point for compact formatting.
+// It dispatches to the appropriate formatter based on tool name.
+func formatCompact(toolName, jsonStr string) string {
+	switch toolName {
+	case "get_page":
+		return formatResult(toolName, "md", jsonStr)
+	case "get_page_content":
+		return formatResult(toolName, "md", jsonStr)
+	case "list_comments":
+		return formatResult(toolName, "md", jsonStr)
+	case "search", "query_database", "get_database", "list_users", "get_user", "get_bot_user":
+		return formatResult(toolName, "csv", jsonStr)
+	case "create_page", "update_page", "delete_block", "add_comment":
+		return pickKeys(jsonStr, "id", "url")
+	case "append_blocks":
+		return compactBlockCount(jsonStr)
+	default:
 		return jsonStr
 	}
-	return formatResult(toolName, defaultFmt, jsonStr)
 }
 
-// compactWriteResult extracts only the specified keys from a JSON response.
-// Returns raw JSON when params["format"] == "json".
-func compactWriteResult(params map[string]any, jsonStr string, keys ...string) (string, error) {
-	if f, _ := params["format"].(string); f == "json" {
-		return jsonStr, nil
-	}
+// pickKeys extracts only the specified keys from a JSON object.
+func pickKeys(jsonStr string, keys ...string) string {
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
-		return jsonStr, nil
+		return jsonStr
 	}
 	result := make(map[string]any, len(keys))
 	for _, k := range keys {
@@ -614,27 +623,23 @@ func compactWriteResult(params map[string]any, jsonStr string, keys ...string) (
 	}
 	out, err := json.Marshal(result)
 	if err != nil {
-		return jsonStr, nil
+		return jsonStr
 	}
-	return string(out), nil
+	return string(out)
 }
 
-// compactBlockListResult returns {"block_count": N} from an append_blocks response.
-// Returns raw JSON when params["format"] == "json".
-func compactBlockListResult(params map[string]any, jsonStr string) (string, error) {
-	if f, _ := params["format"].(string); f == "json" {
-		return jsonStr, nil
-	}
+// compactBlockCount returns {"block_count": N} from an append_blocks response.
+func compactBlockCount(jsonStr string) string {
 	var data map[string]any
 	if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
-		return jsonStr, nil
+		return jsonStr
 	}
 	count := 0
 	if results, ok := data["results"].([]any); ok {
 		count = len(results)
 	}
 	out, _ := json.Marshal(map[string]any{"block_count": count})
-	return string(out), nil
+	return string(out)
 }
 
 // =============================================================================

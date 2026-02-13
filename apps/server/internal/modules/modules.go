@@ -409,6 +409,13 @@ func Run(ctx context.Context, moduleName, toolName string, params map[string]int
 		}, nil
 	}
 
+	// Apply compact format unless format=json is explicitly requested
+	if f, _ := params["format"].(string); f != "json" {
+		if converter, ok := m.(CompactConverter); ok {
+			result = converter.ToCompact(toolName, result)
+		}
+	}
+
 	observability.LogToolCall(requestID, userID, moduleName, toolName, durationMs, "success", "")
 	return &ToolCallResult{
 		Content: []ContentBlock{{Type: "text", Text: result}},

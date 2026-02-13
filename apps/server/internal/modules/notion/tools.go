@@ -13,20 +13,6 @@ import (
 
 var toJSON = modules.ToJSON
 
-// format parameter variants for read-only tools
-var formatMD = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Notion API response. Default returns compact Markdown.",
-}
-var formatCSV = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Notion API response. Default returns compact CSV.",
-}
-var formatWrite = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full Notion API response. Default returns a compact summary.",
-}
-
 // toolDefinitions returns all Notion tool definitions
 func toolDefinitions() []modules.Tool {
 	return []modules.Tool{
@@ -54,7 +40,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "number",
 						Description: "Number of results (1-100, default 10)",
 					},
-					"format": formatCSV,
 				},
 			},
 		},
@@ -74,7 +59,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "string",
 						Description: "Page ID (UUID format, e.g. \"a1b2c3d4-e5f6-...\")",
 					},
-					"format": formatMD,
 				},
 				Required: []string{"page_id"},
 			},
@@ -102,7 +86,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "boolean",
 						Description: "Fetch all blocks via pagination (default false)",
 					},
-					"format": formatMD,
 				},
 				Required: []string{"page_id"},
 			},
@@ -134,7 +117,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "object",
 						Description: "Database row properties (only when using parent_database_id). Keys are property names, values follow Notion property value format.",
 					},
-					"format": formatWrite,
 				},
 				Required: []string{"title"},
 			},
@@ -158,7 +140,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "object",
 						Description: "Properties to update. Keys are property names, values follow Notion property value format.",
 					},
-					"format": formatWrite,
 				},
 				Required: []string{"page_id", "properties"},
 			},
@@ -179,7 +160,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "string",
 						Description: "Database ID (UUID format)",
 					},
-					"format": formatCSV,
 				},
 				Required: []string{"database_id"},
 			},
@@ -211,7 +191,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "number",
 						Description: "Number of rows (1-100, default 10)",
 					},
-					"format": formatCSV,
 				},
 				Required: []string{"database_id"},
 			},
@@ -236,7 +215,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "array",
 						Description: "Simplified block array. Each element: {\"type\":\"<block_type>\",\"content\":\"<text>\"}. Supported types: paragraph, heading_1, heading_2, heading_3, bulleted_list_item, numbered_list_item, to_do, toggle, code, quote, callout, divider.",
 					},
-					"format": formatWrite,
 				},
 				Required: []string{"block_id", "blocks"},
 			},
@@ -256,7 +234,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "string",
 						Description: "Block ID to delete (UUID format)",
 					},
-					"format": formatWrite,
 				},
 				Required: []string{"block_id"},
 			},
@@ -281,7 +258,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "number",
 						Description: "Number of comments (1-100, default 50)",
 					},
-					"format": formatMD,
 				},
 				Required: []string{"block_id"},
 			},
@@ -305,7 +281,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "string",
 						Description: "Comment text",
 					},
-					"format": formatWrite,
 				},
 				Required: []string{"page_id", "content"},
 			},
@@ -326,7 +301,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "number",
 						Description: "Number of users (1-100, default 50)",
 					},
-					"format": formatCSV,
 				},
 			},
 		},
@@ -345,7 +319,6 @@ func toolDefinitions() []modules.Tool {
 						Type:        "string",
 						Description: "User ID (UUID format)",
 					},
-					"format": formatCSV,
 				},
 				Required: []string{"user_id"},
 			},
@@ -359,10 +332,8 @@ func toolDefinitions() []modules.Tool {
 			},
 			Annotations: modules.AnnotateReadOnly,
 			InputSchema: modules.InputSchema{
-				Type: "object",
-				Properties: map[string]modules.Property{
-					"format": formatCSV,
-				},
+				Type:       "object",
+				Properties: map[string]modules.Property{},
 			},
 		},
 	}
@@ -420,7 +391,7 @@ func search(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "search", "csv", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -441,7 +412,7 @@ func getPage(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_page", "md", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getPageContent(ctx context.Context, params map[string]any) (string, error) {
@@ -476,7 +447,7 @@ func getPageContent(ctx context.Context, params map[string]any) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		return compactReadResult(params, "get_page_content", "md", jsonStr), nil
+		return jsonStr, nil
 	}
 
 	// Fetch all mode - loop until has_more is false
@@ -525,7 +496,7 @@ func getPageContent(ctx context.Context, params map[string]any) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_page_content", "md", jsonStr), nil
+	return jsonStr, nil
 }
 
 func createPage(ctx context.Context, params map[string]any) (string, error) {
@@ -585,7 +556,7 @@ func createPage(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "url")
+	return jsonStr, nil
 }
 
 func updatePage(ctx context.Context, params map[string]any) (string, error) {
@@ -609,7 +580,7 @@ func updatePage(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "url")
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -630,7 +601,7 @@ func getDatabase(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_database", "csv", jsonStr), nil
+	return jsonStr, nil
 }
 
 func queryDatabase(ctx context.Context, params map[string]any) (string, error) {
@@ -668,7 +639,7 @@ func queryDatabase(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "query_database", "csv", jsonStr), nil
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -701,7 +672,7 @@ func appendBlocks(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactBlockListResult(params, jsonStr)
+	return jsonStr, nil
 }
 
 func buildBlockChildren(blocksInput []any) []map[string]any {
@@ -778,7 +749,7 @@ func deleteBlock(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id")
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -810,7 +781,7 @@ func listComments(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_comments", "md", jsonStr), nil
+	return jsonStr, nil
 }
 
 func addComment(ctx context.Context, params map[string]any) (string, error) {
@@ -839,7 +810,7 @@ func addComment(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id")
+	return jsonStr, nil
 }
 
 // =============================================================================
@@ -870,7 +841,7 @@ func listUsers(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_users", "csv", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getUser(ctx context.Context, params map[string]any) (string, error) {
@@ -887,7 +858,7 @@ func getUser(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_user", "csv", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getBotUser(ctx context.Context, params map[string]any) (string, error) {
@@ -903,5 +874,5 @@ func getBotUser(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_bot_user", "csv", jsonStr), nil
+	return jsonStr, nil
 }

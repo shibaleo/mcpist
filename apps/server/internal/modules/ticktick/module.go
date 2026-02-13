@@ -62,6 +62,12 @@ func (m *TickTickModule) ExecuteTool(ctx context.Context, name string, params ma
 	return handler(ctx, params)
 }
 
+// ToCompact converts JSON result to compact format.
+// Implements modules.CompactConverter interface.
+func (m *TickTickModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
+}
+
 // Resources returns all available resources (none for TickTick)
 func (m *TickTickModule) Resources() []modules.Resource {
 	return nil
@@ -102,20 +108,6 @@ var toJSON = modules.ToJSON
 var toStringSlice = modules.ToStringSlice
 
 // =============================================================================
-// Format parameter definitions
-// =============================================================================
-
-var formatRead = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full TickTick API response. Default returns compact output.",
-}
-
-var formatWrite = modules.Property{
-	Type:        "string",
-	Description: "Set \"json\" to get the full TickTick API response. Default returns a compact summary.",
-}
-
-// =============================================================================
 // Tool Definitions
 // =============================================================================
 
@@ -131,10 +123,8 @@ var toolDefinitions = []modules.Tool{
 			"ja-JP": "ユーザーのすべてのプロジェクトを一覧表示します。",
 		},
 		InputSchema: modules.InputSchema{
-			Type: "object",
-			Properties: map[string]modules.Property{
-				"format": formatRead,
-			},
+			Type:       "object",
+			Properties: map[string]modules.Property{},
 		},
 		Annotations: modules.AnnotateReadOnly,
 	},
@@ -149,7 +139,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
-				"format":     formatRead,
 			},
 			Required: []string{"project_id"},
 		},
@@ -166,7 +155,6 @@ var toolDefinitions = []modules.Tool{
 			Type: "object",
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
-				"format":     formatRead,
 			},
 			Required: []string{"project_id"},
 		},
@@ -186,7 +174,6 @@ var toolDefinitions = []modules.Tool{
 				"color":     {Type: "string", Description: "Color code (optional)"},
 				"view_mode": {Type: "string", Description: "View mode: list, kanban, timeline (optional)"},
 				"kind":      {Type: "string", Description: "Project kind: TASK or NOTE (optional, default: TASK)"},
-				"format":    formatWrite,
 			},
 			Required: []string{"name"},
 		},
@@ -207,7 +194,6 @@ var toolDefinitions = []modules.Tool{
 				"color":      {Type: "string", Description: "New color code (optional)"},
 				"view_mode":  {Type: "string", Description: "View mode: list, kanban, timeline (optional)"},
 				"kind":       {Type: "string", Description: "Project kind: TASK or NOTE (optional)"},
-				"format":     formatWrite,
 			},
 			Required: []string{"project_id"},
 		},
@@ -245,7 +231,6 @@ var toolDefinitions = []modules.Tool{
 			Properties: map[string]modules.Property{
 				"project_id": {Type: "string", Description: "Project ID"},
 				"task_id":    {Type: "string", Description: "Task ID"},
-				"format":     formatRead,
 			},
 			Required: []string{"project_id", "task_id"},
 		},
@@ -274,7 +259,6 @@ var toolDefinitions = []modules.Tool{
 				"priority":    {Type: "number", Description: "Priority: 0 (none), 1 (low), 3 (medium), 5 (high) (optional)"},
 				"sort_order":  {Type: "number", Description: "Sort order value (optional)"},
 				"items":       {Type: "array", Description: `Subtask items as array of objects: [{"title": "subtask1", "status": 0}] (optional). status: 0=normal, 2=completed`},
-				"format":      formatWrite,
 			},
 			Required: []string{"title"},
 		},
@@ -304,7 +288,6 @@ var toolDefinitions = []modules.Tool{
 				"priority":    {Type: "number", Description: "Priority: 0 (none), 1 (low), 3 (medium), 5 (high) (optional)"},
 				"sort_order":  {Type: "number", Description: "Sort order value (optional)"},
 				"items":       {Type: "array", Description: "Subtask items (optional)"},
-				"format":      formatWrite,
 			},
 			Required: []string{"task_id", "project_id"},
 		},
@@ -385,7 +368,7 @@ func listProjects(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "list_projects", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getProject(ctx context.Context, params map[string]any) (string, error) {
@@ -402,7 +385,7 @@ func getProject(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_project", jsonStr), nil
+	return jsonStr, nil
 }
 
 func getProjectData(ctx context.Context, params map[string]any) (string, error) {
@@ -419,7 +402,7 @@ func getProjectData(ctx context.Context, params map[string]any) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_project_data", jsonStr), nil
+	return jsonStr, nil
 }
 
 func createProject(ctx context.Context, params map[string]any) (string, error) {
@@ -446,7 +429,7 @@ func createProject(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "kind", "viewMode")
+	return jsonStr, nil
 }
 
 func updateProject(ctx context.Context, params map[string]any) (string, error) {
@@ -476,7 +459,7 @@ func updateProject(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "name", "kind", "viewMode")
+	return jsonStr, nil
 }
 
 func deleteProject(ctx context.Context, params map[string]any) (string, error) {
@@ -511,7 +494,7 @@ func getTask(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactReadResult(params, "get_task", jsonStr), nil
+	return jsonStr, nil
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
@@ -565,7 +548,7 @@ func createTask(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "title", "projectId", "priority", "dueDate", "status")
+	return jsonStr, nil
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
@@ -623,7 +606,7 @@ func updateTask(ctx context.Context, params map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return compactWriteResult(params, jsonStr, "id", "title", "projectId", "priority", "dueDate", "status")
+	return jsonStr, nil
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
