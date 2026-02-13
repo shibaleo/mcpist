@@ -101,7 +101,7 @@ Jira 固有の考慮点:
 
 ## 参考
 
-- [day026-worklog.md](./day026-worklog.md) - DAY026 作業ログ
-- [day026-backlog.md](./day026-backlog.md) - DAY026 バックログ
+- [day026-worklog.md](day026-worklog.md) - DAY026 作業ログ
+- [day026-backlog.md](day026-backlog.md) - DAY026 バックログ
 - [sprint007-plan.md](../sprint/sprint007-plan.md) - Sprint 007 計画
 - [dsn-modules.md](../../docs/003_design/modules/dsn-modules.md) - モジュールアーキテクチャ設計書

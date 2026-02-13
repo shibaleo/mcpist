@@ -24,8 +24,8 @@ Sprint-007 延長 (7日目)。DAY027 で 10 モジュールの ogen 移行が完
 
 | 状態 | モジュール |
 |------|-----------|
-| ✅ ogen 済 | GitHub, Supabase, Grafana, Asana, Jira, Confluence, Notion, TickTick, Todoist, Trello |
-| ❌ httpclient (未移行) | Dropbox, Airtable, Google Docs, Google Drive, Google Sheets, Google Calendar, Google Tasks, Google Apps Script, Microsoft Todo |
+| ✅ ogen 済 | GitHub, Supabase, Grafana, Asana, Jira, Confluence, Notion, TickTick, Todoist, Trello, Dropbox, Airtable, Microsoft Todo, Google Calendar, Google Tasks, Google Drive, Google Docs, Google Sheets, Google Apps Script |
+| ❌ httpclient (未移行) | なし（全 19 モジュール移行完了） |
 | — 対象外 | PostgreSQL (直接DB接続) |
 
 ---
@@ -89,11 +89,11 @@ if err == nil && params["format"] != "json" {
 
 | ID | タスク | 備考 | 状態 |
 |----|--------|------|------|
-| D28-001 | `modules.Run()` に format 分岐を追加 | `applyFormat(module, tool, json)` | |
-| D28-002 | format.go を純粋な変換関数に書き換え | params 依存を除去 | |
-| D28-003 | 全ハンドラから format 呼び出しを除去 | 常に JSON を返すように変更 | |
-| D28-004 | format パラメータを toolDefinitions から除去 | tool 層のパラメータではない | |
-| D28-005 | ビルド・テスト・動作確認 | format=json と compact の両方 | |
+| D28-001 | `modules.Run()` に format 分岐を追加 | `applyFormat(module, tool, json)` | ✅ 完了 |
+| D28-002 | format.go を純粋な変換関数に書き換え | params 依存を除去 | ✅ 完了 |
+| D28-003 | 全ハンドラから format 呼び出しを除去 | 常に JSON を返すように変更 | ✅ 完了 |
+| D28-004 | format パラメータを toolDefinitions から除去 | tool 層のパラメータではない | ✅ 完了 |
+| D28-005 | ビルド・テスト・動作確認 | format=json と compact の両方 | ✅ 完了 |
 
 ### 2. 残り 6 モジュールへの format.go 追加（優先度：高）
 
@@ -101,32 +101,32 @@ if err == nil && params["format"] != "json" {
 
 | ID | タスク | ツール数 | 状態 |
 |----|--------|---------|------|
-| D28-006 | Jira format.go 追加 | 11 | |
-| D28-007 | Confluence format.go 追加 | 12 | |
-| D28-008 | GitHub format.go 追加 | 26 | |
-| D28-009 | Asana format.go 追加 | 23 | |
-| D28-010 | Supabase format.go 追加 | 18 | |
-| D28-011 | Grafana format.go 追加 | 16 | |
+| D28-006 | Jira format.go 追加 | 11 | ✅ 完了 |
+| D28-007 | Confluence format.go 追加 | 12 | ✅ 完了 |
+| D28-008 | GitHub format.go 追加 | 26 | ✅ 完了 |
+| D28-009 | Asana format.go 追加 | 23 | ✅ 完了 |
+| D28-010 | Supabase format.go 追加 | 18 | ✅ 完了 |
+| D28-011 | Grafana format.go 追加 | 16 | ✅ 完了 |
 
 ### 3. 残り 9 モジュールの ogen 移行（優先度：高）
 
 | ID | タスク | ツール数 | 備考 | 状態 |
 |----|--------|---------|------|------|
-| D28-012 | Dropbox ogen 移行 + format.go | 15 | Bearer (OAuth2) | |
-| D28-013 | Airtable ogen 移行 + format.go | 11 | Bearer (PAT) | |
-| D28-014 | Google Calendar ogen 移行 + format.go | 8 | Bearer (OAuth2) | |
-| D28-015 | Google Tasks ogen 移行 + format.go | 9 | Bearer (OAuth2) | |
-| D28-016 | Microsoft Todo ogen 移行 + format.go | 11 | Bearer (OAuth2) | |
-| D28-017 | Google Docs ogen 移行 + format.go | 18 | Bearer (OAuth2) | |
-| D28-018 | Google Drive ogen 移行 + format.go | 22 | Bearer (OAuth2) | |
-| D28-019 | Google Sheets ogen 移行 + format.go | 27 | Bearer (OAuth2) | |
-| D28-020 | Google Apps Script ogen 移行 + format.go | 17 | Bearer (OAuth2) | |
+| D28-012 | Dropbox ogen 移行 + format.go | 15 | Bearer (OAuth2) | ✅ 完了 |
+| D28-013 | Airtable ogen 移行 + format.go | 11 | Bearer (PAT) | ✅ 完了 |
+| D28-014 | Google Calendar ogen 移行 + format.go | 8 | Bearer (OAuth2) | ✅ 完了 |
+| D28-015 | Google Tasks ogen 移行 + format.go | 9 | Bearer (OAuth2) | ✅ 完了 |
+| D28-016 | Microsoft Todo ogen 移行 + format.go | 11 | Bearer (OAuth2) | ✅ 完了 |
+| D28-017 | Google Docs ogen 移行 + format.go | 18 | Bearer (OAuth2) | ✅ 完了 |
+| D28-018 | Google Drive ogen 移行 + format.go | 22 | Bearer (OAuth2) | ✅ 完了 |
+| D28-019 | Google Sheets ogen 移行 + format.go | 27 | Bearer (OAuth2) | ✅ 完了 |
+| D28-020 | Google Apps Script ogen 移行 + format.go | 17 | Bearer (OAuth2) | ✅ 完了 |
 
 ### 4. ツール定義テスト（優先度：中）
 
 | ID | タスク | 備考 | 状態 |
 |----|--------|------|------|
-| D28-021 | ツール定義テスト作成 | Description 非空、toolHandlers と toolDefinitions の一致 | |
+| D28-021 | ツール定義テスト作成 | Description 非空、toolHandlers と toolDefinitions の一致 | ✅ 完了 |
 
 ---
 
@@ -256,12 +256,30 @@ spec-tool が 1:1 対応しているツール（全体の ~100%）では:
 
 ## 完了条件
 
-- [ ] format 層がハンドラから分離され、`modules.Run()` で適用される
-- [ ] 全ハンドラが常に JSON を返す
-- [ ] 全モジュールに format.go が追加済み
-- [ ] 残り 9 モジュールのうち可能な限り ogen 化完了
-- [ ] ビルド pass
-- [ ] tools.json に diff なし（format パラメータ除去分を除く）
+- [x] format 層がハンドラから分離され、`modules.Run()` で適用される
+- [x] 全ハンドラが常に JSON を返す
+- [x] 全 19 モジュールに format.go が追加済み
+- [x] 残り 9 モジュール全て ogen 化完了（全 19/19 モジュール移行完了）
+- [x] ビルド pass
+- [x] tools.json 再生成（差分なし、最新状態を確認済み）
+- [x] ローカルサーバーテスト（6 Google モジュール Read/Write/Delete 確認済み）
+- [x] OAuth2 token refresh のエラーボディ出力改善（全 6 Google モジュール）
+- [x] ツール定義テスト作成（全 PASS）
+- [x] テストで検出: grafana `query_datasource` の InputSchema.Type 欠落 → 修正済み
+- [x] `internal/store` → `internal/broker` リネーム完了（全 23 ファイル）
+- [x] OAuth2 リフレッシュを broker に集約（11 モジュールから削除、`OAuthRefreshConfig` テーブル駆動）
+- [x] ローカルサーバーテスト（13 モジュール正常応答、asana/airtable リフレッシュ動作確認）
+
+### 5. OAuth2 リフレッシュ共通化 + store → broker リネーム（優先度：高）
+
+| ID | タスク | 備考 | 状態 |
+|----|--------|------|------|
+| D28-022 | `internal/store/` → `internal/broker/` リネーム | パッケージ名・ディレクトリ移動 | ✅ 完了 |
+| D28-023 | `OAuthRefreshConfig` テーブル + `refreshOAuthToken()` 実装 | 6 プロバイダ × 11 モジュール対応 | ✅ 完了 |
+| D28-024 | `GetModuleToken()` にリフレッシュ統合 | fetchCredentials → needsRefresh → refresh の透過処理 | ✅ 完了 |
+| D28-025 | 全 23 ファイルの import `store` → `broker` 更新 | `GetTokenStore()` → `GetTokenBroker()` | ✅ 完了 |
+| D28-026 | 11 モジュールから refreshToken/needsRefresh 削除 | +679/-1,306 行 | ✅ 完了 |
+| D28-027 | ローカルサーバーテスト | 13 モジュール正常応答、asana/airtable でリフレッシュ動作確認 | ✅ 完了 |
 
 ---
 
