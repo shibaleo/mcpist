@@ -409,6 +409,13 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
+	// Apply compact format unless format=json is explicitly requested
+	if !result.IsError {
+		if f, _ := params["format"].(string); f != "json" {
+			result.Content[0].Text = modules.ApplyCompact(moduleName, toolName, result.Content[0].Text)
+		}
+	}
+
 	// Consume credits after successful call
 	consumeResult, err := h.userStore.ConsumeCredit(
 		authCtx.UserID,
