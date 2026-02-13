@@ -120,7 +120,10 @@ func DynamicMetaTools(enabledModules []string, lang string) []Tool {
 
 [使い方]
 1. get_module_schema(module) で利用可能なツールとパラメータを確認
-2. run(module, tool, params) で実行`, moduleDesc)
+2. run(module, tool, params) で実行
+
+[レスポンス形式]
+デフォルトではコンパクト形式（CSV/MD）で返します。完全なJSONレスポンスが必要な場合は params に format: "json" を追加してください。`, moduleDesc)
 		batchDesc = `複数のツールをバッチ実行します（JSONL形式、依存関係と並列実行をサポート）。
 
 [フィールド]
@@ -129,8 +132,10 @@ func DynamicMetaTools(enabledModules []string, lang string) []Tool {
 - tool (必須): ツール名
 - params: パラメータ
 - after: 依存タスクIDの配列（これらの完了を待ってから実行）
-- output: trueの場合、TOON/MD形式で結果を返す
-- raw_output: trueの場合、JSON形式で結果を返す（outputより優先）
+- output: trueの場合、結果をレスポンスに含める（デフォルト: コンパクト形式）
+
+[レスポンス形式]
+output: true のタスクはデフォルトでコンパクト形式（CSV/MD）で返します。完全なJSONレスポンスが必要な場合は params に format: "json" を追加してください。
 
 [変数参照] JSONPathでアクセス: ${id.results[index].field}
 
@@ -161,7 +166,10 @@ func DynamicMetaTools(enabledModules []string, lang string) []Tool {
 
 [Usage]
 1. get_module_schema(module) to check available tools and parameters
-2. run(module, tool, params) to execute`, moduleDesc)
+2. run(module, tool, params) to execute
+
+[Response Format]
+Results are returned in compact format (CSV/MD) by default. For full JSON response, add format: "json" to params.`, moduleDesc)
 		batchDesc = `Execute multiple tools in batch (JSONL format, with dependency and parallel execution support).
 
 [Fields]
@@ -170,8 +178,10 @@ func DynamicMetaTools(enabledModules []string, lang string) []Tool {
 - tool (required): Tool name
 - params: Parameters
 - after: Dependency task ID array (waits for these to complete before executing)
-- output: If true, returns result in TOON/MD format
-- raw_output: If true, returns result in JSON format (takes precedence over output)
+- output: If true, includes result in response (default: compact format)
+
+[Response Format]
+Tasks with output: true return compact format (CSV/MD) by default. For full JSON response, add format: "json" to params.
 
 [Variable References] Access via JSONPath: ${id.results[index].field}
 
@@ -409,17 +419,23 @@ func Run(ctx context.Context, moduleName, toolName string, params map[string]int
 		}, nil
 	}
 
-	// Apply compact format unless format=json is explicitly requested
-	if f, _ := params["format"].(string); f != "json" {
-		if converter, ok := m.(CompactConverter); ok {
-			result = converter.ToCompact(toolName, result)
-		}
-	}
-
 	observability.LogToolCall(requestID, userID, moduleName, toolName, durationMs, "success", "")
 	return &ToolCallResult{
 		Content: []ContentBlock{{Type: "text", Text: result}},
 	}, nil
+}
+
+// ApplyCompact converts a JSON result to compact format (CSV/MD) for a given module and tool.
+// Returns the original JSON if the module has no CompactConverter.
+func ApplyCompact(moduleName, toolName, jsonResult string) string {
+	m, ok := registry[moduleName]
+	if !ok {
+		return jsonResult
+	}
+	if converter, ok := m.(CompactConverter); ok {
+		return converter.ToCompact(toolName, jsonResult)
+	}
+	return jsonResult
 }
 
 // =============================================================================
@@ -433,8 +449,7 @@ type BatchCommand struct {
 	Tool      string                 `json:"tool"`                 // Tool name (required)
 	Params    map[string]interface{} `json:"params,omitempty"`     // Tool parameters
 	After     []string               `json:"after,omitempty"`      // Dependency task IDs
-	Output    bool                   `json:"output,omitempty"`     // Include compact result (TOON/MD)
-	RawOutput bool                   `json:"raw_output,omitempty"` // Include raw JSON result (overrides output)
+	Output    bool                   `json:"output,omitempty"`     // Include result in response
 }
 
 // BatchResponse represents the batch execution response
@@ -580,19 +595,13 @@ func Batch(ctx context.Context, commands string) (*BatchResult, error) {
 				Module: state.cmd.Module,
 				Tool:   state.cmd.Tool,
 			})
-			if state.cmd.RawOutput {
-				// raw_output: true -> return JSON as-is
-				response.Results[id] = state.result
-			} else if state.cmd.Output {
-				// output: true -> convert to compact format (TOON/MD)
-				if m, ok := registry[state.cmd.Module]; ok {
-					if converter, ok := m.(CompactConverter); ok {
-						response.Results[id] = converter.ToCompact(state.cmd.Tool, state.result)
-					} else {
-						response.Results[id] = state.result // No converter, return JSON
-					}
-				} else {
+			if state.cmd.Output {
+				// output: true -> apply compact unless params.format == "json"
+				f, _ := state.cmd.Params["format"].(string)
+				if f == "json" {
 					response.Results[id] = state.result
+				} else {
+					response.Results[id] = ApplyCompact(state.cmd.Module, state.cmd.Tool, state.result)
 				}
 			}
 		}
@@ -759,13 +768,22 @@ func resolveStringVariables(s string, resultStore *sync.Map) string {
 		}
 
 		// Parse JSON and extract value
-		var data map[string]interface{}
-		if err := json.Unmarshal([]byte(resultStr), &data); err != nil {
-			return match
+		// Result can be a JSON array [...] or an object with "results" key {"results": [...]}
+		var results []interface{}
+		if err := json.Unmarshal([]byte(resultStr), &results); err != nil {
+			// Try as object with "results" key
+			var data map[string]interface{}
+			if err := json.Unmarshal([]byte(resultStr), &data); err != nil {
+				return match
+			}
+			var ok bool
+			results, ok = data["results"].([]interface{})
+			if !ok {
+				return match
+			}
 		}
 
-		results, ok := data["results"].([]interface{})
-		if !ok || index >= len(results) {
+		if index >= len(results) {
 			return match
 		}
 
