@@ -10,20 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"mcpist/server/internal/httpclient"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/store"
+	"mcpist/server/pkg/microsofttodoapi"
+	gen "mcpist/server/pkg/microsofttodoapi/gen"
 )
 
 const (
-	graphAPIBase       = "https://graph.microsoft.com/v1.0"
 	microsoftTokenURL  = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 	apiVersion         = "v1.0"
 	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
 )
-
-var client = httpclient.New()
 
 // MicrosoftTodoModule implements the Module interface for Microsoft To Do API
 type MicrosoftTodoModule struct{}
@@ -33,38 +31,23 @@ func New() *MicrosoftTodoModule {
 	return &MicrosoftTodoModule{}
 }
 
-// Module descriptions in multiple languages
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Microsoft To Do API - List, create, update, and delete tasks and task lists",
 	"ja-JP": "Microsoft To Do API - タスクとタスクリストの一覧表示、作成、更新、削除",
 }
 
-// Name returns the module name
-func (m *MicrosoftTodoModule) Name() string {
-	return "microsoft_todo"
-}
-
-// Descriptions returns the module descriptions in all languages
-func (m *MicrosoftTodoModule) Descriptions() modules.LocalizedText {
-	return moduleDescriptions
-}
-
-// Description returns the module description for a specific language
+func (m *MicrosoftTodoModule) Name() string                        { return "microsoft_todo" }
+func (m *MicrosoftTodoModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
 func (m *MicrosoftTodoModule) Description(lang string) string {
 	return modules.GetLocalizedText(moduleDescriptions, lang)
 }
-
-// APIVersion returns the Microsoft Graph API version
-func (m *MicrosoftTodoModule) APIVersion() string {
-	return apiVersion
+func (m *MicrosoftTodoModule) APIVersion() string          { return apiVersion }
+func (m *MicrosoftTodoModule) Tools() []modules.Tool       { return toolDefinitions }
+func (m *MicrosoftTodoModule) Resources() []modules.Resource { return nil }
+func (m *MicrosoftTodoModule) ReadResource(ctx context.Context, uri string) (string, error) {
+	return "", fmt.Errorf("resources not supported")
 }
 
-// Tools returns all available tools
-func (m *MicrosoftTodoModule) Tools() []modules.Tool {
-	return toolDefinitions
-}
-
-// ExecuteTool executes a tool by name and returns JSON response
 func (m *MicrosoftTodoModule) ExecuteTool(ctx context.Context, name string, params map[string]any) (string, error) {
 	handler, ok := toolHandlers[name]
 	if !ok {
@@ -73,14 +56,10 @@ func (m *MicrosoftTodoModule) ExecuteTool(ctx context.Context, name string, para
 	return handler(ctx, params)
 }
 
-// Resources returns all available resources (none for Microsoft To Do)
-func (m *MicrosoftTodoModule) Resources() []modules.Resource {
-	return nil
-}
-
-// ReadResource reads a resource by URI (not implemented)
-func (m *MicrosoftTodoModule) ReadResource(ctx context.Context, uri string) (string, error) {
-	return "", fmt.Errorf("resources not supported")
+// ToCompact converts JSON result to compact format.
+// Implements modules.CompactConverter interface.
+func (m *MicrosoftTodoModule) ToCompact(toolName string, jsonResult string) string {
+	return formatCompact(toolName, jsonResult)
 }
 
 // =============================================================================
@@ -100,44 +79,34 @@ func getCredentials(ctx context.Context) *store.Credentials {
 	}
 	log.Printf("[microsoft_todo] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
 
-	// Check if token needs refresh (OAuth2 only)
 	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
 		if needsRefresh(credentials) {
 			log.Printf("[microsoft_todo] Token expired or expiring soon, refreshing...")
 			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
 			if err != nil {
 				log.Printf("[microsoft_todo] Token refresh failed: %v", err)
-				// Return original credentials and let the API call fail
 				return credentials
 			}
 			log.Printf("[microsoft_todo] Token refreshed successfully")
 			return refreshed
 		}
 	}
-
 	return credentials
 }
 
-// needsRefresh checks if the token is expired or will expire soon
 func needsRefresh(creds *store.Credentials) bool {
 	if creds.ExpiresAt == 0 {
-		// No expiry information, assume token is valid
 		return false
 	}
-	now := time.Now().Unix()
-	// Refresh if expired or expiring within buffer period
-	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
+	return time.Now().Unix() >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
 }
 
-// refreshToken exchanges the refresh token for a new access token
 func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	// Get OAuth app credentials (client_id, client_secret)
 	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "microsoft")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
 	}
 
-	// Exchange refresh token for new access token
 	data := url.Values{}
 	data.Set("client_id", oauthApp.ClientID)
 	data.Set("client_secret", oauthApp.ClientSecret)
@@ -165,20 +134,16 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 		ExpiresIn    int64  `json:"expires_in"`
-		TokenType    string `json:"token_type"`
-		Scope        string `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to decode token response: %w", err)
 	}
 
-	// Microsoft may return a new refresh token
 	refreshTokenToSave := creds.RefreshToken
 	if tokenResp.RefreshToken != "" {
 		refreshTokenToSave = tokenResp.RefreshToken
 	}
 
-	// Update credentials with new access token
 	newCreds := &store.Credentials{
 		AuthType:     store.AuthTypeOAuth2,
 		AccessToken:  tokenResp.AccessToken,
@@ -186,41 +151,31 @@ func refreshToken(ctx context.Context, userID string, creds *store.Credentials) 
 		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
 	}
 
-	// Save updated credentials to Vault
-	err = store.GetTokenStore().UpdateModuleToken(ctx, userID, "microsoft_todo", newCreds)
-	if err != nil {
+	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "microsoft_todo", newCreds); err != nil {
 		log.Printf("[microsoft_todo] Failed to save refreshed token: %v", err)
-		// Continue anyway, the token is still valid for this request
 	}
-
 	return newCreds, nil
 }
 
-func headers(ctx context.Context) map[string]string {
+// =============================================================================
+// ogen client helpers
+// =============================================================================
+
+func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	creds := getCredentials(ctx)
 	if creds == nil {
-		return map[string]string{}
+		return nil, fmt.Errorf("no credentials available")
 	}
-
-	h := map[string]string{
-		"Accept":       "application/json",
-		"Content-Type": "application/json",
-	}
-
-	// OAuth2 uses Bearer token
-	if creds.AuthType == store.AuthTypeOAuth2 {
-		h["Authorization"] = "Bearer " + creds.AccessToken
-	}
-
-	return h
+	return microsofttodoapi.NewClient(creds.AccessToken)
 }
+
+var toJSON = modules.ToJSON
 
 // =============================================================================
 // Tool Definitions
 // =============================================================================
 
 var toolDefinitions = []modules.Tool{
-	// Lists
 	{
 		ID:   "microsoft_todo:list_lists",
 		Name: "list_lists",
@@ -299,7 +254,6 @@ var toolDefinitions = []modules.Tool{
 			Required: []string{"list_id"},
 		},
 	},
-	// Tasks
 	{
 		ID:   "microsoft_todo:list_tasks",
 		Name: "list_tasks",
@@ -440,69 +394,69 @@ var toolHandlers = map[string]toolHandler{
 // =============================================================================
 
 func listLists(ctx context.Context, params map[string]any) (string, error) {
-	endpoint := graphAPIBase + "/me/todo/lists"
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.ListLists(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Value)
 }
 
 func getList(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s", graphAPIBase, url.PathEscape(listID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetList(ctx, gen.GetListParams{ListId: listID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createList(ctx context.Context, params map[string]any) (string, error) {
 	displayName, _ := params["display_name"].(string)
-
-	body := map[string]interface{}{
-		"displayName": displayName,
-	}
-
-	endpoint := graphAPIBase + "/me/todo/lists"
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.CreateList(ctx, &gen.CreateTaskListReq{DisplayName: displayName})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func updateList(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
 	displayName, _ := params["display_name"].(string)
-
-	body := map[string]interface{}{
-		"displayName": displayName,
-	}
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s", graphAPIBase, url.PathEscape(listID))
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := &gen.UpdateTaskListReq{}
+	req.DisplayName.SetTo(displayName)
+	res, err := c.UpdateList(ctx, req, gen.UpdateListParams{ListId: listID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func deleteList(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s", graphAPIBase, url.PathEscape(listID))
-
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 204 No Content (success for DELETE)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "List deleted"}`, nil
-		}
 		return "", err
 	}
-
-	return `{"success": true, "message": "List deleted"}`, nil
+	if err := c.DeleteList(ctx, gen.DeleteListParams{ListId: listID}); err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"List deleted"}`, nil
 }
 
 // =============================================================================
@@ -511,175 +465,143 @@ func deleteList(ctx context.Context, params map[string]any) (string, error) {
 
 func listTasks(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
-
-	query := url.Values{}
-
-	// Filter
-	if filter, ok := params["filter"].(string); ok && filter != "" {
-		query.Set("$filter", filter)
-	}
-
-	// Top (max results)
-	top := 100
-	if t, ok := params["top"].(float64); ok {
-		top = int(t)
-	}
-	query.Set("$top", fmt.Sprintf("%d", top))
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s/tasks", graphAPIBase, url.PathEscape(listID))
-	if len(query) > 0 {
-		endpoint += "?" + query.Encode()
-	}
-
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	p := gen.ListTasksParams{ListId: listID}
+	if filter, ok := params["filter"].(string); ok && filter != "" {
+		p.Filter.SetTo(filter)
+	}
+	if top, ok := params["top"].(float64); ok {
+		p.Top.SetTo(int(top))
+	}
+	res, err := c.ListTasks(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res.Value)
 }
 
 func getTask(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
 	taskID, _ := params["task_id"].(string)
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s/tasks/%s", graphAPIBase, url.PathEscape(listID), url.PathEscape(taskID))
-	respBody, err := client.DoJSON("GET", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	res, err := c.GetTask(ctx, gen.GetTaskParams{ListId: listID, TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func createTask(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
 	title, _ := params["title"].(string)
-
-	body := map[string]interface{}{
-		"title": title,
-	}
-
-	// Optional: body content
-	if bodyText, ok := params["body"].(string); ok && bodyText != "" {
-		body["body"] = map[string]interface{}{
-			"content":     bodyText,
-			"contentType": "text",
-		}
-	}
-
-	// Optional: importance
-	if importance, ok := params["importance"].(string); ok && importance != "" {
-		body["importance"] = importance
-	}
-
-	// Optional: due date
-	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
-		body["dueDateTime"] = map[string]interface{}{
-			"dateTime": dueDate + "T00:00:00",
-			"timeZone": "UTC",
-		}
-	}
-
-	// Optional: reminder
-	if reminderDate, ok := params["reminder_date"].(string); ok && reminderDate != "" {
-		body["isReminderOn"] = true
-		body["reminderDateTime"] = map[string]interface{}{
-			"dateTime": reminderDate,
-			"timeZone": "UTC",
-		}
-	}
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s/tasks", graphAPIBase, url.PathEscape(listID))
-	respBody, err := client.DoJSON("POST", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := &gen.CreateTaskReq{Title: title}
+	if body, ok := params["body"].(string); ok && body != "" {
+		req.Body.SetTo(gen.ItemBody{
+			Content:     gen.NewOptString(body),
+			ContentType: gen.NewOptString("text"),
+		})
+	}
+	if importance, ok := params["importance"].(string); ok && importance != "" {
+		req.Importance.SetTo(importance)
+	}
+	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
+		req.DueDateTime.SetTo(gen.DateTimeTimeZone{
+			DateTime: gen.NewOptString(dueDate + "T00:00:00"),
+			TimeZone: gen.NewOptString("UTC"),
+		})
+	}
+	if reminderDate, ok := params["reminder_date"].(string); ok && reminderDate != "" {
+		req.IsReminderOn.SetTo(true)
+		req.ReminderDateTime.SetTo(gen.DateTimeTimeZone{
+			DateTime: gen.NewOptString(reminderDate),
+			TimeZone: gen.NewOptString("UTC"),
+		})
+	}
+	res, err := c.CreateTask(ctx, req, gen.CreateTaskParams{ListId: listID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func updateTask(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
 	taskID, _ := params["task_id"].(string)
-
-	body := map[string]interface{}{}
-
-	// Optional: title
-	if title, ok := params["title"].(string); ok && title != "" {
-		body["title"] = title
-	}
-
-	// Optional: body content
-	if bodyText, ok := params["body"].(string); ok && bodyText != "" {
-		body["body"] = map[string]interface{}{
-			"content":     bodyText,
-			"contentType": "text",
-		}
-	}
-
-	// Optional: importance
-	if importance, ok := params["importance"].(string); ok && importance != "" {
-		body["importance"] = importance
-	}
-
-	// Optional: status
-	if status, ok := params["status"].(string); ok && status != "" {
-		body["status"] = status
-	}
-
-	// Optional: due date
-	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
-		body["dueDateTime"] = map[string]interface{}{
-			"dateTime": dueDate + "T00:00:00",
-			"timeZone": "UTC",
-		}
-	}
-
-	// Optional: reminder
-	if reminderDate, ok := params["reminder_date"].(string); ok && reminderDate != "" {
-		body["isReminderOn"] = true
-		body["reminderDateTime"] = map[string]interface{}{
-			"dateTime": reminderDate,
-			"timeZone": "UTC",
-		}
-	}
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s/tasks/%s", graphAPIBase, url.PathEscape(listID), url.PathEscape(taskID))
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := &gen.UpdateTaskReq{}
+	if title, ok := params["title"].(string); ok && title != "" {
+		req.Title.SetTo(title)
+	}
+	if body, ok := params["body"].(string); ok && body != "" {
+		req.Body.SetTo(gen.ItemBody{
+			Content:     gen.NewOptString(body),
+			ContentType: gen.NewOptString("text"),
+		})
+	}
+	if importance, ok := params["importance"].(string); ok && importance != "" {
+		req.Importance.SetTo(importance)
+	}
+	if status, ok := params["status"].(string); ok && status != "" {
+		req.Status.SetTo(status)
+	}
+	if dueDate, ok := params["due_date"].(string); ok && dueDate != "" {
+		req.DueDateTime.SetTo(gen.DateTimeTimeZone{
+			DateTime: gen.NewOptString(dueDate + "T00:00:00"),
+			TimeZone: gen.NewOptString("UTC"),
+		})
+	}
+	if reminderDate, ok := params["reminder_date"].(string); ok && reminderDate != "" {
+		req.IsReminderOn.SetTo(true)
+		req.ReminderDateTime.SetTo(gen.DateTimeTimeZone{
+			DateTime: gen.NewOptString(reminderDate),
+			TimeZone: gen.NewOptString("UTC"),
+		})
+	}
+	res, err := c.UpdateTask(ctx, req, gen.UpdateTaskParams{ListId: listID, TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func completeTask(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
 	taskID, _ := params["task_id"].(string)
-
-	body := map[string]interface{}{
-		"status": "completed",
-	}
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s/tasks/%s", graphAPIBase, url.PathEscape(listID), url.PathEscape(taskID))
-	respBody, err := client.DoJSON("PATCH", endpoint, headers(ctx), body)
+	c, err := newOgenClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	return httpclient.PrettyJSON(respBody), nil
+	req := &gen.UpdateTaskReq{}
+	req.Status.SetTo("completed")
+	res, err := c.UpdateTask(ctx, req, gen.UpdateTaskParams{ListId: listID, TaskId: taskID})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
 }
 
 func deleteTask(ctx context.Context, params map[string]any) (string, error) {
 	listID, _ := params["list_id"].(string)
 	taskID, _ := params["task_id"].(string)
-
-	endpoint := fmt.Sprintf("%s/me/todo/lists/%s/tasks/%s", graphAPIBase, url.PathEscape(listID), url.PathEscape(taskID))
-
-	_, err := client.DoJSON("DELETE", endpoint, headers(ctx), nil)
+	c, err := newOgenClient(ctx)
 	if err != nil {
-		// Check if it's a 204 No Content (success for DELETE)
-		if apiErr, ok := err.(*httpclient.APIError); ok && apiErr.StatusCode == 204 {
-			return `{"success": true, "message": "Task deleted"}`, nil
-		}
 		return "", err
 	}
-
-	return `{"success": true, "message": "Task deleted"}`, nil
+	if err := c.DeleteTask(ctx, gen.DeleteTaskParams{ListId: listID, TaskId: taskID}); err != nil {
+		return "", err
+	}
+	return `{"success":true,"message":"Task deleted"}`, nil
 }
