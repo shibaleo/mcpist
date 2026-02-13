@@ -104,6 +104,6 @@ Sprint-007 Phase 3 の残タスク。DAY024 の大量実装を仕様書に反映
 
 ## 参考
 
-- [day024-worklog.md](./day024-worklog.md) - DAY024 作業ログ
-- [day024-backlog.md](./day024-backlog.md) - DAY024 バックログ
+- [day024-worklog.md](day024-worklog.md) - DAY024 作業ログ
+- [day024-backlog.md](day024-backlog.md) - DAY024 バックログ
 - [sprint007-plan.md](../sprint/sprint007-plan.md) - Sprint 007 計画

@@ -109,5 +109,5 @@ dsn-observability.md Section 11 の実装タスク一覧に基づく。
 
 - [dsn-observability.md](../../docs/003_design/observability/dsn-observability.md) - Observability 設計書
 - [dsn-security.md](../../docs/003_design/security/dsn-security.md) - セキュリティ設計書
-- [day023-worklog.md](./day023-worklog.md) - DAY023 作業ログ
+- [day023-worklog.md](day023-worklog.md) - DAY023 作業ログ
 - [sprint007-plan.md](../sprint/sprint007-plan.md) - Sprint 007 計画
