@@ -1,0 +1,478 @@
+openapi: 3.0.3
+info:
+  title: Airtable API (mcpist subset)
+  description: Subset of Airtable Web API v0 used by mcpist airtable module
+  version: "v0"
+servers:
+  - url: https://api.airtable.com/v0
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Base ============
+    Base:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        permissionLevel:
+          type: string
+          nullable: true
+
+    BaseListResponse:
+      type: object
+      properties:
+        bases:
+          type: array
+          items:
+            $ref: '#/components/schemas/Base'
+
+    # ============ Table Schema ============
+    FieldOption:
+      type: object
+      additionalProperties: true
+
+    Field:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+          nullable: true
+        options:
+          $ref: '#/components/schemas/FieldOption'
+          nullable: true
+
+    View:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          nullable: true
+
+    Table:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        primaryFieldId:
+          type: string
+          nullable: true
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/Field'
+          nullable: true
+        views:
+          type: array
+          items:
+            $ref: '#/components/schemas/View'
+          nullable: true
+
+    TableListResponse:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/Table'
+
+    # ============ Record ============
+    RecordFields:
+      type: object
+      additionalProperties: true
+
+    Record:
+      type: object
+      properties:
+        id:
+          type: string
+        fields:
+          $ref: '#/components/schemas/RecordFields'
+        createdTime:
+          type: string
+          nullable: true
+
+    RecordListResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+        offset:
+          type: string
+          nullable: true
+
+    # ============ Request Bodies ============
+    CreateTableReq:
+      type: object
+      required:
+        - name
+        - fields
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/Field'
+
+    UpdateTableReq:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    CreateRecordsReq:
+      type: object
+      required:
+        - records
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              fields:
+                $ref: '#/components/schemas/RecordFields'
+        typecast:
+          type: boolean
+
+    CreateRecordsResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+
+    UpdateRecordsReq:
+      type: object
+      required:
+        - records
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              fields:
+                $ref: '#/components/schemas/RecordFields'
+        typecast:
+          type: boolean
+
+    UpdateRecordsResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+
+    DeletedRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        deleted:
+          type: boolean
+
+    DeleteRecordsResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeletedRecord'
+
+paths:
+  # =====================================================================
+  # Meta: Bases
+  # =====================================================================
+  /meta/bases:
+    get:
+      operationId: listBases
+      summary: List all accessible bases
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseListResponse'
+
+  # =====================================================================
+  # Meta: Tables
+  # =====================================================================
+  /meta/bases/{baseId}/tables:
+    get:
+      operationId: listTables
+      summary: Get tables schema for a base
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableListResponse'
+    post:
+      operationId: createTable
+      summary: Create a new table in a base
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTableReq'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Table'
+
+  /meta/bases/{baseId}/tables/{tableId}:
+    patch:
+      operationId: updateTable
+      summary: Update table metadata
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tableId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTableReq'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Table'
+
+  # =====================================================================
+  # Records
+  # =====================================================================
+  /{baseId}/{tableIdOrName}:
+    get:
+      operationId: listRecords
+      summary: List records in a table
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tableIdOrName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: filterByFormula
+          in: query
+          schema:
+            type: string
+        - name: maxRecords
+          in: query
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: string
+        - name: view
+          in: query
+          schema:
+            type: string
+        - name: sort[0][field]
+          in: query
+          schema:
+            type: string
+        - name: sort[0][direction]
+          in: query
+          schema:
+            type: string
+        - name: sort[1][field]
+          in: query
+          schema:
+            type: string
+        - name: sort[1][direction]
+          in: query
+          schema:
+            type: string
+        - name: sort[2][field]
+          in: query
+          schema:
+            type: string
+        - name: sort[2][direction]
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordListResponse'
+    post:
+      operationId: createRecords
+      summary: Create records in a table
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tableIdOrName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRecordsReq'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRecordsResponse'
+    patch:
+      operationId: updateRecords
+      summary: Update records in a table
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tableIdOrName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecordsReq'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateRecordsResponse'
+    delete:
+      operationId: deleteRecords
+      summary: Delete records from a table
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tableIdOrName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: records[]
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteRecordsResponse'
+
+  /{baseId}/{tableIdOrName}/{recordId}:
+    get:
+      operationId: getRecord
+      summary: Get a single record
+      parameters:
+        - name: baseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tableIdOrName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Record'

@@ -4,8 +4,8 @@
       "id": "airtable",
       "name": "Airtable",
       "descriptions": {
-        "en-US": "Airtable API - Bases, Tables, Records operations with search and aggregation",
-        "ja-JP": "Airtable API - ベース、テーブル、レコード操作（検索・集計機能付き）"
+        "en-US": "Airtable API - Bases, Tables, Records operations with search",
+        "ja-JP": "Airtable API - ベース、テーブル、レコード操作（検索機能付き）"
       },
       "apiVersion": "v0",
       "tools": [
@@ -22,11 +22,11 @@
           }
         },
         {
-          "id": "airtable:describe",
-          "name": "describe",
+          "id": "airtable:get_base_tables",
+          "name": "get_base_tables",
           "descriptions": {
-            "en-US": "Describe Airtable base or table schema. Use detailLevel to optimize context: tableIdentifiersOnly (minimal), identifiersOnly (IDs and names), full (complete details with field types)",
-            "ja-JP": "Airtableのベースまたはテーブルスキーマを説明します。detailLevelを使用してコンテキストを最適化：tableIdentifiersOnly（最小限）、identifiersOnly（IDと名前）、full（フィールドタイプを含む完全な詳細）"
+            "en-US": "List all tables in a base (id and name only)",
+            "ja-JP": "ベース内のすべてのテーブルを一覧表示します（IDと名前のみ）"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -34,11 +34,11 @@
           }
         },
         {
-          "id": "airtable:query",
-          "name": "query",
+          "id": "airtable:get_table_fields",
+          "name": "get_table_fields",
           "descriptions": {
-            "en-US": "Query Airtable records with filtering, sorting, and pagination",
-            "ja-JP": "フィルタリング、ソート、ページネーションを使用してAirtableレコードをクエリします"
+            "en-US": "Get field definitions for a specific table (id, name, type, options)",
+            "ja-JP": "特定テーブルのフィールド定義を取得します（ID、名前、タイプ、オプション）"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -46,77 +46,11 @@
           }
         },
         {
-          "id": "airtable:get_record",
-          "name": "get_record",
+          "id": "airtable:get_table_views",
+          "name": "get_table_views",
           "descriptions": {
-            "en-US": "Retrieve a single record by ID",
-            "ja-JP": "IDで単一のレコードを取得します"
-          },
-          "annotations": {
-            "readOnlyHint": true,
-            "openWorldHint": false
-          }
-        },
-        {
-          "id": "airtable:create",
-          "name": "create",
-          "descriptions": {
-            "en-US": "Create new records in a table. Supports batch creation (up to 10 records per request)",
-            "ja-JP": "テーブルに新しいレコードを作成します。バッチ作成をサポート（リクエストごとに最大10レコード）"
-          },
-          "annotations": {
-            "readOnlyHint": false,
-            "destructiveHint": false,
-            "idempotentHint": false,
-            "openWorldHint": false
-          }
-        },
-        {
-          "id": "airtable:update",
-          "name": "update",
-          "descriptions": {
-            "en-US": "Update existing records. Supports batch update (up to 10 records per request). Uses PATCH (partial update)",
-            "ja-JP": "既存のレコードを更新します。バッチ更新をサポート（リクエストごとに最大10レコード）。PATCH（部分更新）を使用"
-          },
-          "annotations": {
-            "readOnlyHint": false,
-            "destructiveHint": false,
-            "idempotentHint": true,
-            "openWorldHint": false
-          }
-        },
-        {
-          "id": "airtable:delete",
-          "name": "delete",
-          "descriptions": {
-            "en-US": "Delete records from a table. Supports batch deletion (up to 10 records per request)",
-            "ja-JP": "テーブルからレコードを削除します。バッチ削除をサポート（リクエストごとに最大10レコード）"
-          },
-          "annotations": {
-            "readOnlyHint": false,
-            "destructiveHint": true,
-            "idempotentHint": true,
-            "openWorldHint": false
-          }
-        },
-        {
-          "id": "airtable:search_records",
-          "name": "search_records",
-          "descriptions": {
-            "en-US": "Search for records containing specific text across specified fields or all text fields",
-            "ja-JP": "指定されたフィールドまたはすべてのテキストフィールドで特定のテキストを含むレコードを検索します"
-          },
-          "annotations": {
-            "readOnlyHint": true,
-            "openWorldHint": false
-          }
-        },
-        {
-          "id": "airtable:aggregate_records",
-          "name": "aggregate_records",
-          "descriptions": {
-            "en-US": "Perform aggregation operations (sum, count, avg, min, max) on records with optional grouping",
-            "ja-JP": "オプションのグループ化を使用してレコードに対して集計操作（sum、count、avg、min、max）を実行します"
+            "en-US": "Get views for a specific table (id, name, type)",
+            "ja-JP": "特定テーブルのビューを取得します（ID、名前、タイプ）"
           },
           "annotations": {
             "readOnlyHint": true,
@@ -148,6 +82,84 @@
             "readOnlyHint": false,
             "destructiveHint": false,
             "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "airtable:list_records",
+          "name": "list_records",
+          "descriptions": {
+            "en-US": "List records in a table with filtering, sorting, and pagination",
+            "ja-JP": "フィルタリング、ソート、ページネーションを使用してテーブル内のレコードを一覧表示します"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "airtable:get_record",
+          "name": "get_record",
+          "descriptions": {
+            "en-US": "Retrieve a single record by ID",
+            "ja-JP": "IDで単一のレコードを取得します"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "airtable:create_records",
+          "name": "create_records",
+          "descriptions": {
+            "en-US": "Create new records in a table (max 10 per request)",
+            "ja-JP": "テーブルに新しいレコードを作成します（1リクエストあたり最大10件）"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "airtable:update_records",
+          "name": "update_records",
+          "descriptions": {
+            "en-US": "Update existing records (max 10 per request). Uses PATCH (partial update)",
+            "ja-JP": "既存のレコードを更新します（1リクエストあたり最大10件）。PATCH（部分更新）を使用"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "airtable:delete_records",
+          "name": "delete_records",
+          "descriptions": {
+            "en-US": "Delete records from a table (max 10 per request)",
+            "ja-JP": "テーブルからレコードを削除します（1リクエストあたり最大10件）"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "airtable:search_records",
+          "name": "search_records",
+          "descriptions": {
+            "en-US": "Search for records containing specific text across specified fields",
+            "ja-JP": "指定されたフィールドで特定のテキストを含むレコードを検索します"
+          },
+          "annotations": {
+            "readOnlyHint": true,
             "openWorldHint": false
           }
         }
@@ -3771,7 +3783,7 @@
         "en-US": "Todoist API - List, create, update, and delete tasks and projects",
         "ja-JP": "Todoist API - タスクとプロジェクトの一覧表示、作成、更新、削除"
       },
-      "apiVersion": "v2",
+      "apiVersion": "v1",
       "tools": [
         {
           "id": "todoist:list_projects",
@@ -3888,20 +3900,6 @@
             "readOnlyHint": false,
             "destructiveHint": true,
             "idempotentHint": true,
-            "openWorldHint": false
-          }
-        },
-        {
-          "id": "todoist:quick_add",
-          "name": "quick_add",
-          "descriptions": {
-            "en-US": "Add a task using natural language (Todoist Quick Add syntax). Supports #project, @label, p1-p4 priority, dates.",
-            "ja-JP": "自然言語でタスクを追加します（Todoistクイック追加構文）。#プロジェクト、@ラベル、p1-p4優先度、日付をサポート。"
-          },
-          "annotations": {
-            "readOnlyHint": false,
-            "destructiveHint": false,
-            "idempotentHint": false,
             "openWorldHint": false
           }
         },
