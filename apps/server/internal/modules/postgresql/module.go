@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 )
 
 // Connection settings
@@ -122,7 +122,7 @@ func getConnectionString(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("authentication required")
 	}
 
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "postgresql")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "postgresql")
 	if err != nil {
 		return "", fmt.Errorf("failed to get credentials: %w", err)
 	}

@@ -7,7 +7,7 @@ import (
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 	"mcpist/server/pkg/ticktickapi"
 	gen "mcpist/server/pkg/ticktickapi/gen"
 )
@@ -82,13 +82,13 @@ func (m *TickTickModule) ReadResource(ctx context.Context, uri string) (string, 
 // ogen client helpers
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		log.Printf("[ticktick] No auth context")
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "ticktick")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "ticktick")
 	if err != nil {
 		log.Printf("[ticktick] GetModuleToken error: %v", err)
 		return nil

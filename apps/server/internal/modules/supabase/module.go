@@ -9,7 +9,7 @@ import (
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 	"mcpist/server/pkg/supabaseapi"
 	gen "mcpist/server/pkg/supabaseapi/gen"
 )
@@ -82,12 +82,12 @@ func (m *SupabaseModule) ReadResource(ctx context.Context, uri string) (string, 
 // ogen client helper
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "supabase")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "supabase")
 	if err != nil {
 		return nil
 	}

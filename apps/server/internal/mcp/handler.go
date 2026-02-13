@@ -14,13 +14,13 @@ import (
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/observability"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 )
 
 type Handler struct {
 	sessions  map[string]*Session
 	mu        sync.RWMutex
-	userStore *store.UserStore
+	userStore *broker.UserStore
 }
 
 type Session struct {
@@ -31,7 +31,7 @@ type Session struct {
 	messages chan []byte
 }
 
-func NewHandler(userStore *store.UserStore) *Handler {
+func NewHandler(userStore *broker.UserStore) *Handler {
 	return &Handler{
 		sessions:  make(map[string]*Session),
 		userStore: userStore,
@@ -415,7 +415,7 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 		"run",
 		creditCost,
 		middleware.GetRequestID(ctx),
-		[]store.ToolDetail{{Module: moduleName, Tool: toolName}},
+		[]broker.ToolDetail{{Module: moduleName, Tool: toolName}},
 	)
 	if err != nil {
 		log.Printf("Failed to consume credits: %v", err)
@@ -450,9 +450,9 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 
 	// Consume credits for all successful tool executions in one transaction
 	if len(batchResult.SuccessfulTasks) > 0 {
-		details := make([]store.ToolDetail, len(batchResult.SuccessfulTasks))
+		details := make([]broker.ToolDetail, len(batchResult.SuccessfulTasks))
 		for i, task := range batchResult.SuccessfulTasks {
-			details[i] = store.ToolDetail{
+			details[i] = broker.ToolDetail{
 				TaskID: task.TaskID,
 				Module: task.Module,
 				Tool:   task.Tool,

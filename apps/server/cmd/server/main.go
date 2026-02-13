@@ -30,7 +30,7 @@ import (
 	"mcpist/server/internal/modules/todoist"
 	"mcpist/server/internal/modules/trello"
 	"mcpist/server/internal/observability"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 )
 
 func init() {
@@ -82,13 +82,13 @@ func main() {
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
 
 	// Sync modules to database (ensures all registered modules exist)
-	moduleStore := store.NewModuleStore()
+	moduleStore := broker.NewModuleStore()
 	if err := moduleStore.SyncModules(moduleNames); err != nil {
 		log.Printf("Warning: Failed to sync modules to database: %v", err)
 	}
 
 	// Initialize stores and authorizer
-	userStore := store.NewUserStore()
+	userStore := broker.NewUserStore()
 	authorizer := middleware.NewAuthorizer(userStore)
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

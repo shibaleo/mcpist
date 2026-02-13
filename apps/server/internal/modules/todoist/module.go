@@ -11,7 +11,7 @@ import (
 
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
+	"mcpist/server/internal/broker"
 	"mcpist/server/pkg/todoistapi"
 	gen "mcpist/server/pkg/todoistapi/gen"
 )
@@ -89,13 +89,13 @@ func (m *TodoistModule) ReadResource(ctx context.Context, uri string) (string, e
 // ogen client helpers
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		log.Printf("[todoist] No auth context")
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "todoist")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "todoist")
 	if err != nil {
 		log.Printf("[todoist] GetModuleToken error: %v", err)
 		return nil

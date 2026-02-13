@@ -2,25 +2,18 @@ package asana
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
+	"mcpist/server/internal/broker"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
 	"mcpist/server/pkg/asanaapi"
 	gen "mcpist/server/pkg/asanaapi/gen"
 )
 
 const (
-	asanaVersion       = "1.0"
-	asanaTokenURL      = "https://app.asana.com/-/oauth_token"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
+	asanaVersion = "1.0"
 )
 
 // AsanaModule implements the Module interface for Asana API
@@ -91,93 +84,18 @@ func (m *AsanaModule) ReadResource(ctx context.Context, uri string) (string, err
 // Token and Headers
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		log.Printf("[asana] No auth context")
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "asana")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "asana")
 	if err != nil {
 		log.Printf("[asana] GetModuleToken error: %v", err)
 		return nil
 	}
-	log.Printf("[asana] Got credentials: auth_type=%s, has_access_token=%v", credentials.AuthType, credentials.AccessToken != "")
-
-	// Check if token needs refresh (Asana supports refresh tokens)
-	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" && credentials.ExpiresAt > 0 {
-		expiresAt := time.Unix(int64(credentials.ExpiresAt), 0)
-		if time.Until(expiresAt).Seconds() < tokenRefreshBuffer {
-			log.Printf("[asana] Token expires soon, refreshing...")
-			if err := refreshToken(ctx, authCtx.UserID, credentials); err != nil {
-				log.Printf("[asana] Token refresh failed: %v", err)
-				// Continue with existing token, it might still work
-			}
-		}
-	}
-
 	return credentials
-}
-
-func refreshToken(ctx context.Context, userID string, creds *store.Credentials) error {
-	// Get OAuth app credentials
-	oauthCreds, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "asana")
-	if err != nil {
-		return fmt.Errorf("failed to get OAuth credentials: %w", err)
-	}
-
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("client_id", oauthCreds.ClientID)
-	data.Set("client_secret", oauthCreds.ClientSecret)
-	data.Set("refresh_token", creds.RefreshToken)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", asanaTokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return fmt.Errorf("failed to create refresh request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("refresh request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("refresh failed with status: %d", resp.StatusCode)
-	}
-
-	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		TokenType    string `json:"token_type"`
-		ExpiresIn    int64  `json:"expires_in"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	// Update credentials
-	expiresAtUnix := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second).Unix()
-	newCreds := &store.Credentials{
-		AuthType:     store.AuthTypeOAuth2,
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: tokenResp.RefreshToken,
-		ExpiresAt:    store.FlexibleTime(expiresAtUnix),
-	}
-
-	if err := store.GetTokenStore().UpdateModuleToken(ctx, userID, "asana", newCreds); err != nil {
-		return fmt.Errorf("failed to save refreshed token: %w", err)
-	}
-
-	// Update in-memory credentials
-	creds.AccessToken = tokenResp.AccessToken
-	creds.RefreshToken = tokenResp.RefreshToken
-	creds.ExpiresAt = store.FlexibleTime(expiresAtUnix)
-
-	log.Printf("[asana] Token refreshed successfully")
-	return nil
 }
 
 // =============================================================================

@@ -4,22 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
+	"mcpist/server/internal/broker"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/store"
 )
 
 const (
 	dropboxAPIBase     = "https://api.dropboxapi.com/2"
 	dropboxContentBase = "https://content.dropboxapi.com/2"
-	dropboxTokenURL    = "https://api.dropboxapi.com/oauth2/token"
 	dropboxVersion     = "v2"
-	tokenRefreshBuffer = 5 * 60 // Refresh 5 minutes before expiry
 )
 
 var toJSON = modules.ToJSON
@@ -66,85 +60,16 @@ func (m *DropboxModule) ReadResource(ctx context.Context, uri string) (string, e
 // Token Management
 // =============================================================================
 
-func getCredentials(ctx context.Context) *store.Credentials {
+func getCredentials(ctx context.Context) *broker.Credentials {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		return nil
 	}
-	credentials, err := store.GetTokenStore().GetModuleToken(ctx, authCtx.UserID, "dropbox")
+	credentials, err := broker.GetTokenBroker().GetModuleToken(ctx, authCtx.UserID, "dropbox")
 	if err != nil {
 		return nil
 	}
-
-	// Check if token needs refresh (OAuth2 only)
-	if credentials.AuthType == store.AuthTypeOAuth2 && credentials.RefreshToken != "" {
-		if needsRefresh(credentials) {
-			refreshed, err := refreshToken(ctx, authCtx.UserID, credentials)
-			if err != nil {
-				return credentials
-			}
-			return refreshed
-		}
-	}
-
 	return credentials
-}
-
-func needsRefresh(creds *store.Credentials) bool {
-	if creds.ExpiresAt == 0 {
-		return false
-	}
-	now := time.Now().Unix()
-	return now >= (int64(creds.ExpiresAt) - tokenRefreshBuffer)
-}
-
-func refreshToken(ctx context.Context, userID string, creds *store.Credentials) (*store.Credentials, error) {
-	oauthApp, err := store.GetTokenStore().GetOAuthAppCredentials(ctx, "dropbox")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get OAuth app credentials: %w", err)
-	}
-
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", creds.RefreshToken)
-	data.Set("client_id", oauthApp.ClientID)
-	data.Set("client_secret", oauthApp.ClientSecret)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", dropboxTokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create refresh request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token refresh failed: status %d", resp.StatusCode)
-	}
-
-	var tokenResp struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int64  `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	newCreds := &store.Credentials{
-		AuthType:     store.AuthTypeOAuth2,
-		AccessToken:  tokenResp.AccessToken,
-		RefreshToken: creds.RefreshToken,
-		ExpiresAt:    store.FlexibleTime(time.Now().Unix() + tokenResp.ExpiresIn),
-	}
-
-	_ = store.GetTokenStore().UpdateModuleToken(ctx, userID, "dropbox", newCreds)
-
-	return newCreds, nil
 }
 
 // =============================================================================
