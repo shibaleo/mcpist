@@ -2,6 +2,8 @@ package mcp
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,8 +64,13 @@ func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Create session
-	sessionID := fmt.Sprintf("%p", r)
+	// Create session with cryptographic random ID
+	idBytes := make([]byte, 16)
+	if _, err := rand.Read(idBytes); err != nil {
+		http.Error(w, "failed to generate session ID", http.StatusInternalServerError)
+		return
+	}
+	sessionID := hex.EncodeToString(idBytes)
 
 	session := &Session{
 		id:       sessionID,
