@@ -720,22 +720,3 @@ func extractRichText(obj map[string]any, key string) string {
 	}
 	return ""
 }
-
-// extractParentID extracts parent ID from page object
-func extractParentID(obj map[string]any) string {
-	parent, ok := obj["parent"].(map[string]any)
-	if !ok {
-		return ""
-	}
-
-	if id, ok := parent["page_id"].(string); ok {
-		return id
-	}
-	if id, ok := parent["database_id"].(string); ok {
-		return id
-	}
-	if _, ok := parent["workspace"].(bool); ok {
-		return "workspace"
-	}
-	return ""
-}

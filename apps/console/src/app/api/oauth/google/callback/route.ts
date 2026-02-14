@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   // state から returnTo と module を取り出す
   let returnTo = "/tools"
-  let module = "google_calendar"  // デフォルト（後方互換性）
+  let moduleName: string = "google_calendar"  // デフォルト（後方互換性）
   if (stateParam) {
     try {
       const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         returnTo = stateData.returnTo
       }
       if (stateData.module) {
-        module = stateData.module
+        moduleName = stateData.module as string
       }
     } catch {
       // state のパースに失敗した場合はデフォルト値を使用
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     }
 
     const { error: saveError } = await supabase.rpc("upsert_my_credential", {
-      p_module: module,
+      p_module: moduleName,
       p_credentials: tokenCredentials,
     })
 
@@ -132,7 +132,7 @@ export async function GET(request: Request) {
     }
 
     // デフォルトツール設定を保存
-    await saveDefaultToolSettings(supabase, module)
+    await saveDefaultToolSettings(supabase, moduleName)
 
     // モジュール名を表示用に変換
     const moduleDisplayNames: Record<string, string> = {
@@ -142,7 +142,7 @@ export async function GET(request: Request) {
       google_docs: "Google Docs",
       google_sheets: "Google Sheets",
     }
-    const displayName = moduleDisplayNames[module] || module
+    const displayName = moduleDisplayNames[moduleName] || moduleName
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)

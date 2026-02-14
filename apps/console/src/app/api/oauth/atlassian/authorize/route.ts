@@ -56,13 +56,13 @@ export async function GET(request: Request) {
   // パラメータを取得
   const url = new URL(request.url)
   const returnTo = url.searchParams.get("returnTo") || "/tools"
-  const module = url.searchParams.get("module") || "atlassian"
+  const moduleName = url.searchParams.get("module") || "atlassian"
 
   // スコープの取得（未知のモジュールはエラー）
-  const scopes = MODULE_SCOPES[module]
+  const scopes = MODULE_SCOPES[moduleName]
   if (!scopes) {
     return NextResponse.json(
-      { error: `Unknown module: ${module}` },
+      { error: `Unknown module: ${moduleName}` },
       { status: 400 }
     )
   }
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
     const stateData = {
       nonce: crypto.randomUUID(),
       returnTo,
-      module,
+      module: moduleName,
     }
     const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
 

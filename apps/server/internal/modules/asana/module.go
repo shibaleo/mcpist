@@ -921,7 +921,7 @@ func createTask(ctx context.Context, params map[string]any) (string, error) {
 			if taskGID, ok := taskData.Gid.Get(); ok && taskGID != "" {
 				addReqData := gen.AddTaskToSectionRequestData{}
 				addReqData.Task.SetTo(taskGID)
-				c.AddTaskToSection(ctx, &gen.AddTaskToSectionRequest{Data: addReqData}, gen.AddTaskToSectionParams{SectionGid: sectionGID})
+				_, _ = c.AddTaskToSection(ctx, &gen.AddTaskToSectionRequest{Data: addReqData}, gen.AddTaskToSectionParams{SectionGid: sectionGID})
 			}
 		}
 	}

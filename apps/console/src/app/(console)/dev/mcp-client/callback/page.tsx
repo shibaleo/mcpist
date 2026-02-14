@@ -1,7 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
-import { useEffect, useState } from 'react'
+import { Suspense, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,41 +8,34 @@ import { Loader2 } from 'lucide-react'
 
 function CallbackContent() {
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
-  const [message, setMessage] = useState('')
 
   const code = searchParams.get('code')
   const state = searchParams.get('state')
   const error = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
 
-  useEffect(() => {
+  const { status, message } = useMemo(() => {
     if (error) {
-      setStatus('error')
-      setMessage(`${error}: ${errorDescription || '認可に失敗しました'}`)
-      return
+      return { status: 'error' as const, message: `${error}: ${errorDescription || '認可に失敗しました'}` }
     }
-
     if (!code) {
-      setStatus('error')
-      setMessage('認可コードがありません')
-      return
+      return { status: 'error' as const, message: '認可コードがありません' }
     }
-
-    // Verify state
-    const storedState = sessionStorage.getItem('oauth_state')
-    if (state !== storedState) {
-      setStatus('error')
-      setMessage('state が一致しません（CSRF攻撃の可能性）')
-      return
+    if (typeof window !== 'undefined') {
+      const storedState = sessionStorage.getItem('oauth_state')
+      if (state !== storedState) {
+        return { status: 'error' as const, message: 'state が一致しません（CSRF攻撃の可能性）' }
+      }
     }
-
-    setStatus('success')
-    setMessage('認可コードを取得しました')
-
-    // Clear stored state
-    sessionStorage.removeItem('oauth_state')
+    return { status: 'success' as const, message: '認可コードを取得しました' }
   }, [code, state, error, errorDescription])
+
+  // Clear stored state on success
+  useEffect(() => {
+    if (status === 'success') {
+      sessionStorage.removeItem('oauth_state')
+    }
+  }, [status])
 
   const copyCode = () => {
     if (code) {
@@ -56,9 +48,7 @@ function CallbackContent() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>
-            {status === 'processing' && '処理中...'}
-            {status === 'success' && '認可成功'}
-            {status === 'error' && '認可失敗'}
+            {status === 'success' ? '認可成功' : '認可失敗'}
           </CardTitle>
           <CardDescription>{message}</CardDescription>
         </CardHeader>
