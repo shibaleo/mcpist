@@ -760,7 +760,7 @@ func describeProject(ctx context.Context, params map[string]any) (string, error)
 			return
 		}
 		var parsed any
-		json.Unmarshal(res, &parsed)
+		_ = json.Unmarshal(res, &parsed)
 		ch <- result{"tables", parsed, nil}
 	}()
 

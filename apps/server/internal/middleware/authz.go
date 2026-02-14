@@ -238,7 +238,7 @@ func (a *Authorizer) writeErrorResponse(w http.ResponseWriter, err error) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(authErr.Status)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"error":   authErr.Code,
 		"message": authErr.Message,
 	})
