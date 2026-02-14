@@ -3,10 +3,6 @@ import { createClient } from "@/lib/supabase/server"
 import { createStripeClient } from "@/lib/stripe"
 import { createAdminClient } from "@/lib/supabase/admin"
 
-interface StripeCustomerResult {
-  stripe_customer_id: string | null
-}
-
 /**
  * POST /api/stripe/portal
  * Create a Stripe Customer Portal session for managing subscriptions
@@ -26,13 +22,13 @@ export async function POST(request: NextRequest) {
     const stripe = createStripeClient()
     const adminClient = createAdminClient()
 
-    // Get Stripe Customer ID
-    const { data: userData, error: userError } = await adminClient.rpc(
+    // Get Stripe Customer ID (RPC returns string directly)
+    const { data: stripeCustomerId, error: userError } = await adminClient.rpc(
       "get_stripe_customer_id",
       { p_user_id: user.id }
-    ) as { data: StripeCustomerResult | null; error: Error | null }
+    )
 
-    if (userError || !userData?.stripe_customer_id) {
+    if (userError || !stripeCustomerId) {
       return NextResponse.json(
         { error: "No subscription found" },
         { status: 404 }
@@ -42,7 +38,7 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: userData.stripe_customer_id,
+      customer: stripeCustomerId as string,
       return_url: `${origin}/plans`,
     })
 
