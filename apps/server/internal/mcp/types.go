@@ -37,7 +37,7 @@ const (
 // MCPist custom error codes (-32000 ~ -32099: server-defined)
 const (
 	ErrPermissionDenied   = -32001 // Module/tool not enabled
-	ErrInsufficientCredit = -32002 // Credit balance too low
+	ErrUsageLimitExceeded = -32002 // Daily usage limit exceeded
 )
 
 // MCP Protocol Types

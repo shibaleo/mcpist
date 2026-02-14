@@ -29,17 +29,18 @@ type AuthContext struct {
 	UserID             string
 	AuthType           string // "jwt" or "api_key"
 	AccountStatus      string
-	FreeCredits        int
-	PaidCredits        int
+	PlanID             string
+	DailyUsed          int
+	DailyLimit         int
 	EnabledModules     []string            // Modules with at least one enabled tool (derived by RPC)
 	EnabledTools       map[string][]string // module -> []tool_id (whitelist)
 	Language           string              // BCP47 language code (e.g., "en-US", "ja-JP")
 	ModuleDescriptions broker.ModuleDescriptions
 }
 
-// TotalCredits returns the sum of free and paid credits
-func (ctx *AuthContext) TotalCredits() int {
-	return ctx.FreeCredits + ctx.PaidCredits
+// WithinDailyLimit checks if the user can execute the given number of additional tools
+func (ctx *AuthContext) WithinDailyLimit(count int) bool {
+	return ctx.DailyUsed+count <= ctx.DailyLimit
 }
 
 // Authorizer handles authorization checks
@@ -139,8 +140,9 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		UserID:             userID,
 		AuthType:           authType,
 		AccountStatus:      userContext.AccountStatus,
-		FreeCredits:        userContext.FreeCredits,
-		PaidCredits:        userContext.PaidCredits,
+		PlanID:             userContext.PlanID,
+		DailyUsed:          userContext.DailyUsed,
+		DailyLimit:         userContext.DailyLimit,
 		EnabledModules:     userContext.EnabledModules,
 		EnabledTools:       userContext.EnabledTools,
 		Language:           userContext.Language,
@@ -166,7 +168,7 @@ func (ctx *AuthContext) CanAccessModule(moduleName string) error {
 
 // CanAccessTool checks if the user can access a specific tool.
 // Optimized: single map lookup + slice search (no separate module check needed).
-func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, creditCost int) error {
+func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, usageCount int) error {
 	toolID := moduleName + ":" + toolName
 
 	// 1. Check if tool is enabled (whitelist approach)
@@ -197,17 +199,17 @@ func (ctx *AuthContext) CanAccessTool(moduleName, toolName string, creditCost in
 		}
 	}
 
-	// 3. Check credit balance
-	if ctx.TotalCredits() < creditCost {
+	// 3. Check daily usage limit
+	if usageCount > 0 && !ctx.WithinDailyLimit(usageCount) {
 		consoleURL := os.Getenv("CONSOLE_URL")
-		billingURL := ""
+		upgradeURL := ""
 		if consoleURL != "" {
-			billingURL = fmt.Sprintf(" Add credits at: %s/billing", consoleURL)
+			upgradeURL = fmt.Sprintf(" Upgrade your plan at: %s/plan", consoleURL)
 		}
 		return &AuthError{
-			Code:    "INSUFFICIENT_CREDITS",
-			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d.%s", creditCost, ctx.TotalCredits(), billingURL),
-			Status:  http.StatusPaymentRequired,
+			Code:    "USAGE_LIMIT_EXCEEDED",
+			Message: fmt.Sprintf("Daily usage limit exceeded. Used: %d, Limit: %d.%s", ctx.DailyUsed, ctx.DailyLimit, upgradeURL),
+			Status:  http.StatusTooManyRequests,
 		}
 	}
 

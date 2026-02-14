@@ -3,6 +3,7 @@ package broker
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -21,17 +22,18 @@ type UserStore struct {
 // UserContext represents the user's context from get_user_context RPC
 type UserContext struct {
 	AccountStatus      string              `json:"account_status"`
-	FreeCredits        int                 `json:"free_credits"`
-	PaidCredits        int                 `json:"paid_credits"`
+	PlanID             string              `json:"plan_id"`
+	DailyUsed          int                 `json:"daily_used"`
+	DailyLimit         int                 `json:"daily_limit"`
 	EnabledModules     []string            `json:"enabled_modules"`
 	EnabledTools       map[string][]string `json:"enabled_tools"`       // module -> []tool_id (whitelist)
 	Language           string              `json:"language"`            // BCP47 language code (e.g., "en-US", "ja-JP")
 	ModuleDescriptions ModuleDescriptions  `json:"module_descriptions"` // module -> custom description
 }
 
-// TotalCredits returns the sum of free and paid credits
-func (uc *UserContext) TotalCredits() int {
-	return uc.FreeCredits + uc.PaidCredits
+// WithinDailyLimit checks if the user can execute the given number of tools
+func (uc *UserContext) WithinDailyLimit(count int) bool {
+	return uc.DailyUsed+count <= uc.DailyLimit
 }
 
 // IsModuleEnabled checks if a module is enabled for the user.
@@ -59,14 +61,6 @@ func (uc *UserContext) IsToolEnabled(module, tool string) bool {
 	return false
 }
 
-// ConsumeResult represents the result of consume_user_credits RPC
-type ConsumeResult struct {
-	Success          bool   `json:"success"`
-	FreeCredits      int    `json:"free_credits"`
-	PaidCredits      int    `json:"paid_credits"`
-	AlreadyProcessed bool   `json:"already_processed,omitempty"`
-	Error            string `json:"error,omitempty"`
-}
 
 // userCache stores user context with TTL
 type userCache struct {
@@ -141,8 +135,9 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 		// All tools enabled for all modules (dev mode)
 		return &UserContext{
 			AccountStatus:      "active",
-			FreeCredits:        100,
-			PaidCredits:        0,
+			PlanID:             "free",
+			DailyUsed:          0,
+			DailyLimit:         100,
 			EnabledModules:     []string{"notion", "github", "jira", "confluence", "supabase", "airtable", "google_calendar", "microsoft_todo", "google_tasks"},
 			EnabledTools:       map[string][]string{}, // Empty means check disabled (dev mode fallback)
 			Language:           "en-US",
@@ -177,8 +172,9 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	// RPC returns a table, so we get an array
 	var results []struct {
 		AccountStatus      string          `json:"account_status"`
-		FreeCredits        int             `json:"free_credits"`
-		PaidCredits        int             `json:"paid_credits"`
+		PlanID             string          `json:"plan_id"`
+		DailyUsed          int             `json:"daily_used"`
+		DailyLimit         int             `json:"daily_limit"`
 		EnabledModules     []string        `json:"enabled_modules"`
 		EnabledTools       json.RawMessage `json:"enabled_tools"`
 		Language           string          `json:"language"`
@@ -221,8 +217,9 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 
 	return &UserContext{
 		AccountStatus:      r.AccountStatus,
-		FreeCredits:        r.FreeCredits,
-		PaidCredits:        r.PaidCredits,
+		PlanID:             r.PlanID,
+		DailyUsed:          r.DailyUsed,
+		DailyLimit:         r.DailyLimit,
 		EnabledModules:     r.EnabledModules,
 		EnabledTools:       enabledTools,
 		Language:           language,
@@ -237,62 +234,52 @@ type ToolDetail struct {
 	Tool   string `json:"tool"`
 }
 
-// ConsumeCredit consumes credits for tool execution(s) (idempotent)
+// RecordUsage records tool usage asynchronously (fire-and-forget).
 // metaTool: "run" or "batch"
 // details: array of ToolDetail for tracking individual tool executions
-func (s *UserStore) ConsumeCredit(userID, metaTool string, amount int, requestID string, details []ToolDetail) (*ConsumeResult, error) {
+// This is non-blocking: failures are logged but do not affect the caller.
+func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []ToolDetail) {
 	if s.serviceKey == "" {
-		// Skip in development
-		return &ConsumeResult{
-			Success:     true,
-			FreeCredits: 100,
-			PaidCredits: 0,
-		}, nil
+		return // Skip in development
 	}
 
-	// Build request body
-	detailsJSON, err := json.Marshal(details)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal details: %w", err)
-	}
+	go func() {
+		detailsJSON, err := json.Marshal(details)
+		if err != nil {
+			log.Printf("RecordUsage: failed to marshal details: %v", err)
+			return
+		}
 
-	reqBody := fmt.Sprintf(
-		`{"p_user_id": "%s", "p_meta_tool": "%s", "p_amount": %d, "p_request_id": "%s", "p_details": %s}`,
-		userID, metaTool, amount, requestID, string(detailsJSON),
-	)
+		reqBody := fmt.Sprintf(
+			`{"p_user_id": "%s", "p_meta_tool": "%s", "p_request_id": "%s", "p_details": %s}`,
+			userID, metaTool, requestID, string(detailsJSON),
+		)
 
-	req, err := http.NewRequest(
-		"POST",
-		s.supabaseURL+"/rest/v1/rpc/consume_user_credits",
-		strings.NewReader(reqBody),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
+		req, err := http.NewRequest(
+			"POST",
+			s.supabaseURL+"/rest/v1/rpc/record_usage",
+			strings.NewReader(reqBody),
+		)
+		if err != nil {
+			log.Printf("RecordUsage: failed to create request: %v", err)
+			return
+		}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", s.serviceKey)
-	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("apikey", s.serviceKey)
+		req.Header.Set("Authorization", "Bearer "+s.serviceKey)
 
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call consume_user_credits: %w", err)
-	}
-	defer resp.Body.Close()
+		resp, err := s.client.Do(req)
+		if err != nil {
+			log.Printf("RecordUsage: failed to call record_usage: %v", err)
+			return
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("consume_user_credits failed: status %d", resp.StatusCode)
-	}
-
-	var result ConsumeResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	// Invalidate cache to reflect new balance
-	s.cache.delete(userID)
-
-	return &result, nil
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+			log.Printf("RecordUsage: record_usage returned status %d", resp.StatusCode)
+		}
+	}()
 }
 
 // InvalidateCache removes a user's cached context
