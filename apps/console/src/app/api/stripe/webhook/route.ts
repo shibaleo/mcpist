@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createStripeClient, getStripeConfig } from "@/lib/stripe"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { SupabaseClient } from "@supabase/supabase-js"
 import Stripe from "stripe"
 
 /**
@@ -55,44 +56,22 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Handle invoice.paid — activate/maintain subscription plan
+ * Call activate_subscription RPC and log result
  */
-async function handleInvoicePaid(
-  invoice: Stripe.Invoice,
+async function activateSubscription(
+  adminClient: SupabaseClient,
+  userId: string,
+  planId: string,
   eventId: string
 ) {
-  console.log(`[stripe/webhook] Processing invoice.paid: ${invoice.id}`)
-
-  const adminClient = createAdminClient()
-
-  // Get user_id from subscription metadata or customer metadata
-  const userId = invoice.subscription_details?.metadata?.user_id
-    || invoice.metadata?.user_id
-
-  if (!userId) {
-    // Try to find user by Stripe customer ID
-    const customerId = typeof invoice.customer === "string"
-      ? invoice.customer
-      : invoice.customer?.id
-
-    if (!customerId) {
-      console.error("[stripe/webhook] Missing customer ID in invoice")
-      return
-    }
-
-    console.error(`[stripe/webhook] Missing user_id in invoice metadata, customer: ${customerId}`)
-    return
-  }
-
-  // Activate subscription using RPC (handles idempotency)
   const { data, error } = await adminClient.rpc("activate_subscription", {
     p_user_id: userId,
-    p_plan_id: "plus",
+    p_plan_id: planId,
     p_event_id: eventId,
   })
 
   if (error) {
-    console.error("[stripe/webhook] Error activating subscription:", error)
+    console.error(`[stripe/webhook] Error activating subscription:`, error)
     return
   }
 
@@ -115,6 +94,49 @@ async function handleInvoicePaid(
 }
 
 /**
+ * Handle invoice.paid — activate/maintain subscription plan
+ */
+async function handleInvoicePaid(
+  invoice: Stripe.Invoice,
+  eventId: string
+) {
+  console.log(`[stripe/webhook] Processing invoice.paid: ${invoice.id}`)
+
+  const adminClient = createAdminClient()
+
+  // Get user_id from subscription metadata or invoice metadata
+  let userId = invoice.subscription_details?.metadata?.user_id
+    || invoice.metadata?.user_id
+
+  // Fallback: resolve user from Stripe customer ID
+  if (!userId) {
+    const customerId = typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id
+
+    if (!customerId) {
+      console.error("[stripe/webhook] Missing customer ID in invoice")
+      return
+    }
+
+    const { data: foundUserId, error: lookupError } = await adminClient.rpc(
+      "get_user_by_stripe_customer",
+      { p_stripe_customer_id: customerId }
+    )
+
+    if (lookupError || !foundUserId) {
+      console.error(`[stripe/webhook] Could not find user for customer ${customerId}:`, lookupError)
+      return
+    }
+
+    console.log(`[stripe/webhook] Resolved user ${foundUserId} from customer ${customerId}`)
+    userId = foundUserId as string
+  }
+
+  await activateSubscription(adminClient, userId, "plus", eventId)
+}
+
+/**
  * Handle customer.subscription.deleted — downgrade to free plan
  */
 async function handleSubscriptionDeleted(
@@ -132,27 +154,5 @@ async function handleSubscriptionDeleted(
     return
   }
 
-  // Downgrade to free plan using activate_subscription RPC
-  const { data, error } = await adminClient.rpc("activate_subscription", {
-    p_user_id: userId,
-    p_plan_id: "free",
-    p_event_id: eventId,
-  })
-
-  if (error) {
-    console.error("[stripe/webhook] Error downgrading subscription:", error)
-    return
-  }
-
-  const result = data as {
-    success: boolean
-    already_processed?: boolean
-    error?: string
-  } | null
-
-  if (result?.success) {
-    console.log(`[stripe/webhook] Downgraded user ${userId} to free plan`)
-  } else {
-    console.error("[stripe/webhook] Failed to downgrade subscription:", result)
-  }
+  await activateSubscription(adminClient, userId, "free", eventId)
 }

@@ -88,6 +88,12 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         plan_id: "plus",
       },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          plan_id: "plus",
+        },
+      },
     })
 
     return NextResponse.json({ url: session.url })
