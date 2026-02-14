@@ -387,16 +387,12 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 		params = make(map[string]interface{})
 	}
 
-	// Currently 1 credit per tool. To support per-tool pricing,
-	// replace with e.g. modules.CreditCost(moduleName, toolName).
-	creditCost := 1
-
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
 		return nil, &Error{Code: InternalError, Message: "auth context missing"}
 	}
 
-	if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
+	if err := authCtx.CanAccessTool(moduleName, toolName, 1); err != nil {
 		observability.LogSecurityEvent(middleware.GetRequestID(ctx), authCtx.UserID, "run_permission_denied", map[string]any{
 			"module": moduleName,
 			"tool":   toolName,
@@ -417,23 +413,13 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 		}
 	}
 
-	// Consume credits after successful call
-	consumeResult, err := h.userStore.ConsumeCredit(
+	// Record usage asynchronously (fire-and-forget)
+	h.userStore.RecordUsage(
 		authCtx.UserID,
 		"run",
-		creditCost,
 		middleware.GetRequestID(ctx),
 		[]broker.ToolDetail{{Module: moduleName, Tool: toolName}},
 	)
-	if err != nil {
-		observability.LogError("credit_consume_failed", err)
-	} else if !consumeResult.Success {
-		observability.LogSecurityEvent(middleware.GetRequestID(ctx), authCtx.UserID, "credit_consume_rejected", map[string]any{
-			"module": moduleName,
-			"tool":   toolName,
-			"error":  consumeResult.Error,
-		})
-	}
 
 	return result, nil
 }
@@ -460,7 +446,7 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 		return nil, &Error{Code: InternalError, Message: err.Error()}
 	}
 
-	// Consume credits for all successful tool executions in one transaction
+	// Record usage asynchronously for all successful tool executions
 	if len(batchResult.SuccessfulTasks) > 0 {
 		details := make([]broker.ToolDetail, len(batchResult.SuccessfulTasks))
 		for i, task := range batchResult.SuccessfulTasks {
@@ -471,21 +457,12 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 			}
 		}
 
-		consumeResult, err := h.userStore.ConsumeCredit(
+		h.userStore.RecordUsage(
 			authCtx.UserID,
 			"batch",
-			len(details), // total credit cost
 			requestID,
 			details,
 		)
-		if err != nil {
-			observability.LogError("batch_credit_consume_failed", err)
-		} else if !consumeResult.Success {
-			observability.LogSecurityEvent(requestID, authCtx.UserID, "batch_credit_consume_rejected", map[string]any{
-				"tool_count": len(details),
-				"error":      consumeResult.Error,
-			})
-		}
 	}
 
 	return batchResult.Result, nil
@@ -550,18 +527,16 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 		}
 	}
 
-	// Credit balance check: currently 1 credit per tool.
-	// To support per-tool pricing, replace toolCount with a sum of
-	// per-tool costs (e.g. modules.CreditCost(module, tool)) accumulated in the loop above.
-	if authCtx.TotalCredits() < toolCount {
+	// Daily usage limit check
+	if !authCtx.WithinDailyLimit(toolCount) {
 		consoleURL := os.Getenv("CONSOLE_URL")
-		billingURL := ""
+		upgradeURL := ""
 		if consoleURL != "" {
-			billingURL = fmt.Sprintf(" Add credits at: %s/billing", consoleURL)
+			upgradeURL = fmt.Sprintf(" Upgrade your plan at: %s/plan", consoleURL)
 		}
 		return &Error{
-			Code:    ErrInsufficientCredit,
-			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d.%s", toolCount, authCtx.TotalCredits(), billingURL),
+			Code:    ErrUsageLimitExceeded,
+			Message: fmt.Sprintf("Daily usage limit exceeded. Used: %d, Limit: %d.%s", authCtx.DailyUsed, authCtx.DailyLimit, upgradeURL),
 		}
 	}
 
@@ -575,8 +550,8 @@ func authErrorToRPC(err error) *Error {
 		return &Error{Code: InternalError, Message: err.Error()}
 	}
 	switch authErr.Code {
-	case "INSUFFICIENT_CREDITS":
-		return &Error{Code: ErrInsufficientCredit, Message: authErr.Message}
+	case "USAGE_LIMIT_EXCEEDED":
+		return &Error{Code: ErrUsageLimitExceeded, Message: authErr.Message}
 	case "MODULE_NOT_ENABLED", "TOOL_DISABLED":
 		return &Error{Code: ErrPermissionDenied, Message: authErr.Message}
 	default:
