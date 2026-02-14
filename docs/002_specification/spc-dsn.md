@@ -65,21 +65,17 @@ Go 標準ライブラリのみで実装。外部モジュール依存なし（`n
 | 言語 | TypeScript | Cloudflare Workers |
 | ランタイム | Cloudflare Workers | Edge |
 | ツール | Wrangler | デプロイ |
-| ストレージ | Cloudflare KV | APIキー検証キャッシュ、Rate Limitカウンター |
+| ストレージ | Cloudflare KV | APIキー検証キャッシュ |
 
 **責務:**
 - JWT検証（Supabase userinfo / Auth API / JWKS の3段構え）
 - APIキー検証（SHA-256 → KVキャッシュ → Supabase RPC fallback）
-- グローバルRate Limit（IP単位）
-- Burst制限（ユーザー単位）
 - X-User-ID / X-Auth-Type / X-Gateway-Secret ヘッダ付与
 - X-Request-ID 発行（`crypto.randomUUID()`）
 - Backend フェイルオーバー（Primary → Secondary）
 - OAuth Discovery メタデータ提供（RFC 9728 / 8414）
 - ヘルスチェック（`/health` + cron 5分間隔）
 - CORS ハンドリング
-
-**備考:** Rate Limit / Burst制限は課金対象外。濫用防止のためのインフラ保護目的で実装する。
 
 ---
 

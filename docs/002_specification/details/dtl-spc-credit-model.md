@@ -142,7 +142,5 @@ else:
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [itr-dst.md](../interaction/itr-dst.md) | Data Store詳細仕様 |
-| [itr-psp.md](../interaction/itr-psp.md) | Payment Service Provider詳細仕様 |
-| [itr-con.md](../interaction/itr-con.md) | User Console詳細仕様 |
-| [itr-hdl.md](../interaction/itr-hdl.md) | MCP Handler詳細仕様 |
+| [spc-itf.md](../spc-itf.md) | インターフェース仕様書 |
+| [spc-tbl.md](../spc-tbl.md) | テーブル仕様書 |

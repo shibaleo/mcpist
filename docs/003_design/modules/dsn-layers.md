@@ -96,17 +96,21 @@ func formatCompact(toolName, jsonStr string) string {
 
 ## Routing: format パラメータの分岐
 
-`format=json` の判断は spec でも tool でも format でもなく、**共通レイヤー** (`modules.Run()`) が行う。
+`format=json` の判断は spec でも tool でも format でもなく、**MCP ハンドラ** (`handler.go`) が行う。
 
 ```go
-// modules.Run() — 共通レイヤー
-result, err := m.ExecuteTool(ctx, toolName, params)  // tool 層: 常に JSON
-if err == nil && params["format"] != "json" {
-    result = applyFormat(moduleName, toolName, result) // format 層: compact 変換
+// handler.go — MCP ハンドラ
+result, err := modules.Run(ctx, moduleName, toolName, params)  // tool 層: 常に JSON
+if !result.IsError {
+    if f, _ := params["format"].(string); f != "json" {
+        result.Content[0].Text = modules.ApplyCompact(moduleName, toolName, result.Content[0].Text)
+    }
 }
 ```
 
-tool 層は `format` パラメータの存在すら知らない。format 層も「渡された JSON を整形する」だけで、いつ呼ばれるかは知らない。
+- `modules.Run()` は tool 層のみ。format の存在を知らない
+- `ApplyCompact()` は `CompactConverter` インターフェースを持つモジュールにのみ適用
+- batch 実行でも同じ `ApplyCompact()` が `output: true` のタスクに適用される
 
 ## Two-Stage Filtering
 
