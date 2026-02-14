@@ -2765,6 +2765,86 @@
           }
         },
         {
+          "id": "grafana:list_contact_points",
+          "name": "list_contact_points",
+          "descriptions": {
+            "en-US": "List all contact points.",
+            "ja-JP": "すべてのコンタクトポイントを一覧表示します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:create_contact_point",
+          "name": "create_contact_point",
+          "descriptions": {
+            "en-US": "Create a new contact point (e.g., email, Slack, webhook).",
+            "ja-JP": "新しいコンタクトポイント（メール、Slack、Webhook等）を作成します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": false,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:update_contact_point",
+          "name": "update_contact_point",
+          "descriptions": {
+            "en-US": "Update an existing contact point.",
+            "ja-JP": "既存のコンタクトポイントを更新します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:delete_contact_point",
+          "name": "delete_contact_point",
+          "descriptions": {
+            "en-US": "Delete a contact point by its UID.",
+            "ja-JP": "UIDでコンタクトポイントを削除します。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:get_notification_policy",
+          "name": "get_notification_policy",
+          "descriptions": {
+            "en-US": "Get the notification policy tree (routing rules for alerts).",
+            "ja-JP": "通知ポリシーツリー（アラートのルーティングルール）を取得します。"
+          },
+          "annotations": {
+            "readOnlyHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
+          "id": "grafana:update_notification_policy",
+          "name": "update_notification_policy",
+          "descriptions": {
+            "en-US": "Update the notification policy tree. This overwrites the entire policy tree.",
+            "ja-JP": "通知ポリシーツリーを更新します。ツリー全体が上書きされます。"
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": false,
+            "idempotentHint": true,
+            "openWorldHint": false
+          }
+        },
+        {
           "id": "grafana:create_alert_rule",
           "name": "create_alert_rule",
           "descriptions": {
