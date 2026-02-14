@@ -2,9 +2,9 @@ linters-settings:
   errcheck:
     exclude-functions:
       # HTTP response writing — errors indicate client disconnect, not actionable
-      - (encoding/json.Encoder).Encode
-      - (encoding/json.Decoder).Decode
+      - (*encoding/json.Encoder).Encode
+      - (*encoding/json.Decoder).Decode
       - encoding/json.Unmarshal
       - fmt.Sscanf
       # Test helpers
-      - (testing.T).Run
+      - (*testing.T).Run

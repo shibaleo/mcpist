@@ -59,7 +59,7 @@ func TestToolDefinitions(t *testing.T) {
 					// Use recover since some handlers panic on nil params — that's OK,
 					// it means the handler exists. We only care about "unknown tool".
 					func() {
-						defer func() { recover() }()
+						defer func() { recover() }() //nolint:errcheck
 						_, err := m.ExecuteTool(context.Background(), tool.Name, nil)
 						if err != nil && strings.Contains(err.Error(), "unknown tool") {
 							t.Errorf("tool %q defined in Tools() but has no handler", tool.Name)
