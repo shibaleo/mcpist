@@ -29,6 +29,7 @@ import {
   Info,
   ExternalLink,
   Search,
+  Gauge,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -71,6 +72,35 @@ interface AuthConfig {
     authType: "api_key" | "basic" | "oauth"
     extraFields?: AuthConfigField[]
   }
+}
+
+// 外部サービスのレート制限情報（公式ドキュメントベースの推定値）
+interface RateLimitInfo {
+  rate: string       // e.g. "3 req/s"
+  note?: string      // 補足（認証方式やプランで変動する旨など）
+}
+
+const rateLimitInfo: Record<string, RateLimitInfo> = {
+  notion: { rate: "3 req/s", note: "平均。バーストは短時間で制限される場合あり" },
+  github: { rate: "5,000 req/h", note: "認証済みユーザー。Search API は 30 req/min" },
+  jira: { rate: "10 req/s" },
+  confluence: { rate: "10 req/s" },
+  supabase: { rate: "制限なし", note: "Management API。プロジェクト設定に依存" },
+  google_calendar: { rate: "500 req/100s" },
+  google_tasks: { rate: "500 req/100s" },
+  google_drive: { rate: "1,000 req/100s" },
+  google_docs: { rate: "300 req/min" },
+  google_sheets: { rate: "300 req/min" },
+  google_apps_script: { rate: "制限あり", note: "スクリプト実行は 1,500 req/日 (Consumer)" },
+  microsoft_todo: { rate: "制限あり", note: "Microsoft Graph: ユーザーあたり 10,000 req/10min" },
+  todoist: { rate: "450 req/15min" },
+  trello: { rate: "100 req/10s", note: "APIキーごと。300 req/10s (トークンごと)" },
+  asana: { rate: "150 req/min" },
+  postgresql: { rate: "制限なし", note: "接続先サーバーの設定に依存" },
+  airtable: { rate: "5 req/s" },
+  ticktick: { rate: "制限あり", note: "公式ドキュメント非公開" },
+  dropbox: { rate: "制限あり", note: "エンドポイントにより異なる。約 1,000 req/5min" },
+  grafana: { rate: "制限なし", note: "セルフホスト: 制限なし。Cloud: プランに依存" },
 }
 
 const authConfig: Record<string, AuthConfig> = {
@@ -473,7 +503,15 @@ export default function ServicesPage() {
                 <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
                   <ModuleIcon moduleId={module.id} className="h-5 w-5 text-foreground" />
                 </div>
-                <span className="font-medium text-sm truncate">{module.name}</span>
+                <div className="min-w-0">
+                  <span className="font-medium text-sm truncate block">{module.name}</span>
+                  {rateLimitInfo[module.id] && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Gauge className="h-2.5 w-2.5 shrink-0" />
+                      {rateLimitInfo[module.id].rate}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -498,7 +536,15 @@ export default function ServicesPage() {
                   <ModuleIcon moduleId={module.id} className="h-5 w-5 text-foreground" />
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                 </div>
-                <span className="font-medium text-sm truncate flex-1">{module.name}</span>
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-sm truncate block">{module.name}</span>
+                  {rateLimitInfo[module.id] && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Gauge className="h-2.5 w-2.5 shrink-0" />
+                      {rateLimitInfo[module.id].rate}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -521,6 +567,19 @@ export default function ServicesPage() {
               </div>
             </div>
           </DialogHeader>
+
+          {/* レート制限情報 */}
+          {connectDialog && rateLimitInfo[connectDialog] && !connectionProgress && (
+            <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+              <Gauge className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="text-xs text-muted-foreground">
+                <span className="font-medium">レート制限: {rateLimitInfo[connectDialog].rate}</span>
+                {rateLimitInfo[connectDialog].note && (
+                  <p className="mt-0.5">{rateLimitInfo[connectDialog].note}</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {connectionProgress ? (
             <div className="py-8 flex flex-col items-center justify-center space-y-4">
@@ -752,6 +811,17 @@ export default function ServicesPage() {
               との接続を解除します。この操作は取り消せません。
             </DialogDescription>
           </DialogHeader>
+          {disconnectDialog && rateLimitInfo[disconnectDialog] && (
+            <div className="flex items-start gap-2 p-3 bg-secondary/50 rounded-lg">
+              <Gauge className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="text-xs text-muted-foreground">
+                <span className="font-medium">レート制限: {rateLimitInfo[disconnectDialog].rate}</span>
+                {rateLimitInfo[disconnectDialog].note && (
+                  <p className="mt-0.5">{rateLimitInfo[disconnectDialog].note}</p>
+                )}
+              </div>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDisconnectDialog(null)} disabled={submitting}>
               キャンセル
