@@ -63,7 +63,7 @@ func (s *ModuleStore) SyncModules(moduleNames []string) error {
 	req.Header.Set("apikey", s.serviceKey)
 	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
 
-	resp, err := s.client.Do(req)
+	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
 		return fmt.Errorf("failed to sync modules: %w", err)
 	}

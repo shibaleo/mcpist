@@ -232,7 +232,7 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 	req.Header.Set("apikey", b.serviceKey)
 	req.Header.Set("Authorization", "Bearer "+b.serviceKey)
 
-	resp, err := b.client.Do(req)
+	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call get_user_credential: %w", err)
 	}
@@ -398,7 +398,7 @@ func (b *TokenBroker) GetOAuthAppCredentials(ctx context.Context, provider strin
 	req.Header.Set("apikey", secretKey)
 	req.Header.Set("Authorization", "Bearer "+secretKey)
 
-	resp, err := b.client.Do(req)
+	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call get_oauth_app_credentials: %w", err)
 	}
@@ -457,7 +457,7 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 	req.Header.Set("apikey", secretKey)
 	req.Header.Set("Authorization", "Bearer "+secretKey)
 
-	resp, err := b.client.Do(req)
+	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
 		return fmt.Errorf("failed to call upsert_user_credential: %w", err)
 	}
