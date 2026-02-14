@@ -378,6 +378,9 @@ func GetModuleSchemas(moduleNames []string, enabledModules []string, enabledTool
 // Tool Execution
 // =============================================================================
 
+// toolTimeout is the maximum duration for a single tool execution.
+const toolTimeout = 30 * time.Second
+
 // Run executes a single tool in a module
 func Run(ctx context.Context, moduleName, toolName string, params map[string]interface{}) (*ToolCallResult, error) {
 	start := time.Now()
@@ -402,6 +405,10 @@ func Run(ctx context.Context, moduleName, toolName string, params map[string]int
 		params = validated
 	}
 
+	// Apply timeout to prevent external API calls from hanging indefinitely
+	ctx, cancel := context.WithTimeout(ctx, toolTimeout)
+	defer cancel()
+
 	result, err := m.ExecuteTool(ctx, toolName, params)
 	durationMs := time.Since(start).Milliseconds()
 	requestID := middleware.GetRequestID(ctx)
@@ -412,9 +419,13 @@ func Run(ctx context.Context, moduleName, toolName string, params map[string]int
 	}
 
 	if err != nil {
-		observability.LogToolCall(requestID, userID, moduleName, toolName, durationMs, "error", err.Error())
+		errMsg := err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			errMsg = fmt.Sprintf("Request to %s timed out after %s. The external service did not respond in time.", moduleName, toolTimeout)
+		}
+		observability.LogToolCall(requestID, userID, moduleName, toolName, durationMs, "error", errMsg)
 		return &ToolCallResult{
-			Content: []ContentBlock{{Type: "text", Text: err.Error()}},
+			Content: []ContentBlock{{Type: "text", Text: errMsg}},
 			IsError: true,
 		}, nil
 	}

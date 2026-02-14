@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
@@ -102,13 +106,36 @@ func main() {
 	// MCP endpoint with authorization + rate limit middleware
 	// Note: Authentication is handled by Cloudflare Worker, not Go Server
 	// Worker sets X-User-ID and X-Gateway-Secret headers
-	// Chain: Authorize → RateLimit(10 req/sec per user) → MCPHandler
+	// Chain: Recovery → Authorize → RateLimit(10 req/sec per user) → MCPHandler
 	rateLimiter := middleware.NewRateLimiter(10)
 	mcpHandler := mcp.NewHandler(userStore)
-	http.Handle("/mcp", authorizer.Authorize(rateLimiter.Middleware(mcpHandler)))
+	http.Handle("/mcp", middleware.Recovery(authorizer.Authorize(rateLimiter.Middleware(mcpHandler))))
 
-	log.Printf("Starting MCP server on port %s", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	srv := &http.Server{
+		Addr: fmt.Sprintf(":%s", port),
 	}
+
+	// Start server in goroutine
+	go func() {
+		log.Printf("Starting MCP server on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("Received signal %s, shutting down gracefully...", sig)
+
+	// Give in-flight requests up to 30 seconds to complete
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	log.Printf("Server stopped")
 }
