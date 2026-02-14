@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "cd ../server && go run ./cmd/tools-export",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
