@@ -97,7 +97,7 @@ func (s *UserStore) HealthCheck() error {
 	}
 	req.Header.Set("apikey", s.serviceKey)
 
-	resp, err := s.client.Do(req)
+	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
 		return fmt.Errorf("supabase unreachable: %w", err)
 	}
@@ -109,9 +109,10 @@ func (s *UserStore) HealthCheck() error {
 	return nil
 }
 
-// GetUserContext retrieves the user's context (account status, credits, modules, tools)
+// GetUserContext retrieves the user's context (account status, credits, modules, tools).
+// On fetch failure, returns stale cached data if available (graceful degradation).
 func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
-	// Check cache first
+	// Check cache first (non-expired)
 	if cached := s.cache.get(userID); cached != nil {
 		return cached, nil
 	}
@@ -119,6 +120,12 @@ func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 	// Query Supabase RPC
 	ctx, err := s.fetchUserContext(userID)
 	if err != nil {
+		// Fall back to stale cache on transient failure
+		if stale := s.cache.getStale(userID); stale != nil {
+			log.Printf("GetUserContext: using stale cache for %s due to: %v", userID, err)
+			s.cache.set(userID, stale) // extend TTL
+			return stale, nil
+		}
 		return nil, err
 	}
 
@@ -159,7 +166,7 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	req.Header.Set("apikey", s.serviceKey)
 	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
 
-	resp, err := s.client.Do(req)
+	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call get_user_context: %w", err)
 	}
@@ -308,6 +315,18 @@ func (c *userCache) get(userID string) *UserContext {
 	return item.context
 }
 
+// getStale returns cached context even if expired (for graceful degradation).
+func (c *userCache) getStale(userID string) *UserContext {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	item, ok := c.items[userID]
+	if !ok {
+		return nil
+	}
+	return item.context
+}
+
 func (c *userCache) set(userID string, ctx *UserContext) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -359,7 +378,7 @@ func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 	req.Header.Set("apikey", s.serviceKey)
 	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
 
-	resp, err := s.client.Do(req)
+	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call list_user_prompts: %w", err)
 	}
@@ -398,7 +417,7 @@ func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt,
 	req.Header.Set("apikey", s.serviceKey)
 	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
 
-	resp, err := s.client.Do(req)
+	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call get_user_prompt_by_name: %w", err)
 	}
