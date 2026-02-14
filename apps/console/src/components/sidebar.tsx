@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { getServiceConnections } from "@/lib/credits"
+import { getServiceConnections } from "@/lib/plan"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,7 +47,7 @@ const navItems = {
     { href: "/templates", label: "テンプレート", icon: MessageSquareText },
   ],
   general: [
-    { href: "/credits", label: "クレジット", icon: CreditCard },
+    { href: "/plans", label: "プラン", icon: CreditCard },
   ],
   admin: [
     { href: "/admin", label: "管理者パネル", icon: Shield },

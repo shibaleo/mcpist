@@ -1,9 +1,9 @@
 import { createClient } from './supabase/client'
 
-export interface UserCredits {
-  free_credits: number
-  paid_credits: number
-  updated_at: string
+export interface UserPlan {
+  plan_id: string
+  daily_used: number
+  daily_limit: number
 }
 
 export interface ServiceConnection {
@@ -15,15 +15,16 @@ export interface ServiceConnection {
 
 export interface UserContext {
   account_status: string
-  free_credits: number
-  paid_credits: number
+  plan_id: string
+  daily_used: number
+  daily_limit: number
 }
 
 /**
- * Get the current user's credit balance
+ * Get the current user's plan info
  * Uses get_user_context RPC since mcpist schema is not exposed
  */
-export async function getUserCredits(): Promise<UserCredits | null> {
+export async function getUserPlan(): Promise<UserPlan | null> {
   const supabase = createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,7 +37,7 @@ export async function getUserCredits(): Promise<UserCredits | null> {
   })
 
   if (error) {
-    console.error('Failed to fetch credits:', error)
+    console.error('Failed to fetch plan:', error)
     return null
   }
 
@@ -47,9 +48,9 @@ export async function getUserCredits(): Promise<UserCredits | null> {
   }
 
   return {
-    free_credits: context.free_credits,
-    paid_credits: context.paid_credits,
-    updated_at: new Date().toISOString() // RPC doesn't return updated_at
+    plan_id: context.plan_id,
+    daily_used: context.daily_used,
+    daily_limit: context.daily_limit,
   }
 }
 
@@ -76,7 +77,7 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
 }
 
 /**
- * Get the current user's context including account status and credits
+ * Get the current user's context including account status and plan
  * Uses get_user_context RPC since mcpist schema is not exposed
  */
 export async function getUserContext(): Promise<UserContext | null> {
@@ -104,8 +105,9 @@ export async function getUserContext(): Promise<UserContext | null> {
 
   return {
     account_status: context.account_status,
-    free_credits: context.free_credits,
-    paid_credits: context.paid_credits,
+    plan_id: context.plan_id,
+    daily_used: context.daily_used,
+    daily_limit: context.daily_limit,
   }
 }
 
@@ -113,7 +115,7 @@ export async function getUserContext(): Promise<UserContext | null> {
  * Usage statistics for a period
  */
 export interface UsageStats {
-  total_consumed: number
+  total_used: number
   by_module: Record<string, number>
   period: {
     start: string

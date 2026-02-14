@@ -5,24 +5,28 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { getUserContext, type UserCredits } from "@/lib/credits"
-import { Coins, Gift, Loader2, CheckCircle, Sparkles, Info } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { getUserContext, type UserContext } from "@/lib/plan"
+import { Loader2, Sparkles, Info, CheckCircle, Zap, Crown } from "lucide-react"
 import { toast } from "sonner"
 
 // モジュールレベルキャッシュ
-let cachedCredits: UserCredits | null = null
-let cachedAccountStatus: string | null = null
+let cachedContext: UserContext | null = null
 
 export const dynamic = "force-dynamic"
 
-export default function BillingPage() {
+const planDisplayNames: Record<string, string> = {
+  free: "Free",
+  plus: "Plus",
+}
+
+export default function PlanPage() {
   const searchParams = useSearchParams()
-  const hasCached = cachedCredits !== null
-  const [credits, setCredits] = useState<UserCredits | null>(cachedCredits)
-  const [accountStatus, setAccountStatus] = useState<string | null>(cachedAccountStatus)
+  const hasCached = cachedContext !== null
+  const [context, setContext] = useState<UserContext | null>(cachedContext)
   const [loading, setLoading] = useState(!hasCached)
-  const [purchasing, setPurchasing] = useState(false)
   const [claiming, setClaiming] = useState(false)
+  const [upgrading, setUpgrading] = useState(false)
 
   // Handle success/cancel from Stripe Checkout
   useEffect(() => {
@@ -30,46 +34,33 @@ export default function BillingPage() {
     const canceled = searchParams.get("canceled")
 
     if (success === "true") {
-      toast.success("クレジットを取得しました！", {
-        description: "100クレジットがアカウントに追加されました。",
+      toast.success("プランをアップグレードしました！", {
+        description: "Plusプランが適用されました。",
       })
-      // Clear URL params
-      window.history.replaceState({}, "", "/credits")
+      window.history.replaceState({}, "", "/plans")
     } else if (canceled === "true") {
-      toast.error("購入がキャンセルされました", {
-        description: "クレジットは追加されませんでした。",
-      })
-      window.history.replaceState({}, "", "/credits")
+      toast.error("アップグレードがキャンセルされました")
+      window.history.replaceState({}, "", "/plans")
     }
   }, [searchParams])
 
-  // Fetch user context (account status and credits)
-  const fetchUserContext = async () => {
+  // Fetch user context
+  const fetchContext = async () => {
     setLoading(true)
     try {
-      const context = await getUserContext()
-      const newAccountStatus = context?.account_status ?? null
-      const newCredits = context ? {
-        free_credits: context.free_credits,
-        paid_credits: context.paid_credits,
-        updated_at: new Date().toISOString(),
-      } : null
-      cachedAccountStatus = newAccountStatus
-      cachedCredits = newCredits
-      setAccountStatus(newAccountStatus)
-      setCredits(newCredits)
+      const data = await getUserContext()
+      cachedContext = data
+      setContext(data)
     } catch (error) {
-      console.error("Failed to fetch user context:", error)
+      console.error("Failed to fetch context:", error)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchUserContext()
-  }, [searchParams]) // Refetch when returning from Stripe
-
-  const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
+    fetchContext()
+  }, [searchParams])
 
   const handleClaimSignupBonus = async () => {
     setClaiming(true)
@@ -80,16 +71,15 @@ export default function BillingPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast.success("クレジットを受け取りました！", {
-          description: "100クレジットがアカウントに追加されました。",
+        toast.success("アカウントが有効になりました！", {
+          description: "MCPistをお楽しみください。",
         })
-        // Refetch user context
-        await fetchUserContext()
+        await fetchContext()
       } else if (data.error === "already_granted") {
-        toast.info("既にクレジットを受け取っています")
-        setAccountStatus("active")
+        toast.info("既にアカウントは有効です")
+        await fetchContext()
       } else {
-        throw new Error(data.message || "Failed to claim bonus")
+        throw new Error(data.message || "Failed to activate")
       }
     } catch (error) {
       console.error("Claim error:", error)
@@ -101,8 +91,8 @@ export default function BillingPage() {
     }
   }
 
-  const handleGetFreeCredits = async () => {
-    setPurchasing(true)
+  const handleUpgrade = async () => {
+    setUpgrading(true)
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -115,7 +105,6 @@ export default function BillingPage() {
         throw new Error(data.error || "Failed to create checkout session")
       }
 
-      // Redirect to Stripe Checkout
       if (data.url) {
         window.location.href = data.url
       }
@@ -124,26 +113,29 @@ export default function BillingPage() {
       toast.error("エラーが発生しました", {
         description: "しばらくしてからもう一度お試しください。",
       })
-      setPurchasing(false)
+      setUpgrading(false)
     }
   }
+
+  const usagePercent = context ? Math.min(100, (context.daily_used / context.daily_limit) * 100) : 0
+  const isNearLimit = context ? context.daily_used >= context.daily_limit * 0.8 : false
 
   return (
     <div className="p-6 space-y-6">
       <div className="pl-8 md:pl-0">
-        <h1 className="text-2xl font-bold text-foreground">クレジット</h1>
-        <p className="text-muted-foreground mt-1">クレジット残高の確認と購入</p>
+        <h1 className="text-2xl font-bold text-foreground">プラン</h1>
+        <p className="text-muted-foreground mt-1">プランと使用量の確認</p>
       </div>
 
-      {/* クレジット残高 */}
+      {/* 現在のプラン */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Coins className="h-5 w-5 text-primary" />
-            クレジット残高
+            <Zap className="h-5 w-5 text-primary" />
+            現在のプラン
           </CardTitle>
           <CardDescription>
-            MCPツールの実行に使用されます
+            MCPツールの1日あたりの実行回数上限
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -152,41 +144,51 @@ export default function BillingPage() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="text-muted-foreground">読み込み中...</span>
             </div>
-          ) : (
+          ) : context ? (
             <div className="space-y-4">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-4xl font-bold">{totalCredits.toLocaleString()}</span>
-                <span className="text-muted-foreground">クレジット</span>
+              <div className="flex items-center gap-3">
+                <Badge variant={context.plan_id === "plus" ? "default" : "secondary"} className="text-base px-3 py-1">
+                  {context.plan_id === "plus" && <Crown className="h-4 w-4 mr-1" />}
+                  {planDisplayNames[context.plan_id] ?? context.plan_id}
+                </Badge>
+                <span className="text-muted-foreground text-sm">
+                  {context.daily_limit.toLocaleString()} 回/日
+                </span>
               </div>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-info/20 text-info shrink-0">
-                    無料
-                  </Badge>
-                  <span>{credits?.free_credits.toLocaleString() ?? 0}</span>
+
+              {/* Daily usage progress */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">本日の使用量</span>
+                  <span className={isNearLimit ? "text-warning font-medium" : ""}>
+                    {context.daily_used.toLocaleString()} / {context.daily_limit.toLocaleString()}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-success/20 text-success shrink-0">
-                    有料
-                  </Badge>
-                  <span>{credits?.paid_credits.toLocaleString() ?? 0}</span>
-                </div>
+                <Progress
+                  value={usagePercent}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">
+                  毎日 UTC 0:00 (JST 9:00) にリセットされます
+                </p>
               </div>
             </div>
+          ) : (
+            <p className="text-muted-foreground">データを取得できませんでした</p>
           )}
         </CardContent>
       </Card>
 
-      {/* 初回クレジット取得（pre_active のみ） */}
-      {accountStatus === "pre_active" && (
+      {/* 初回アクティベーション（pre_active のみ） */}
+      {context?.account_status === "pre_active" && (
         <Card className="animate-pulse-border border-primary shadow-lg shadow-primary/20">
           <CardHeader>
             <CardTitle className="text-lg flex items-start gap-2">
               <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              ようこそ！初回クレジットを受け取る
+              ようこそ！アカウントを有効にする
             </CardTitle>
             <CardDescription>
-              MCPistを始めるための100クレジットをプレゼント
+              MCPistを始めるためにアカウントを有効化します
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -194,14 +196,14 @@ export default function BillingPage() {
               <div className="bg-primary/10 rounded-lg p-4">
                 <div className="flex flex-wrap items-center gap-4">
                   <div>
-                    <p className="font-medium">スタートボーナス</p>
+                    <p className="font-medium">Freeプラン</p>
                     <p className="text-sm text-muted-foreground">
-                      今すぐ受け取れます
+                      1日100回のツール実行
                     </p>
                   </div>
                   <div className="ml-auto text-right">
-                    <p className="text-2xl font-bold text-primary">100</p>
-                    <p className="text-sm text-muted-foreground">クレジット</p>
+                    <p className="text-2xl font-bold text-primary">無料</p>
+                    <p className="text-sm text-muted-foreground">で始められます</p>
                   </div>
                 </div>
               </div>
@@ -218,8 +220,8 @@ export default function BillingPage() {
                   </>
                 ) : (
                   <>
-                    <Gift className="h-4 w-4 mr-2" />
-                    100クレジットを受け取る
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    アカウントを有効にする
                   </>
                 )}
               </Button>
@@ -228,79 +230,78 @@ export default function BillingPage() {
         </Card>
       )}
 
-      {/* テスト用クレジット取得（active のみ） */}
-      {accountStatus === "active" && (
+      {/* アップグレード CTA（free プランの active ユーザーのみ） */}
+      {context?.account_status === "active" && context?.plan_id === "free" && (
         <Card className="border-dashed border-2 border-primary/30">
           <CardHeader>
             <CardTitle className="text-lg flex items-start gap-2">
-              <Gift className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              テスト用クレジットを取得
+              <Crown className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              Plusプランにアップグレード
             </CardTitle>
             <CardDescription>
-              テスト期間中は何度でも取得できます
+              より多くのツール実行回数で生産性を向上
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold">100</span>
-                    <span className="text-muted-foreground">クレジット</span>
+                  <div>
+                    <p className="font-medium">Plusプラン</p>
+                    <p className="text-sm text-muted-foreground">
+                      1日500回のツール実行
+                    </p>
                   </div>
                   <div className="ml-auto text-right">
-                    <p className="text-2xl font-bold text-primary">無料</p>
-                    <p className="text-sm text-muted-foreground">テストクレジット</p>
+                    <p className="text-2xl font-bold text-primary">¥980</p>
+                    <p className="text-sm text-muted-foreground">/月</p>
                   </div>
                 </div>
               </div>
               <Button
                 className="w-full"
                 size="lg"
-                onClick={handleGetFreeCredits}
-                disabled={purchasing}
+                onClick={handleUpgrade}
+                disabled={upgrading}
               >
-                {purchasing ? (
+                {upgrading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     処理中...
                   </>
                 ) : (
                   <>
-                    <Gift className="h-4 w-4 mr-2" />
-                    テストクレジットを取得
+                    <Crown className="h-4 w-4 mr-2" />
+                    Plusにアップグレード
                   </>
                 )}
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                テスト期間中のため支払いは発生しません
-              </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* クレジットの使い方 */}
+      {/* プランについて */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Info className="h-5 w-5 text-primary" />
-            クレジットについて
+            プランについて
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <CheckCircle className="h-4 w-4 mt-0.5 text-success shrink-0" />
-              <span>MCPツールの実行ごとに1クレジットを消費します</span>
+              <span>MCPツールの実行ごとに1回としてカウントされます</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="h-4 w-4 mt-0.5 text-success shrink-0" />
-              <span>無料クレジットが優先的に消費されます</span>
+              <span>使用量は毎日 UTC 0:00（JST 9:00）にリセットされます</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="h-4 w-4 mt-0.5 text-success shrink-0" />
-              <span>有料クレジットに有効期限はありません</span>
+              <span>Plusプランは月額サブスクリプションです</span>
             </li>
           </ul>
         </CardContent>

@@ -9,7 +9,7 @@ interface StripeCustomerResult {
 
 /**
  * POST /api/stripe/checkout
- * Create a Stripe Checkout Session for free credits
+ * Create a Stripe Checkout Session for Plus plan subscription
  */
 export async function POST(request: NextRequest) {
   try {
@@ -72,21 +72,21 @@ export async function POST(request: NextRequest) {
     // Get the origin for success/cancel URLs
     const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL
 
-    // Create Checkout Session
+    // Create Checkout Session for subscription
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       line_items: [
         {
-          price: config.freeCreditPriceId,
+          price: config.plusPriceId,
           quantity: 1,
         },
       ],
-      mode: "payment",
-      success_url: `${origin}/credits?success=true`,
-      cancel_url: `${origin}/credits?canceled=true`,
+      mode: "subscription",
+      success_url: `${origin}/plans?success=true`,
+      cancel_url: `${origin}/plans?canceled=true`,
       metadata: {
         user_id: user.id,
-        credits: "100",
+        plan_id: "plus",
       },
     })
 

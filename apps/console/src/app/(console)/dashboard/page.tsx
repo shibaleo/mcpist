@@ -3,15 +3,14 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Cable, Coins, Receipt, Loader2, Settings2, ChevronRight, Calendar } from "lucide-react"
-import { getUserContext, getServiceConnections, getMyUsage, type UserCredits, type ServiceConnection, type UsageStats } from "@/lib/credits"
+import { Cable, Zap, Receipt, Loader2, Settings2, ChevronRight, Calendar } from "lucide-react"
+import { getUserContext, getServiceConnections, getMyUsage, type UserContext, type ServiceConnection, type UsageStats } from "@/lib/plan"
 import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 // ダッシュボードデータのモジュールレベルキャッシュ
-let cachedCredits: UserCredits | null = null
-let cachedAccountStatus: string | null = null
+let cachedContext: UserContext | null = null
 let cachedConnections: ServiceConnection[] | null = null
 let cachedToolSettings: ToolSetting[] | null = null
 let cachedUsage: UsageStats | null = null
@@ -27,7 +26,7 @@ function getOnboardingStep(
   if (connections.length === 0) {
     return "connections"
   }
-  // 2. 初回クレジット未取得（pre_active）
+  // 2. 初回アクティベーション未完了（pre_active）
   if (accountStatus === "pre_active") {
     return "billing"
   }
@@ -35,7 +34,6 @@ function getOnboardingStep(
   return "complete"
 }
 
-// ハイライトカードのラッパー
 // 日付をYYYY-MM-DD形式に変換（ローカルタイムゾーン）
 function formatDateForInput(date: Date): string {
   const year = date.getFullYear()
@@ -96,8 +94,7 @@ function HighlightCard({
 export default function DashboardPage() {
   const { user } = useAuth()
   const hasCachedData = cachedConnections !== null
-  const [credits, setCredits] = useState<UserCredits | null>(cachedCredits)
-  const [accountStatus, setAccountStatus] = useState<string | null>(cachedAccountStatus)
+  const [context, setContext] = useState<UserContext | null>(cachedContext)
   const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
   const [toolSettings, setToolSettings] = useState<ToolSetting[]>(cachedToolSettings ?? [])
   const [usage, setUsage] = useState<UsageStats | null>(cachedUsage)
@@ -118,18 +115,10 @@ export default function DashboardPage() {
           getServiceConnections(),
           getMyToolSettings(),
         ])
-        const newAccountStatus = contextData?.account_status ?? null
-        const newCredits = contextData ? {
-          free_credits: contextData.free_credits,
-          paid_credits: contextData.paid_credits,
-          updated_at: new Date().toISOString(),
-        } : null
-        cachedAccountStatus = newAccountStatus
-        cachedCredits = newCredits
+        cachedContext = contextData
         cachedConnections = connectionsData
         cachedToolSettings = toolSettingsData
-        setAccountStatus(newAccountStatus)
-        setCredits(newCredits)
+        setContext(contextData)
         setConnections(connectionsData)
         setToolSettings(toolSettingsData)
       } catch (error) {
@@ -160,19 +149,17 @@ export default function DashboardPage() {
     fetchUsage()
   }, [usageStartDate, usageEndDate])
 
-  const totalCredits = credits ? credits.free_credits + credits.paid_credits : 0
   const enabledToolCount = toolSettings.filter((t) => t.enabled).length
   const totalToolCount = toolSettings.length
-  const onboardingStep = getOnboardingStep(connections, accountStatus)
+  const onboardingStep = getOnboardingStep(connections, context?.account_status ?? null)
 
-  // 残高アラート（active ユーザーで残高50以下）
-  const LOW_CREDIT_THRESHOLD = 50
-  const showLowCreditAlert = accountStatus === "active" && totalCredits <= LOW_CREDIT_THRESHOLD
+  // 使用量アラート（active ユーザーで80%以上使用）
+  const isNearLimit = context?.account_status === "active" && context.daily_used >= context.daily_limit * 0.8
 
   // オンボーディングメッセージ
   const onboardingMessages: Record<OnboardingStep, string> = {
     connections: "まずはサービスを連携しましょう",
-    billing: "初回クレジットを受け取りましょう",
+    billing: "アカウントを有効にしましょう",
     complete: "",
   }
 
@@ -198,15 +185,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 残高アラート（オンボーディング完了後、残高が少ない場合） */}
-      {!loading && onboardingStep === "complete" && showLowCreditAlert && (
+      {/* 使用量アラート（オンボーディング完了後、使用量が多い場合） */}
+      {!loading && onboardingStep === "complete" && isNearLimit && (
         <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-warning/20 flex items-center justify-center">
-            <Coins className="h-4 w-4 text-warning" />
+            <Zap className="h-4 w-4 text-warning" />
           </div>
           <div>
-            <p className="font-medium text-foreground">クレジット残高が少なくなっています</p>
-            <p className="text-sm text-muted-foreground">クレジットを追加して、引き続きMCPistをご利用ください</p>
+            <p className="font-medium text-foreground">本日の使用量が上限に近づいています</p>
+            <p className="text-sm text-muted-foreground">プランのアップグレードをご検討ください</p>
           </div>
         </div>
       )}
@@ -255,26 +242,31 @@ export default function DashboardPage() {
           </CardContent>
         </HighlightCard>
 
-        {/* Credit Balance */}
+        {/* Daily Usage / Plan */}
         <HighlightCard
-          href="/credits"
-          highlight={!loading && (onboardingStep === "billing" || showLowCreditAlert)}
+          href="/plans"
+          highlight={!loading && (onboardingStep === "billing" || isNearLimit)}
         >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Coins className="h-4 w-4" />
-              クレジット残高
+              <Zap className="h-4 w-4" />
+              本日の使用量
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : context ? (
+              <>
+                <div className="text-3xl font-bold">{context.daily_used.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  / {context.daily_limit.toLocaleString()} 回
+                </p>
+              </>
             ) : (
               <>
-                <div className="text-3xl font-bold">{totalCredits.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  無料: {credits?.free_credits.toLocaleString() ?? 0} / 有料: {credits?.paid_credits.toLocaleString() ?? 0}
-                </p>
+                <div className="text-3xl font-bold">-</div>
+                <p className="text-xs text-muted-foreground mt-1">データなし</p>
               </>
             )}
           </CardContent>
@@ -285,7 +277,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Receipt className="h-4 w-4" />
-              利用量
+              期間利用量
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -294,9 +286,9 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-3xl font-bold">
-                  {usage?.total_consumed?.toLocaleString() ?? 0}
+                  {usage?.total_used?.toLocaleString() ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">クレジット消費</p>
+                <p className="text-xs text-muted-foreground mt-1">回実行</p>
               </>
             )}
             {/* 期間選択 */}

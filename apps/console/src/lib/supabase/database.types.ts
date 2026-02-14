@@ -20,28 +20,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_user_credits: {
-        Args: {
-          p_amount: number
-          p_credit_type: string
-          p_event_id: string
-          p_user_id: string
-        }
+      activate_subscription: {
+        Args: { p_event_id: string; p_plan_id: string; p_user_id: string }
         Returns: Json
       }
       complete_user_onboarding: {
         Args: { p_event_id: string; p_user_id: string }
-        Returns: Json
-      }
-      consume_user_credits: {
-        Args: {
-          p_amount: number
-          p_module: string
-          p_request_id: string
-          p_task_id?: string
-          p_tool: string
-          p_user_id: string
-        }
         Returns: Json
       }
       delete_my_credential: { Args: { p_module: string }; Returns: Json }
@@ -83,12 +67,13 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: {
           account_status: string
+          plan_id: string
+          daily_used: number
+          daily_limit: number
           enabled_modules: string[]
           enabled_tools: Json
-          free_credits: number
           language: string
           module_descriptions: Json
-          paid_credits: number
         }[]
       }
       get_user_credential: {
@@ -184,6 +169,10 @@ export type Database = {
         }[]
       }
       lookup_user_by_key_hash: { Args: { p_key_hash: string }; Returns: Json }
+      record_usage: {
+        Args: { p_details: Json; p_meta_tool: string; p_request_id: string; p_user_id: string }
+        Returns: undefined
+      }
       revoke_my_api_key: { Args: { p_key_id: string }; Returns: Json }
       revoke_my_oauth_consent: { Args: { p_consent_id: string }; Returns: Json }
       sync_modules: { Args: { p_modules: string[] }; Returns: Json }

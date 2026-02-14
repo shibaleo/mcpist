@@ -15,8 +15,8 @@ export function createStripeClient() {
 export function getStripeConfig() {
   return {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-    freeCreditPriceId: process.env.STRIPE_FREE_CREDIT_PRICE_ID!,
-    freeCreditProductId: process.env.STRIPE_FREE_CREDIT_PROD_ID!,
+    // 暫定: 既存の STRIPE_FREE_CREDIT_PRICE_ID を Plus プランの Price ID として流用
+    plusPriceId: process.env.STRIPE_PLUS_PRICE_ID || process.env.STRIPE_FREE_CREDIT_PRICE_ID!,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
   }
 }
