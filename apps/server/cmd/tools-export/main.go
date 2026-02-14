@@ -119,7 +119,8 @@ func main() {
 	exportTools(moduleNames, *outputDir)
 }
 
-func exportTools(moduleNames []string, outputDir string) {
+// generateToolsJSON builds the tools.json content from registered modules.
+func generateToolsJSON(moduleNames []string) ([]byte, error) {
 	export := ToolExport{
 		Modules: make([]ModuleDef, 0, len(moduleNames)),
 	}
@@ -161,7 +162,15 @@ func exportTools(moduleNames []string, outputDir string) {
 
 	output, err := json.MarshalIndent(export, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to marshal tools: %v\n", err)
+		return nil, fmt.Errorf("failed to marshal tools: %w", err)
+	}
+	return output, nil
+}
+
+func exportTools(moduleNames []string, outputDir string) {
+	output, err := generateToolsJSON(moduleNames)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
