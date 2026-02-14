@@ -764,7 +764,7 @@ func resolveStringVariables(s string, resultStore *sync.Map) string {
 
 		taskID := parts[1]
 		index := 0
-		fmt.Sscanf(parts[2], "%d", &index)
+		_, _ = fmt.Sscanf(parts[2], "%d", &index)
 		field := parts[3]
 
 		// Get the result from store (always JSON format internally)
