@@ -150,9 +150,14 @@ func (c *LokiClient) push(labels map[string]string, data map[string]any) {
 
 // LogToolCall logs a tool call to Loki
 func LogToolCall(requestID, userID, module, tool string, durationMs int64, status string, errMsg string) {
+	level := "info"
+	if status == "error" {
+		level = "error"
+	}
 	labels := map[string]string{
 		"module": module,
 		"status": status,
+		"level":  level,
 	}
 
 	data := map[string]any{
@@ -177,6 +182,7 @@ func LogRequest(method, path string, statusCode int, durationMs int64) {
 		"type":   "request",
 		"method": method,
 		"path":   path,
+		"level":  "info",
 	}
 
 	data := map[string]any{
