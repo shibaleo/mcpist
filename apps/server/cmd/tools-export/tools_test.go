@@ -90,11 +90,7 @@ func TestToolDefinitions(t *testing.T) {
 	}
 }
 
-// TestToolHandlerCoverage ensures there are no orphan handlers (handlers
-// registered in toolHandlers but not in toolDefinitions). This is checked
-// indirectly: if Tools() returns N tools and all have handlers, and the
-// module exposes no other way to call handlers, coverage is complete.
-// This test counts tools per module as a sanity check.
+// TestToolCount counts tools per module as a sanity check.
 func TestToolCount(t *testing.T) {
 	moduleNames := modules.ListModules()
 	total := 0
