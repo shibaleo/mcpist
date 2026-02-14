@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
   // state から returnTo と module を取り出す
   let returnTo = "/tools"
-  let module = "atlassian"
+  let moduleName: string = "atlassian"
   if (stateParam) {
     try {
       const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         returnTo = stateData.returnTo
       }
       if (stateData.module) {
-        module = stateData.module
+        moduleName = stateData.module as string
       }
     } catch {
       // state のパースに失敗した場合はデフォルト値を使用
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
     }
 
     // モジュールに応じて保存先を決定
-    const modulesToSave = module === "atlassian" ? ["jira", "confluence"] : [module]
+    const modulesToSave = moduleName === "atlassian" ? ["jira", "confluence"] : [moduleName]
 
     for (const mod of modulesToSave) {
       const { error: saveError } = await supabase.rpc("upsert_my_credential", {
@@ -184,7 +184,7 @@ export async function GET(request: Request) {
       confluence: "Confluence",
       atlassian: "Atlassian (Jira & Confluence)",
     }
-    const displayName = moduleDisplayNames[module] || module
+    const displayName = moduleDisplayNames[moduleName] || moduleName
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)

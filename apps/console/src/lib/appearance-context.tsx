@@ -24,30 +24,23 @@ const AppearanceContext = createContext<AppearanceContextType | undefined>(undef
 const STORAGE_KEY_ACCENT = "mcpist-accent-color"
 const STORAGE_KEY_BG = "mcpist-bg-color" // 削除用
 
+function loadAccentColor(): AccentColorId {
+  if (typeof window === "undefined") return "orange"
+  // 古い設定キーを削除
+  localStorage.removeItem(STORAGE_KEY_BG)
+  localStorage.removeItem("mcpist-custom-colors")
+  const saved = localStorage.getItem(STORAGE_KEY_ACCENT) as AccentColorId | null
+  if (saved && accentColors.some(c => c.id === saved)) return saved
+  return "orange"
+}
+
 export function AppearanceProvider({ children }: { children: ReactNode }) {
-  const [accentColor, setAccentColorState] = useState<AccentColorId>("orange")
-  const [mounted, setMounted] = useState(false)
-
-  // 初期化時にローカルストレージから読み込み & 古いキーを削除
-  useEffect(() => {
-    // 古い背景色設定を削除
-    localStorage.removeItem(STORAGE_KEY_BG)
-    localStorage.removeItem("mcpist-custom-colors")
-
-    const savedAccent = localStorage.getItem(STORAGE_KEY_ACCENT) as AccentColorId | null
-    if (savedAccent && accentColors.some(c => c.id === savedAccent)) {
-      setAccentColorState(savedAccent)
-    }
-    setMounted(true)
-  }, [])
+  const [accentColor, setAccentColorState] = useState<AccentColorId>(loadAccentColor)
 
   // data属性を設定
   useEffect(() => {
-    if (!mounted) return
-
-    // アクセントカラーの設定
     document.documentElement.setAttribute("data-accent-color", accentColor)
-  }, [accentColor, mounted])
+  }, [accentColor])
 
   const setAccentColor = (id: AccentColorId) => {
     setAccentColorState(id)

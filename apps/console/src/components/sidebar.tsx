@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
@@ -73,15 +73,15 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
   const [connectionCount, setConnectionCount] = useState(cachedConnectionCount ?? 0)
 
   // モバイル: ページ遷移時にサイドバーを閉じる（初回マウントは除外）
-  const [prevPathname, setPrevPathname] = useState(pathname)
+  const prevPathnameRef = useRef(pathname)
   useEffect(() => {
-    if (pathname !== prevPathname) {
-      setPrevPathname(pathname)
+    if (pathname !== prevPathnameRef.current) {
+      prevPathnameRef.current = pathname
       if (onClose) {
         onClose()
       }
     }
-  }, [pathname, prevPathname, onClose])
+  }, [pathname, onClose])
 
   // 接続済みサービス数を取得
   useEffect(() => {

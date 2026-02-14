@@ -13,19 +13,10 @@ interface ConsoleLayoutProps {
 }
 
 export function ConsoleLayout({ children }: ConsoleLayoutProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const isTablet = useMediaQuery("(min-width: 768px) and (max-width: 1023px)")
-  const isMobile = useMediaQuery("(max-width: 767px)")
+  const [collapsed, setCollapsed] = useState(isTablet)
   const { user, isLoading } = useAuth()
   const router = useRouter()
-
-  useEffect(() => {
-    if (isTablet) {
-      setCollapsed(true)
-    } else if (!isMobile) {
-      setCollapsed(false)
-    }
-  }, [isTablet, isMobile])
 
   useEffect(() => {
     if (!isLoading && !user) {

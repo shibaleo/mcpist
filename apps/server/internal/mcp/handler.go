@@ -154,7 +154,7 @@ func (h *Handler) handleInlineMessage(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		resp := Response{JSONRPC: "2.0", Error: &Error{Code: ParseError, Message: "Parse error"}}
-		_ = json.NewEncoder(w).Encode(resp)
+		json.NewEncoder(w).Encode(resp)
 		return
 	}
 
@@ -169,7 +169,7 @@ func (h *Handler) handleInlineMessage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		resp = Response{JSONRPC: "2.0", ID: req.ID, Result: result}
 	}
-	_ = json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) sendToSession(session *Session, id interface{}, err *Error) {

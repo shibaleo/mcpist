@@ -58,26 +58,22 @@ async function buildUser(client: SupabaseClient, sbUser: SupabaseUser): Promise<
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(() => DEV_AUTH_BYPASS ? DEV_BYPASS_USER : null)
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
-  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [supabase] = useState<SupabaseClient | null>(() => {
+    if (typeof window === "undefined") return null
+    return createClient()
+  })
+  const [isLoading, setIsLoading] = useState(!DEV_AUTH_BYPASS)
+  const [isAdmin, setIsAdmin] = useState(DEV_AUTH_BYPASS)
 
   useEffect(() => {
-    // Development bypass - skip real auth
     if (DEV_AUTH_BYPASS) {
       console.warn("[Auth] DEV_AUTH_BYPASS enabled - using dummy user")
-      const client = createClient()
-      setSupabase(client)
-      setUser(DEV_BYPASS_USER)
-      setIsAdmin(true)
-      setIsLoading(false)
       return
     }
 
-    const client = createClient()
-    setSupabase(client)
+    if (!supabase) return
 
     // IMPORTANT: Auth initialization order matters to avoid deadlocks
     // See: https://github.com/supabase/supabase-js/issues/1594
@@ -93,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //    - The Web Locks API can cause hangs if async calls happen synchronously
     //      within onAuthStateChange callback
 
-    const { data: { subscription } } = client.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const sbUser = session?.user ?? null
       setSupabaseUser(sbUser)
 
@@ -101,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // setTimeout prevents deadlock - do not remove!
         setTimeout(async () => {
           try {
-            const appUser = await buildUser(client, sbUser)
+            const appUser = await buildUser(supabase, sbUser)
             setUser(appUser)
             setIsAdmin(appUser.role === "admin")
           } catch {
@@ -125,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     // Use .then() not await - prevents blocking during init
-    client.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       // onAuthStateChange will handle the state update
       if (!session) {
         setIsLoading(false)
@@ -137,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [supabase])
 
   const signOut = async () => {
     if (supabase) {

@@ -3,14 +3,13 @@
 import { Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState<string | null>(null)
-  const [returnTo, setReturnTo] = useState<string | null>(null)
 
   const normalizeReturnTo = (value: string | null) => {
     if (!value) return null
@@ -18,15 +17,13 @@ function LoginContent() {
     return null
   }
 
+  const returnTo = useMemo(() => normalizeReturnTo(searchParams.get("returnTo")), [searchParams])
+
   useEffect(() => {
-    // Get returnTo from query params
-    const returnToParam = normalizeReturnTo(searchParams.get("returnTo"))
-    if (returnToParam) {
-      setReturnTo(returnToParam)
-      // Store in sessionStorage for after OAuth callback
-      sessionStorage.setItem("auth_returnTo", returnToParam)
+    if (returnTo) {
+      sessionStorage.setItem("auth_returnTo", returnTo)
     }
-  }, [searchParams])
+  }, [returnTo])
 
   const handleSocialLogin = (provider: "google" | "github" | "azure") => {
     setLoading(provider)
