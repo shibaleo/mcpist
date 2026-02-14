@@ -397,11 +397,7 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 	}
 
 	if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
-		authErr, ok := err.(*middleware.AuthError)
-		if ok {
-			return nil, &Error{Code: InvalidRequest, Message: authErr.Message}
-		}
-		return nil, &Error{Code: InvalidRequest, Message: err.Error()}
+		return nil, authErrorToRPC(err)
 	}
 
 	result, err := modules.Run(ctx, moduleName, toolName, params)
@@ -525,7 +521,7 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 	const maxBatchSize = 10
 	if toolCount > maxBatchSize {
 		return &Error{
-			Code:    InvalidRequest,
+			Code:    InvalidParams,
 			Message: fmt.Sprintf("batch too large: %d commands (max %d)", toolCount, maxBatchSize),
 		}
 	}
@@ -537,7 +533,7 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 		})
 
 		return &Error{
-			Code:    InvalidRequest,
+			Code:    ErrPermissionDenied,
 			Message: "batch rejected: one or more tools are not permitted",
 		}
 	}
@@ -552,7 +548,7 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 			billingURL = fmt.Sprintf(" Add credits at: %s/billing", consoleURL)
 		}
 		return &Error{
-			Code:    InvalidRequest,
+			Code:    ErrInsufficientCredit,
 			Message: fmt.Sprintf("Insufficient credits. Required: %d, Available: %d.%s", toolCount, authCtx.TotalCredits(), billingURL),
 		}
 	}
@@ -560,3 +556,18 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 	return nil
 }
 
+// authErrorToRPC maps middleware.AuthError to the appropriate JSON-RPC error code.
+func authErrorToRPC(err error) *Error {
+	authErr, ok := err.(*middleware.AuthError)
+	if !ok {
+		return &Error{Code: InternalError, Message: err.Error()}
+	}
+	switch authErr.Code {
+	case "INSUFFICIENT_CREDITS":
+		return &Error{Code: ErrInsufficientCredit, Message: authErr.Message}
+	case "MODULE_NOT_ENABLED", "TOOL_DISABLED":
+		return &Error{Code: ErrPermissionDenied, Message: authErr.Message}
+	default:
+		return &Error{Code: InternalError, Message: authErr.Message}
+	}
+}
