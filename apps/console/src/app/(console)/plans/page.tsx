@@ -28,22 +28,6 @@ export default function PlanPage() {
   const [claiming, setClaiming] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
 
-  // Handle success/cancel from Stripe Checkout
-  useEffect(() => {
-    const success = searchParams.get("success")
-    const canceled = searchParams.get("canceled")
-
-    if (success === "true") {
-      toast.success("プランをアップグレードしました！", {
-        description: "Plusプランが適用されました。",
-      })
-      window.history.replaceState({}, "", "/plans")
-    } else if (canceled === "true") {
-      toast.error("アップグレードがキャンセルされました")
-      window.history.replaceState({}, "", "/plans")
-    }
-  }, [searchParams])
-
   // Fetch user context
   const fetchContext = async () => {
     setLoading(true)
@@ -51,16 +35,47 @@ export default function PlanPage() {
       const data = await getUserContext()
       cachedContext = data
       setContext(data)
+      return data
     } catch (error) {
       console.error("Failed to fetch context:", error)
+      return null
     } finally {
       setLoading(false)
     }
   }
 
+  // Webhook処理完了を待ってからデータを再取得（リトライ付き）
+  const waitForPlanUpdate = async (expectedPlan: string, maxRetries = 5) => {
+    for (let i = 0; i < maxRetries; i++) {
+      await new Promise((r) => setTimeout(r, 2000))
+      const data = await fetchContext()
+      if (data?.plan_id === expectedPlan) return true
+    }
+    return false
+  }
+
+  // Handle success/cancel from Stripe Checkout
+  useEffect(() => {
+    const success = searchParams.get("success")
+    const canceled = searchParams.get("canceled")
+
+    if (success === "true") {
+      window.history.replaceState({}, "", "/plans")
+      cachedContext = null
+      toast.promise(waitForPlanUpdate("plus"), {
+        loading: "プランを更新中...",
+        success: "Plusプランが適用されました！",
+        error: "プランの反映に時間がかかっています。ページを再読み込みしてください。",
+      })
+    } else if (canceled === "true") {
+      toast.error("アップグレードがキャンセルされました")
+      window.history.replaceState({}, "", "/plans")
+    }
+  }, [searchParams])
+
   useEffect(() => {
     fetchContext()
-  }, [searchParams])
+  }, [])
 
   const handleClaimSignupBonus = async () => {
     setClaiming(true)
