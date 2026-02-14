@@ -5,7 +5,7 @@ import Stripe from "stripe"
 
 /**
  * POST /api/stripe/webhook
- * Handle Stripe webhook events
+ * Handle Stripe webhook events for subscription billing
  */
 export async function POST(request: NextRequest) {
   const stripe = createStripeClient()
@@ -37,9 +37,14 @@ export async function POST(request: NextRequest) {
 
   // Handle the event
   switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session
-      await handleCheckoutCompleted(session, event.id)
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice
+      await handleInvoicePaid(invoice, event.id)
+      break
+    }
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object as Stripe.Subscription
+      await handleSubscriptionDeleted(subscription, event.id)
       break
     }
     default:
@@ -49,54 +54,105 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true })
 }
 
-async function handleCheckoutCompleted(
-  session: Stripe.Checkout.Session,
+/**
+ * Handle invoice.paid — activate/maintain subscription plan
+ */
+async function handleInvoicePaid(
+  invoice: Stripe.Invoice,
   eventId: string
 ) {
-  console.log(`[stripe/webhook] Processing checkout.session.completed: ${session.id}`)
+  console.log(`[stripe/webhook] Processing invoice.paid: ${invoice.id}`)
 
   const adminClient = createAdminClient()
 
-  // Get user_id from metadata
-  const userId = session.metadata?.user_id
-  const credits = parseInt(session.metadata?.credits || "0", 10)
+  // Get user_id from subscription metadata or customer metadata
+  const userId = invoice.subscription_details?.metadata?.user_id
+    || invoice.metadata?.user_id
 
   if (!userId) {
-    console.error("[stripe/webhook] Missing user_id in session metadata")
+    // Try to find user by Stripe customer ID
+    const customerId = typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id
+
+    if (!customerId) {
+      console.error("[stripe/webhook] Missing customer ID in invoice")
+      return
+    }
+
+    console.error(`[stripe/webhook] Missing user_id in invoice metadata, customer: ${customerId}`)
     return
   }
 
-  if (credits <= 0) {
-    console.error("[stripe/webhook] Invalid credits amount:", credits)
-    return
-  }
-
-  // Add credits using RPC (handles idempotency)
-  const { data, error } = await adminClient.rpc("add_user_credits", {
+  // Activate subscription using RPC (handles idempotency)
+  const { data, error } = await adminClient.rpc("activate_subscription", {
     p_user_id: userId,
-    p_amount: credits,
-    p_credit_type: "paid",
+    p_plan_id: "plus",
     p_event_id: eventId,
   })
 
   if (error) {
-    console.error("[stripe/webhook] Error adding credits:", error)
+    console.error("[stripe/webhook] Error activating subscription:", error)
     return
   }
 
   const result = data as {
     success: boolean
-    paid_credits?: number
+    already_processed?: boolean
+    plan_id?: string
     error?: string
   } | null
 
   if (result?.success) {
-    console.log(
-      `[stripe/webhook] Added ${credits} credits to user ${userId}. New balance: ${result.paid_credits}`
-    )
-  } else if (result?.error === "event_already_processed") {
-    console.log(`[stripe/webhook] Event ${eventId} already processed, skipping`)
+    if (result.already_processed) {
+      console.log(`[stripe/webhook] Event ${eventId} already processed, skipping`)
+    } else {
+      console.log(`[stripe/webhook] Activated plan '${result.plan_id}' for user ${userId}`)
+    }
   } else {
-    console.error("[stripe/webhook] Failed to add credits:", result)
+    console.error("[stripe/webhook] Failed to activate subscription:", result)
+  }
+}
+
+/**
+ * Handle customer.subscription.deleted — downgrade to free plan
+ */
+async function handleSubscriptionDeleted(
+  subscription: Stripe.Subscription,
+  eventId: string
+) {
+  console.log(`[stripe/webhook] Processing customer.subscription.deleted: ${subscription.id}`)
+
+  const adminClient = createAdminClient()
+
+  const userId = subscription.metadata?.user_id
+
+  if (!userId) {
+    console.error("[stripe/webhook] Missing user_id in subscription metadata")
+    return
+  }
+
+  // Downgrade to free plan using activate_subscription RPC
+  const { data, error } = await adminClient.rpc("activate_subscription", {
+    p_user_id: userId,
+    p_plan_id: "free",
+    p_event_id: eventId,
+  })
+
+  if (error) {
+    console.error("[stripe/webhook] Error downgrading subscription:", error)
+    return
+  }
+
+  const result = data as {
+    success: boolean
+    already_processed?: boolean
+    error?: string
+  } | null
+
+  if (result?.success) {
+    console.log(`[stripe/webhook] Downgraded user ${userId} to free plan`)
+  } else {
+    console.error("[stripe/webhook] Failed to downgrade subscription:", result)
   }
 }

@@ -4,8 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * POST /api/credits/grant-signup-bonus
- * Grant 100 free credits to new users during onboarding
- * Uses idempotency key to prevent duplicate grants
+ * Activate new user account (set status to active, assign free plan)
+ * Uses idempotency key to prevent duplicate activations
  */
 export async function POST() {
   try {
@@ -23,7 +23,7 @@ export async function POST() {
 
     const adminClient = createAdminClient()
 
-    // Complete onboarding (grant credits + set status to active)
+    // Complete onboarding (activate account + assign free plan)
     const eventId = `onboarding:${user.id}`
     const { data, error } = await adminClient.rpc("complete_user_onboarding", {
       p_user_id: user.id,
@@ -33,7 +33,7 @@ export async function POST() {
     if (error) {
       console.error("[api/credits/grant-signup-bonus] RPC error:", error)
       return NextResponse.json(
-        { success: false, error: "rpc_error", message: "クレジットの付与に失敗しました" },
+        { success: false, error: "rpc_error", message: "アカウントの有効化に失敗しました" },
         { status: 500 }
       )
     }
@@ -41,8 +41,7 @@ export async function POST() {
     const result = data as {
       success: boolean
       already_completed?: boolean
-      credits_granted?: number
-      status?: string
+      plan_id?: string
       error?: string
       message?: string
     } | null
@@ -55,16 +54,15 @@ export async function POST() {
         return NextResponse.json({
           success: false,
           error: "already_granted",
-          message: "既にクレジットを受け取っています",
+          message: "既にアカウントは有効です",
         })
       }
       console.log(
-        `[api/credits/grant-signup-bonus] Onboarding completed for user ${user.id}, granted ${result.credits_granted} credits`
+        `[api/credits/grant-signup-bonus] Onboarding completed for user ${user.id}, plan: ${result.plan_id}`
       )
       return NextResponse.json({
         success: true,
-        credits_granted: result.credits_granted,
-        status: result.status,
+        plan_id: result.plan_id,
       })
     } else {
       console.error("[api/credits/grant-signup-bonus] Unexpected response:", result)
