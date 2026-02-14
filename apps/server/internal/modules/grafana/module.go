@@ -389,6 +389,108 @@ var toolDefinitions = []modules.Tool{
 		},
 	},
 	{
+		ID:   "grafana:list_contact_points",
+		Name: "list_contact_points",
+		Descriptions: modules.LocalizedText{
+			"en-US": "List all contact points.",
+			"ja-JP": "すべてのコンタクトポイントを一覧表示します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type:       "object",
+			Properties: map[string]modules.Property{},
+		},
+	},
+	{
+		ID:   "grafana:create_contact_point",
+		Name: "create_contact_point",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Create a new contact point (e.g., email, Slack, webhook).",
+			"ja-JP": "新しいコンタクトポイント（メール、Slack、Webhook等）を作成します。",
+		},
+		Annotations: modules.AnnotateCreate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"name":                    {Type: "string", Description: "Contact point name"},
+				"type":                    {Type: "string", Description: "Integration type: email, slack, webhook, discord, pagerduty, etc."},
+				"settings":               {Type: "object", Description: "Integration-specific settings (e.g., {\"addresses\": \"user@example.com\"} for email)"},
+				"disable_resolve_message": {Type: "boolean", Description: "Disable notifications on alert resolution (default: false)"},
+			},
+			Required: []string{"name", "type", "settings"},
+		},
+	},
+	{
+		ID:   "grafana:update_contact_point",
+		Name: "update_contact_point",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update an existing contact point.",
+			"ja-JP": "既存のコンタクトポイントを更新します。",
+		},
+		Annotations: modules.AnnotateUpdate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"uid":                     {Type: "string", Description: "Contact point UID to update"},
+				"name":                    {Type: "string", Description: "Contact point name"},
+				"type":                    {Type: "string", Description: "Integration type: email, slack, webhook, discord, pagerduty, etc."},
+				"settings":               {Type: "object", Description: "Integration-specific settings"},
+				"disable_resolve_message": {Type: "boolean", Description: "Disable notifications on alert resolution"},
+			},
+			Required: []string{"uid", "name", "type", "settings"},
+		},
+	},
+	{
+		ID:   "grafana:delete_contact_point",
+		Name: "delete_contact_point",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Delete a contact point by its UID.",
+			"ja-JP": "UIDでコンタクトポイントを削除します。",
+		},
+		Annotations: modules.AnnotateDelete,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"uid": {Type: "string", Description: "Contact point UID to delete"},
+			},
+			Required: []string{"uid"},
+		},
+	},
+	{
+		ID:   "grafana:get_notification_policy",
+		Name: "get_notification_policy",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Get the notification policy tree (routing rules for alerts).",
+			"ja-JP": "通知ポリシーツリー（アラートのルーティングルール）を取得します。",
+		},
+		Annotations: modules.AnnotateReadOnly,
+		InputSchema: modules.InputSchema{
+			Type:       "object",
+			Properties: map[string]modules.Property{},
+		},
+	},
+	{
+		ID:   "grafana:update_notification_policy",
+		Name: "update_notification_policy",
+		Descriptions: modules.LocalizedText{
+			"en-US": "Update the notification policy tree. This overwrites the entire policy tree.",
+			"ja-JP": "通知ポリシーツリーを更新します。ツリー全体が上書きされます。",
+		},
+		Annotations: modules.AnnotateUpdate,
+		InputSchema: modules.InputSchema{
+			Type: "object",
+			Properties: map[string]modules.Property{
+				"receiver":        {Type: "string", Description: "Default receiver (contact point name)"},
+				"group_by":        {Type: "array", Description: "Labels to group alerts by", Items: &modules.Property{Type: "string"}},
+				"group_wait":      {Type: "string", Description: "Wait time before sending grouped notifications (e.g., '5m')"},
+				"group_interval":  {Type: "string", Description: "Interval between grouped notifications (e.g., '5m')"},
+				"repeat_interval": {Type: "string", Description: "Repeat interval for notifications (e.g., '4h')"},
+				"routes":          {Type: "array", Description: "Array of routing rules with receiver, matchers, group_by, etc."},
+			},
+			Required: []string{"receiver"},
+		},
+	},
+	{
 		ID:   "grafana:create_alert_rule",
 		Name: "create_alert_rule",
 		Descriptions: modules.LocalizedText{
@@ -456,8 +558,14 @@ var toolHandlers = map[string]toolHandler{
 	"delete_annotation":       deleteAnnotation,
 	"create_folder":           createFolder,
 	"delete_folder":           deleteFolder,
-	"create_alert_rule":       createAlertRule,
-	"query_datasource":        queryDatasource,
+	"create_alert_rule":          createAlertRule,
+	"list_contact_points":        listContactPoints,
+	"create_contact_point":       createContactPoint,
+	"update_contact_point":       updateContactPoint,
+	"delete_contact_point":       deleteContactPoint,
+	"get_notification_policy":    getNotificationPolicy,
+	"update_notification_policy": updateNotificationPolicy,
+	"query_datasource":           queryDatasource,
 }
 
 // =============================================================================
@@ -819,6 +927,153 @@ func createAlertRule(ctx context.Context, params map[string]any) (string, error)
 	}
 
 	res, err := c.CreateAlertRule(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func listContactPoints(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	res, err := c.ListContactPoints(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func createContactPoint(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	name, _ := params["name"].(string)
+	cpType, _ := params["type"].(string)
+
+	settings, ok := params["settings"]
+	if !ok {
+		return "", fmt.Errorf("settings is required")
+	}
+	settingsRaw, err := toRaw(settings)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode settings: %w", err)
+	}
+
+	req := &gen.CreateContactPointRequest{
+		Name:     name,
+		Type:     cpType,
+		Settings: settingsRaw,
+	}
+	if drm, ok := params["disable_resolve_message"].(bool); ok {
+		req.DisableResolveMessage.SetTo(drm)
+	}
+
+	res, err := c.CreateContactPoint(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func updateContactPoint(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	uid, _ := params["uid"].(string)
+	name, _ := params["name"].(string)
+	cpType, _ := params["type"].(string)
+
+	settings, ok := params["settings"]
+	if !ok {
+		return "", fmt.Errorf("settings is required")
+	}
+	settingsRaw, err := toRaw(settings)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode settings: %w", err)
+	}
+
+	req := &gen.UpdateContactPointRequest{
+		Name:     name,
+		Type:     cpType,
+		Settings: settingsRaw,
+	}
+	if drm, ok := params["disable_resolve_message"].(bool); ok {
+		req.DisableResolveMessage.SetTo(drm)
+	}
+
+	res, err := c.UpdateContactPoint(ctx, req, gen.UpdateContactPointParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func deleteContactPoint(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	uid, _ := params["uid"].(string)
+	err = c.DeleteContactPoint(ctx, gen.DeleteContactPointParams{UID: uid})
+	if err != nil {
+		return "", err
+	}
+	return toJSON(map[string]string{"message": "contact point deleted"})
+}
+
+func getNotificationPolicy(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	res, err := c.GetNotificationPolicy(ctx)
+	if err != nil {
+		return "", err
+	}
+	return toJSON(res)
+}
+
+func updateNotificationPolicy(ctx context.Context, params map[string]any) (string, error) {
+	c, err := newOgenClient(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	receiver, _ := params["receiver"].(string)
+	req := &gen.NotificationPolicy{}
+	req.Receiver.SetTo(receiver)
+
+	if groupBy, ok := params["group_by"].([]interface{}); ok {
+		for _, g := range groupBy {
+			if s, ok := g.(string); ok {
+				req.GroupBy = append(req.GroupBy, s)
+			}
+		}
+	}
+	if gw, ok := params["group_wait"].(string); ok && gw != "" {
+		req.GroupWait.SetTo(gw)
+	}
+	if gi, ok := params["group_interval"].(string); ok && gi != "" {
+		req.GroupInterval.SetTo(gi)
+	}
+	if ri, ok := params["repeat_interval"].(string); ok && ri != "" {
+		req.RepeatInterval.SetTo(ri)
+	}
+	if routes, ok := params["routes"].([]interface{}); ok {
+		routesRaw, err := toRawSlice(routes)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode routes: %w", err)
+		}
+		req.Routes = routesRaw
+	}
+
+	res, err := c.UpdateNotificationPolicy(ctx, req)
 	if err != nil {
 		return "", err
 	}

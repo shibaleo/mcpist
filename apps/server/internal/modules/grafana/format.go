@@ -45,6 +45,16 @@ func formatCompact(toolName, jsonStr string) string {
 		return pickKeys(jsonStr, "title", "message")
 	case "create_alert_rule":
 		return pickKeys(jsonStr, "uid", "title", "folderUID", "ruleGroup")
+	// Contact Points
+	case "list_contact_points":
+		return contactPointsToCSV(jsonStr)
+	case "create_contact_point", "update_contact_point":
+		return pickKeys(jsonStr, "uid", "name", "type")
+	case "delete_contact_point":
+		return pickKeys(jsonStr, "message")
+	// Notification Policies — tree structure, keep as-is
+	case "get_notification_policy", "update_notification_policy":
+		return jsonStr
 	// query_datasource returns free-form data, keep as-is
 	case "query_datasource":
 		return jsonStr
@@ -221,6 +231,28 @@ func alertsToCSV(jsonStr string) string {
 			csvEscape(str(a, "title")),
 			csvEscape(str(a, "folderUID")),
 			csvEscape(str(a, "ruleGroup")),
+		))
+	}
+	sb.WriteString("```")
+	return sb.String()
+}
+
+// contactPointsToCSV: uid,name,type
+func contactPointsToCSV(jsonStr string) string {
+	var cps []map[string]any
+	if err := json.Unmarshal([]byte(jsonStr), &cps); err != nil {
+		return jsonStr
+	}
+	if len(cps) == 0 {
+		return "# 0 contact points"
+	}
+	var sb strings.Builder
+	sb.WriteString("```csv\nuid,name,type\n")
+	for _, cp := range cps {
+		sb.WriteString(fmt.Sprintf("%s,%s,%s\n",
+			csvEscape(str(cp, "uid")),
+			csvEscape(str(cp, "name")),
+			str(cp, "type"),
 		))
 	}
 	sb.WriteString("```")
