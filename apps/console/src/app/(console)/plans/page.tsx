@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { getUserContext, type UserContext } from "@/lib/plan"
-import { Loader2, Sparkles, Info, CheckCircle, Zap, Crown } from "lucide-react"
+import { Loader2, Sparkles, Info, CheckCircle, Zap, Crown, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 
 // モジュールレベルキャッシュ
@@ -27,6 +27,7 @@ export default function PlanPage() {
   const [loading, setLoading] = useState(!hasCached)
   const [claiming, setClaiming] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
+  const [managingSubscription, setManagingSubscription] = useState(false)
 
   // Fetch user context
   const fetchContext = async () => {
@@ -129,6 +130,32 @@ export default function PlanPage() {
         description: "しばらくしてからもう一度お試しください。",
       })
       setUpgrading(false)
+    }
+  }
+
+  const handleManageSubscription = async () => {
+    setManagingSubscription(true)
+    try {
+      const response = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create portal session")
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      console.error("Portal error:", error)
+      toast.error("エラーが発生しました", {
+        description: "しばらくしてからもう一度お試しください。",
+      })
+      setManagingSubscription(false)
     }
   }
 
@@ -292,6 +319,40 @@ export default function PlanPage() {
                 )}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* サブスクリプション管理（plus プランのみ） */}
+      {context?.account_status === "active" && context?.plan_id === "plus" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Crown className="h-5 w-5 text-primary" />
+              サブスクリプション管理
+            </CardTitle>
+            <CardDescription>
+              お支払い方法の変更、プランの解約はこちらから
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={handleManageSubscription}
+              disabled={managingSubscription}
+            >
+              {managingSubscription ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  処理中...
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  サブスクリプションを管理
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       )}
