@@ -95,6 +95,26 @@ func NewUserStore() *UserStore {
 	}
 }
 
+// HealthCheck verifies connectivity to Supabase by calling the REST API root.
+func (s *UserStore) HealthCheck() error {
+	req, err := http.NewRequest("HEAD", s.supabaseURL+"/rest/v1/", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create health check request: %w", err)
+	}
+	req.Header.Set("apikey", s.serviceKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("supabase unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		return fmt.Errorf("supabase returned status %d", resp.StatusCode)
+	}
+	return nil
+}
+
 // GetUserContext retrieves the user's context (account status, credits, modules, tools)
 func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 	// Check cache first

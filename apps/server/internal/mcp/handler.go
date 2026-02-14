@@ -397,6 +397,11 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 	}
 
 	if err := authCtx.CanAccessTool(moduleName, toolName, creditCost); err != nil {
+		observability.LogSecurityEvent(middleware.GetRequestID(ctx), authCtx.UserID, "run_permission_denied", map[string]any{
+			"module": moduleName,
+			"tool":   toolName,
+			"reason": err.Error(),
+		})
 		return nil, authErrorToRPC(err)
 	}
 
@@ -421,9 +426,13 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 		[]broker.ToolDetail{{Module: moduleName, Tool: toolName}},
 	)
 	if err != nil {
-		log.Printf("Failed to consume credits: %v", err)
+		observability.LogError("credit_consume_failed", err)
 	} else if !consumeResult.Success {
-		log.Printf("Credit consumption failed: %s", consumeResult.Error)
+		observability.LogSecurityEvent(middleware.GetRequestID(ctx), authCtx.UserID, "credit_consume_rejected", map[string]any{
+			"module": moduleName,
+			"tool":   toolName,
+			"error":  consumeResult.Error,
+		})
 	}
 
 	return result, nil
@@ -470,9 +479,12 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 			details,
 		)
 		if err != nil {
-			log.Printf("Failed to consume credits for batch: %v", err)
+			observability.LogError("batch_credit_consume_failed", err)
 		} else if !consumeResult.Success {
-			log.Printf("Credit consumption failed for batch: %s", consumeResult.Error)
+			observability.LogSecurityEvent(requestID, authCtx.UserID, "batch_credit_consume_rejected", map[string]any{
+				"tool_count": len(details),
+				"error":      consumeResult.Error,
+			})
 		}
 	}
 

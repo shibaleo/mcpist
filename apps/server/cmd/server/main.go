@@ -99,8 +99,16 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Instance-ID", instanceID)
 		w.Header().Set("X-Instance-Region", instanceRegion)
+
+		dbStatus := "ok"
+		if err := userStore.HealthCheck(); err != nil {
+			dbStatus = "unavailable"
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, `{"status":"degraded","instance":"%s","region":"%s","db":"%s"}`, instanceID, instanceRegion, dbStatus)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status":"ok","instance":"%s","region":"%s"}`, instanceID, instanceRegion)
+		fmt.Fprintf(w, `{"status":"ok","instance":"%s","region":"%s","db":"%s"}`, instanceID, instanceRegion, dbStatus)
 	})
 
 	// MCP endpoint with authorization + rate limit middleware
