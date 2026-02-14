@@ -248,6 +248,74 @@ components:
         annotations: {}
         labels: {}
 
+    # ============ Contact Points ============
+    ContactPoint:
+      type: object
+      properties:
+        uid:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        settings: {}
+        disableResolveMessage:
+          type: boolean
+        provenance:
+          type: string
+
+    CreateContactPointRequest:
+      type: object
+      required: [name, type, settings]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        settings: {}
+        disableResolveMessage:
+          type: boolean
+
+    UpdateContactPointRequest:
+      type: object
+      required: [name, type, settings]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        settings: {}
+        disableResolveMessage:
+          type: boolean
+
+    DeleteContactPointResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    # ============ Notification Policies ============
+    NotificationPolicy:
+      type: object
+      properties:
+        receiver:
+          type: string
+        group_by:
+          type: array
+          items:
+            type: string
+        routes:
+          type: array
+          items: {}
+        group_wait:
+          type: string
+        group_interval:
+          type: string
+        repeat_interval:
+          type: string
+        provenance:
+          type: string
+
     # ============ Annotations ============
     Annotation:
       type: object
@@ -581,6 +649,102 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AlertRule'
+
+  # ============ Contact Points ============
+  /api/v1/provisioning/contact-points:
+    get:
+      operationId: listContactPoints
+      summary: List all contact points
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContactPoint'
+    post:
+      operationId: createContactPoint
+      summary: Create a contact point
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContactPointRequest'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPoint'
+
+  /api/v1/provisioning/contact-points/{uid}:
+    put:
+      operationId: updateContactPoint
+      summary: Update a contact point
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContactPointRequest'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPoint'
+    delete:
+      operationId: deleteContactPoint
+      summary: Delete a contact point
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  # ============ Notification Policies ============
+  /api/v1/provisioning/policies:
+    get:
+      operationId: getNotificationPolicy
+      summary: Get the notification policy tree
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPolicy'
+    put:
+      operationId: updateNotificationPolicy
+      summary: Update the notification policy tree
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPolicy'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPolicy'
 
   # ============ Annotations ============
   /api/annotations:
