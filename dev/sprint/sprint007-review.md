@@ -185,5 +185,5 @@
 - [sprint006-review.md](./sprint006-review.md) - Sprint 006 レビュー
 - [dsn-layers.md](../../docs/003_design/modules/dsn-layers.md) - 3 層アーキテクチャ設計書
 - [day026-worklog.md](day026-worklog.md)
-- [day027-worklog.md](../workdir/day027-worklog.md)
-- [day028-worklog.md](../workdir/day028-worklog.md)
+- [day027-worklog.md](day027-worklog.md)
+- [day028-worklog.md](day028-worklog.md)

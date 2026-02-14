@@ -8,7 +8,7 @@
 | 期間 | 2026-02-14 〜 2026-02-20 (7日間) |
 | マイルストーン | M7: ドキュメント削減・品質基盤・本番デプロイ |
 | 前提 | Sprint-007 完了（20 モジュール ~280 ツール、ogen 全面移行、3 層アーキテクチャ確立、broker 集約） |
-| 状態 | 実施中 |
+| 状態 | **完了** |
 
 ---
 
@@ -61,7 +61,7 @@ Sprint-007 の最大の教訓は「設計書が減ったのは良いこと」。
 | CORS | `*` 全許可（意図的設計、MCP クライアントは非ブラウザ） | 低 |
 | **セキュリティヘッダー** | **CSP/HSTS 等なし** | **中 → 次 Sprint** |
 
-#### Observability: B-
+#### Observability: B
 
 | 領域 | 状態 | 備考 |
 |------|------|------|
@@ -72,7 +72,7 @@ Sprint-007 の最大の教訓は「設計書が減ったのは良いこと」。
 | ヘルスチェック | ✅ DB 接続チェック追加 | Supabase 障害時 503 返却 |
 | ログレベル区分 | ✅ 実装済み | info/error/warn を level ラベルで付与 |
 | 監査ログ | ✅ 実装済み | run/batch の permission denied, credit 消費失敗を Loki 送信 |
-| **Grafana アラート** | **未設定** | **UI 手動設定。`{level="error"}` 基盤は整備済み** |
+| Grafana アラート | ✅ 3 ルール設定済み | Error Rate, Security Events, Log Silence |
 | Prometheus メトリクス | なし | Loki LogQL で代替可能、優先度低 |
 | 分散トレーシング | なし | OTEL 依存は ogen 間接依存のみ、優先度低 |
 
@@ -197,7 +197,7 @@ CI トリガーは `workflow_dispatch`（手動実行のみ）に変更。
 | S8-040 | ツールログに level フィールド追加 | ✅ | `LogToolCall` に info/error、`LogRequest` に info を付与 |
 | S8-041 | アクセス拒否・クレジット消費の監査ログ | ✅ | `LogSecurityEvent` で run/batch の permission denied, credit 失敗を Loki 送信 |
 | S8-042 | /health に DB 接続チェック追加 | ✅ | Supabase HEAD → 503 `{"status":"degraded"}` 返却 |
-| S8-043 | Grafana アラートルール設定 | 🔜 | Grafana Cloud UI での手動設定。`{level="error"}` で検知可能な基盤は整備済み |
+| S8-043 | Grafana アラートルール設定 | ✅ | MCP ツールで 3 ルール作成: Error Rate, Security Events, Log Silence |
 
 ### Phase 5: 機能実装（優先度：低） ✅
 
@@ -251,7 +251,7 @@ Day 6-7: Phase 5 (機能) + バッファ
 - [x] GitHub Actions CI が workflow_dispatch で実行される（push/PR トリガーは無効化）
 - [x] 全テスト pass (go test + console build) — CI 6 ジョブ全 pass 確認済み
 - [x] ツールログに level フィールドが追加されている
-- [ ] Grafana にアラートルールが設定されている（UI 設定作業のため手動対応）
+- [x] Grafana にアラートルールが設定されている（MCP ツールで 3 ルール作成済み）
 - [x] /health に DB 接続チェックが追加されている
 - [x] アクセス拒否・クレジット消費失敗の監査ログが Loki に送信される
 - [x] docs/ の .md ファイル数が削減済み（15 ファイル削除、現在 52 ファイル）

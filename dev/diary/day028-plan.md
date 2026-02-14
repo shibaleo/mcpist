@@ -285,7 +285,7 @@ spec-tool が 1:1 対応しているツール（全体の ~100%）では:
 
 ## 参考
 
-- [day027-worklog.md](./day027-worklog.md) - DAY027 作業ログ
-- [day027-plan.md](./day027-plan.md) - DAY027 計画
+- [day027-worklog.md](day027-worklog.md) - DAY027 作業ログ
+- [day027-plan.md](day027-plan.md) - DAY027 計画
 - [sprint007-plan.md](../sprint/sprint007-plan.md) - Sprint 007 計画
 - [dsn-modules.md](../../docs/003_design/modules/dsn-modules.md) - モジュールアーキテクチャ設計書
