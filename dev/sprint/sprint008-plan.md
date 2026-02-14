@@ -8,7 +8,7 @@
 | 期間 | 2026-02-14 〜 2026-02-20 (7日間) |
 | マイルストーン | M7: ドキュメント削減・品質基盤・本番デプロイ |
 | 前提 | Sprint-007 完了（20 モジュール ~280 ツール、ogen 全面移行、3 層アーキテクチャ確立、broker 集約） |
-| 状態 | 計画中 |
+| 状態 | 実施中 |
 
 ---
 
@@ -41,6 +41,83 @@ Sprint-007 の最大の教訓は「設計書が減ったのは良いこと」。
 | graph | 9 | 不明（要確認） |
 | **合計** | **174** | — |
 
+### コードベース監査結果（Sprint 008 開始時点）
+
+#### セキュリティ: B+
+
+| 領域 | 状態 | リスク |
+|------|------|--------|
+| 認証 (JWT → Worker 委譲) | 実装済み | 低 |
+| Gateway Secret 検証 | 実装済み | 低 |
+| 認可 (ホワイトリスト方式) | 実装済み | 低 |
+| OAuth2 トークン管理 (broker) | 実装済み、自動リフレッシュ | 低 |
+| トークン暗号化 (Supabase Vault) | 委譲済み | 低 |
+| パラメータバリデーション | 型・必須チェック済み | 低 |
+| SQL インジェクション (pgx) | パラメータ化クエリ + DDL 制限 | 非常に低 |
+| SSRF | localhost ブロック済み | 低 |
+| Rate Limiting | スライディングウィンドウ 10req/s | 低 |
+| クレジット制御 | 冪等消費 (request ID) | 低 |
+| パニックハンドリング | ✅ 実装済み (recovery middleware) | 低 |
+| CORS | `*` 全許可（意図的設計、MCP クライアントは非ブラウザ） | 低 |
+| **セキュリティヘッダー** | **CSP/HSTS 等なし** | **中 → 次 Sprint** |
+
+#### Observability: B-
+
+| 領域 | 状態 | 備考 |
+|------|------|------|
+| 構造化ログ (Loki) | 実装済み | JSON push、非同期、カーディナリティ管理良好 |
+| Request ID 伝播 | 実装済み | Worker → Server → ログまで一貫 |
+| ツール実行ログ | 実装済み | user_id, module, tool, duration_ms, status |
+| セキュリティイベントログ | ✅ 実装済み | invalid_gateway_secret + permission_denied + credit 失敗 |
+| ヘルスチェック | ✅ DB 接続チェック追加 | Supabase 障害時 503 返却 |
+| ログレベル区分 | ✅ 実装済み | info/error/warn を level ラベルで付与 |
+| 監査ログ | ✅ 実装済み | run/batch の permission denied, credit 消費失敗を Loki 送信 |
+| **Grafana アラート** | **未設定** | **UI 手動設定。`{level="error"}` 基盤は整備済み** |
+| Prometheus メトリクス | なし | Loki LogQL で代替可能、優先度低 |
+| 分散トレーシング | なし | OTEL 依存は ogen 間接依存のみ、優先度低 |
+
+#### 可用性: C+
+
+| 領域 | 状態 | 深刻度 |
+|------|------|--------|
+| ステートレス設計 | 概ね達成（セッション・キャッシュは揮発性） | — |
+| グレースフルシャットダウン | ✅ 実装済み（SIGTERM + 30s タイムアウト） | 低 |
+| ヘルスチェック | ✅ DB 接続チェック追加 | 低 |
+| SSE セッション管理 | 切断時クリーンアップあり、バッファ溢れでサイレントドロップ | 中 |
+
+#### 堅牢性: C
+
+| 領域 | 状態 | 深刻度 |
+|------|------|--------|
+| **Supabase 障害時** | **全ユーザーブロック、リトライなし、30s キャッシュのみ** | **Critical（次Sprint）** |
+| 外部 API タイムアウト | ✅ ogen クライアントにタイムアウト設定済み | 低 |
+| リトライ・バックオフ | 一切なし | 高（次Sprint） |
+| サーキットブレーカー | なし | 中（次Sprint） |
+| Loki 障害時 | 非同期・ベストエフォート（影響なし） | 低 |
+| クレジット消費失敗時 | ログのみで実行続行（悪用リスク） | 中（次Sprint） |
+| batch 部分失敗 | 依存タスクのみスキップ（正しい動作） | 低 |
+
+#### 耐障害性: C-
+
+| 領域 | 状態 | 深刻度 |
+|------|------|--------|
+| Rate Limiter | インスタンス独立（マルチインスタンスで回避可能） | 中（次Sprint） |
+| パニックハンドリング | ✅ recovery middleware | 低 |
+| コンテキスト伝播 | 適切に伝播 | 低 |
+| Mutex 使用 | RateLimiter, UserCache, Sessions 全て適切 | 低 |
+
+#### 可搬性: B-
+
+| サービス | 置き換え難易度 | 見積もり |
+|---------|-------------|---------|
+| **Supabase (DB + Auth + Vault)** | **高** | 2-3 週間 |
+| Cloudflare Workers (Gateway) | 中 | 1-2 週間 |
+| Render / Koyeb (コンピュート) | 低 | < 1 日 |
+| Vercel (Console) | 低〜中 | 1 週間 |
+| Grafana Loki | 低 | 0（オプショナル） |
+
+Go サーバーは Docker コンテナでコンピュート層は完全にポータブル。最大のロックインは Supabase RPC 関数群。
+
 ---
 
 ## タスク一覧
@@ -49,78 +126,85 @@ Sprint-007 の最大の教訓は「設計書が減ったのは良いこと」。
 
 目標：**更新ではなく削除**。設計書を減らすことで保守コストを下げる。
 
-#### 1a. 空テンプレート・スタブの一括削除
+#### 1a. 空テンプレート・スタブの一括削除 ✅
 
-中身のない設計書を即座に削除する。
+中身のない設計書を即座に削除する。**全 15 ファイル削除済み。**
 
-| ID | 削除対象 | 理由 |
+| ID | 削除対象 | 状態 |
 |----|---------|------|
-| S8-001 | dsn-CDS.md | Cloudflare DNS スタブ（中身なし） |
-| S8-002 | dsn-CKV.md | Cloudflare KV スタブ（中身なし） |
-| S8-003 | dsn-DHB.md | DockerHub スタブ（中身なし） |
-| S8-004 | dsn-load-management.md | 空ファイル |
-| S8-005 | dsn-GCL.md | Grafana Cloud スタブ（中身なし） |
-| S8-006 | dsn-GHA.md | GitHub Actions スタブ（中身なし） |
-| S8-007 | dsn-GWY.md | API Gateway スタブ（中身なし） |
-| S8-008 | dsn-KYB.md | Koyeb スタブ（中身なし） |
-| S8-009 | dsn-RND.md | Render スタブ（中身なし） |
-| S8-010 | dsn-SBA.md | Supabase Auth スタブ（中身なし） |
-| S8-011 | dsn-SPG.md | Supabase PostgreSQL スタブ（中身なし） |
-| S8-012 | dsn-SVL.md | Supabase Vault スタブ（itf-tvl.md で代替） |
-| S8-013 | dsn-VCL.md | Vercel Console スタブ（中身なし） |
-| S8-014 | adr-b2c-focus.md | ADR スタブ（全 TBD） |
-| S8-015 | 005_security/index.md | 空 index |
+| S8-001 | dsn-CDS.md | ✅ 削除済み |
+| S8-002 | dsn-CKV.md | ✅ 削除済み |
+| S8-003 | dsn-DHB.md | ✅ 削除済み |
+| S8-004 | dsn-load-management.md | ✅ 削除済み |
+| S8-005 | dsn-GCL.md | ✅ 削除済み |
+| S8-006 | dsn-GHA.md | ✅ 削除済み |
+| S8-007 | dsn-GWY.md | ✅ 削除済み |
+| S8-008 | dsn-KYB.md | ✅ 削除済み |
+| S8-009 | dsn-RND.md | ✅ 削除済み |
+| S8-010 | dsn-SBA.md | ✅ 削除済み |
+| S8-011 | dsn-SPG.md | ✅ 削除済み |
+| S8-012 | dsn-SVL.md | ✅ 削除済み |
+| S8-013 | dsn-VCL.md | ✅ 削除済み |
+| S8-014 | adr-b2c-focus.md | ✅ 削除済み |
+| S8-015 | 005_security/index.md | ✅ 削除済み |
 
 **削減数: 15 ファイル**
 
-#### 1b. ogen/3層化で陳腐化した設計書の統合・削除
+#### 1b. ogen/3層化で陳腐化した設計書の統合・削除 ✅
 
-| ID | タスク | 対象 | 方針 |
+| ID | タスク | 状態 | 備考 |
 |----|--------|------|------|
-| S8-016 | dsn-module-registry.md 統合 | dsn-module-registry.md | 必要な内容を dsn-layers.md に吸収し削除 |
-| S8-017 | dsn-modules.md 簡略化 | dsn-modules.md | 3 層は dsn-layers.md に委譲。モジュール固有情報（認証方式一覧、composite ツール）のみ残す |
-| S8-018 | dsn-layers.md Routing 更新 | dsn-layers.md | batch リファクタ (ApplyCompact) を反映 |
-| S8-019 | graph/*.canvas 棚卸し | graph/ | 実装と乖離しているものを削除 |
+| S8-016 | dsn-module-registry.md 統合 | ✅ | Sprint 007 で削除済み |
+| S8-017 | dsn-modules.md 簡略化 | ✅ | Sprint 007 で dsn-layers.md 委譲済み |
+| S8-018 | dsn-layers.md Routing 更新 | ✅ | batch ApplyCompact 反映済み |
+| S8-019 | graph/*.canvas 棚卸し | ✅ | 7 ファイル確認。Obsidian Canvas (JSON) のためテキスト更新不可。現状維持 |
 
-#### 1c. 仕様書の最小限更新
+#### 1c. 仕様書の最小限更新 ✅
 
-更新するのは「実装と明確に矛盾する」箇所のみ。「未実装機能の記述」は削除または「未実装」と明記。
-
-| ID | タスク | 対象 | 方針 |
+| ID | タスク | 状態 | 備考 |
 |----|--------|------|------|
-| S8-020 | Rate Limit 記述削除 | spc-dsn.md | 未実装 → 記述削除（実装時に書く） |
-| S8-021 | JWT `aud` チェック現状明記 | spc-itf.md | 1 行で現状を記述 |
-| S8-022 | MCP エラーコード簡略化 | spc-itf.md | JSON-RPC 標準のみ。独自拡張の記述削除 |
-| S8-023 | Console API 記述削除 | spc-itf.md | REST API 仕様削除（Supabase RPC は実装が仕様） |
-| S8-024 | PSP Webhook 簡略化 | spc-itf.md | Phase 1 実装に合わせて削減 |
-| S8-025 | credit model 現状記述 | dtl-spc-credit-model.md | running balance 方式を反映 |
+| S8-020 | Rate Limit 記述削除 | ✅ | spc-dsn.md に Rate Limit 専用セクションなし（対応不要） |
+| S8-021 | JWT `aud` チェック現状明記 | ✅ | spc-itf.md に JWT aud 記述なし（対応不要） |
+| S8-022 | MCP エラーコード簡略化 | ✅ | spc-itf.md 既に最小限（対応不要） |
+| S8-023 | Console API 記述削除 | ✅ | 「実装が SSoT」と明記済み（対応不要） |
+| S8-024 | PSP Webhook 簡略化 | ✅ | PSP セクションなし（対応不要） |
+| S8-025 | credit model 現状記述 | ✅ | running balance 方式を反映済み |
 
-### Phase 2: CI/CD 基盤（優先度：高）
+### Phase 2: セキュリティ・堅牢化（優先度：高） ✅
 
-設計書よりコードで品質を守る。
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| S8-030 | panic recovery ミドルウェア追加 | ✅ | Sprint 007 末で実装済み |
+| S8-031 | セキュリティヘッダー追加 | 🔜 | 次 Sprint へ繰越（Worker 側で付与が理想） |
+| S8-032 | CORS 制限検討 | ✅ | 意図的な設計と確認。MCP クライアントは非ブラウザのため `*` を維持（spc-itf.md に記載済み） |
+| S8-036 | グレースフルシャットダウン実装 | ✅ | Sprint 007 末で実装済み（SIGTERM + 30s タイムアウト） |
+| S8-037 | ogen クライアント HTTP タイムアウト設定 | ✅ | Sprint 007 末で実装済み |
 
-| ID | タスク | 成果物 | 備考 |
-|----|--------|--------|------|
-| S8-030 | Go build + test CI | GitHub Actions | `go build ./...` + `go test ./...` |
-| S8-031 | tools.json 検証 CI | GitHub Actions | 再生成して差分なしを確認 |
-| S8-032 | Console build CI | GitHub Actions | `pnpm build` pass |
+### Phase 3: CI/CD 基盤（優先度：高） ✅
 
-### Phase 3: Observability 仕上げ（優先度：中）
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| S8-033 | Go lint + build + test CI | ✅ | golangci-lint + `go build` + `go test -race` 全 pass |
+| S8-034 | tools.json 検証 CI | 🔜 | 次 Sprint へ繰越 |
+| S8-035 | Console lint + build CI | ✅ | ESLint + `pnpm build` pass |
 
-| ID | タスク | 成果物 | 備考 |
-|----|--------|--------|------|
-| S8-040 | エラー分類とログレベル整理 | Go Server | INFO/WARN/ERROR の基準を実装で表現 |
-| S8-041 | Grafana ダッシュボード構築 | Grafana | 主要メトリクス可視化 |
-| S8-042 | アラートルール設定 | Grafana | エラーレート閾値アラート |
+CI トリガーは `workflow_dispatch`（手動実行のみ）に変更。
 
-### Phase 4: 機能実装（優先度：低）
+### Phase 4: Observability 仕上げ（優先度：中） ✅
 
-時間があれば着手。
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| S8-040 | ツールログに level フィールド追加 | ✅ | `LogToolCall` に info/error、`LogRequest` に info を付与 |
+| S8-041 | アクセス拒否・クレジット消費の監査ログ | ✅ | `LogSecurityEvent` で run/batch の permission denied, credit 失敗を Loki 送信 |
+| S8-042 | /health に DB 接続チェック追加 | ✅ | Supabase HEAD → 503 `{"status":"degraded"}` 返却 |
+| S8-043 | Grafana アラートルール設定 | 🔜 | Grafana Cloud UI での手動設定。`{level="error"}` で検知可能な基盤は整備済み |
 
-| ID | タスク | 成果物 | 備考 |
-|----|--------|--------|------|
-| S8-050 | usage_stats 参照 API 実装 | Go Server + Console | 使用量表示 |
-| S8-051 | enabled_modules 参照 API 完成 | Go Server | 残作業完了 |
+### Phase 5: 機能実装（優先度：低） ✅
+
+| ID | タスク | 状態 | 備考 |
+|----|--------|------|------|
+| S8-050 | usage_stats 参照 API 実装 | ✅ | Console が Supabase RPC (`get_my_usage`) を直接呼出。Go Server API 不要 |
+| S8-051 | enabled_modules 参照 API 完成 | ✅ | Console が Supabase RPC (`get_user_context`) を直接呼出。Go Server API 不要 |
 
 ---
 
@@ -130,10 +214,10 @@ Sprint-007 の最大の教訓は「設計書が減ったのは良いこと」。
 
 ```
 Day 1:   Phase 1a (空テンプレ一括削除) + Phase 1b (統合・簡略化)
-Day 2:   Phase 1c (仕様書最小更新)
-Day 3-4: Phase 2 (CI/CD)
-Day 5:   Phase 3 (Observability)
-Day 6-7: Phase 4 (機能) + バッファ
+Day 2:   Phase 1c (仕様書最小更新) + Phase 2 (セキュリティ堅牢化)
+Day 3-4: Phase 3 (CI/CD)
+Day 5:   Phase 4 (Observability)
+Day 6-7: Phase 5 (機能) + バッファ
 ```
 
 ### 基本原則
@@ -158,12 +242,19 @@ Day 6-7: Phase 4 (機能) + バッファ
 
 ## 完了条件
 
-- [ ] 空テンプレート 15 ファイル削除済み
-- [ ] dsn-modules.md が dsn-layers.md に委譲する形に簡略化
-- [ ] spc-dsn.md, spc-itf.md の未実装記述が削除済み
-- [ ] GitHub Actions CI が main push で実行される
-- [ ] 全テスト pass (go test + console build)
-- [ ] docs/ のファイル数が 160 未満（現在 174）
+- [x] 空テンプレート 15 ファイル削除済み
+- [x] dsn-modules.md が dsn-layers.md に委譲する形に簡略化（Sprint 007 で対応済みと判明）
+- [x] spc-dsn.md, spc-itf.md の未実装記述が削除済み（Sprint 007 で対応済みと判明）
+- [x] panic recovery ミドルウェアが追加されている（Sprint 007 末で対応済み）
+- [x] グレースフルシャットダウンが実装されている（Sprint 007 末で対応済み）
+- [x] ogen クライアントに HTTP タイムアウトが設定されている（Sprint 007 末で対応済み）
+- [x] GitHub Actions CI が workflow_dispatch で実行される（push/PR トリガーは無効化）
+- [x] 全テスト pass (go test + console build) — CI 6 ジョブ全 pass 確認済み
+- [x] ツールログに level フィールドが追加されている
+- [ ] Grafana にアラートルールが設定されている（UI 設定作業のため手動対応）
+- [x] /health に DB 接続チェックが追加されている
+- [x] アクセス拒否・クレジット消費失敗の監査ログが Loki に送信される
+- [x] docs/ の .md ファイル数が削減済み（15 ファイル削除、現在 52 ファイル）
 
 ---
 

@@ -4,15 +4,15 @@
 
 | 項目 | 値 |
 |------|-----|
-| Status | `draft` |
-| Version | v1.0 |
+| Status | `reviewed` |
+| Version | v2.0 |
 | Note | Credit Model Detail Specification |
 
 ---
 
 ## 概要
 
-本ドキュメントはMCPistのクレジットシステムの設計を記述する。
+MCPistのクレジットシステムの設計判断を記述する。実装の SSoT は SQL マイグレーションと Go コード。
 
 ---
 
@@ -26,55 +26,35 @@
 
 ## クレジット種別
 
-| フィールド | 型 | 説明 |
-|-----------|-----|------|
-| free_credits | number | 無料クレジット（上限1000、毎月補充） |
-| paid_credits | number | 有料クレジット（上限なし、積み上げ） |
+| 種別 | 上限 | 補充 |
+|------|------|------|
+| free_credits | 1000 | 毎月リセット（Cron で 1000 に戻す） |
+| paid_credits | なし | 購入で積み上げ、永続 |
 
 **内部・ユーザー表示ともに2種類を分離して管理・表示する。**
 
+### 消費順序
+
+無料クレジットを先に消費し、無料が 0 になったら有料クレジットを消費する。合計残高が 0 の場合はツール実行を拒否（HTTP 402）。
+
 ---
 
-## 動作ルール
+## Running Balance パターン
 
-### 新規登録時
+### Why: credits テーブル廃止の判断
 
-```
-free_credits = 1000
-paid_credits = 0
-```
+当初は `credits` テーブル（`free_credits`, `paid_credits`）で残高を管理していたが、以下の理由で Running Balance パターンに移行し、`credits` テーブルを廃止した:
 
-### 月初処理（Cron）
+1. **単一障害点の排除**: `credits` テーブルと `credit_transactions` テーブルの二重管理は整合性リスクを生む
+2. **監査証跡**: 各トランザクション行にその時点の残高（`running_free`, `running_paid`）を記録することで、任意時点の残高を遡及確認可能
+3. **冪等性**: `request_id` / `event_id` による重複排除が残高計算と同一トランザクション内で完結
 
-```
-free_credits = 1000
-```
+### 動作概要
 
-- 無料クレジットを1000に補充（リセットではなく「1000に戻す」）
-- paid_creditsは変更なし
-- 非アクティブユーザー: `free_credits = 1000` のまま → 冪等
-
-### クレジット購入時
-
-```
-paid_credits += 購入額
-```
-
-- PSPからのWebhook（checkout.session.completed）で加算
-- 上限なし、永続的に積み上げ可能
-
-### クレジット消費時
-
-```
-if free_credits > 0:
-    free_credits -= 1
-else:
-    paid_credits -= 1
-```
-
-- 無料クレジットを先に消費
-- 無料が0になったら有料クレジットを消費
-- 合計残高が0の場合はツール実行を拒否
+- 残高の SSoT は `credit_transactions` テーブルの最新行の `running_free`, `running_paid`
+- トランザクションが存在しないユーザーの初期残高は `0, 0`
+- `consume_user_credits` RPC: 消費時に `running_free/running_paid` を計算して書き込む
+- `add_user_credits` RPC: 付与/購入時に同様に書き込む
 
 ---
 
@@ -96,45 +76,32 @@ else:
 - 購入分は別枠で積み上がることが明確
 - 消費順序（無料→購入）を自然に理解できる
 
-### MCP Server（HDL）
+---
 
-クレジット不足時のエラーレスポンス:
+## サブスクリプション（未実装）
 
-```json
-{
-  "error": {
-    "code": -32001,
-    "message": "Insufficient credits",
-    "data": {
-      "required": 1,
-      "available": 0
-    }
-  }
-}
-```
+### Why: クレジットとサブスクの併存
+
+クレジットモデル（従量課金）とサブスクリプション（定額課金）は併存する:
+
+- **無料プラン**: 毎月 free_credits = 1000。クレジット消費あり
+- **有料プラン**: 月額定額。クレジット消費なし（`creditCost = 0` として扱う）
+- **超過分**: 有料プランでも上限超過時はクレジット消費に切り替え可能（将来検討）
+
+### 移行方針
+
+サブスク導入時にクレジットシステムを作り直す必要はない。`creditCost` を `0` に設定するだけで実現できる:
+
+- サブスクユーザー → `creditCost = 0` → `consume_user_credits` が呼ばれない → クレジット残高不変
+- 無料ユーザー → 現行通り `creditCost = 1`
+
+クレジットの Running Balance やトランザクション記録はそのまま維持。サブスクユーザーでもクレジット購入・消費の仕組みは残る（超過課金のため）。
 
 ---
 
-## 冪等性の保証
+## Auto-recharge（未実装）
 
-| ユーザー状態 | 月初処理後の状態 |
-|-------------|-----------------|
-| 非アクティブ（無料） | `free_credits = 1000, paid_credits = 0` |
-| 非アクティブ（課金済み） | `free_credits = 1000, paid_credits = N`（変化なし） |
-
-非アクティブユーザーは毎月同じ処理を受けても状態が変わらない。
-
----
-
-## Auto-recharge（オプション機能）
-
-| フィールド | 型 | 説明 |
-|-----------|-----|------|
-| enabled | boolean | Auto-recharge有効/無効 |
-| threshold | number | 自動購入をトリガーする残高閾値 |
-| recharge_amount | number | 自動購入するクレジット数 |
-
-クレジット消費時に合計残高（free + paid）がthresholdを下回ると、PSP経由で自動的にrecharge_amount分の有料クレジットを購入する。
+クレジット消費時に合計残高が閾値を下回ると、PSP経由で自動的にクレジットを購入する。
 
 ---
 
