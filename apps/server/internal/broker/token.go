@@ -28,12 +28,12 @@ func GetTokenBroker() *TokenBroker {
 	return defaultBroker
 }
 
-// TokenBroker manages token retrieval from Supabase Vault via RPC
+// TokenBroker manages token retrieval from Vault via PostgREST RPC
 // and transparently refreshes OAuth2 tokens when needed.
 type TokenBroker struct {
-	supabaseURL string
-	serviceKey  string
-	client      *http.Client
+	postgrestURL string
+	apiKey       string
+	client       *http.Client
 }
 
 // AuthType constants for API request authentication methods
@@ -125,18 +125,12 @@ type CredentialResult struct {
 
 // NewTokenBroker creates a new token broker
 func NewTokenBroker() *TokenBroker {
-	// Use SUPABASE_PUBLISHABLE_KEY (anon key) for RPC calls
-	// The get_user_credential RPC is SECURITY DEFINER, so anon key works
-	serviceKey := os.Getenv("SUPABASE_PUBLISHABLE_KEY")
-	if serviceKey == "" {
-		// Fallback to SUPABASE_SECRET_KEY for backwards compatibility
-		serviceKey = os.Getenv("SUPABASE_SECRET_KEY")
-	}
-	supabaseURL := os.Getenv("SUPABASE_URL")
-	log.Printf("[broker] Initialized - URL: %s, Key: %s...", supabaseURL, serviceKey[:min(20, len(serviceKey))])
+	apiKey := os.Getenv("POSTGREST_API_KEY")
+	postgrestURL := os.Getenv("POSTGREST_URL")
+	log.Printf("[broker] Initialized - URL: %s, Key: %s...", postgrestURL, apiKey[:min(20, len(apiKey))])
 	return &TokenBroker{
-		supabaseURL: supabaseURL,
-		serviceKey:  serviceKey,
+		postgrestURL: postgrestURL,
+		apiKey:       apiKey,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -209,7 +203,7 @@ func (b *TokenBroker) GetModuleToken(ctx context.Context, userID, module string)
 
 // fetchCredentials retrieves raw credentials from Vault via RPC (no refresh)
 func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module string) (*Credentials, error) {
-	if b.serviceKey == "" {
+	if b.apiKey == "" {
 		// Return mock token for development
 		return &Credentials{
 			AuthType:    AuthTypeAPIKey,
@@ -221,7 +215,7 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		b.supabaseURL+"/rest/v1/rpc/get_user_credential",
+		b.postgrestURL+"/rpc/get_user_credential",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -229,8 +223,7 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", b.serviceKey)
-	req.Header.Set("Authorization", "Bearer "+b.serviceKey)
+	req.Header.Set("Authorization", "Bearer "+b.apiKey)
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
@@ -373,21 +366,15 @@ type OAuthAppCredentials struct {
 
 // GetOAuthAppCredentials retrieves OAuth app credentials (client_id, client_secret) for a provider
 func (b *TokenBroker) GetOAuthAppCredentials(ctx context.Context, provider string) (*OAuthAppCredentials, error) {
-	if b.serviceKey == "" {
+	if b.apiKey == "" {
 		return nil, fmt.Errorf("OAuth app credentials not available in development mode")
-	}
-
-	// Need service_role key for get_oauth_app_credentials
-	secretKey := os.Getenv("SUPABASE_SECRET_KEY")
-	if secretKey == "" {
-		return nil, fmt.Errorf("SUPABASE_SECRET_KEY required for OAuth app credentials")
 	}
 
 	reqBody := fmt.Sprintf(`{"p_provider": "%s"}`, provider)
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		b.supabaseURL+"/rest/v1/rpc/get_oauth_app_credentials",
+		b.postgrestURL+"/rpc/get_oauth_app_credentials",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -395,8 +382,7 @@ func (b *TokenBroker) GetOAuthAppCredentials(ctx context.Context, provider strin
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", secretKey)
-	req.Header.Set("Authorization", "Bearer "+secretKey)
+	req.Header.Set("Authorization", "Bearer "+b.apiKey)
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
@@ -422,15 +408,9 @@ func (b *TokenBroker) GetOAuthAppCredentials(ctx context.Context, provider strin
 
 // UpdateModuleToken saves refreshed credentials to Vault via RPC
 func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module string, credentials *Credentials) error {
-	if b.serviceKey == "" {
+	if b.apiKey == "" {
 		// Skip in development
 		return nil
-	}
-
-	// Need service_role key for upsert_user_credential (writes to Vault)
-	secretKey := os.Getenv("SUPABASE_SECRET_KEY")
-	if secretKey == "" {
-		return fmt.Errorf("SUPABASE_SECRET_KEY required for credential update")
 	}
 
 	credJSON, err := json.Marshal(credentials)
@@ -446,7 +426,7 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		b.supabaseURL+"/rest/v1/rpc/upsert_user_credential",
+		b.postgrestURL+"/rpc/upsert_user_credential",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -454,8 +434,7 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", secretKey)
-	req.Header.Set("Authorization", "Bearer "+secretKey)
+	req.Header.Set("Authorization", "Bearer "+b.apiKey)
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
