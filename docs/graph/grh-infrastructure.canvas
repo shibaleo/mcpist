@@ -38,5 +38,9 @@
 		{"id":"7aa983bb659dd0a2","fromNode":"fe-group","fromSide":"right","toNode":"cf-group","toSide":"left"},
 		{"id":"b865b853753a1c92","fromNode":"cf-group","fromSide":"right","toNode":"srv-group","toSide":"left"},
 		{"id":"4cf159ec5ec8c29f","fromNode":"srv-group","fromSide":"right","toNode":"obs-group","toSide":"left"}
-	]
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
 }
