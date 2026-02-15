@@ -1,8 +1,33 @@
 {
 	"nodes":[
-		{"id":"legend","type":"text","text":"## 凡例\n- PK: Primary Key\n- FK: Foreign Key\n- UK: Unique Key\n- enum: Enum型\n- jsonb: JSON Binary\n- TCE: Transparent Column Encryption","x":-1740,"y":-860,"width":280,"height":280,"color":"5"}
+		{"id":"plans","type":"text","text":"## plans\n**PK**: id (TEXT)\n---\nname, daily_limit\nprice_monthly (JPY)\nstripe_price_id\nfeatures (JSONB)","x":-570,"y":-865,"width":260,"height":245,"color":"4"},
+		{"id":"summary","type":"text","text":"## mcpist スキーマ テーブル一覧 (12)\n\n| # | テーブル | 用途 |\n|---|---------|------|\n| 1 | users | ユーザーアカウント |\n| 2 | plans | サブスクプラン |\n| 3 | usage_log | ツール使用履歴 |\n| 4 | modules | モジュールマスタ |\n| 5 | module_settings | モジュール設定 |\n| 6 | tool_settings | ツール設定 |\n| 7 | prompts | プロンプトテンプレート |\n| 8 | api_keys | API キー |\n| 9 | user_credentials | 認証情報 (TCE) |\n| 10 | oauth_apps | OAuth プロバイダー |\n| 11 | processed_webhook_events | Webhook 冪等性 |\n| 12 | admin_emails | 管理者メール |\n\n**スキーマ**: `mcpist`\n**暗号化**: pgsodium TCE (user_credentials)\n**外部参照**: auth.users, vault.secrets","x":-1600,"y":-780,"width":540,"height":600,"color":"0"},
+		{"id":"api_keys","type":"text","text":"## api_keys\n**PK**: id (UUID)\n**FK**: user_id → users\n---\nkey_hash (UNIQUE)\nkey_prefix, name\nexpires_at, last_used_at\nrevoked_at","x":-840,"y":-320,"width":260,"height":320,"color":"5"},
+		{"id":"user_credentials","type":"text","text":"## user_credentials\n**PK**: id (UUID)\n**FK**: user_id → users\n---\nmodule (TEXT)\ncredentials (pgsodium TCE)\nUNIQUE(user_id, module)","x":-690,"y":130,"width":280,"height":300,"color":"6"},
+		{"id":"admin_emails","type":"text","text":"## admin_emails\n**PK**: email (TEXT)\n---\ncreated_at","x":-930,"y":-862,"width":220,"height":202,"color":"4"},
+		{"id":"users","type":"text","text":"## users\n**PK**: id (UUID → auth.users)\n**FK**: plan_id → plans\n---\naccount_status (enum)\ndisplay_name, avatar_url\nsettings (JSONB)\nplan_id","x":20,"y":-761,"width":280,"height":341,"color":"1"},
+		{"id":"webhook_events","type":"text","text":"## processed_webhook_events\n**PK**: event_id (TEXT)\n**FK**: user_id → users\n---\nprocessed_at","x":880,"y":-330,"width":280,"height":150,"color":"5"},
+		{"id":"usage_log","type":"text","text":"## usage_log\n**PK**: id (UUID)\n**FK**: user_id → users\n---\nmeta_tool ('run'|'batch')\nrequest_id\ndetails (JSONB)\ncreated_at","x":660,"y":-991,"width":260,"height":291,"color":"1"},
+		{"id":"oauth_apps","type":"text","text":"## oauth_apps\n**PK**: id (UUID)\n**FK**: secret_id → vault.secrets\n---\nprovider (UNIQUE)\nredirect_uri\nenabled","x":-1080,"y":55,"width":300,"height":290,"color":"6"},
+		{"id":"prompts","type":"text","text":"## prompts\n**PK**: id (UUID)\n**FK**: user_id → users\n**FK**: module_id → modules (nullable)\n---\nname, description, content\nenabled (BOOLEAN)\nUNIQUE(user_id, module_id, name)","x":-90,"y":-210,"width":280,"height":340,"color":"3"},
+		{"id":"modules","type":"text","text":"## modules\n**PK**: id (UUID)\n---\nname (UNIQUE)\nstatus (enum)\ntools (JSONB)\ndescriptions (JSONB)","x":80,"y":290,"width":220,"height":260,"color":"3"},
+		{"id":"module_settings","type":"text","text":"## module_settings\n**PK**: (user_id, module_id)\n**FK**: user_id → users\n**FK**: module_id → modules\n---\nenabled, description","x":520,"y":30,"width":280,"height":260,"color":"3"},
+		{"id":"tool_settings","type":"text","text":"## tool_settings\n**PK**: (user_id, module_id, tool_id)\n**FK**: user_id → users\n**FK**: module_id → modules\n---\ntool_id (TEXT)\nenabled (BOOLEAN)","x":960,"y":130,"width":280,"height":290,"color":"3"}
 	],
-	"edges":[],
+	"edges":[
+		{"id":"e_users_plans","fromNode":"users","fromSide":"left","toNode":"plans","toSide":"right","color":"4","label":"plan_id"},
+		{"id":"e_usage_users","fromNode":"usage_log","fromSide":"left","toNode":"users","toSide":"right","color":"1","label":"user_id"},
+		{"id":"e_ms_users","fromNode":"module_settings","fromSide":"top","toNode":"users","toSide":"bottom","color":"1","label":"user_id"},
+		{"id":"e_ms_modules","fromNode":"module_settings","fromSide":"left","toNode":"modules","toSide":"right","color":"3","label":"module_id"},
+		{"id":"e_prompts_users","fromNode":"prompts","fromSide":"top","toNode":"users","toSide":"bottom","color":"1","label":"user_id"},
+		{"id":"e_prompts_modules","toFloating":false,"fromFloating":false,"fromNode":"prompts","fromSide":"bottom","toNode":"modules","toSide":"left","color":"3","label":"module_id (nullable)"},
+		{"id":"e_apikeys_users","fromNode":"api_keys","fromSide":"top","toNode":"users","toSide":"left","color":"5","label":"user_id"},
+		{"id":"e_creds_users","fromNode":"user_credentials","fromSide":"top","toNode":"users","toSide":"left","color":"6","label":"user_id"},
+		{"id":"e_webhook_users","fromNode":"webhook_events","fromSide":"top","toNode":"users","toSide":"right","color":"5","label":"user_id"},
+		{"id":"e_ts_users","fromNode":"tool_settings","fromSide":"top","toNode":"users","toSide":"bottom","color":"1","label":"user_id"},
+		{"id":"e_ts_modules","fromNode":"tool_settings","fromSide":"left","toNode":"modules","toSide":"right","color":"3","label":"module_id"},
+		{"id":"e_oauth_vault","fromNode":"oauth_apps","fromSide":"bottom","toNode":"oauth_apps","toSide":"bottom","color":"6","label":"secret_id → vault.secrets"}
+	],
 	"metadata":{
 		"version":"1.0-1.0",
 		"frontmatter":{}
