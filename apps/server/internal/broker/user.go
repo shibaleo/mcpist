@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// UserStore manages user context queries via PostgREST RPC
-type UserStore struct {
+// UserBroker manages user context queries via PostgREST RPC
+type UserBroker struct {
 	postgrestURL string
 	apiKey       string
 	client       *http.Client
@@ -73,9 +73,9 @@ type userCacheItem struct {
 	expiresAt time.Time
 }
 
-// NewUserStore creates a new user store
-func NewUserStore() *UserStore {
-	return &UserStore{
+// NewUserBroker creates a new user store
+func NewUserBroker() *UserBroker {
+	return &UserBroker{
 		postgrestURL: os.Getenv("POSTGREST_URL"),
 		apiKey:       os.Getenv("POSTGREST_API_KEY"),
 		client: &http.Client{
@@ -89,7 +89,7 @@ func NewUserStore() *UserStore {
 }
 
 // HealthCheck verifies connectivity to the PostgREST endpoint.
-func (s *UserStore) HealthCheck() error {
+func (s *UserBroker) HealthCheck() error {
 	req, err := http.NewRequest("HEAD", s.postgrestURL+"/", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
@@ -111,7 +111,7 @@ func (s *UserStore) HealthCheck() error {
 
 // GetUserContext retrieves the user's context (account status, credits, modules, tools).
 // On fetch failure, returns stale cached data if available (graceful degradation).
-func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
+func (s *UserBroker) GetUserContext(userID string) (*UserContext, error) {
 	// Check cache first (non-expired)
 	if cached := s.cache.get(userID); cached != nil {
 		return cached, nil
@@ -136,7 +136,7 @@ func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 }
 
 // fetchUserContext calls the PostgREST RPC function
-func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
+func (s *UserBroker) fetchUserContext(userID string) (*UserContext, error) {
 	if s.apiKey == "" {
 		// Return default context for development without service key
 		// All tools enabled for all modules (dev mode)
@@ -245,7 +245,7 @@ type ToolDetail struct {
 // metaTool: "run" or "batch"
 // details: array of ToolDetail for tracking individual tool executions
 // This is non-blocking: failures are logged but do not affect the caller.
-func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []ToolDetail) {
+func (s *UserBroker) RecordUsage(userID, metaTool, requestID string, details []ToolDetail) {
 	if s.apiKey == "" {
 		return // Skip in development
 	}
@@ -290,7 +290,7 @@ func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []To
 }
 
 // InvalidateCache removes a user's cached context
-func (s *UserStore) InvalidateCache(userID string) {
+func (s *UserBroker) InvalidateCache(userID string) {
 	s.cache.delete(userID)
 }
 
@@ -358,12 +358,12 @@ type UserPrompt struct {
 }
 
 // GetUserPrompts retrieves all enabled prompts for a user
-func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
+func (s *UserBroker) GetUserPrompts(userID string) ([]UserPrompt, error) {
 	return s.fetchUserPrompts(userID, "")
 }
 
 // GetUserPromptByName retrieves a specific prompt by name for a user
-func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt, error) {
+func (s *UserBroker) GetUserPromptByName(userID, promptName string) (*UserPrompt, error) {
 	prompts, err := s.fetchUserPrompts(userID, promptName)
 	if err != nil {
 		return nil, err
@@ -377,7 +377,7 @@ func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt,
 // fetchUserPrompts calls the unified get_user_prompts RPC.
 // When promptName is empty, returns all enabled prompts.
 // When promptName is specified, returns the matching prompt.
-func (s *UserStore) fetchUserPrompts(userID, promptName string) ([]UserPrompt, error) {
+func (s *UserBroker) fetchUserPrompts(userID, promptName string) ([]UserPrompt, error) {
 	if s.apiKey == "" {
 		return []UserPrompt{}, nil
 	}
