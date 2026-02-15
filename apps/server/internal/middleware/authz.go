@@ -46,12 +46,12 @@ func (ctx *AuthContext) WithinDailyLimit(count int) bool {
 // Authorizer handles authorization checks
 type Authorizer struct {
 	gatewaySecret string
-	store         *broker.UserStore
+	store         *broker.UserBroker
 }
 
 // NewAuthorizer creates a new authorizer.
 // Panics if GATEWAY_SECRET is not set — required in all environments.
-func NewAuthorizer(userStore *broker.UserStore) *Authorizer {
+func NewAuthorizer(userStore *broker.UserBroker) *Authorizer {
 	secret := os.Getenv("GATEWAY_SECRET")
 	if secret == "" {
 		log.Fatal("GATEWAY_SECRET is not set. Set it via environment variable or .env.dev")

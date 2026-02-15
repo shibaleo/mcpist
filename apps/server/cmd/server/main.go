@@ -86,7 +86,7 @@ func main() {
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
 
 	// Initialize stores and authorizer
-	userStore := broker.NewUserStore()
+	userStore := broker.NewUserBroker()
 	authorizer := middleware.NewAuthorizer(userStore)
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

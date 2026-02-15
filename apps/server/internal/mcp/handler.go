@@ -16,10 +16,10 @@ import (
 )
 
 type Handler struct {
-	userStore *broker.UserStore
+	userStore *broker.UserBroker
 }
 
-func NewHandler(userStore *broker.UserStore) *Handler {
+func NewHandler(userStore *broker.UserBroker) *Handler {
 	return &Handler{
 		userStore: userStore,
 	}
