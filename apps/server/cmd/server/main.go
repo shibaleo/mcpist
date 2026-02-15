@@ -177,9 +177,10 @@ func buildSyncEntries(moduleNames []string) []broker.SyncModuleEntry {
 		}
 
 		entries = append(entries, broker.SyncModuleEntry{
-			Name:   name,
-			Status: "active",
-			Tools:  syncTools,
+			Name:         name,
+			Status:       "active",
+			Descriptions: m.Descriptions(),
+			Tools:        syncTools,
 		})
 	}
 	return entries

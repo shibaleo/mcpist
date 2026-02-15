@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -8,7 +8,7 @@ import { ModuleIcon } from "@/components/module-icon"
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { modules } from "@/lib/module-data"
+import { getModules, type ModuleDef } from "@/lib/module-data"
 
 // TODO: プロダクトツアーを実装
 // - ステップ1: MCPistとは何か、何ができるかの説明
@@ -39,6 +39,11 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [selectedModules, setSelectedModules] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [allModules, setAllModules] = useState<ModuleDef[]>([])
+
+  useEffect(() => {
+    getModules().then(setAllModules)
+  }, [])
 
   const toggleModule = (moduleId: string) => {
     setSelectedModules((prev) =>
@@ -79,7 +84,7 @@ export default function OnboardingPage() {
 
   // modules から選択可能なモジュールをフィルタリング
   const selectableModules = selectableModuleIds
-    .map((id) => modules.find((m) => m.id === id))
+    .map((id) => allModules.find((m) => m.id === id))
     .filter((m): m is NonNullable<typeof m> => m !== undefined)
 
   return (

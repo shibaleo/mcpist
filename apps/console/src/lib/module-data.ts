@@ -1,7 +1,7 @@
-// Module data from Go server definitions
-// This file provides type-safe access to tools.json
+// Module data fetched from database via list_modules_with_tools RPC
+// Replaces the previous static tools.json import
 
-import toolsData from "./tools.json"
+import { createClient } from "@/lib/supabase/client"
 
 // MCP Tool Annotations (MCP spec 2025-11-25)
 export interface ToolAnnotations {
@@ -15,7 +15,7 @@ export interface ToolAnnotations {
 // key: BCP47 language code (en-US, ja-JP)
 export type LocalizedText = Record<string, string>
 
-// Types from tools.json
+// Types matching the DB tools JSONB structure
 export interface ToolDef {
   id: string
   name: string
@@ -25,29 +25,89 @@ export interface ToolDef {
 
 /** readOnlyHint: true のツールはデフォルト有効 */
 export function isDefaultEnabled(tool: ToolDef): boolean {
-  return tool.annotations.readOnlyHint === true
+  return tool.annotations?.readOnlyHint === true
 }
 
 /** destructiveHint が true かつ readOnly でないツールは危険表示 */
 export function isDangerous(tool: ToolDef): boolean {
-  return tool.annotations.readOnlyHint !== true
-    && tool.annotations.destructiveHint !== false
+  return tool.annotations?.readOnlyHint !== true
+    && tool.annotations?.destructiveHint !== false
 }
 
 export interface ModuleDef {
   id: string
   name: string
+  status: string
   descriptions: LocalizedText
-  apiVersion: string
   tools: ToolDef[]
 }
 
-export interface ToolsExport {
-  modules: ModuleDef[]
+// =============================================================================
+// Async module fetch with singleton cache
+// =============================================================================
+
+let _modules: ModuleDef[] | null = null
+let _fetchPromise: Promise<ModuleDef[]> | null = null
+
+// Row type returned by list_modules_with_tools RPC
+interface ModuleRow {
+  id: string
+  name: string
+  status: string
+  descriptions: LocalizedText | null
+  tools: ToolDef[] | null
 }
 
-// Export typed data
-export const modules: ModuleDef[] = (toolsData as ToolsExport).modules
+async function fetchModulesFromDB(): Promise<ModuleDef[]> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.rpc as any)("list_modules_with_tools")
+
+  if (error) {
+    throw new Error(`Failed to fetch modules: ${error.message}`)
+  }
+
+  // data is an array of { id, name, status, descriptions, tools }
+  // tools and descriptions are JSONB which Supabase returns as parsed JSON
+  return ((data || []) as ModuleRow[]).map((row) => ({
+    id: row.id,
+    name: moduleDisplayNames[row.id] || row.name,
+    status: row.status,
+    descriptions: row.descriptions || {},
+    tools: (row.tools || []).map((t: ToolDef) => ({
+      ...t,
+      annotations: t.annotations || {},
+    })),
+  }))
+}
+
+/**
+ * Get all modules (async, fetches from DB on first call, cached afterwards)
+ */
+export async function getModules(): Promise<ModuleDef[]> {
+  if (_modules) return _modules
+  if (!_fetchPromise) {
+    _fetchPromise = fetchModulesFromDB()
+  }
+  _modules = await _fetchPromise
+  return _modules
+}
+
+/**
+ * Get a specific module by ID (async)
+ */
+export async function getModule(moduleId: string): Promise<ModuleDef | undefined> {
+  const mods = await getModules()
+  return mods.find((m) => m.id === moduleId)
+}
+
+/**
+ * Get tools for a specific module (async)
+ */
+export async function getModuleTools(moduleId: string): Promise<ToolDef[]> {
+  const mod = await getModule(moduleId)
+  return mod?.tools || []
+}
 
 // Localization helpers
 const DEFAULT_LANG = "ja-JP"
@@ -57,9 +117,10 @@ const FALLBACK_LANG = "en-US"
  * Get localized text for a given language, falling back to en-US if not found
  */
 export function getLocalizedText(
-  texts: LocalizedText,
+  texts: LocalizedText | undefined,
   lang: string = DEFAULT_LANG
 ): string {
+  if (!texts) return ""
   return texts[lang] ?? texts[FALLBACK_LANG] ?? ""
 }
 
@@ -83,13 +144,32 @@ export function getToolDescription(
   return getLocalizedText(tool.descriptions, lang)
 }
 
-// Helper functions
-export function getModule(moduleId: string): ModuleDef | undefined {
-  return modules.find((m) => m.id === moduleId)
+// Display names for modules (DB stores lowercase IDs)
+export const moduleDisplayNames: Record<string, string> = {
+  notion: "Notion",
+  github: "GitHub",
+  jira: "Jira",
+  confluence: "Confluence",
+  supabase: "Supabase",
+  airtable: "Airtable",
+  google_calendar: "Google Calendar",
+  google_tasks: "Google Tasks",
+  google_drive: "Google Drive",
+  google_docs: "Google Docs",
+  google_sheets: "Google Sheets",
+  google_apps_script: "Google Apps Script",
+  microsoft_todo: "Microsoft To Do",
+  postgresql: "PostgreSQL",
+  ticktick: "TickTick",
+  todoist: "Todoist",
+  trello: "Trello",
+  asana: "Asana",
+  grafana: "Grafana",
+  dropbox: "Dropbox",
 }
 
-export function getModuleTools(moduleId: string): ToolDef[] {
-  return getModule(moduleId)?.tools || []
+export function getModuleDisplayName(moduleId: string): string {
+  return moduleDisplayNames[moduleId] || moduleId
 }
 
 // Map module ID to icon name for UI

@@ -3,7 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
-import { getModule, isDefaultEnabled } from "./module-data"
+import { getModule, isDefaultEnabled } from "@/lib/module-data"
 
 // ツール設定の型
 export interface ToolSetting {
@@ -140,7 +140,7 @@ export async function saveDefaultToolSettings(
   supabase: SupabaseClient<any, any, any>,
   moduleName: string
 ): Promise<void> {
-  const mod = getModule(moduleName)
+  const mod = await getModule(moduleName)
   if (!mod) {
     console.warn(`[tool-settings] Module not found: ${moduleName}`)
     return

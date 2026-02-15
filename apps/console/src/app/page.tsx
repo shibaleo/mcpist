@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Suspense } from "react"
@@ -15,14 +15,18 @@ import {
 } from "lucide-react"
 import { ModuleIcon } from "@/components/module-icon"
 import { ArchitectureDiagram } from "@/components/architecture-diagram"
-import { modules } from "@/lib/module-data"
-
-// Build services list from tools.json modules
-const services = modules.map((m) => ({ id: m.id, name: m.name }))
+import { getModules } from "@/lib/module-data"
 
 function LandingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [services, setServices] = useState<{ id: string; name: string }[]>([])
+
+  useEffect(() => {
+    getModules().then((mods) =>
+      setServices(mods.map((m) => ({ id: m.id, name: m.name })))
+    )
+  }, [])
 
   useEffect(() => {
     const code = searchParams.get("code")
