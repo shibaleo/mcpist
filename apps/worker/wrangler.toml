@@ -27,7 +27,7 @@ preview_id = "dev-api-key-cache"
 
 # 開発環境 (mcp.dev.mcpist.app)
 [env.dev]
-vars = { PRIMARY_API_URL = "REDACTED_PRIMARY_API_URL", SECONDARY_API_URL = "REDACTED_SECONDARY_API_URL", SUPABASE_URL = "https://xstfrjvgpqxvyuochtss.supabase.co", SUPABASE_JWKS_URL = "https://xstfrjvgpqxvyuochtss.supabase.co/auth/v1/.well-known/jwks.json", APP_ENV = "mcpist-dev" }
+vars = { PRIMARY_API_URL = "REDACTED_PRIMARY_API_URL", SECONDARY_API_URL = "REDACTED_SECONDARY_API_URL", SUPABASE_URL = "https://xstfrjvgpqxvyuochtss.supabase.co", SUPABASE_JWKS_URL = "https://xstfrjvgpqxvyuochtss.supabase.co/auth/v1/.well-known/jwks.json", POSTGREST_URL = "https://xstfrjvgpqxvyuochtss.supabase.co/rest/v1", APP_ENV = "mcpist-dev" }
 
 [[env.dev.kv_namespaces]]
 binding = "API_KEY_CACHE"
@@ -35,7 +35,8 @@ id = "04a54e251d5b47f9bcc5d7a7143edbe7"
 
 # シークレット（wrangler secret で設定）
 # - GATEWAY_SECRET: オリジン直接アクセス防止用
-# - SUPABASE_PUBLISHABLE_KEY: API Key検証用
+# - SUPABASE_PUBLISHABLE_KEY: JWT検証用 (Auth API)
+# - POSTGREST_API_KEY: PostgREST RPC呼び出し用 (DB)
 # - INTERNAL_SECRET: 内部API認証用
 # - GRAFANA_LOKI_URL: Loki Push API URL
 # - GRAFANA_LOKI_USER: Loki Basic Auth ユーザー名
