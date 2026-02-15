@@ -291,9 +291,10 @@ func (s *UserBroker) RecordUsage(userID, metaTool, requestID string, details []T
 
 // SyncModuleEntry represents a module to sync to the database
 type SyncModuleEntry struct {
-	Name   string      `json:"name"`
-	Status string      `json:"status"`
-	Tools  interface{} `json:"tools"`
+	Name         string            `json:"name"`
+	Status       string            `json:"status"`
+	Descriptions map[string]string `json:"descriptions,omitempty"`
+	Tools        interface{}       `json:"tools"`
 }
 
 // SyncModules upserts module+tool data to the database via the sync_modules RPC.

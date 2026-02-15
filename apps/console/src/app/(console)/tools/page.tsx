@@ -10,11 +10,12 @@ import { ModuleIcon } from "@/components/module-icon"
 import { useAuth } from "@/lib/auth-context"
 import { useAppearance, accentColors } from "@/lib/appearance-context"
 import {
-  modules,
+  getModules,
   isDefaultEnabled,
   isDangerous,
   getModuleDescription,
   getToolDescription,
+  type ModuleDef,
 } from "@/lib/module-data"
 import {
   Check,
@@ -74,6 +75,7 @@ export default function ToolsPage() {
   const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
   const [loading, setLoading] = useState(!hasCached)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
+  const [modules, setModules] = useState<ModuleDef[]>([])
 
   // Module description state
   const [moduleDescriptions, setModuleDescriptions] = useState<ModuleDescriptionsMap>(cachedModuleDescriptions ?? {})
@@ -124,9 +126,11 @@ export default function ToolsPage() {
 
   useEffect(() => {
     async function loadData() {
-      if (user) {
-        await Promise.all([loadConnections(), loadToolSettings()])
-      }
+      const [mods] = await Promise.all([
+        getModules(),
+        ...(user ? [loadConnections(), loadToolSettings()] : []),
+      ])
+      setModules(mods)
       setLoading(false)
     }
     loadData()

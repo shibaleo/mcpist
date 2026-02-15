@@ -16,8 +16,9 @@ import {
 import { ModuleIcon } from "@/components/module-icon"
 import { useAuth } from "@/lib/auth-context"
 import {
-  modules,
+  getModules,
   getModuleDescription,
+  type ModuleDef,
 } from "@/lib/module-data"
 import {
   Plug,
@@ -264,6 +265,7 @@ export default function ServicesPage() {
   const hasCached = cachedConnections !== null
   const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
   const [loading, setLoading] = useState(!hasCached)
+  const [modules, setModules] = useState<ModuleDef[]>([])
   // Language setting
   const [language, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
 
@@ -316,9 +318,11 @@ export default function ServicesPage() {
 
   useEffect(() => {
     async function loadData() {
-      if (user) {
-        await Promise.all([loadConnections(), loadSettings()])
-      }
+      const [mods] = await Promise.all([
+        getModules(),
+        ...(user ? [loadConnections(), loadSettings()] : []),
+      ])
+      setModules(mods)
       setLoading(false)
     }
     loadData()
