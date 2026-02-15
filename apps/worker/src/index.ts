@@ -23,10 +23,14 @@ interface Env {
   PRIMARY_API_URL: string;     // Primary API Server (Render)
   SECONDARY_API_URL: string;   // Secondary API Server (Koyeb)
 
-  // Supabase設定
+  // Supabase Auth設定
   SUPABASE_URL: string;
   SUPABASE_JWKS_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
+
+  // PostgREST設定 (DB RPC呼び出し用)
+  POSTGREST_URL: string;        // e.g. https://xxx.supabase.co/rest/v1 or Neon Data API URL
+  POSTGREST_API_KEY: string;    // service role key or Neon API key
 
   // Gateway Secret (Worker → Go Server)
   GATEWAY_SECRET: string;
@@ -689,17 +693,16 @@ async function verifyApiKey(
     console.error("[APIKey] Cache read error:", cacheError);
   }
 
-  // 2. キャッシュミス → Supabase RPC (lookup_user_by_key_hash) で検証
-  console.log("[APIKey] Cache MISS, validating via Supabase RPC...");
+  // 2. キャッシュミス → PostgREST RPC (lookup_user_by_key_hash) で検証
+  console.log("[APIKey] Cache MISS, validating via PostgREST RPC...");
   try {
     const response = await fetch(
-      `${env.SUPABASE_URL}/rest/v1/rpc/lookup_user_by_key_hash`,
+      `${env.POSTGREST_URL}/rpc/lookup_user_by_key_hash`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: env.SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${env.POSTGREST_API_KEY}`,
         },
         body: JSON.stringify({ p_key_hash: keyHash }),
       }
