@@ -12,7 +12,12 @@ import (
 )
 
 // UserStore manages user context queries via PostgREST RPC
+// UserStore manages user context queries via PostgREST RPC
 type UserStore struct {
+	postgrestURL string
+	apiKey       string
+	client       *http.Client
+	cache        *userCache
 	postgrestURL string
 	apiKey       string
 	client       *http.Client
@@ -79,6 +84,8 @@ func NewUserStore() *UserStore {
 	return &UserStore{
 		postgrestURL: os.Getenv("POSTGREST_URL"),
 		apiKey:       os.Getenv("POSTGREST_API_KEY"),
+		postgrestURL: os.Getenv("POSTGREST_URL"),
+		apiKey:       os.Getenv("POSTGREST_API_KEY"),
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -90,20 +97,25 @@ func NewUserStore() *UserStore {
 }
 
 // HealthCheck verifies connectivity to the PostgREST endpoint.
+// HealthCheck verifies connectivity to the PostgREST endpoint.
 func (s *UserStore) HealthCheck() error {
+	req, err := http.NewRequest("HEAD", s.postgrestURL+"/", nil)
 	req, err := http.NewRequest("HEAD", s.postgrestURL+"/", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
+		return fmt.Errorf("postgrest unreachable: %w", err)
 		return fmt.Errorf("postgrest unreachable: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 500 {
+		return fmt.Errorf("postgrest returned status %d", resp.StatusCode)
 		return fmt.Errorf("postgrest returned status %d", resp.StatusCode)
 	}
 	return nil
@@ -117,6 +129,7 @@ func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 		return cached, nil
 	}
 
+	// Query PostgREST RPC
 	// Query PostgREST RPC
 	ctx, err := s.fetchUserContext(userID)
 	if err != nil {
@@ -136,7 +149,9 @@ func (s *UserStore) GetUserContext(userID string) (*UserContext, error) {
 }
 
 // fetchUserContext calls the PostgREST RPC function
+// fetchUserContext calls the PostgREST RPC function
 func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
+	if s.apiKey == "" {
 	if s.apiKey == "" {
 		// Return default context for development without service key
 		// All tools enabled for all modules (dev mode)
@@ -156,6 +171,7 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	req, err := http.NewRequest(
 		"POST",
 		s.postgrestURL+"/rpc/get_user_context",
+		s.postgrestURL+"/rpc/get_user_context",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -163,6 +179,7 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
@@ -246,6 +263,7 @@ type ToolDetail struct {
 // This is non-blocking: failures are logged but do not affect the caller.
 func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []ToolDetail) {
 	if s.apiKey == "" {
+	if s.apiKey == "" {
 		return // Skip in development
 	}
 
@@ -263,6 +281,7 @@ func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []To
 
 		req, err := http.NewRequest(
 			"POST",
+			s.postgrestURL+"/rpc/record_usage",
 			s.postgrestURL+"/rpc/record_usage",
 			strings.NewReader(reqBody),
 		)
@@ -358,6 +377,7 @@ type UserPrompt struct {
 // GetUserPrompts retrieves all enabled prompts for a user
 func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 	if s.apiKey == "" {
+	if s.apiKey == "" {
 		// Return empty list in development without service key
 		return []UserPrompt{}, nil
 	}
@@ -366,6 +386,7 @@ func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 	req, err := http.NewRequest(
 		"POST",
 		s.postgrestURL+"/rpc/list_user_prompts",
+		s.postgrestURL+"/rpc/list_user_prompts",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -373,6 +394,7 @@ func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
@@ -396,6 +418,7 @@ func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 // GetUserPromptByName retrieves a specific prompt by name for a user
 func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt, error) {
 	if s.apiKey == "" {
+	if s.apiKey == "" {
 		// Return nil in development without service key
 		return nil, nil
 	}
@@ -404,6 +427,7 @@ func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt,
 	req, err := http.NewRequest(
 		"POST",
 		s.postgrestURL+"/rpc/get_user_prompt_by_name",
+		s.postgrestURL+"/rpc/get_user_prompt_by_name",
 		strings.NewReader(reqBody),
 	)
 	if err != nil {
@@ -411,6 +435,7 @@ func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt,
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
