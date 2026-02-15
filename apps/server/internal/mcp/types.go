@@ -1,43 +1,24 @@
 package mcp
 
-import "mcpist/server/internal/modules"
-
-// JSON-RPC 2.0 Request
-type Request struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id,omitempty"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
-}
-
-// JSON-RPC 2.0 Response
-type Response struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id,omitempty"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   *Error      `json:"error,omitempty"`
-}
-
-// JSON-RPC 2.0 Error
-type Error struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
-// JSON-RPC 2.0 standard error codes
-const (
-	ParseError     = -32700
-	InvalidRequest = -32600
-	MethodNotFound = -32601
-	InvalidParams  = -32602
-	InternalError  = -32603
+import (
+	"mcpist/server/internal/jsonrpc"
+	"mcpist/server/internal/modules"
 )
 
-// MCPist custom error codes (-32000 ~ -32099: server-defined)
+// Re-export JSON-RPC types for backward compatibility within this package
+type Request = jsonrpc.Request
+type Response = jsonrpc.Response
+type Error = jsonrpc.Error
+
+// Re-export JSON-RPC error codes
 const (
-	ErrPermissionDenied   = -32001 // Module/tool not enabled
-	ErrUsageLimitExceeded = -32002 // Daily usage limit exceeded
+	ParseError            = jsonrpc.ParseError
+	InvalidRequest        = jsonrpc.InvalidRequest
+	MethodNotFound        = jsonrpc.MethodNotFound
+	InvalidParams         = jsonrpc.InvalidParams
+	InternalError         = jsonrpc.InternalError
+	ErrPermissionDenied   = jsonrpc.ErrPermissionDenied
+	ErrUsageLimitExceeded = jsonrpc.ErrUsageLimitExceeded
 )
 
 // MCP Protocol Types
