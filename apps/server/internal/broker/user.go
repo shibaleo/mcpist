@@ -151,11 +151,11 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 		}, nil
 	}
 
-	reqBody := fmt.Sprintf(`{"p_user_id": "%s"}`, userID)
+	reqBody, _ := json.Marshal(map[string]string{"p_user_id": userID})
 	req, err := http.NewRequest(
 		"POST",
 		s.postgrestURL+"/rpc/get_user_context",
-		strings.NewReader(reqBody),
+		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -249,21 +249,21 @@ func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []To
 	}
 
 	go func() {
-		detailsJSON, err := json.Marshal(details)
+		reqBody, err := json.Marshal(map[string]interface{}{
+			"p_user_id":    userID,
+			"p_meta_tool":  metaTool,
+			"p_request_id": requestID,
+			"p_details":    details,
+		})
 		if err != nil {
-			log.Printf("RecordUsage: failed to marshal details: %v", err)
+			log.Printf("RecordUsage: failed to marshal request: %v", err)
 			return
 		}
-
-		reqBody := fmt.Sprintf(
-			`{"p_user_id": "%s", "p_meta_tool": "%s", "p_request_id": "%s", "p_details": %s}`,
-			userID, metaTool, requestID, string(detailsJSON),
-		)
 
 		req, err := http.NewRequest(
 			"POST",
 			s.postgrestURL+"/rpc/record_usage",
-			strings.NewReader(reqBody),
+			strings.NewReader(string(reqBody)),
 		)
 		if err != nil {
 			log.Printf("RecordUsage: failed to create request: %v", err)
@@ -356,16 +356,46 @@ type UserPrompt struct {
 
 // GetUserPrompts retrieves all enabled prompts for a user
 func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
+	return s.fetchUserPrompts(userID, "")
+}
+
+// GetUserPromptByName retrieves a specific prompt by name for a user
+func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt, error) {
+	prompts, err := s.fetchUserPrompts(userID, promptName)
+	if err != nil {
+		return nil, err
+	}
+	if len(prompts) == 0 {
+		return nil, nil
+	}
+	return &prompts[0], nil
+}
+
+// fetchUserPrompts calls the unified get_user_prompts RPC.
+// When promptName is empty, returns all enabled prompts.
+// When promptName is specified, returns the matching prompt.
+func (s *UserStore) fetchUserPrompts(userID, promptName string) ([]UserPrompt, error) {
 	if s.apiKey == "" {
-		// Return empty list in development without service key
 		return []UserPrompt{}, nil
 	}
 
-	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_enabled_only": true}`, userID)
+	params := map[string]interface{}{
+		"p_user_id":      userID,
+		"p_enabled_only": true,
+	}
+	if promptName != "" {
+		params["p_prompt_name"] = promptName
+	}
+
+	reqBody, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
 	req, err := http.NewRequest(
 		"POST",
-		s.postgrestURL+"/rpc/list_user_prompts",
-		strings.NewReader(reqBody),
+		s.postgrestURL+"/rpc/get_user_prompts",
+		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -376,12 +406,12 @@ func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call list_user_prompts: %w", err)
+		return nil, fmt.Errorf("failed to call get_user_prompts: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("list_user_prompts failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("get_user_prompts failed: status %d", resp.StatusCode)
 	}
 
 	var prompts []UserPrompt
@@ -390,46 +420,4 @@ func (s *UserStore) GetUserPrompts(userID string) ([]UserPrompt, error) {
 	}
 
 	return prompts, nil
-}
-
-// GetUserPromptByName retrieves a specific prompt by name for a user
-func (s *UserStore) GetUserPromptByName(userID, promptName string) (*UserPrompt, error) {
-	if s.apiKey == "" {
-		// Return nil in development without service key
-		return nil, nil
-	}
-
-	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_prompt_name": "%s"}`, userID, promptName)
-	req, err := http.NewRequest(
-		"POST",
-		s.postgrestURL+"/rpc/get_user_prompt_by_name",
-		strings.NewReader(reqBody),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
-
-	resp, err := doWithRetry(s.client, req, defaultRetry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call get_user_prompt_by_name: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get_user_prompt_by_name failed: status %d", resp.StatusCode)
-	}
-
-	var results []UserPrompt
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if len(results) == 0 {
-		return nil, nil // Not found
-	}
-
-	return &results[0], nil
 }
