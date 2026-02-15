@@ -289,6 +289,64 @@ func (s *UserBroker) RecordUsage(userID, metaTool, requestID string, details []T
 	}()
 }
 
+// SyncModuleEntry represents a module to sync to the database
+type SyncModuleEntry struct {
+	Name   string      `json:"name"`
+	Status string      `json:"status"`
+	Tools  interface{} `json:"tools"`
+}
+
+// SyncModules upserts module+tool data to the database via the sync_modules RPC.
+// Called at server startup. Errors are logged but do not prevent server operation.
+func (s *UserBroker) SyncModules(entries []SyncModuleEntry) error {
+	if s.apiKey == "" {
+		log.Printf("SyncModules: skipped (no API key, development mode)")
+		return nil
+	}
+
+	reqBody, err := json.Marshal(map[string]interface{}{
+		"p_modules": entries,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal sync_modules request: %w", err)
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		s.postgrestURL+"/rpc/sync_modules",
+		strings.NewReader(string(reqBody)),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create sync_modules request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", s.apiKey)
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
+
+	resp, err := doWithRetry(s.client, req, defaultRetry)
+	if err != nil {
+		return fmt.Errorf("sync_modules RPC failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("sync_modules returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Success  bool `json:"success"`
+		Upserted int  `json:"upserted"`
+		Total    int  `json:"total"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("failed to decode sync_modules response: %w", err)
+	}
+
+	log.Printf("SyncModules: upserted %d/%d modules", result.Upserted, result.Total)
+	return nil
+}
+
 // InvalidateCache removes a user's cached context
 func (s *UserBroker) InvalidateCache(userID string) {
 	s.cache.delete(userID)

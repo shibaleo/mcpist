@@ -19,14 +19,5 @@ ON CONFLICT (email) DO NOTHING;
 -- =============================================================================
 -- Modules Master Data
 -- =============================================================================
-
-INSERT INTO mcpist.modules (name, status) VALUES
-    ('notion', 'active'),
-    ('github', 'active'),
-    ('jira', 'active'),
-    ('confluence', 'active'),
-    ('supabase', 'beta'),
-    ('google_calendar', 'active'),
-    ('microsoft_todo', 'active'),
-    ('rag', 'active')
-ON CONFLICT (name) DO UPDATE SET status = EXCLUDED.status;
+-- Modules are now synced dynamically by the Go server at startup (sync_modules RPC).
+-- No static seed data needed.

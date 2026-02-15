@@ -87,6 +87,13 @@ func main() {
 
 	// Initialize stores and authorizer
 	userStore := broker.NewUserBroker()
+
+	// Sync modules+tools to database (non-blocking: log errors but don't abort)
+	syncEntries := buildSyncEntries(moduleNames)
+	if err := userStore.SyncModules(syncEntries); err != nil {
+		log.Printf("WARNING: SyncModules failed: %v", err)
+	}
+
 	authorizer := middleware.NewAuthorizer(userStore)
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -140,4 +147,40 @@ func main() {
 	}
 
 	log.Printf("Server stopped")
+}
+
+// buildSyncEntries collects module+tool data from the Go registry for DB sync.
+func buildSyncEntries(moduleNames []string) []broker.SyncModuleEntry {
+	type syncTool struct {
+		ID           string            `json:"id"`
+		Name         string            `json:"name"`
+		Descriptions map[string]string `json:"descriptions,omitempty"`
+		Annotations  interface{}       `json:"annotations,omitempty"`
+	}
+
+	entries := make([]broker.SyncModuleEntry, 0, len(moduleNames))
+	for _, name := range moduleNames {
+		m, ok := modules.GetModule(name)
+		if !ok {
+			continue
+		}
+
+		tools := m.Tools()
+		syncTools := make([]syncTool, 0, len(tools))
+		for _, t := range tools {
+			syncTools = append(syncTools, syncTool{
+				ID:           t.ID,
+				Name:         t.Name,
+				Descriptions: t.Descriptions,
+				Annotations:  t.Annotations,
+			})
+		}
+
+		entries = append(entries, broker.SyncModuleEntry{
+			Name:   name,
+			Status: "active",
+			Tools:  syncTools,
+		})
+	}
+	return entries
 }
