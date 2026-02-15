@@ -211,12 +211,12 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 		}, nil
 	}
 
-	reqBody := fmt.Sprintf(`{"p_user_id": "%s", "p_module": "%s"}`, userID, module)
+	reqBody, _ := json.Marshal(map[string]string{"p_user_id": userID, "p_module": module})
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
 		b.postgrestURL+"/rpc/get_user_credential",
-		strings.NewReader(reqBody),
+		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -370,12 +370,12 @@ func (b *TokenBroker) GetOAuthAppCredentials(ctx context.Context, provider strin
 		return nil, fmt.Errorf("OAuth app credentials not available in development mode")
 	}
 
-	reqBody := fmt.Sprintf(`{"p_provider": "%s"}`, provider)
+	reqBody, _ := json.Marshal(map[string]string{"p_provider": provider})
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
 		b.postgrestURL+"/rpc/get_oauth_app_credentials",
-		strings.NewReader(reqBody),
+		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -413,21 +413,20 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 		return nil
 	}
 
-	credJSON, err := json.Marshal(credentials)
+	reqBody, err := json.Marshal(map[string]interface{}{
+		"p_user_id":       userID,
+		"p_module":        module,
+		"p_credentials":   credentials,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to marshal credentials: %w", err)
+		return fmt.Errorf("failed to marshal request: %w", err)
 	}
-
-	reqBody := fmt.Sprintf(
-		`{"p_user_id": "%s", "p_module": "%s", "p_credentials": %s}`,
-		userID, module, string(credJSON),
-	)
 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
 		b.postgrestURL+"/rpc/upsert_user_credential",
-		strings.NewReader(reqBody),
+		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)

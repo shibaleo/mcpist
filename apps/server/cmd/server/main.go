@@ -85,12 +85,6 @@ func main() {
 	log.Printf("Registered modules: %v", moduleNames)
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
 
-	// Sync modules to database (ensures all registered modules exist)
-	moduleStore := broker.NewModuleStore()
-	if err := moduleStore.SyncModules(moduleNames); err != nil {
-		log.Printf("Warning: Failed to sync modules to database: %v", err)
-	}
-
 	// Initialize stores and authorizer
 	userStore := broker.NewUserStore()
 	authorizer := middleware.NewAuthorizer(userStore)
