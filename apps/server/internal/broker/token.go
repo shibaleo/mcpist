@@ -223,6 +223,7 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", b.apiKey)
 	req.Header.Set("Authorization", "Bearer "+b.apiKey)
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
@@ -382,6 +383,7 @@ func (b *TokenBroker) GetOAuthAppCredentials(ctx context.Context, provider strin
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", b.apiKey)
 	req.Header.Set("Authorization", "Bearer "+b.apiKey)
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
@@ -433,6 +435,7 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", b.apiKey)
 	req.Header.Set("Authorization", "Bearer "+b.apiKey)
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)

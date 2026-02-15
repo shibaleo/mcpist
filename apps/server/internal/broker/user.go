@@ -94,6 +94,7 @@ func (s *UserStore) HealthCheck() error {
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
+	req.Header.Set("apikey", s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
@@ -162,6 +163,7 @@ func (s *UserStore) fetchUserContext(userID string) (*UserContext, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
@@ -271,6 +273,7 @@ func (s *UserStore) RecordUsage(userID, metaTool, requestID string, details []To
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("apikey", s.apiKey)
 		req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 		resp, err := s.client.Do(req)
@@ -402,6 +405,7 @@ func (s *UserStore) fetchUserPrompts(userID, promptName string) ([]UserPrompt, e
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
