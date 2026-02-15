@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-// ModuleStore manages module registration in Supabase
+// ModuleStore manages module registration via PostgREST RPC
 type ModuleStore struct {
-	supabaseURL string
-	serviceKey  string
-	client      *http.Client
+	postgrestURL string
+	apiKey       string
+	client       *http.Client
 }
 
 // NewModuleStore creates a new module store
 func NewModuleStore() *ModuleStore {
 	return &ModuleStore{
-		supabaseURL: os.Getenv("SUPABASE_URL"),
-		serviceKey:  os.Getenv("SUPABASE_SECRET_KEY"),
+		postgrestURL: os.Getenv("POSTGREST_URL"),
+		apiKey:       os.Getenv("POSTGREST_API_KEY"),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -38,7 +38,7 @@ type SyncModulesResult struct {
 // SyncModules ensures all provided modules exist in the database
 // Uses RPC to access mcpist schema
 func (s *ModuleStore) SyncModules(moduleNames []string) error {
-	if s.serviceKey == "" {
+	if s.apiKey == "" {
 		log.Println("[ModuleStore] No service key configured, skipping module sync")
 		return nil
 	}
@@ -52,7 +52,7 @@ func (s *ModuleStore) SyncModules(moduleNames []string) error {
 
 	req, err := http.NewRequest(
 		"POST",
-		s.supabaseURL+"/rest/v1/rpc/sync_modules",
+		s.postgrestURL+"/rpc/sync_modules",
 		strings.NewReader(payload),
 	)
 	if err != nil {
@@ -60,8 +60,7 @@ func (s *ModuleStore) SyncModules(moduleNames []string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("apikey", s.serviceKey)
-	req.Header.Set("Authorization", "Bearer "+s.serviceKey)
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
