@@ -111,13 +111,13 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","instance":"%s","region":"%s","db":"%s"}`, instanceID, instanceRegion, dbStatus)
 	})
 
-	// MCP endpoint with authorization + rate limit middleware
+	// MCP endpoint with authorization + rate limit + transport middleware
 	// Note: Authentication is handled by Cloudflare Worker, not Go Server
 	// Worker sets X-User-ID and X-Gateway-Secret headers
-	// Chain: Recovery → Authorize → RateLimit(10 req/sec per user) → MCPHandler
+	// Chain: Recovery → Authorize → RateLimit(10 req/sec per user) → Transport → MCPHandler
 	rateLimiter := middleware.NewRateLimiter(10)
 	mcpHandler := mcp.NewHandler(userStore)
-	http.Handle("/mcp", middleware.Recovery(authorizer.Authorize(rateLimiter.Middleware(mcpHandler))))
+	http.Handle("/mcp", middleware.Recovery(authorizer.Authorize(rateLimiter.Middleware(middleware.Transport(mcpHandler)))))
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%s", port),

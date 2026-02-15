@@ -2,204 +2,32 @@ package mcp
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"strings"
-	"sync"
 
+	"mcpist/server/internal/broker"
+	"mcpist/server/internal/jsonrpc"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
 	"mcpist/server/internal/observability"
-	"mcpist/server/internal/broker"
 )
 
 type Handler struct {
-	sessions  map[string]*Session
-	mu        sync.RWMutex
 	userStore *broker.UserStore
-}
-
-type Session struct {
-	id       string
-	writer   http.ResponseWriter
-	flusher  http.Flusher
-	done     chan struct{}
-	messages chan []byte
 }
 
 func NewHandler(userStore *broker.UserStore) *Handler {
 	return &Handler{
-		sessions:  make(map[string]*Session),
 		userStore: userStore,
 	}
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.handleSSE(w, r)
-	case http.MethodPost:
-		h.handleMessage(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (h *Handler) handleSSE(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "SSE not supported", http.StatusInternalServerError)
-		return
-	}
-
-	// SSE headers
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
-	// Create session with cryptographic random ID
-	idBytes := make([]byte, 16)
-	if _, err := rand.Read(idBytes); err != nil {
-		http.Error(w, "failed to generate session ID", http.StatusInternalServerError)
-		return
-	}
-	sessionID := hex.EncodeToString(idBytes)
-
-	session := &Session{
-		id:       sessionID,
-		writer:   w,
-		flusher:  flusher,
-		done:     make(chan struct{}),
-		messages: make(chan []byte, 100),
-	}
-
-	h.mu.Lock()
-	h.sessions[sessionID] = session
-	h.mu.Unlock()
-
-	defer func() {
-		h.mu.Lock()
-		delete(h.sessions, sessionID)
-		h.mu.Unlock()
-		close(session.done)
-	}()
-
-	// Send endpoint event (MCP SSE protocol)
-	fmt.Fprintf(w, "event: endpoint\ndata: /mcp?sessionId=%s\n\n", sessionID)
-	flusher.Flush()
-	log.Printf("SSE connection established, session=%s", sessionID)
-
-	// Keep connection open and send messages
-	for {
-		select {
-		case msg := <-session.messages:
-			fmt.Fprintf(w, "event: message\ndata: %s\n\n", msg)
-			flusher.Flush()
-		case <-r.Context().Done():
-			log.Printf("SSE connection closed, session=%s", sessionID)
-			return
-		}
-	}
-}
-
-func (h *Handler) handleMessage(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("sessionId")
-	if sessionID == "" {
-		h.handleInlineMessage(w, r)
-		return
-	}
-
-	h.mu.RLock()
-	session, ok := h.sessions[sessionID]
-	h.mu.RUnlock()
-
-	if !ok {
-		http.Error(w, "Session not found", http.StatusNotFound)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read body", http.StatusBadRequest)
-		return
-	}
-
-	var req Request
-	if err := json.Unmarshal(body, &req); err != nil {
-		h.sendToSession(session, nil, &Error{Code: ParseError, Message: "Parse error"})
-		w.WriteHeader(http.StatusAccepted)
-		return
-	}
-
-	log.Printf("Received request: method=%s id=%v session=%s", req.Method, req.ID, sessionID)
-
-	result, rpcErr := h.processRequest(r.Context(), &req)
-	if rpcErr != nil {
-		h.sendToSession(session, req.ID, rpcErr)
-	} else if req.ID != nil {
-		h.sendResultToSession(session, req.ID, result)
-	}
-
-	w.WriteHeader(http.StatusAccepted)
-}
-
-func (h *Handler) handleInlineMessage(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read body", http.StatusBadRequest)
-		return
-	}
-
-	var req Request
-	if err := json.Unmarshal(body, &req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		resp := Response{JSONRPC: "2.0", Error: &Error{Code: ParseError, Message: "Parse error"}}
-		json.NewEncoder(w).Encode(resp)
-		return
-	}
-
-	log.Printf("Received inline request: method=%s id=%v", req.Method, req.ID)
-
-	result, rpcErr := h.processRequest(r.Context(), &req)
-
-	w.Header().Set("Content-Type", "application/json")
-	var resp Response
-	if rpcErr != nil {
-		resp = Response{JSONRPC: "2.0", ID: req.ID, Error: rpcErr}
-	} else {
-		resp = Response{JSONRPC: "2.0", ID: req.ID, Result: result}
-	}
-	json.NewEncoder(w).Encode(resp)
-}
-
-func (h *Handler) sendToSession(session *Session, id interface{}, err *Error) {
-	resp := Response{JSONRPC: "2.0", ID: id, Error: err}
-	data, _ := json.Marshal(resp)
-	select {
-	case session.messages <- data:
-	default:
-		log.Printf("Session message buffer full")
-	}
-}
-
-func (h *Handler) sendResultToSession(session *Session, id interface{}, result interface{}) {
-	resp := Response{JSONRPC: "2.0", ID: id, Result: result}
-	data, _ := json.Marshal(resp)
-	select {
-	case session.messages <- data:
-	default:
-		log.Printf("Session message buffer full")
-	}
-}
-
-func (h *Handler) processRequest(ctx context.Context, req *Request) (interface{}, *Error) {
+// ProcessRequest routes a JSON-RPC request to the appropriate handler.
+// Called by the transport middleware.
+func (h *Handler) ProcessRequest(ctx context.Context, req *jsonrpc.Request) (interface{}, *jsonrpc.Error) {
 	switch req.Method {
 	case "initialize":
 		return h.handleInitialize(req), nil
@@ -214,11 +42,11 @@ func (h *Handler) processRequest(ctx context.Context, req *Request) (interface{}
 	case "prompts/get":
 		return h.handlePromptsGet(ctx, req)
 	default:
-		return nil, &Error{Code: MethodNotFound, Message: "Method not found"}
+		return nil, &jsonrpc.Error{Code: MethodNotFound, Message: "Method not found"}
 	}
 }
 
-func (h *Handler) handleInitialize(req *Request) *InitializeResult {
+func (h *Handler) handleInitialize(req *jsonrpc.Request) *InitializeResult {
 	return &InitializeResult{
 		ProtocolVersion: "2025-03-26",
 		Capabilities: ServerCapabilities{
@@ -232,10 +60,10 @@ func (h *Handler) handleInitialize(req *Request) *InitializeResult {
 	}
 }
 
-func (h *Handler) handlePromptsList(ctx context.Context) (*PromptsListResult, *Error) {
+func (h *Handler) handlePromptsList(ctx context.Context) (*PromptsListResult, *jsonrpc.Error) {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
-		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 
 	prompts, err := h.userStore.GetUserPrompts(authCtx.UserID)
@@ -263,38 +91,38 @@ func (h *Handler) handlePromptsList(ctx context.Context) (*PromptsListResult, *E
 	return &PromptsListResult{Prompts: promptInfos}, nil
 }
 
-func (h *Handler) handlePromptsGet(ctx context.Context, req *Request) (*PromptsGetResult, *Error) {
+func (h *Handler) handlePromptsGet(ctx context.Context, req *jsonrpc.Request) (*PromptsGetResult, *jsonrpc.Error) {
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
-		return nil, &Error{Code: InvalidParams, Message: "Invalid params"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "Invalid params"}
 	}
 
 	var params PromptsGetParams
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		return nil, &Error{Code: InvalidParams, Message: "Invalid params structure"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "Invalid params structure"}
 	}
 
 	if params.Name == "" {
-		return nil, &Error{Code: InvalidParams, Message: "name is required"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "name is required"}
 	}
 
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
-		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 
 	prompt, err := h.userStore.GetUserPromptByName(authCtx.UserID, params.Name)
 	if err != nil {
-		return nil, &Error{Code: InternalError, Message: fmt.Sprintf("failed to get prompt: %v", err)}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: fmt.Sprintf("failed to get prompt: %v", err)}
 	}
 
 	if prompt == nil {
-		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("prompt not found: %s", params.Name)}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: fmt.Sprintf("prompt not found: %s", params.Name)}
 	}
 
 	// Check if prompt is enabled
 	if !prompt.Enabled {
-		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("prompt is disabled: %s", params.Name)}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: fmt.Sprintf("prompt is disabled: %s", params.Name)}
 	}
 
 	return &PromptsGetResult{
@@ -310,23 +138,23 @@ func (h *Handler) handlePromptsGet(ctx context.Context, req *Request) (*PromptsG
 	}, nil
 }
 
-func (h *Handler) handleToolsList(ctx context.Context) (*ToolsListResult, *Error) {
+func (h *Handler) handleToolsList(ctx context.Context) (*ToolsListResult, *jsonrpc.Error) {
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
-		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 	return &ToolsListResult{Tools: modules.DynamicMetaTools(authCtx.EnabledModules, authCtx.Language)}, nil
 }
 
-func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallResult, *Error) {
+func (h *Handler) handleToolCall(ctx context.Context, req *jsonrpc.Request) (*ToolCallResult, *jsonrpc.Error) {
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
-		return nil, &Error{Code: InvalidParams, Message: "Invalid params"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "Invalid params"}
 	}
 
 	var params ToolCallParams
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		return nil, &Error{Code: InvalidParams, Message: "Invalid params structure"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "Invalid params structure"}
 	}
 
 	switch params.Name {
@@ -337,11 +165,11 @@ func (h *Handler) handleToolCall(ctx context.Context, req *Request) (*ToolCallRe
 	case "batch":
 		return h.handleBatch(ctx, params.Arguments)
 	default:
-		return nil, &Error{Code: InvalidParams, Message: fmt.Sprintf("Unknown tool: %s", params.Name)}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: fmt.Sprintf("Unknown tool: %s", params.Name)}
 	}
 }
 
-func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
+func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *jsonrpc.Error) {
 	var moduleNames []string
 
 	switch v := args["module"].(type) {
@@ -350,7 +178,7 @@ func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]int
 		for _, item := range v {
 			name, ok := item.(string)
 			if !ok {
-				return nil, &Error{Code: InvalidParams, Message: "module array must contain strings"}
+				return nil, &jsonrpc.Error{Code: InvalidParams, Message: "module array must contain strings"}
 			}
 			moduleNames = append(moduleNames, name)
 		}
@@ -358,35 +186,35 @@ func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]int
 		// Backward compatible: single string "notion"
 		moduleNames = []string{v}
 	default:
-		return nil, &Error{Code: InvalidParams, Message: "module must be a string or array of strings"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "module must be a string or array of strings"}
 	}
 
 	if len(moduleNames) == 0 {
-		return nil, &Error{Code: InvalidParams, Message: "module must not be empty"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "module must not be empty"}
 	}
 
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
-		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 
 	result, err := modules.GetModuleSchemas(moduleNames, authCtx.EnabledModules, authCtx.EnabledTools, authCtx.Language, authCtx.ModuleDescriptions)
 	if err != nil {
-		return nil, &Error{Code: InternalError, Message: err.Error()}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: err.Error()}
 	}
 
 	return result, nil
 }
 
-func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
+func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *jsonrpc.Error) {
 	moduleName, ok := args["module"].(string)
 	if !ok {
-		return nil, &Error{Code: InvalidParams, Message: "module must be a string"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "module must be a string"}
 	}
 
 	toolName, ok := args["tool"].(string)
 	if !ok {
-		return nil, &Error{Code: InvalidParams, Message: "tool must be a string"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "tool must be a string"}
 	}
 
 	params, _ := args["params"].(map[string]interface{})
@@ -396,7 +224,7 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
-		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 
 	if err := authCtx.CanAccessTool(moduleName, toolName, 1); err != nil {
@@ -410,7 +238,7 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 
 	result, err := modules.Run(ctx, moduleName, toolName, params)
 	if err != nil {
-		return nil, &Error{Code: InternalError, Message: err.Error()}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: err.Error()}
 	}
 
 	// Apply compact format unless format=json is explicitly requested
@@ -431,15 +259,15 @@ func (h *Handler) handleRun(ctx context.Context, args map[string]interface{}) (*
 	return result, nil
 }
 
-func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *Error) {
+func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) (*ToolCallResult, *jsonrpc.Error) {
 	commands, ok := args["commands"].(string)
 	if !ok {
-		return nil, &Error{Code: InvalidParams, Message: "commands must be a string"}
+		return nil, &jsonrpc.Error{Code: InvalidParams, Message: "commands must be a string"}
 	}
 
 	authCtx := middleware.GetAuthContext(ctx)
 	if authCtx == nil {
-		return nil, &Error{Code: InternalError, Message: "auth context missing"}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 
 	// All-or-Nothing: pre-check all commands before execution
@@ -450,7 +278,7 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 
 	batchResult, err := modules.Batch(ctx, commands)
 	if err != nil {
-		return nil, &Error{Code: InternalError, Message: err.Error()}
+		return nil, &jsonrpc.Error{Code: InternalError, Message: err.Error()}
 	}
 
 	// Record usage asynchronously for all successful tool executions
@@ -478,7 +306,7 @@ func (h *Handler) handleBatch(ctx context.Context, args map[string]interface{}) 
 // checkBatchPermissions parses batch JSONL and checks all tools are permitted.
 // Returns an MCP error if any tool is denied (All-or-Nothing).
 // Client receives a vague message; server log records specific denied tools (Layer 3: Detection).
-func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, commands string) *Error {
+func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, commands string) *jsonrpc.Error {
 	lines := strings.Split(strings.TrimSpace(commands), "\n")
 
 	var deniedDetails []string // for server log only
@@ -516,7 +344,7 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 	// Batch size limit
 	const maxBatchSize = 10
 	if toolCount > maxBatchSize {
-		return &Error{
+		return &jsonrpc.Error{
 			Code:    InvalidParams,
 			Message: fmt.Sprintf("batch too large: %d commands (max %d)", toolCount, maxBatchSize),
 		}
@@ -528,7 +356,7 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 			"denied_tools": deniedDetails,
 		})
 
-		return &Error{
+		return &jsonrpc.Error{
 			Code:    ErrPermissionDenied,
 			Message: "batch rejected: one or more tools are not permitted",
 		}
@@ -541,7 +369,7 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 		if consoleURL != "" {
 			upgradeURL = fmt.Sprintf(" Upgrade your plan at: %s/plan", consoleURL)
 		}
-		return &Error{
+		return &jsonrpc.Error{
 			Code:    ErrUsageLimitExceeded,
 			Message: fmt.Sprintf("Daily usage limit exceeded. Used: %d, Limit: %d.%s", authCtx.DailyUsed, authCtx.DailyLimit, upgradeURL),
 		}
@@ -551,17 +379,17 @@ func checkBatchPermissions(requestID string, authCtx *middleware.AuthContext, co
 }
 
 // authErrorToRPC maps middleware.AuthError to the appropriate JSON-RPC error code.
-func authErrorToRPC(err error) *Error {
+func authErrorToRPC(err error) *jsonrpc.Error {
 	authErr, ok := err.(*middleware.AuthError)
 	if !ok {
-		return &Error{Code: InternalError, Message: err.Error()}
+		return &jsonrpc.Error{Code: InternalError, Message: err.Error()}
 	}
 	switch authErr.Code {
 	case "USAGE_LIMIT_EXCEEDED":
-		return &Error{Code: ErrUsageLimitExceeded, Message: authErr.Message}
+		return &jsonrpc.Error{Code: ErrUsageLimitExceeded, Message: authErr.Message}
 	case "MODULE_NOT_ENABLED", "TOOL_DISABLED":
-		return &Error{Code: ErrPermissionDenied, Message: authErr.Message}
+		return &jsonrpc.Error{Code: ErrPermissionDenied, Message: authErr.Message}
 	default:
-		return &Error{Code: InternalError, Message: authErr.Message}
+		return &jsonrpc.Error{Code: InternalError, Message: authErr.Message}
 	}
 }
