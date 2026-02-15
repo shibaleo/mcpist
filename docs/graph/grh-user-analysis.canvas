@@ -181,5 +181,9 @@
 		{"id":"e304","fromNode":"COR-001","fromSide":"bottom","toNode":"COR-008","toSide":"top"},
 		{"id":"e305","fromNode":"COR-003","fromSide":"bottom","toNode":"COR-005","toSide":"top"},
 		{"id":"e306","fromNode":"COR-007","fromSide":"bottom","toNode":"COR-009","toSide":"top"}
-	]
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
 }

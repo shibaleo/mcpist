@@ -48,5 +48,9 @@
 		{"id":"e22","fromNode":"handleBatch","fromSide":"bottom","toNode":"ext_Batch","toSide":"top"},
 		{"id":"e23","fromNode":"handleBatch","fromSide":"bottom","toNode":"ext_ConsumeCredit","toSide":"top","label":"if successCount>0 && authCtx!=nil"},
 		{"id":"e24","fromNode":"handleBatch","fromSide":"bottom","toNode":"generateRequestID","toSide":"top"}
-	]
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
 }
