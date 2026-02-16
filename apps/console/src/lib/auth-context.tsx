@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser, SupabaseClient } from "@supabase/supabase-js"
-import { fetchAuthUserContext } from "@/lib/auth-context-actions"
 
 // Development auth bypass - set NEXT_PUBLIC_DEV_AUTH_BYPASS=true in .env.local
 const DEV_AUTH_BYPASS = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true"
@@ -36,10 +35,9 @@ const DEV_BYPASS_USER: User = {
   role: "admin",
 }
 
-async function buildUser(sbUser: SupabaseUser): Promise<User> {
-  const ctx = await fetchAuthUserContext()
-  const role = ctx?.role ?? "user"
-  const displayName = ctx?.displayName || sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User"
+function buildUser(sbUser: SupabaseUser): User {
+  const role = sbUser.app_metadata?.role === "admin" ? "admin" : "user"
+  const displayName = sbUser.user_metadata?.display_name || sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User"
   return {
     id: sbUser.id,
     name: displayName,
@@ -81,28 +79,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     //    - The Web Locks API can cause hangs if async calls happen synchronously
     //      within onAuthStateChange callback
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const sbUser = session?.user ?? null
       setSupabaseUser(sbUser)
 
       if (sbUser) {
-        // setTimeout prevents deadlock - do not remove!
-        setTimeout(async () => {
-          try {
-            const appUser = await buildUser(sbUser)
-            setUser(appUser)
-            setIsAdmin(appUser.role === "admin")
-          } catch {
-            // Role fetch failed, default to user
-            setUser({
-              id: sbUser.id,
-              name: sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User",
-              email: sbUser.email || "",
-              avatar: sbUser.user_metadata?.avatar_url,
-              role: "user",
-            })
-            setIsAdmin(false)
-          }
+        // setTimeout prevents deadlock with Supabase Web Locks API - do not remove!
+        setTimeout(() => {
+          const appUser = buildUser(sbUser)
+          setUser(appUser)
+          setIsAdmin(appUser.role === "admin")
           setIsLoading(false)
         }, 0)
       } else {
