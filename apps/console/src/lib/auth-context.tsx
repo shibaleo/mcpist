@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser, SupabaseClient } from "@supabase/supabase-js"
+import { fetchAuthUserContext } from "@/lib/auth-context-actions"
 
 // Development auth bypass - set NEXT_PUBLIC_DEV_AUTH_BYPASS=true in .env.local
 const DEV_AUTH_BYPASS = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true"
@@ -35,19 +36,10 @@ const DEV_BYPASS_USER: User = {
   role: "admin",
 }
 
-async function fetchUserRole(client: SupabaseClient): Promise<"user" | "admin"> {
-  const { data } = await client.rpc("get_my_role")
-  // RPC returns { role: "user" | "admin" }
-  const role = (data as { role: string } | null)?.role
-  return role === "admin" ? "admin" : "user"
-}
-
-async function buildUser(client: SupabaseClient, sbUser: SupabaseUser): Promise<User> {
-  const [role, settings] = await Promise.all([
-    fetchUserRole(client),
-    client.rpc("get_my_settings").then(({ data }) => data as Record<string, unknown> | null),
-  ])
-  const displayName = (settings?.display_name as string) || sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User"
+async function buildUser(sbUser: SupabaseUser): Promise<User> {
+  const ctx = await fetchAuthUserContext()
+  const role = ctx?.role ?? "user"
+  const displayName = ctx?.displayName || sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User"
   return {
     id: sbUser.id,
     name: displayName,
@@ -97,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // setTimeout prevents deadlock - do not remove!
         setTimeout(async () => {
           try {
-            const appUser = await buildUser(supabase, sbUser)
+            const appUser = await buildUser(sbUser)
             setUser(appUser)
             setIsAdmin(appUser.role === "admin")
           } catch {

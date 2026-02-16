@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils"
 import { getOrRegisterOAuthClient } from "@/lib/oauth-client"
 import {
   listAllOAuthConsents,
-  OAuthConsentError,
   type OAuthConsentAdmin,
 } from "@/lib/oauth-consents"
 import { getMcpServerUrl } from "@/lib/env"
@@ -46,9 +45,7 @@ export default function AdminPage() {
       const consents = await listAllOAuthConsents()
       setOAuthConsents(consents)
     } catch (error) {
-      if (error instanceof OAuthConsentError) {
-        console.error("Failed to load OAuth consents:", error.message)
-      }
+      console.error("Failed to load OAuth consents:", error instanceof Error ? error.message : error)
     } finally {
       setConsentsLoading(false)
     }

@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { rpc } from "@/lib/postgrest"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
@@ -82,13 +82,13 @@ export async function GET(request: Request) {
 
   if (user) {
     // If account_status is pre_active, onboarding is required
-    const adminClient = createAdminClient()
-    const { data: context } = await adminClient.rpc("get_user_context", {
+    const context = await rpc<{ account_status: string }[]>("get_user_context", {
       p_user_id: user.id,
     })
 
     // Redirect to onboarding when needed
-    const needsOnboarding = context?.[0]?.account_status === "pre_active"
+    const row = Array.isArray(context) ? context[0] : context
+    const needsOnboarding = row?.account_status === "pre_active"
 
     if (needsOnboarding && !returnTo.startsWith("/onboarding")) {
       const response = NextResponse.redirect(`${origin}/onboarding`)

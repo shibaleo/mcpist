@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createStripeClient, getStripeConfig } from "@/lib/stripe"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { SupabaseClient } from "@supabase/supabase-js"
+import { rpc } from "@/lib/postgrest"
 import Stripe from "stripe"
 
 /**
@@ -59,37 +58,33 @@ export async function POST(request: NextRequest) {
  * Call activate_subscription RPC and log result
  */
 async function activateSubscription(
-  adminClient: SupabaseClient,
   userId: string,
   planId: string,
   eventId: string
 ) {
-  const { data, error } = await adminClient.rpc("activate_subscription", {
-    p_user_id: userId,
-    p_plan_id: planId,
-    p_event_id: eventId,
-  })
+  try {
+    const result = await rpc<{
+      success: boolean
+      already_processed?: boolean
+      plan_id?: string
+      error?: string
+    }>("activate_subscription", {
+      p_user_id: userId,
+      p_plan_id: planId,
+      p_event_id: eventId,
+    })
 
-  if (error) {
-    console.error(`[stripe/webhook] Error activating subscription:`, error)
-    return
-  }
-
-  const result = data as {
-    success: boolean
-    already_processed?: boolean
-    plan_id?: string
-    error?: string
-  } | null
-
-  if (result?.success) {
-    if (result.already_processed) {
-      console.log(`[stripe/webhook] Event ${eventId} already processed, skipping`)
+    if (result?.success) {
+      if (result.already_processed) {
+        console.log(`[stripe/webhook] Event ${eventId} already processed, skipping`)
+      } else {
+        console.log(`[stripe/webhook] Activated plan '${result.plan_id}' for user ${userId}`)
+      }
     } else {
-      console.log(`[stripe/webhook] Activated plan '${result.plan_id}' for user ${userId}`)
+      console.error("[stripe/webhook] Failed to activate subscription:", result)
     }
-  } else {
-    console.error("[stripe/webhook] Failed to activate subscription:", result)
+  } catch (err) {
+    console.error(`[stripe/webhook] Error activating subscription:`, err)
   }
 }
 
@@ -101,8 +96,6 @@ async function handleInvoicePaid(
   eventId: string
 ) {
   console.log(`[stripe/webhook] Processing invoice.paid: ${invoice.id}`)
-
-  const adminClient = createAdminClient()
 
   // Get user_id from subscription metadata or invoice metadata
   let userId = invoice.subscription_details?.metadata?.user_id
@@ -119,21 +112,26 @@ async function handleInvoicePaid(
       return
     }
 
-    const { data: foundUserId, error: lookupError } = await adminClient.rpc(
-      "get_user_by_stripe_customer",
-      { p_stripe_customer_id: customerId }
-    )
+    try {
+      const foundUserId = await rpc<string>(
+        "get_user_by_stripe_customer",
+        { p_stripe_customer_id: customerId }
+      )
 
-    if (lookupError || !foundUserId) {
-      console.error(`[stripe/webhook] Could not find user for customer ${customerId}:`, lookupError)
+      if (!foundUserId) {
+        console.error(`[stripe/webhook] Could not find user for customer ${customerId}`)
+        return
+      }
+
+      console.log(`[stripe/webhook] Resolved user ${foundUserId} from customer ${customerId}`)
+      userId = foundUserId
+    } catch (lookupErr) {
+      console.error(`[stripe/webhook] Could not find user for customer ${customerId}:`, lookupErr)
       return
     }
-
-    console.log(`[stripe/webhook] Resolved user ${foundUserId} from customer ${customerId}`)
-    userId = foundUserId as string
   }
 
-  await activateSubscription(adminClient, userId, "plus", eventId)
+  await activateSubscription(userId, "plus", eventId)
 }
 
 /**
@@ -145,8 +143,6 @@ async function handleSubscriptionDeleted(
 ) {
   console.log(`[stripe/webhook] Processing customer.subscription.deleted: ${subscription.id}`)
 
-  const adminClient = createAdminClient()
-
   const userId = subscription.metadata?.user_id
 
   if (!userId) {
@@ -154,5 +150,5 @@ async function handleSubscriptionDeleted(
     return
   }
 
-  await activateSubscription(adminClient, userId, "free", eventId)
+  await activateSubscription(userId, "free", eventId)
 }

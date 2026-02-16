@@ -1,6 +1,7 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { rpc } from "@/lib/postgrest"
+import { getUserId } from "@/lib/auth"
 
 export type Language = "en-US" | "ja-JP"
 
@@ -15,22 +16,26 @@ const DEFAULT_SETTINGS: UserSettings = {
 }
 
 /**
- * Get current user's settings
+ * Get current user's settings via get_user_context
  */
 export async function getUserSettings(): Promise<UserSettings> {
-  const supabase = await createClient()
+  try {
+    const userId = await getUserId()
+    const rows = await rpc<Array<{
+      settings: Record<string, unknown> | null
+      display_name: string | null
+      language: string
+    }>>("get_user_context", { p_user_id: userId })
 
-  const { data, error } = await supabase.rpc("get_my_settings")
+    const ctx = Array.isArray(rows) ? rows[0] : rows
+    if (!ctx) return DEFAULT_SETTINGS
 
-  if (error || !data) {
-    console.error("Failed to get user settings:", error)
+    return {
+      language: (ctx.language as Language) || DEFAULT_SETTINGS.language,
+      display_name: ctx.display_name || DEFAULT_SETTINGS.display_name,
+    }
+  } catch {
     return DEFAULT_SETTINGS
-  }
-
-  const prefs = data as Record<string, unknown>
-  return {
-    language: (prefs?.language as Language) || DEFAULT_SETTINGS.language,
-    display_name: (prefs?.display_name as string) || DEFAULT_SETTINGS.display_name,
   }
 }
 
@@ -40,17 +45,15 @@ export async function getUserSettings(): Promise<UserSettings> {
 export async function updateUserSettings(
   settings: Partial<UserSettings>
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase.rpc("update_my_settings", {
-    p_settings: settings,
-  })
-
-  if (error) {
+  try {
+    const userId = await getUserId()
+    const result = await rpc<{ success: boolean }>("update_settings", {
+      p_user_id: userId,
+      p_settings: settings,
+    })
+    return { success: result?.success ?? false }
+  } catch (error) {
     console.error("Failed to update user settings:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: String(error) }
   }
-
-  const result = data as { success: boolean } | null
-  return { success: result?.success ?? false }
 }

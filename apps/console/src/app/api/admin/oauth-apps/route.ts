@@ -1,36 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import { createClient as createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
+import { rpc } from "@/lib/postgrest"
 
-// Service role client for Vault operations
-function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const secretKey = process.env.SUPABASE_SECRET_KEY
-
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Missing Supabase configuration (SUPABASE_SECRET_KEY)")
-  }
-
-  return createClient(supabaseUrl, secretKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+interface UserContextRow {
+  role: string
 }
 
 // Verify user is admin
 async function verifyAdmin(): Promise<{ isAdmin: boolean; userId?: string }> {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { isAdmin: false }
   }
 
-  const { data } = await supabase.rpc("get_my_role")
-  // RPC returns { role: "user" | "admin" }
-  const role = (data as { role: string } | null)?.role
+  const rows = await rpc<UserContextRow[]>("get_user_context", { p_user_id: user.id })
+  const ctx = Array.isArray(rows) ? rows[0] : rows
+  const role = (ctx as UserContextRow | undefined)?.role
   return { isAdmin: role === "admin", userId: user.id }
 }
 
@@ -42,14 +29,7 @@ export async function GET(): Promise<NextResponse> {
   }
 
   try {
-    const adminClient = createAdminClient()
-    const { data, error } = await adminClient.rpc("list_oauth_apps")
-
-    if (error) {
-      console.error("[admin/oauth-apps] list error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    const data = await rpc("list_oauth_apps")
     return NextResponse.json(data || [])
   } catch (err) {
     console.error("[admin/oauth-apps] error:", err)
@@ -72,19 +52,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "provider and client_id are required" }, { status: 400 })
     }
 
-    const adminClient = createAdminClient()
-    const { data, error } = await adminClient.rpc("upsert_oauth_app", {
+    const data = await rpc("upsert_oauth_app", {
       p_provider: provider,
       p_client_id: client_id,
       p_client_secret: client_secret,
       p_redirect_uri: redirect_uri,
       p_enabled: enabled ?? true,
     })
-
-    if (error) {
-      console.error("[admin/oauth-apps] upsert error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
 
     return NextResponse.json(data)
   } catch (err) {
@@ -108,15 +82,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "provider is required" }, { status: 400 })
     }
 
-    const adminClient = createAdminClient()
-    const { data, error } = await adminClient.rpc("delete_oauth_app", {
+    const data = await rpc("delete_oauth_app", {
       p_provider: provider,
     })
-
-    if (error) {
-      console.error("[admin/oauth-apps] delete error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
 
     return NextResponse.json(data)
   } catch (err) {

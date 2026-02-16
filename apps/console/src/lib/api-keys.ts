@@ -1,4 +1,7 @@
-import { createClient } from './supabase/client'
+"use server"
+
+import { rpc } from "@/lib/postgrest"
+import { getUserId } from "@/lib/auth"
 
 export interface ApiKey {
   id: string
@@ -14,46 +17,31 @@ export interface GenerateApiKeyResult {
   key_prefix: string
 }
 
-export class ApiKeyError extends Error {
-  constructor(message: string, public code?: string) {
-    super(message)
-    this.name = 'ApiKeyError'
-  }
-}
-
 export async function listApiKeys(): Promise<ApiKey[]> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('list_my_api_keys')
-
-  if (error) {
-    throw new ApiKeyError(error.message, error.code)
-  }
-
-  return data || []
+  const userId = await getUserId()
+  return rpc<ApiKey[]>("list_api_keys", { p_user_id: userId })
 }
 
 export async function generateApiKey(
   name: string,
   expiresInDays: number | null = null
 ): Promise<GenerateApiKeyResult> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('generate_my_api_key', {
+  const userId = await getUserId()
+  return rpc<GenerateApiKeyResult>("generate_api_key", {
+    p_user_id: userId,
     p_display_name: name,
-    p_expires_at: expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString() : undefined,
+    p_expires_at: expiresInDays
+      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+      : undefined,
   })
-
-  if (error) {
-    throw new ApiKeyError(error.message, error.code)
-  }
-
-  if (!data) {
-    throw new ApiKeyError('Failed to generate API key')
-  }
-
-  return data as unknown as GenerateApiKeyResult
 }
 
-// Note: revokeApiKey has been moved to a Server Action
-// See: apps/console/src/app/(console)/my/api-keys/actions.ts
+export async function revokeApiKey(
+  keyId: string
+): Promise<{ success: boolean }> {
+  const userId = await getUserId()
+  return rpc<{ success: boolean }>("revoke_api_key", {
+    p_user_id: userId,
+    p_key_id: keyId,
+  })
+}

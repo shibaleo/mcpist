@@ -1,4 +1,7 @@
-import { createClient } from './supabase/client'
+"use server"
+
+import { rpc } from "@/lib/postgrest"
+import { getUserId } from "@/lib/auth"
 
 export interface UserPlan {
   plan_id: string
@@ -20,37 +23,34 @@ export interface UserContext {
   daily_limit: number
 }
 
+interface UserContextRow {
+  account_status: string
+  plan_id: string
+  daily_used: number
+  daily_limit: number
+  role: string
+  settings: Record<string, unknown> | null
+  display_name: string | null
+  connected_count: number
+}
+
 /**
  * Get the current user's plan info
- * Uses get_user_context RPC since mcpist schema is not exposed
  */
 export async function getUserPlan(): Promise<UserPlan | null> {
-  const supabase = createClient()
+  try {
+    const userId = await getUserId()
+    const rows = await rpc<UserContextRow[]>("get_user_context", { p_user_id: userId })
+    const context = Array.isArray(rows) ? rows[0] : rows
+    if (!context) return null
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+    return {
+      plan_id: context.plan_id,
+      daily_used: context.daily_used,
+      daily_limit: context.daily_limit,
+    }
+  } catch {
     return null
-  }
-
-  const { data, error } = await supabase.rpc('get_user_context', {
-    p_user_id: user.id
-  })
-
-  if (error) {
-    console.error('Failed to fetch plan:', error)
-    return null
-  }
-
-  // get_user_context returns an array, take first result
-  const context = Array.isArray(data) ? data[0] : data
-  if (!context) {
-    return null
-  }
-
-  return {
-    plan_id: context.plan_id,
-    daily_used: context.daily_used,
-    daily_limit: context.daily_limit,
   }
 }
 
@@ -58,56 +58,42 @@ export async function getUserPlan(): Promise<UserPlan | null> {
  * Get the list of connected services for the current user
  */
 export async function getServiceConnections(): Promise<ServiceConnection[]> {
-  const supabase = createClient()
+  try {
+    const userId = await getUserId()
+    const data = await rpc<Array<{ module: string; created_at: string; updated_at: string }>>(
+      "list_credentials",
+      { p_user_id: userId }
+    )
 
-  const { data, error } = await supabase.rpc('list_my_credentials')
-
-  if (error) {
-    console.error('Failed to fetch service connections:', error)
+    return (data || []).map((item) => ({
+      id: item.module,
+      service: item.module,
+      connected_at: item.created_at,
+      updated_at: item.updated_at,
+    }))
+  } catch {
     return []
   }
-
-  // Map RPC response to ServiceConnection interface
-  return (data || []).map((item: { module: string; created_at: string; updated_at: string }) => ({
-    id: item.module,
-    service: item.module,
-    connected_at: item.created_at,
-    updated_at: item.updated_at
-  }))
 }
 
 /**
  * Get the current user's context including account status and plan
- * Uses get_user_context RPC since mcpist schema is not exposed
  */
 export async function getUserContext(): Promise<UserContext | null> {
-  const supabase = createClient()
+  try {
+    const userId = await getUserId()
+    const rows = await rpc<UserContextRow[]>("get_user_context", { p_user_id: userId })
+    const context = Array.isArray(rows) ? rows[0] : rows
+    if (!context) return null
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+    return {
+      account_status: context.account_status,
+      plan_id: context.plan_id,
+      daily_used: context.daily_used,
+      daily_limit: context.daily_limit,
+    }
+  } catch {
     return null
-  }
-
-  const { data, error } = await supabase.rpc('get_user_context', {
-    p_user_id: user.id
-  })
-
-  if (error) {
-    console.error('Failed to fetch user context:', error)
-    return null
-  }
-
-  // get_user_context returns an array, take first result
-  const context = Array.isArray(data) ? data[0] : data
-  if (!context) {
-    return null
-  }
-
-  return {
-    account_status: context.account_status,
-    plan_id: context.plan_id,
-    daily_used: context.daily_used,
-    daily_limit: context.daily_limit,
   }
 }
 
@@ -125,23 +111,18 @@ export interface UsageStats {
 
 /**
  * Get the current user's usage statistics for a period
- * @param startDate - Start of the period (inclusive)
- * @param endDate - End of the period (exclusive)
  */
 export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageStats | null> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('get_my_usage', {
-    p_start_date: startDate.toISOString(),
-    p_end_date: endDate.toISOString(),
-  })
-
-  if (error) {
-    console.error('Failed to fetch usage:', error)
+  try {
+    const userId = await getUserId()
+    return rpc<UsageStats>("get_usage", {
+      p_user_id: userId,
+      p_start_date: startDate.toISOString(),
+      p_end_date: endDate.toISOString(),
+    })
+  } catch {
     return null
   }
-
-  return data as unknown as UsageStats
 }
 
 /**
@@ -150,6 +131,5 @@ export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageS
 export async function getMyMonthlyUsage(): Promise<UsageStats | null> {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  // End is "now" for current month
   return getMyUsage(startOfMonth, now)
 }

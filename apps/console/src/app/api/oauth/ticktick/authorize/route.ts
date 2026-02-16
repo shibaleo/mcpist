@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { rpc } from "@/lib/postgrest"
 
 const TICKTICK_AUTHORIZE_URL = "https://ticktick.com/oauth/authorize"
 
@@ -8,17 +8,6 @@ const TICKTICK_SCOPES = [
   "tasks:read",
   "tasks:write",
 ]
-
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const secretKey = process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Missing Supabase configuration")
-  }
-  return createAdminClient(supabaseUrl, secretKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 export async function GET(request: Request) {
   // 認証チェック
@@ -36,13 +25,13 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得
-    const adminClient = getAdminClient()
-    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
-      p_provider: "ticktick",
-    })
+    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
+      "get_oauth_app_credentials",
+      { p_provider: "ticktick" }
+    )
 
-    if (credError || !credentials || credentials.error) {
-      console.error("Failed to get OAuth credentials:", credError || credentials?.message)
+    if (!credentials || credentials.error) {
+      console.error("Failed to get OAuth credentials:", credentials?.message)
       return NextResponse.json({ error: "OAuth credentials not configured for TickTick" }, { status: 400 })
     }
 

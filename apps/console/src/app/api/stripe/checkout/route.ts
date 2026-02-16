@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createStripeClient, getStripeConfig } from "@/lib/stripe"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { rpc } from "@/lib/postgrest"
 
 interface StripeCustomerResult {
   stripe_customer_id: string | null
@@ -26,24 +26,15 @@ export async function POST(request: NextRequest) {
 
     const stripe = createStripeClient()
     const config = getStripeConfig()
-    const adminClient = createAdminClient()
 
     // Get or create Stripe Customer
     let stripeCustomerId: string
 
     // Check if user already has a Stripe Customer ID using RPC
-    const { data: userData, error: userError } = await adminClient.rpc(
+    const userData = await rpc<StripeCustomerResult>(
       "get_stripe_customer_id",
       { p_user_id: user.id }
-    ) as { data: StripeCustomerResult | null; error: Error | null }
-
-    if (userError) {
-      console.error("[stripe/checkout] Error fetching user:", userError)
-      return NextResponse.json(
-        { error: "Failed to fetch user data" },
-        { status: 500 }
-      )
-    }
+    )
 
     if (userData?.stripe_customer_id) {
       stripeCustomerId = userData.stripe_customer_id
@@ -58,13 +49,13 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id
 
       // Link Stripe Customer to user
-      const { error: linkError } = await adminClient.rpc("link_stripe_customer", {
-        p_user_id: user.id,
-        p_stripe_customer_id: stripeCustomerId,
-      })
-
-      if (linkError) {
-        console.error("[stripe/checkout] Error linking customer:", linkError)
+      try {
+        await rpc("link_stripe_customer", {
+          p_user_id: user.id,
+          p_stripe_customer_id: stripeCustomerId,
+        })
+      } catch (linkErr) {
+        console.error("[stripe/checkout] Error linking customer:", linkErr)
         // Continue anyway - the customer was created in Stripe
       }
     }

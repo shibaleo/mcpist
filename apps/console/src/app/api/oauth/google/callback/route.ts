@@ -1,20 +1,9 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { rpc } from "@/lib/postgrest"
 import { saveDefaultToolSettings } from "@/lib/tool-settings"
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const secretKey = process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Missing Supabase configuration")
-  }
-  return createAdminClient(supabaseUrl, secretKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -62,14 +51,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    // OAuth App の認証情報を取得（service role 権限で）
-    const adminClient = getAdminClient()
-    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
-      p_provider: "google"
-    })
+    // OAuth App の認証情報を取得
+    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
+      "get_oauth_app_credentials",
+      { p_provider: "google" }
+    )
 
-    if (credError || !credentials || credentials.error) {
-      console.error("Failed to get OAuth credentials:", credError || credentials?.message)
+    if (!credentials || credentials.error) {
+      console.error("Failed to get OAuth credentials:", credentials?.message)
       const errorUrl = new URL(returnTo, request.url)
       errorUrl.searchParams.set("error", "OAuth credentials not configured")
       return NextResponse.redirect(errorUrl)
@@ -119,20 +108,14 @@ export async function GET(request: Request) {
         : null,
     }
 
-    const { error: saveError } = await supabase.rpc("upsert_my_credential", {
+    await rpc("upsert_credential", {
+      p_user_id: user.id,
       p_module: moduleName,
       p_credentials: tokenCredentials,
     })
 
-    if (saveError) {
-      console.error("Failed to save token:", saveError)
-      const errorUrl = new URL(returnTo, request.url)
-      errorUrl.searchParams.set("error", "Failed to save token")
-      return NextResponse.redirect(errorUrl)
-    }
-
     // デフォルトツール設定を保存
-    await saveDefaultToolSettings(supabase, moduleName)
+    await saveDefaultToolSettings(null, moduleName)
 
     // モジュール名を表示用に変換
     const moduleDisplayNames: Record<string, string> = {

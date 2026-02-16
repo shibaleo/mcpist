@@ -55,7 +55,6 @@ import { toast } from "sonner"
 import {
   listApiKeys,
   generateApiKey,
-  ApiKeyError,
   type ApiKey,
   type GenerateApiKeyResult,
 } from "@/lib/api-keys"
@@ -126,7 +125,7 @@ export default function McpConnectionPage() {
       cachedApiKeys = keys
       setApiKeys(keys)
     } catch (error) {
-      if (error instanceof ApiKeyError) {
+      if (error instanceof Error) {
         console.error("Failed to load API keys:", error.message)
       }
     } finally {
@@ -167,7 +166,7 @@ export default function McpConnectionPage() {
       setKeyName("")
       setExpiration("never")
     } catch (error) {
-      if (error instanceof ApiKeyError) {
+      if (error instanceof Error) {
         toast.error(`キーの作成に失敗しました: ${error.message}`)
       } else {
         toast.error("キーの作成に失敗しました")

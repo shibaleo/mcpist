@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { rpc } from "@/lib/postgrest"
 
 const TODOIST_AUTH_URL = "https://todoist.com/oauth/authorize"
 
@@ -10,17 +10,6 @@ const TODOIST_AUTH_URL = "https://todoist.com/oauth/authorize"
 // data:delete - Delete user data
 // task:add - Add tasks (Quick Add only)
 const TODOIST_SCOPES = ["data:read_write", "data:delete"]
-
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const secretKey = process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Missing Supabase configuration")
-  }
-  return createAdminClient(supabaseUrl, secretKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 export async function GET(request: Request) {
   // 認証チェック（ユーザーセッション確認）
@@ -37,13 +26,13 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
-    const adminClient = getAdminClient()
-    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
-      p_provider: "todoist"
-    })
+    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
+      "get_oauth_app_credentials",
+      { p_provider: "todoist" }
+    )
 
-    if (credError || !credentials || credentials.error) {
-      console.error("Failed to get OAuth credentials:", credError || credentials?.message)
+    if (!credentials || credentials.error) {
+      console.error("Failed to get OAuth credentials:", credentials?.message)
       return NextResponse.json(
         { error: "OAuth credentials not configured for Todoist" },
         { status: 400 }

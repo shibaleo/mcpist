@@ -112,7 +112,7 @@ type Credentials struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// CredentialResult represents the result of get_user_credential RPC
+// CredentialResult represents the result of get_credential RPC
 type CredentialResult struct {
 	Found       bool                   `json:"found"`
 	UserID      string                 `json:"user_id"`
@@ -215,7 +215,7 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		b.postgrestURL+"/rpc/get_user_credential",
+		b.postgrestURL+"/rpc/get_credential",
 		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
@@ -228,12 +228,12 @@ func (b *TokenBroker) fetchCredentials(ctx context.Context, userID, module strin
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call get_user_credential: %w", err)
+		return nil, fmt.Errorf("failed to call get_credential: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get_user_credential failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("get_credential failed: status %d", resp.StatusCode)
 	}
 
 	var result CredentialResult
@@ -427,7 +427,7 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 	req, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		b.postgrestURL+"/rpc/upsert_user_credential",
+		b.postgrestURL+"/rpc/upsert_credential",
 		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
@@ -440,12 +440,12 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 
 	resp, err := doWithRetry(b.client, req, defaultRetry)
 	if err != nil {
-		return fmt.Errorf("failed to call upsert_user_credential: %w", err)
+		return fmt.Errorf("failed to call upsert_credential: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upsert_user_credential failed: status %d", resp.StatusCode)
+		return fmt.Errorf("upsert_credential failed: status %d", resp.StatusCode)
 	}
 
 	var result struct {
@@ -457,7 +457,7 @@ func (b *TokenBroker) UpdateModuleToken(ctx context.Context, userID, module stri
 	}
 
 	if !result.Success {
-		return fmt.Errorf("upsert_user_credential failed: %s", result.Error)
+		return fmt.Errorf("upsert_credential failed: %s", result.Error)
 	}
 
 	return nil

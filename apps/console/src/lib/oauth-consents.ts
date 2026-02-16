@@ -1,4 +1,7 @@
-import { createClient } from './supabase/client'
+"use server"
+
+import { rpc } from "@/lib/postgrest"
+import { getUserId } from "@/lib/auth"
 
 export interface OAuthConsent {
   id: string
@@ -13,25 +16,12 @@ export interface OAuthConsentAdmin extends OAuthConsent {
   user_email: string | null
 }
 
-export class OAuthConsentError extends Error {
-  constructor(message: string, public code?: string) {
-    super(message)
-    this.name = 'OAuthConsentError'
-  }
-}
-
 /**
  * ユーザー自身のOAuthコンセント一覧を取得
  */
 export async function listOAuthConsents(): Promise<OAuthConsent[]> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('list_my_oauth_consents')
-
-  if (error) {
-    throw new OAuthConsentError(error.message, error.code)
-  }
-
+  const userId = await getUserId()
+  const data = await rpc<OAuthConsent[]>("list_oauth_consents", { p_user_id: userId })
   return data || []
 }
 
@@ -39,30 +29,18 @@ export async function listOAuthConsents(): Promise<OAuthConsent[]> {
  * OAuthコンセントを取り消し
  */
 export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('revoke_my_oauth_consent', {
+  const userId = await getUserId()
+  const data = await rpc<{ revoked?: boolean }>("revoke_oauth_consent", {
+    p_user_id: userId,
     p_consent_id: consentId,
   })
-
-  if (error) {
-    throw new OAuthConsentError(error.message, error.code)
-  }
-
-  return (data as { revoked?: boolean } | null)?.revoked ?? false
+  return data?.revoked ?? false
 }
 
 /**
  * 全ユーザーのOAuthコンセント一覧を取得（管理者用）
  */
 export async function listAllOAuthConsents(): Promise<OAuthConsentAdmin[]> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('list_all_oauth_consents')
-
-  if (error) {
-    throw new OAuthConsentError(error.message, error.code)
-  }
-
+  const data = await rpc<OAuthConsentAdmin[]>("list_all_oauth_consents")
   return data || []
 }

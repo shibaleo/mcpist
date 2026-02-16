@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { rpc } from "@/lib/postgrest"
 import crypto from "crypto"
 
 const AIRTABLE_AUTHORIZE_URL = "https://airtable.com/oauth2/v1/authorize"
@@ -11,17 +11,6 @@ const AIRTABLE_SCOPES = [
   "schema.bases:read",
   "schema.bases:write",
 ]
-
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const secretKey = process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Missing Supabase configuration")
-  }
-  return createAdminClient(supabaseUrl, secretKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 // PKCE: Generate code_verifier (43-128 characters, URL-safe)
 function generateCodeVerifier(): string {
@@ -49,13 +38,13 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得
-    const adminClient = getAdminClient()
-    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
-      p_provider: "airtable",
-    })
+    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
+      "get_oauth_app_credentials",
+      { p_provider: "airtable" }
+    )
 
-    if (credError || !credentials || credentials.error) {
-      console.error("Failed to get OAuth credentials:", credError || credentials?.message)
+    if (!credentials || credentials.error) {
+      console.error("Failed to get OAuth credentials:", credentials?.message)
       return NextResponse.json({ error: "OAuth credentials not configured for Airtable" }, { status: 400 })
     }
 

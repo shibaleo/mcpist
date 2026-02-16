@@ -44,15 +44,16 @@ import {
 } from "@/lib/token-vault"
 import {
   getMyToolSettings,
-  toToolSettingsMap,
   saveModuleToolSettings,
   getMyModuleDescriptions,
-  toModuleDescriptionsMap,
   updateModuleDescription,
-  ToolSettingsError,
+} from "@/lib/tool-settings"
+import {
+  toToolSettingsMap,
+  toModuleDescriptionsMap,
   type ToolSettingsMap,
   type ModuleDescriptionsMap,
-} from "@/lib/tool-settings"
+} from "@/lib/tool-settings-types"
 import { getUserSettings, type Language } from "@/lib/user-settings"
 
 // モジュールレベルキャッシュ
@@ -118,9 +119,7 @@ export default function ToolsPage() {
       setModuleDescriptions(descriptionsMap)
       setLanguage(userSettings.language)
     } catch (error) {
-      if (error instanceof ToolSettingsError) {
-        console.error("Failed to load tool settings:", error.message)
-      }
+      console.error("Failed to load tool settings:", error instanceof Error ? error.message : error)
     }
   }, [])
 
@@ -208,11 +207,7 @@ export default function ToolsPage() {
         ...prev,
         [moduleId]: current,
       }))
-      if (error instanceof ToolSettingsError) {
-        toast.error(`保存に失敗しました: ${error.message}`)
-      } else {
-        toast.error("ツールの保存に失敗しました")
-      }
+      toast.error(error instanceof Error ? `保存に失敗しました: ${error.message}` : "ツールの保存に失敗しました")
     }
   }
 
@@ -351,11 +346,7 @@ export default function ToolsPage() {
       setEditingDescription("")
       toast.success("モジュール説明を保存しました")
     } catch (error) {
-      if (error instanceof ToolSettingsError) {
-        toast.error(`保存に失敗しました: ${error.message}`)
-      } else {
-        toast.error("保存に失敗しました")
-      }
+      toast.error(error instanceof Error ? `保存に失敗しました: ${error.message}` : "保存に失敗しました")
     } finally {
       setSavingDescription(false)
     }

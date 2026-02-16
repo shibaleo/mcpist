@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { rpc } from "@/lib/postgrest"
 
 /**
  * POST /api/credits/grant-signup-bonus
@@ -21,30 +21,18 @@ export async function POST() {
       )
     }
 
-    const adminClient = createAdminClient()
-
     // Complete onboarding (activate account + assign free plan)
     const eventId = `onboarding:${user.id}`
-    const { data, error } = await adminClient.rpc("complete_user_onboarding", {
-      p_user_id: user.id,
-      p_event_id: eventId,
-    })
-
-    if (error) {
-      console.error("[api/credits/grant-signup-bonus] RPC error:", error)
-      return NextResponse.json(
-        { success: false, error: "rpc_error", message: "アカウントの有効化に失敗しました" },
-        { status: 500 }
-      )
-    }
-
-    const result = data as {
+    const result = await rpc<{
       success: boolean
       already_completed?: boolean
       plan_id?: string
       error?: string
       message?: string
-    } | null
+    }>("complete_user_onboarding", {
+      p_user_id: user.id,
+      p_event_id: eventId,
+    })
 
     if (result?.success) {
       if (result.already_completed) {

@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { rpc } from "@/lib/postgrest"
 import { saveDefaultToolSettings } from "@/lib/tool-settings"
 import crypto from "crypto"
 import { cookies } from "next/headers"
 
 // Trello OAuth 1.0a endpoints
 const TRELLO_ACCESS_TOKEN_URL = "https://trello.com/1/OAuthGetAccessToken"
-
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const secretKey = process.env.SUPABASE_SECRET_KEY
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Missing Supabase configuration")
-  }
-  return createAdminClient(supabaseUrl, secretKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-}
 
 // OAuth 1.0a signature generation
 function generateOAuthSignature(
@@ -112,13 +101,13 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得
-    const adminClient = getAdminClient()
-    const { data: credentials, error: credError } = await adminClient.rpc("get_oauth_app_credentials", {
-      p_provider: "trello",
-    })
+    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
+      "get_oauth_app_credentials",
+      { p_provider: "trello" }
+    )
 
-    if (credError || !credentials || credentials.error) {
-      console.error("Failed to get OAuth credentials:", credError || credentials?.message)
+    if (!credentials || credentials.error) {
+      console.error("Failed to get OAuth credentials:", credentials?.message)
       const errorUrl = new URL(returnTo, request.url)
       errorUrl.searchParams.set("error", "OAuth credentials not configured")
       const response = NextResponse.redirect(errorUrl)
@@ -203,22 +192,14 @@ export async function GET(request: Request) {
       },
     }
 
-    const { error: saveError } = await supabase.rpc("upsert_my_credential", {
+    await rpc("upsert_credential", {
+      p_user_id: user.id,
       p_module: "trello",
       p_credentials: tokenCredentials,
     })
 
-    if (saveError) {
-      console.error("Failed to save token:", saveError)
-      const errorUrl = new URL(returnTo, request.url)
-      errorUrl.searchParams.set("error", "Failed to save token")
-      const response = NextResponse.redirect(errorUrl)
-      response.cookies.delete("trello_oauth_state")
-      return response
-    }
-
     // デフォルトツール設定を保存
-    await saveDefaultToolSettings(supabase, "trello")
+    await saveDefaultToolSettings(null, "trello")
 
     // 成功
     const redirectUrl = new URL(returnTo, request.url)

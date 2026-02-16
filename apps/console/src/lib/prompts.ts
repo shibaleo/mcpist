@@ -1,11 +1,14 @@
-import { createClient } from './supabase/client'
+"use server"
+
+import { rpc } from "@/lib/postgrest"
+import { getUserId } from "@/lib/auth"
 
 export interface Prompt {
   id: string
   module_name: string | null
   name: string
-  description: string | null  // Short description for prompts/list (MCP spec)
-  content: string             // Full content for prompts/get
+  description: string | null
+  content: string
   enabled: boolean
   created_at: string
   updated_at: string
@@ -23,22 +26,12 @@ export interface DeletePromptResult {
   error?: string
 }
 
-/**
- * Get the list of prompts for the current user
- */
 export async function listPrompts(moduleName?: string): Promise<Prompt[]> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('list_my_prompts', {
-    p_module_name: moduleName
+  const userId = await getUserId()
+  return rpc<Prompt[]>("list_prompts", {
+    p_user_id: userId,
+    p_module_name: moduleName,
   })
-
-  if (error) {
-    console.error('Failed to fetch prompts:', error)
-    return []
-  }
-
-  return (data || []) as Prompt[]
 }
 
 interface GetPromptResponse {
@@ -54,22 +47,13 @@ interface GetPromptResponse {
   error?: string
 }
 
-/**
- * Get a single prompt by ID
- */
 export async function getPrompt(promptId: string): Promise<Prompt | null> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('get_my_prompt', {
-    p_prompt_id: promptId
+  const userId = await getUserId()
+  const response = await rpc<GetPromptResponse>("get_prompt", {
+    p_user_id: userId,
+    p_prompt_id: promptId,
   })
 
-  if (error) {
-    console.error('Failed to fetch prompt:', error)
-    return null
-  }
-
-  const response = data as unknown as GetPromptResponse
   if (!response || !response.found) {
     return null
   }
@@ -82,13 +66,10 @@ export async function getPrompt(promptId: string): Promise<Prompt | null> {
     content: response.content!,
     enabled: response.enabled!,
     created_at: response.created_at!,
-    updated_at: response.updated_at!
+    updated_at: response.updated_at!,
   }
 }
 
-/**
- * Create or update a prompt
- */
 export async function upsertPrompt(
   name: string,
   content: string,
@@ -97,39 +78,22 @@ export async function upsertPrompt(
   enabled: boolean = true,
   description?: string
 ): Promise<UpsertPromptResult> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('upsert_my_prompt', {
+  const userId = await getUserId()
+  return rpc<UpsertPromptResult>("upsert_prompt", {
+    p_user_id: userId,
     p_name: name,
     p_content: content,
     p_module_name: moduleName,
     p_prompt_id: promptId,
     p_enabled: enabled,
-    p_description: description
+    p_description: description,
   })
-
-  if (error) {
-    console.error('Failed to upsert prompt:', error)
-    return { success: false, error: error.message }
-  }
-
-  return data as unknown as UpsertPromptResult
 }
 
-/**
- * Delete a prompt by ID
- */
 export async function deletePrompt(promptId: string): Promise<DeletePromptResult> {
-  const supabase = createClient()
-
-  const { data, error } = await supabase.rpc('delete_my_prompt', {
-    p_prompt_id: promptId
+  const userId = await getUserId()
+  return rpc<DeletePromptResult>("delete_prompt", {
+    p_user_id: userId,
+    p_prompt_id: promptId,
   })
-
-  if (error) {
-    console.error('Failed to delete prompt:', error)
-    return { success: false, error: error.message }
-  }
-
-  return data as unknown as DeletePromptResult
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { rpc } from "@/lib/postgrest"
 
 export async function POST(request: Request) {
   try {
@@ -13,17 +14,10 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     // preferences を更新
-    const { data, error } = await supabase.rpc("update_my_settings", {
+    const data = await rpc("update_settings", {
+      p_user_id: user.id,
       p_settings: body,
     })
-
-    if (error) {
-      console.error("Failed to update preferences:", error)
-      return NextResponse.json(
-        { error: "Failed to update preferences" },
-        { status: 500 }
-      )
-    }
 
     return NextResponse.json({ success: true, data })
   } catch (error) {
@@ -44,17 +38,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data, error } = await supabase.rpc("get_my_settings")
-
-    if (error) {
-      console.error("Failed to get preferences:", error)
-      return NextResponse.json(
-        { error: "Failed to get preferences" },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json(data || {})
+    const data = await rpc<{ settings: Record<string, unknown> }[]>("get_user_context", {
+      p_user_id: user.id,
+    })
+    const ctx = Array.isArray(data) ? data[0] : data
+    return NextResponse.json(ctx?.settings || {})
   } catch (error) {
     console.error("Preferences API error:", error)
     return NextResponse.json(

@@ -433,7 +433,7 @@ func (s *UserBroker) GetUserPromptByName(userID, promptName string) (*UserPrompt
 	return &prompts[0], nil
 }
 
-// fetchUserPrompts calls the unified get_user_prompts RPC.
+// fetchUserPrompts calls the unified get_prompts RPC.
 // When promptName is empty, returns all enabled prompts.
 // When promptName is specified, returns the matching prompt.
 func (s *UserBroker) fetchUserPrompts(userID, promptName string) ([]UserPrompt, error) {
@@ -456,7 +456,7 @@ func (s *UserBroker) fetchUserPrompts(userID, promptName string) ([]UserPrompt, 
 
 	req, err := http.NewRequest(
 		"POST",
-		s.postgrestURL+"/rpc/get_user_prompts",
+		s.postgrestURL+"/rpc/get_prompts",
 		strings.NewReader(string(reqBody)),
 	)
 	if err != nil {
@@ -469,12 +469,12 @@ func (s *UserBroker) fetchUserPrompts(userID, promptName string) ([]UserPrompt, 
 
 	resp, err := doWithRetry(s.client, req, defaultRetry)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call get_user_prompts: %w", err)
+		return nil, fmt.Errorf("failed to call get_prompts: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get_user_prompts failed: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("get_prompts failed: status %d", resp.StatusCode)
 	}
 
 	var prompts []UserPrompt
