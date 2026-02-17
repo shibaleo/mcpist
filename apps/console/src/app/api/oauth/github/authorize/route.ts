@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 

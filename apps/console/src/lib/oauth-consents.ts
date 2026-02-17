@@ -1,7 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/postgrest"
-import { getUserId } from "@/lib/auth"
+import { rpc } from "@/lib/worker-client"
 
 export interface OAuthConsent {
   id: string
@@ -20,8 +19,7 @@ export interface OAuthConsentAdmin extends OAuthConsent {
  * ユーザー自身のOAuthコンセント一覧を取得
  */
 export async function listOAuthConsents(): Promise<OAuthConsent[]> {
-  const userId = await getUserId()
-  const data = await rpc<OAuthConsent[]>("list_oauth_consents", { p_user_id: userId })
+  const data = await rpc<OAuthConsent[]>("list_oauth_consents")
   return data || []
 }
 
@@ -29,9 +27,7 @@ export async function listOAuthConsents(): Promise<OAuthConsent[]> {
  * OAuthコンセントを取り消し
  */
 export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
-  const userId = await getUserId()
   const data = await rpc<{ revoked?: boolean }>("revoke_oauth_consent", {
-    p_user_id: userId,
     p_consent_id: consentId,
   })
   return data?.revoked ?? false

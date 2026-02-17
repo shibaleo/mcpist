@@ -1,7 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/postgrest"
-import { getUserId } from "@/lib/auth"
+import { rpc } from "@/lib/worker-client"
 
 export interface Prompt {
   id: string
@@ -27,9 +26,7 @@ export interface DeletePromptResult {
 }
 
 export async function listPrompts(moduleName?: string): Promise<Prompt[]> {
-  const userId = await getUserId()
   return rpc<Prompt[]>("list_prompts", {
-    p_user_id: userId,
     p_module_name: moduleName,
   })
 }
@@ -48,9 +45,7 @@ interface GetPromptResponse {
 }
 
 export async function getPrompt(promptId: string): Promise<Prompt | null> {
-  const userId = await getUserId()
   const response = await rpc<GetPromptResponse>("get_prompt", {
-    p_user_id: userId,
     p_prompt_id: promptId,
   })
 
@@ -78,9 +73,7 @@ export async function upsertPrompt(
   enabled: boolean = true,
   description?: string
 ): Promise<UpsertPromptResult> {
-  const userId = await getUserId()
   return rpc<UpsertPromptResult>("upsert_prompt", {
-    p_user_id: userId,
     p_name: name,
     p_content: content,
     p_module_name: moduleName,
@@ -91,9 +84,7 @@ export async function upsertPrompt(
 }
 
 export async function deletePrompt(promptId: string): Promise<DeletePromptResult> {
-  const userId = await getUserId()
   return rpc<DeletePromptResult>("delete_prompt", {
-    p_user_id: userId,
     p_prompt_id: promptId,
   })
 }

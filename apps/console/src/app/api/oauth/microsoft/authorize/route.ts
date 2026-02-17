@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 
 const MICROSOFT_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
 const MICROSOFT_SCOPES = [

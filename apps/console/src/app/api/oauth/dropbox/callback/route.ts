@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 import { saveDefaultToolSettings } from "@/lib/tool-settings"
 
 const DROPBOX_TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 import { saveDefaultToolSettings } from "@/lib/tool-settings"
 
 const TICKTICK_TOKEN_URL = "https://ticktick.com/oauth/token"

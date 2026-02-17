@@ -1,7 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/postgrest"
-import { getUserId } from "@/lib/auth"
+import { rpc } from "@/lib/worker-client"
 import { getModule, isDefaultEnabled } from "@/lib/module-data"
 import type { ToolSetting, ModuleDescription } from "@/lib/tool-settings-types"
 
@@ -19,9 +18,7 @@ interface ModuleConfigRow {
  * 現在のユーザーのモジュール設定を一括取得
  */
 export async function getModuleConfig(moduleName?: string): Promise<ModuleConfigRow[]> {
-  const userId = await getUserId()
   return rpc<ModuleConfigRow[]>("get_module_config", {
-    p_user_id: userId,
     p_module_name: moduleName,
   })
 }
@@ -46,11 +43,9 @@ export async function upsertMyToolSettings(
   enabledTools: string[],
   disabledTools: string[]
 ): Promise<{ success: boolean; enabled_count: number; disabled_count: number }> {
-  const userId = await getUserId()
   return rpc<{ success: boolean; enabled_count: number; disabled_count: number }>(
     "upsert_tool_settings",
     {
-      p_user_id: userId,
       p_module_name: moduleName,
       p_enabled_tools: enabledTools,
       p_disabled_tools: disabledTools,
@@ -89,12 +84,10 @@ export async function saveDefaultToolSettings(
   _supabase: any,
   moduleName: string
 ): Promise<void> {
-  const userId = await getUserId()
   const mod = await getModule(moduleName)
   if (!mod) return
 
   const existing = await rpc<ModuleConfigRow[]>("get_module_config", {
-    p_user_id: userId,
     p_module_name: moduleName,
   })
 
@@ -112,7 +105,6 @@ export async function saveDefaultToolSettings(
   }
 
   await rpc("upsert_tool_settings", {
-    p_user_id: userId,
     p_module_name: moduleName,
     p_enabled_tools: enabledTools,
     p_disabled_tools: disabledTools,
@@ -147,9 +139,7 @@ export async function updateModuleDescription(
   moduleName: string,
   description: string
 ): Promise<{ success: boolean }> {
-  const userId = await getUserId()
   return rpc<{ success: boolean }>("upsert_module_description", {
-    p_user_id: userId,
     p_module_name: moduleName,
     p_description: description,
   })

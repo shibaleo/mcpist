@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createStripeClient, getStripeConfig } from "@/lib/stripe"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 import Stripe from "stripe"
 
 /**

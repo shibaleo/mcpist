@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 
 const DROPBOX_AUTHORIZE_URL = "https://www.dropbox.com/oauth2/authorize"
 

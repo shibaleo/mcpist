@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createStripeClient } from "@/lib/stripe"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 
 /**
  * POST /api/stripe/portal

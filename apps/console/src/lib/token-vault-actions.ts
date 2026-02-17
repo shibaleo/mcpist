@@ -1,7 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/postgrest"
-import { getUserId } from "@/lib/auth"
+import { rpc } from "@/lib/worker-client"
 import { getModule, isDefaultEnabled } from "@/lib/module-data"
 
 interface ServiceConnection {
@@ -11,17 +10,14 @@ interface ServiceConnection {
 }
 
 export async function listCredentials(): Promise<ServiceConnection[]> {
-  const userId = await getUserId()
-  return rpc<ServiceConnection[]>("list_credentials", { p_user_id: userId })
+  return rpc<ServiceConnection[]>("list_credentials")
 }
 
 export async function upsertCredential(
   module: string,
   credentials: Record<string, unknown>
 ): Promise<{ success: boolean; module: string }> {
-  const userId = await getUserId()
   return rpc<{ success: boolean; module: string }>("upsert_credential", {
-    p_user_id: userId,
     p_module: module,
     p_credentials: credentials,
   })
@@ -30,9 +26,7 @@ export async function upsertCredential(
 export async function deleteCredential(
   module: string
 ): Promise<{ success: boolean }> {
-  const userId = await getUserId()
   return rpc<{ success: boolean }>("delete_credential", {
-    p_user_id: userId,
     p_module: module,
   })
 }
@@ -40,13 +34,11 @@ export async function deleteCredential(
 export async function saveDefaultToolSettingsAction(
   moduleName: string
 ): Promise<void> {
-  const userId = await getUserId()
   const mod = await getModule(moduleName)
   if (!mod) return
 
   // Check existing settings
   const existing = await rpc<Array<{ tool_id: string }>>("get_module_config", {
-    p_user_id: userId,
     p_module_name: moduleName,
   })
 
@@ -64,7 +56,6 @@ export async function saveDefaultToolSettingsAction(
   }
 
   await rpc("upsert_tool_settings", {
-    p_user_id: userId,
     p_module_name: moduleName,
     p_enabled_tools: enabledTools,
     p_disabled_tools: disabledTools,

@@ -1,7 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/postgrest"
-import { getUserId } from "@/lib/auth"
+import { rpc } from "@/lib/worker-client"
 
 interface UserContextRow {
   account_status: string
@@ -24,8 +23,7 @@ export interface AuthUserContext {
  */
 export async function fetchAuthUserContext(): Promise<AuthUserContext | null> {
   try {
-    const userId = await getUserId()
-    const rows = await rpc<UserContextRow[]>("get_user_context", { p_user_id: userId })
+    const rows = await rpc<UserContextRow[]>("get_user_context")
     const ctx = Array.isArray(rows) ? rows[0] : rows
     if (!ctx) return null
 

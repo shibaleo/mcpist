@@ -1,7 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/postgrest"
-import { getUserId } from "@/lib/auth"
+import { rpc } from "@/lib/worker-client"
 
 export type Language = "en-US" | "ja-JP"
 
@@ -20,12 +19,11 @@ const DEFAULT_SETTINGS: UserSettings = {
  */
 export async function getUserSettings(): Promise<UserSettings> {
   try {
-    const userId = await getUserId()
     const rows = await rpc<Array<{
       settings: Record<string, unknown> | null
       display_name: string | null
       language: string
-    }>>("get_user_context", { p_user_id: userId })
+    }>>("get_user_context")
 
     const ctx = Array.isArray(rows) ? rows[0] : rows
     if (!ctx) return DEFAULT_SETTINGS
@@ -46,9 +44,7 @@ export async function updateUserSettings(
   settings: Partial<UserSettings>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const userId = await getUserId()
     const result = await rpc<{ success: boolean }>("update_settings", {
-      p_user_id: userId,
       p_settings: settings,
     })
     return { success: result?.success ?? false }

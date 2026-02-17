@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 import crypto from "crypto"
 
 const AIRTABLE_AUTHORIZE_URL = "https://airtable.com/oauth2/v1/authorize"

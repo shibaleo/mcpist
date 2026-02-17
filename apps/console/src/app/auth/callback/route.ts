@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 

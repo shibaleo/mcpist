@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createStripeClient, getStripeConfig } from "@/lib/stripe"
-import { rpc } from "@/lib/postgrest"
+import { rpc } from "@/lib/worker-client"
 
 interface StripeCustomerResult {
   stripe_customer_id: string | null
