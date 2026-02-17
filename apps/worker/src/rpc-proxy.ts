@@ -71,19 +71,26 @@ export async function handleRpcProxy(
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    // Admin RPC: role チェック
+    // Admin RPC: role チェック → p_user_id 注入なしで転送
     if (ADMIN_RPCS.has(rpcName)) {
-      const context = await callPostgRESTRpc<{ role?: string }>(
+      const rows = await callPostgRESTRpc<{ role?: string }[]>(
         "get_user_context",
         { p_user_id: authResult.userId },
         env
       );
+      const context = Array.isArray(rows) ? rows[0] : rows;
       if (context?.role !== "admin") {
         return jsonResponse({ error: "Forbidden" }, 403);
       }
+      const result = await forwardToPostgREST(rpcName, body, env);
+      const durationMs = Date.now() - startTime;
+      const extra = { rpc: rpcName, user_id: authResult.userId, auth_type: authResult.type };
+      logRequest(env, requestId, "POST", url.pathname, result.status, durationMs, extra);
+      ctx.waitUntil(pushRequestLog(env, requestId, "POST", url.pathname, result.status, durationMs, extra));
+      return addCORSToResponse(result, "postgrest");
     }
 
-    // p_user_id を注入して転送
+    // User-scoped RPC: p_user_id を注入して転送
     body.p_user_id = authResult.userId;
     const result = await forwardToPostgREST(rpcName, body, env);
     const durationMs = Date.now() - startTime;

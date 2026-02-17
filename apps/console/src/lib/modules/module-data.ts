@@ -1,7 +1,7 @@
 // Module data fetched from database via list_modules_with_tools RPC
 // Replaces the previous static tools.json import
 
-const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL!
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_MCP_SERVER_URL!
 
 // MCP Tool Annotations (MCP spec 2025-11-25)
 export interface ToolAnnotations {

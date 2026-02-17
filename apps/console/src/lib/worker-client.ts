@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 
-const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.MCP_SERVER_URL!
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_MCP_SERVER_URL!
 
 export class PostgRESTError extends Error {
   constructor(
