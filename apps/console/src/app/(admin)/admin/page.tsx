@@ -353,7 +353,7 @@ function OAuthVerificationCard() {
 
     // Step 1: Try MCP Server (expect 401 or success)
     updateStep(0, { status: "running" })
-    const oauthMcpEndpoint = `${mcpServerUrl}/mcp`
+    const oauthMcpEndpoint = `${mcpServerUrl}/v1/mcp`
     addLog(`Step 1: MCP Server (${oauthMcpEndpoint}) に接続試行...`)
     try {
       const response = await fetch(oauthMcpEndpoint, {

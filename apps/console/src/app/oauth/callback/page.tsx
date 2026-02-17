@@ -219,7 +219,7 @@ function CallbackContent() {
     ])
 
     const mcpServerUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL!
-    const mcpEndpoint = `${mcpServerUrl}/mcp`
+    const mcpEndpoint = `${mcpServerUrl}/v1/mcp`
 
     // Step 1: Connect to MCP Server
     updateTestStep(0, { status: 'running' })

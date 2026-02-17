@@ -109,7 +109,7 @@ export default function McpConnectionPage() {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set())
 
   // MCPエンドポイント
-  const endpoint = `${mcpServerUrl}/mcp`
+  const endpoint = `${mcpServerUrl}/v1/mcp`
 
   const handleCopy = async (text: string, type: string) => {
     await navigator.clipboard.writeText(text)
@@ -245,7 +245,7 @@ export default function McpConnectionPage() {
       { name: "tools/list", status: "pending" },
     ])
 
-    const mcpEndpoint = `${mcpServerUrl}/mcp`
+    const mcpEndpoint = `${mcpServerUrl}/v1/mcp`
     addLog(`テスト開始 ${mcpEndpoint}`)
 
     // Step 1: Initialize

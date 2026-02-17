@@ -31,7 +31,7 @@ export async function rpc<T>(
     headers["Authorization"] = `Bearer ${session.access_token}`
   }
 
-  const res = await fetch(`${WORKER_URL}/rpc/${name}`, {
+  const res = await fetch(`${WORKER_URL}/v1/rpc/${name}`, {
     method: "POST",
     headers,
     body: JSON.stringify(params),

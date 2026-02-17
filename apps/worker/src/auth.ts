@@ -134,6 +134,7 @@ async function verifyApiKey(apiKey: string, env: Env): Promise<AuthResult | null
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${env.POSTGREST_API_KEY}`,
+        apikey: env.POSTGREST_API_KEY,
       },
       body: JSON.stringify({ p_key_hash: keyHash }),
     });

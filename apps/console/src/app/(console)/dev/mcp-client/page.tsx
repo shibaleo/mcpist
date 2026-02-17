@@ -82,10 +82,10 @@ export default function McpClientPage() {
 
   // Step 1: Try to connect to MCP Server (expect 401)
   const tryConnect = async () => {
-    addLog(`Step 1: MCP Server (${mcpServerUrl}/mcp) に接続試行...`)
+    addLog(`Step 1: MCP Server (${mcpServerUrl}/v1/mcp) に接続試行...`)
 
     try {
-      const response = await fetch(`${mcpServerUrl}/mcp`, {
+      const response = await fetch(`${mcpServerUrl}/v1/mcp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ export default function McpClientPage() {
     addLog('Step 8: MCP Server に認証済みリクエスト...')
 
     try {
-      const response = await fetch(`${mcpServerUrl}/mcp`, {
+      const response = await fetch(`${mcpServerUrl}/v1/mcp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
