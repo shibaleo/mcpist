@@ -1,8 +1,8 @@
-import type { Env } from "./types";
-import { authenticate } from "./auth";
-import { addCORSToResponse, jsonResponse } from "./http";
-import { logRequest, logSecurityEvent } from "./logging";
-import { pushRequestLog, pushSecurityEvent } from "./observability";
+import type { Env } from "../types";
+import { authenticate } from "../auth";
+import { addCORSToResponse, jsonResponse } from "../http";
+import { logRequest, logSecurityEvent } from "../logging";
+import { pushRequestLog, pushSecurityEvent } from "../observability";
 
 /** 認証不要の公開 RPC */
 const PUBLIC_RPCS = new Set([
@@ -35,7 +35,7 @@ export async function handleRpcProxy(
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  const rpcName = url.pathname.slice("/rpc/".length);
+  const rpcName = url.pathname.slice("/v1/rpc/".length);
   if (!rpcName) {
     return jsonResponse({ error: "RPC name required" }, 400);
   }

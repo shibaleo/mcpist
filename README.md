@@ -165,6 +165,11 @@ supabase db reset
 supabase gen types typescript --local > packages/database/types.ts
 ```
 
+## API Specification
+
+The Worker exposes an OpenAPI 3.1 specification at `GET /openapi.json`.
+Source is maintained in YAML at `apps/worker/src/openapi.yaml` and converted to JSON at build time.
+
 ## Documentation
 
 See [docs/specification/](docs/specification/) for detailed specifications:

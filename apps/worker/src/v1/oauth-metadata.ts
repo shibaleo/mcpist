@@ -1,4 +1,4 @@
-import type { Env } from "./types";
+import type { Env } from "../types";
 
 /**
  * OAuth Protected Resource Metadata (RFC 9728)
@@ -9,7 +9,7 @@ export function handleOAuthProtectedResourceMetadata(request: Request, env: Env)
   const baseUrl = `${url.protocol}//${url.host}`;
 
   return new Response(JSON.stringify({
-    resource: `${baseUrl}/mcp`,
+    resource: `${baseUrl}/v1/mcp`,
     authorization_servers: [`${env.SUPABASE_URL}/auth/v1`],
     scopes_supported: ["openid", "profile", "email"],
     bearer_methods_supported: ["header"],

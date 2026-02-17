@@ -3,8 +3,8 @@
  *
  * 責務:
  * 1. JWT / API Key 認証
- * 2. /mcp/* → Go Server プロキシ
- * 3. /rpc/* → PostgREST プロキシ（p_user_id 自動注入）
+ * 2. /v1/mcp/* → Go Server プロキシ
+ * 3. /v1/rpc/* → PostgREST プロキシ（p_user_id 自動注入）
  * 4. OAuth メタデータ配信
  */
 
@@ -13,13 +13,12 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import type { Env } from "./types";
 import { handleHealthCheck, performScheduledHealthCheck } from "./health";
-import { handleInvalidateApiKey } from "./auth";
-import { handleRpcProxy } from "./rpc-proxy";
-import { handleMcpProxy } from "./mcp-proxy";
 import {
   handleOAuthProtectedResourceMetadata,
   handleOAuthAuthorizationServerMetadata,
-} from "./oauth-metadata";
+} from "./v1/oauth-metadata";
+import { handleOpenApiSpec } from "./openapi";
+import { v1 } from "./v1";
 
 type Bindings = Env;
 
@@ -35,40 +34,21 @@ app.use("*", secureHeaders({
   },
 }));
 
-// --- Routes ---
+// --- Unversioned Routes ---
 
 app.get("/health", (c) => handleHealthCheck(c.env));
 
-// Internal endpoints
-app.post("/internal/invalidate-api-key", (c) => {
-  const secret = c.req.header("X-Internal-Secret");
-  if (!secret || secret !== c.env.INTERNAL_SECRET) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-  return handleInvalidateApiKey(c.req.raw, c.env);
-});
+app.get("/openapi.json", (c) => handleOpenApiSpec(c.req.raw));
 
-// OAuth metadata (RFC 9728 / 8414)
+// Root-level OAuth metadata (RFC 9728 / 8414)
 app.get("/.well-known/oauth-protected-resource", (c) =>
-  handleOAuthProtectedResourceMetadata(c.req.raw, c.env));
-app.get("/mcp/.well-known/oauth-protected-resource", (c) =>
   handleOAuthProtectedResourceMetadata(c.req.raw, c.env));
 app.get("/.well-known/oauth-authorization-server", (c) =>
   handleOAuthAuthorizationServerMetadata(c.env));
-app.get("/mcp/.well-known/oauth-authorization-server", (c) =>
-  handleOAuthAuthorizationServerMetadata(c.env));
 
-// RPC Proxy: Console → Worker → PostgREST
-app.post("/rpc/:name", (c) => {
-  const url = new URL(c.req.url);
-  return handleRpcProxy(c.req.raw, url, c.env, c.executionCtx);
-});
+// --- Versioned Routes ---
 
-// MCP Proxy: MCP Client → Worker → Go Server
-app.all("/mcp/*", (c) => {
-  const url = new URL(c.req.url);
-  return handleMcpProxy(c.req.raw, url, c.env, c.executionCtx);
-});
+app.route("/v1", v1);
 
 export default {
   fetch: app.fetch,

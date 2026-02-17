@@ -1,0 +1,369 @@
+openapi: "3.1.0"
+info:
+  title: MCPist API
+  version: "1.0.0"
+  description: >-
+    MCPist API — connect AI assistants to external tools
+    via the Model Context Protocol (MCP).
+
+servers:
+  - url: https://mcp.mcpist.app
+    description: Production
+  - url: https://mcp.dev.mcpist.app
+    description: Development
+
+paths:
+  # ── System ───────────────────────────────────────────────────
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      tags: [system]
+      responses:
+        "200":
+          description: Service is healthy
+
+  /openapi.json:
+    get:
+      operationId: getOpenApiSpec
+      summary: OpenAPI specification
+      tags: [system]
+      responses:
+        "200":
+          description: OpenAPI 3.1 JSON document
+
+  # ── OAuth Discovery ──────────────────────────────────────────
+  /.well-known/oauth-protected-resource:
+    get:
+      operationId: getOAuthProtectedResource
+      summary: OAuth Protected Resource Metadata (RFC 9728)
+      tags: [oauth]
+      responses:
+        "200":
+          description: Protected resource metadata JSON
+
+  /.well-known/oauth-authorization-server:
+    get:
+      operationId: getOAuthAuthorizationServer
+      summary: OAuth Authorization Server Metadata (RFC 8414)
+      tags: [oauth]
+      responses:
+        "200":
+          description: Authorization server metadata JSON
+
+  /v1/mcp/.well-known/oauth-protected-resource:
+    get:
+      operationId: getV1McpOAuthProtectedResource
+      summary: MCP-scoped OAuth Protected Resource Metadata
+      tags: [oauth]
+      responses:
+        "200":
+          description: Protected resource metadata JSON
+
+  /v1/mcp/.well-known/oauth-authorization-server:
+    get:
+      operationId: getV1McpOAuthAuthorizationServer
+      summary: MCP-scoped OAuth Authorization Server Metadata
+      tags: [oauth]
+      responses:
+        "200":
+          description: Authorization server metadata JSON
+
+  # ── MCP Endpoint ─────────────────────────────────────────────
+  /v1/mcp/{path}:
+    post:
+      operationId: mcpTransport
+      summary: MCP transport endpoint (Streamable HTTP)
+      description: >-
+        Accepts MCP protocol messages (JSON-RPC 2.0) and returns responses.
+        Supports initialize, tools/list, tools/call, prompts/list, prompts/get,
+        and other standard MCP methods.
+      tags: [mcp]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: MCP transport sub-path
+      responses:
+        "200":
+          description: MCP JSON-RPC response
+        "401":
+          description: Unauthorized — missing or invalid credentials
+        "503":
+          description: Service unavailable
+
+  # ── RPC Endpoint ─────────────────────────────────────────────
+  /v1/rpc/{name}:
+    post:
+      operationId: callRpc
+      summary: Call a server-side function
+      description: >-
+        Calls a named server-side function.
+        Some functions are public (no auth required),
+        some require admin privileges,
+        and most are user-scoped (require authentication).
+      tags: [rpc]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              # Public (no auth required)
+              - list_modules_with_tools
+              - get_oauth_app_credentials
+              # Admin (requires admin role)
+              - list_oauth_apps
+              - upsert_oauth_app
+              - delete_oauth_app
+              - list_all_oauth_consents
+              # User-scoped (requires authentication)
+              - get_user_context
+              - get_usage
+              - get_stripe_customer_id
+              - link_stripe_customer
+              - list_credentials
+              - upsert_credential
+              - delete_credential
+              - get_module_config
+              - upsert_tool_settings
+              - upsert_module_description
+              - list_api_keys
+              - generate_api_key
+              - revoke_api_key
+              - list_prompts
+              - get_prompt
+              - upsert_prompt
+              - delete_prompt
+              - list_oauth_consents
+              - revoke_oauth_consent
+              - update_settings
+              - complete_user_onboarding
+          description: Function name to call
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: >-
+                Function parameters (JSON object). Varies per function.
+                See component schemas for per-function parameter details.
+      responses:
+        "200":
+          description: Function result (JSON)
+        "400":
+          description: Invalid request body or unknown function name
+        "401":
+          description: Unauthorized — missing or invalid credentials
+        "403":
+          description: Forbidden — insufficient privileges
+        "405":
+          description: Method not allowed (only POST is accepted)
+        "500":
+          description: Internal server error
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: JWT access token or MCPist API key (mpt_xxx)
+
+  schemas:
+    # ── Public functions ──
+    ListModulesWithToolsParams:
+      type: object
+      description: No parameters required
+
+    GetOauthAppCredentialsParams:
+      type: object
+      required: [p_provider]
+      properties:
+        p_provider:
+          type: string
+          description: OAuth provider identifier (e.g. github, google)
+
+    # ── Admin functions ──
+    UpsertOauthAppParams:
+      type: object
+      required: [p_provider, p_client_id, p_client_secret, p_redirect_uri, p_enabled]
+      properties:
+        p_provider:
+          type: string
+        p_client_id:
+          type: string
+        p_client_secret:
+          type: string
+        p_redirect_uri:
+          type: string
+        p_enabled:
+          type: boolean
+
+    DeleteOauthAppParams:
+      type: object
+      required: [p_provider]
+      properties:
+        p_provider:
+          type: string
+
+    # ── User-scoped functions ──
+    GetUsageParams:
+      type: object
+      required: [p_start_date, p_end_date]
+      properties:
+        p_start_date:
+          type: string
+          format: date
+          description: Start date (ISO 8601)
+        p_end_date:
+          type: string
+          format: date
+          description: End date (ISO 8601)
+
+    LinkStripeCustomerParams:
+      type: object
+      required: [p_stripe_customer_id]
+      properties:
+        p_stripe_customer_id:
+          type: string
+
+    UpsertCredentialParams:
+      type: object
+      required: [p_module, p_credentials]
+      properties:
+        p_module:
+          type: string
+          description: Module identifier (e.g. github, notion)
+        p_credentials:
+          type: object
+          description: Credential data (access_token, refresh_token, etc.)
+
+    DeleteCredentialParams:
+      type: object
+      required: [p_module]
+      properties:
+        p_module:
+          type: string
+
+    GetModuleConfigParams:
+      type: object
+      properties:
+        p_module_name:
+          type: string
+          description: Filter by module name (optional)
+
+    UpsertToolSettingsParams:
+      type: object
+      required: [p_module_name, p_enabled_tools, p_disabled_tools]
+      properties:
+        p_module_name:
+          type: string
+        p_enabled_tools:
+          type: array
+          items:
+            type: string
+        p_disabled_tools:
+          type: array
+          items:
+            type: string
+
+    UpsertModuleDescriptionParams:
+      type: object
+      required: [p_module_name, p_description]
+      properties:
+        p_module_name:
+          type: string
+        p_description:
+          type: string
+
+    GenerateApiKeyParams:
+      type: object
+      required: [p_display_name]
+      properties:
+        p_display_name:
+          type: string
+        p_expires_at:
+          type: string
+          format: date-time
+          description: Expiration timestamp (optional)
+
+    RevokeApiKeyParams:
+      type: object
+      required: [p_key_id]
+      properties:
+        p_key_id:
+          type: string
+          format: uuid
+
+    ListPromptsParams:
+      type: object
+      properties:
+        p_module_name:
+          type: string
+          description: Filter by module name (optional)
+
+    GetPromptParams:
+      type: object
+      required: [p_prompt_id]
+      properties:
+        p_prompt_id:
+          type: string
+          format: uuid
+
+    UpsertPromptParams:
+      type: object
+      required: [p_name, p_content, p_enabled]
+      properties:
+        p_prompt_id:
+          type: string
+          format: uuid
+          description: Omit to create, include to update
+        p_name:
+          type: string
+        p_content:
+          type: string
+        p_module_name:
+          type: string
+        p_enabled:
+          type: boolean
+        p_description:
+          type: string
+
+    DeletePromptParams:
+      type: object
+      required: [p_prompt_id]
+      properties:
+        p_prompt_id:
+          type: string
+          format: uuid
+
+    RevokeOauthConsentParams:
+      type: object
+      required: [p_consent_id]
+      properties:
+        p_consent_id:
+          type: string
+          format: uuid
+
+    UpdateSettingsParams:
+      type: object
+      required: [p_settings]
+      properties:
+        p_settings:
+          type: object
+          description: User settings object
+
+    CompleteUserOnboardingParams:
+      type: object
+      required: [p_event_id]
+      properties:
+        p_event_id:
+          type: string

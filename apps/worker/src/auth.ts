@@ -1,6 +1,6 @@
 import * as jose from "jose";
 import type { Env, AuthResult } from "./types";
-import { jsonResponse } from "./http";
+
 
 export async function authenticate(
   request: Request,
@@ -176,30 +176,4 @@ async function hashApiKey(apiKey: string): Promise<string> {
   return Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-/**
- * API Key キャッシュ無効化（Console から呼ばれる）
- */
-export async function handleInvalidateApiKey(
-  request: Request,
-  env: Env
-): Promise<Response> {
-  try {
-    const body = await request.json() as { key_hash?: string };
-    const keyHash = body.key_hash;
-
-    if (!keyHash || typeof keyHash !== "string") {
-      return jsonResponse({ error: "key_hash is required" }, 400);
-    }
-    if (!/^[a-f0-9]{64}$/.test(keyHash)) {
-      return jsonResponse({ error: "Invalid key_hash format" }, 400);
-    }
-
-    await env.API_KEY_CACHE.delete(keyHash);
-    console.log(`[InvalidateKey] Cache deleted for hash: ${keyHash.substring(0, 8)}...`);
-    return jsonResponse({ success: true, message: "Cache invalidated" }, 200);
-  } catch {
-    return jsonResponse({ error: "Invalid request body" }, 400);
-  }
 }

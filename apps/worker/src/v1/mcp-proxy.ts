@@ -1,8 +1,8 @@
-import type { Env, AuthResult } from "./types";
-import { authenticate } from "./auth";
-import { addCORSToResponse, jsonResponse } from "./http";
-import { logRequest, logSecurityEvent } from "./logging";
-import { pushRequestLog, pushSecurityEvent } from "./observability";
+import type { Env, AuthResult } from "../types";
+import { authenticate } from "../auth";
+import { addCORSToResponse, jsonResponse } from "../http";
+import { logRequest, logSecurityEvent } from "../logging";
+import { pushRequestLog, pushSecurityEvent } from "../observability";
 
 const FETCH_TIMEOUT_MS = 30000;
 
@@ -22,7 +22,7 @@ export async function handleMcpProxy(
   try {
     const authResult = await authenticate(request, env);
     if (!authResult) {
-      const resourceMetadataUrl = `${url.protocol}//${url.host}/mcp/.well-known/oauth-protected-resource`;
+      const resourceMetadataUrl = `${url.protocol}//${url.host}/v1/mcp/.well-known/oauth-protected-resource`;
       const secExtra = { method: request.method, path: url.pathname, duration_ms: Date.now() - startTime };
       logSecurityEvent(env, requestId, "auth_failed", secExtra);
       ctx.waitUntil(pushSecurityEvent(env, requestId, "auth_failed", secExtra));
@@ -90,7 +90,8 @@ async function fetchBackend(
   env: Env
 ): Promise<Response> {
   const url = new URL(request.url);
-  const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
+  const backendPath = url.pathname.replace(/^\/v1/, "");
+  const targetUrl = `${backendUrl}${backendPath}${url.search}`;
 
   const headers = new Headers(request.headers);
   headers.set("X-User-ID", authResult.userId);
