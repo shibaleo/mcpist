@@ -1,49 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { rpc } from "@/lib/worker-client"
 
-interface UserContextRow {
-  role: string
-}
-
-// Verify user is admin
-async function verifyAdmin(): Promise<{ isAdmin: boolean; userId?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { isAdmin: false }
-  }
-
-  const rows = await rpc<UserContextRow[]>("get_user_context", { p_user_id: user.id })
-  const ctx = Array.isArray(rows) ? rows[0] : rows
-  const role = (ctx as UserContextRow | undefined)?.role
-  return { isAdmin: role === "admin", userId: user.id }
-}
-
-// GET: List OAuth apps
+// GET: List OAuth apps (Worker handles admin check)
 export async function GET(): Promise<NextResponse> {
-  const { isAdmin } = await verifyAdmin()
-  if (!isAdmin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-  }
-
   try {
     const data = await rpc("list_oauth_apps")
     return NextResponse.json(data || [])
   } catch (err) {
     console.error("[admin/oauth-apps] error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const status = err instanceof Error && err.message.includes("403") ? 403 : 500
+    return NextResponse.json({ error: status === 403 ? "Forbidden" : "Internal server error" }, { status })
   }
 }
 
-// POST: Upsert OAuth app
+// POST: Upsert OAuth app (Worker handles admin check)
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const { isAdmin } = await verifyAdmin()
-  if (!isAdmin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-  }
-
   try {
     const body = await request.json()
     const { provider, client_id, client_secret, redirect_uri, enabled } = body
@@ -63,17 +34,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(data)
   } catch (err) {
     console.error("[admin/oauth-apps] error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const status = err instanceof Error && err.message.includes("403") ? 403 : 500
+    return NextResponse.json({ error: status === 403 ? "Forbidden" : "Internal server error" }, { status })
   }
 }
 
-// DELETE: Delete OAuth app
+// DELETE: Delete OAuth app (Worker handles admin check)
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  const { isAdmin } = await verifyAdmin()
-  if (!isAdmin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-  }
-
   try {
     const { searchParams } = new URL(request.url)
     const provider = searchParams.get("provider")
@@ -89,6 +56,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(data)
   } catch (err) {
     console.error("[admin/oauth-apps] error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const status = err instanceof Error && err.message.includes("403") ? 403 : 500
+    return NextResponse.json({ error: status === 403 ? "Forbidden" : "Internal server error" }, { status })
   }
 }

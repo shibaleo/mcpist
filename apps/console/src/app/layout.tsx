@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Ubuntu, Noto_Sans_JP } from "next/font/google";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppearanceProvider } from "@/lib/appearance-context";
+import { AppearanceProvider } from "@/components/appearance-context";
 import { Toaster } from "sonner";
 
 const ubuntu = Ubuntu({

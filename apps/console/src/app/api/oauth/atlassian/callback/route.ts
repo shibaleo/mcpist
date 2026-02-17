@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { rpc } from "@/lib/worker-client"
-import { saveDefaultToolSettings } from "@/lib/tool-settings"
+import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
 const ATLASSIAN_RESOURCES_URL = "https://api.atlassian.com/oauth/token/accessible-resources"
@@ -43,14 +42,6 @@ export async function GET(request: Request) {
     } catch {
       // state のパースに失敗した場合はデフォルト値を使用
     }
-  }
-
-  // 認証チェック
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url))
   }
 
   // エラーチェック
@@ -152,7 +143,6 @@ export async function GET(request: Request) {
 
     for (const mod of modulesToSave) {
       await rpc("upsert_credential", {
-        p_user_id: user.id,
         p_module: mod,
         p_credentials: tokenCredentials,
       })

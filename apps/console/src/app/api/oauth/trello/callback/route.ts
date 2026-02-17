@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { rpc } from "@/lib/worker-client"
-import { saveDefaultToolSettings } from "@/lib/tool-settings"
+import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 import crypto from "crypto"
 import { cookies } from "next/headers"
 
@@ -70,16 +69,6 @@ export async function GET(request: Request) {
     } catch {
       // Parse error - use defaults
     }
-  }
-
-  // 認証チェック
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url))
   }
 
   // Error handling
@@ -193,7 +182,6 @@ export async function GET(request: Request) {
     }
 
     await rpc("upsert_credential", {
-      p_user_id: user.id,
       p_module: "trello",
       p_credentials: tokenCredentials,
     })

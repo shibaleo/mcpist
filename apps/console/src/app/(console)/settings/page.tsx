@@ -12,18 +12,18 @@ import {
   useAppearance,
   accentColors,
   type AccentColorId,
-} from "@/lib/appearance-context"
+} from "@/components/appearance-context"
 import { Input } from "@/components/ui/input"
 import { Sun, Moon, Monitor, Check, Globe, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useEffect, useState, useRef } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import {
   getUserSettings,
   updateUserSettings,
   type Language,
   type UserSettings,
-} from "@/lib/user-settings"
+} from "@/lib/settings/user-settings"
 import { toast } from "sonner"
 
 // モジュールレベルキャッシュ

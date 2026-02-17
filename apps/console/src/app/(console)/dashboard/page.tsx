@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Cable, Zap, Receipt, Loader2, Settings2, ChevronRight, Calendar } from "lucide-react"
-import { getUserContext, getServiceConnections, getMyUsage, type UserContext, type ServiceConnection, type UsageStats } from "@/lib/plan"
-import { getMyToolSettings, type ToolSetting } from "@/lib/tool-settings"
+import { getUserContext, getServiceConnections, getMyUsage, type UserContext, type ServiceConnection, type UsageStats } from "@/lib/billing/plan"
+import { getMyToolSettings, type ToolSetting } from "@/lib/mcp/tool-settings"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 

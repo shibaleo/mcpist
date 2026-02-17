@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import {
   Plus,
   Loader2,
@@ -40,7 +40,7 @@ import {
   upsertPrompt,
   deletePrompt,
   type Prompt,
-} from "@/lib/prompts"
+} from "@/lib/mcp/prompts"
 
 // モジュールレベルキャッシュ
 let cachedPrompts: Prompt[] | null = null

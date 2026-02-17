@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createStripeClient, getStripeConfig } from "@/lib/stripe"
-import { rpc } from "@/lib/worker-client"
+import { createStripeClient, getStripeConfig } from "@/lib/billing/stripe"
+import { rpcDirect } from "@/lib/worker-client"
 import Stripe from "stripe"
 
 /**
@@ -63,7 +63,7 @@ async function activateSubscription(
   eventId: string
 ) {
   try {
-    const result = await rpc<{
+    const result = await rpcDirect<{
       success: boolean
       already_processed?: boolean
       plan_id?: string
@@ -113,7 +113,7 @@ async function handleInvoicePaid(
     }
 
     try {
-      const foundUserId = await rpc<string>(
+      const foundUserId = await rpcDirect<string>(
         "get_user_by_stripe_customer",
         { p_stripe_customer_id: customerId }
       )

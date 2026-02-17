@@ -4,7 +4,7 @@
  * Handles access token storage, expiration tracking, and automatic refresh.
  */
 
-import { getOAuthClientId } from '@/lib/oauth-client'
+import { getOAuthClientId } from '@/lib/oauth/client'
 
 export interface TokenData {
   accessToken: string

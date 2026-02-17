@@ -4,11 +4,11 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-context"
-import { useAppearance, accentColors } from "@/lib/appearance-context"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useAppearance, accentColors } from "@/components/appearance-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { getServiceConnections } from "@/lib/plan"
+import { getServiceConnections } from "@/lib/billing/plan"
 import {
   DropdownMenu,
   DropdownMenuContent,

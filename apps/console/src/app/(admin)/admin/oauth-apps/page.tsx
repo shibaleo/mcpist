@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,7 +28,7 @@ import {
   getDefaultRedirectUri,
   type OAuthApp,
   OAuthAppError,
-} from "@/lib/oauth-apps"
+} from "@/lib/oauth/apps"
 
 type FormState = {
   clientId: string

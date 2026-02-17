@@ -26,8 +26,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useAuth } from "@/lib/auth-context"
-import { useAppearance, accentColors } from "@/lib/appearance-context"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useAppearance, accentColors } from "@/components/appearance-context"
 import {
   Copy,
   Check,
@@ -57,9 +57,8 @@ import {
   generateApiKey,
   type ApiKey,
   type GenerateApiKeyResult,
-} from "@/lib/api-keys"
+} from "@/lib/mcp/api-keys"
 import { revokeApiKeyAction } from "./actions"
-import { getMcpServerUrl } from "@/lib/env"
 
 type VerifyStep = {
   name: string
@@ -102,7 +101,7 @@ export default function McpConnectionPage() {
   const [guideClient, setGuideClient] = useState<"claude" | "chatgpt">("claude")
 
   // API Key test state
-  const mcpServerUrl = getMcpServerUrl()
+  const mcpServerUrl = process.env.NEXT_PUBLIC_MCP_SERVER_URL!
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])
   const [testApiKey, setTestApiKey] = useState<string>("")

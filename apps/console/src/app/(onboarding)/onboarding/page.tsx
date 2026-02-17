@@ -8,7 +8,7 @@ import { ModuleIcon } from "@/components/module-icon"
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { getModules, type ModuleDef } from "@/lib/module-data"
+import { getModules, type ModuleDef } from "@/lib/modules/module-data"
 
 // TODO: プロダクトツアーを実装
 // - ステップ1: MCPistとは何か、何ができるかの説明

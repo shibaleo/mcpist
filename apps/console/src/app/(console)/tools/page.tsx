@@ -7,8 +7,8 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { ModuleIcon } from "@/components/module-icon"
-import { useAuth } from "@/lib/auth-context"
-import { useAppearance, accentColors } from "@/lib/appearance-context"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useAppearance, accentColors } from "@/components/appearance-context"
 import {
   getModules,
   isDefaultEnabled,
@@ -16,7 +16,7 @@ import {
   getModuleDescription,
   getToolDescription,
   type ModuleDef,
-} from "@/lib/module-data"
+} from "@/lib/modules/module-data"
 import {
   Check,
   Link2,
@@ -41,20 +41,20 @@ import {
   getMyConnections,
   type ServiceConnection,
   TokenVaultError,
-} from "@/lib/token-vault"
+} from "@/lib/services/token-vault"
 import {
   getMyToolSettings,
   saveModuleToolSettings,
   getMyModuleDescriptions,
   updateModuleDescription,
-} from "@/lib/tool-settings"
+} from "@/lib/mcp/tool-settings"
 import {
   toToolSettingsMap,
   toModuleDescriptionsMap,
   type ToolSettingsMap,
   type ModuleDescriptionsMap,
-} from "@/lib/tool-settings-types"
-import { getUserSettings, type Language } from "@/lib/user-settings"
+} from "@/lib/mcp/tool-settings-types"
+import { getUserSettings, type Language } from "@/lib/settings/user-settings"
 
 // モジュールレベルキャッシュ
 let cachedToolSettings: ToolSettingsMap | null = null

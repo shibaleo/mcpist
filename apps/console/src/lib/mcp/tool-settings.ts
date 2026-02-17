@@ -1,10 +1,10 @@
 "use server"
 
 import { rpc } from "@/lib/worker-client"
-import { getModule, isDefaultEnabled } from "@/lib/module-data"
-import type { ToolSetting, ModuleDescription } from "@/lib/tool-settings-types"
+import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
+import type { ToolSetting, ModuleDescription } from "./tool-settings-types"
 
-export type { ToolSetting, ModuleDescription } from "@/lib/tool-settings-types"
+export type { ToolSetting, ModuleDescription } from "./tool-settings-types"
 
 // モジュール設定の取得結果型 (get_module_config)
 interface ModuleConfigRow {

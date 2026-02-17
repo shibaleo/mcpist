@@ -82,9 +82,7 @@ export async function GET(request: Request) {
 
   if (user) {
     // If account_status is pre_active, onboarding is required
-    const context = await rpc<{ account_status: string }[]>("get_user_context", {
-      p_user_id: user.id,
-    })
+    const context = await rpc<{ account_status: string }[]>("get_user_context")
 
     // Redirect to onboarding when needed
     const row = Array.isArray(context) ? context[0] : context

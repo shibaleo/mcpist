@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { rpc } from "@/lib/worker-client"
 
 /**
@@ -9,20 +8,8 @@ import { rpc } from "@/lib/worker-client"
  */
 export async function POST() {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "unauthorized", message: "ログインが必要です" },
-        { status: 401 }
-      )
-    }
-
-    // Complete onboarding (activate account + assign free plan)
-    const eventId = `onboarding:${user.id}`
+    // p_event_id は Worker 側で注入される p_user_id を使って生成されるため、
+    // ここでは固定プレフィックスのみ渡す（RPC 側で p_user_id と結合）
     const result = await rpc<{
       success: boolean
       already_completed?: boolean
@@ -30,24 +17,17 @@ export async function POST() {
       error?: string
       message?: string
     }>("complete_user_onboarding", {
-      p_user_id: user.id,
-      p_event_id: eventId,
+      p_event_id: "onboarding",
     })
 
     if (result?.success) {
       if (result.already_completed) {
-        console.log(
-          `[api/credits/grant-signup-bonus] Onboarding already completed for ${user.id}`
-        )
         return NextResponse.json({
           success: false,
           error: "already_granted",
           message: "既にアカウントは有効です",
         })
       }
-      console.log(
-        `[api/credits/grant-signup-bonus] Onboarding completed for user ${user.id}, plan: ${result.plan_id}`
-      )
       return NextResponse.json({
         success: true,
         plan_id: result.plan_id,

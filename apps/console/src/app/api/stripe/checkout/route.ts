@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createStripeClient, getStripeConfig } from "@/lib/stripe"
+import { createStripeClient, getStripeConfig } from "@/lib/billing/stripe"
 import { rpc } from "@/lib/worker-client"
 
 interface StripeCustomerResult {
@@ -32,8 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already has a Stripe Customer ID using RPC
     const userData = await rpc<StripeCustomerResult>(
-      "get_stripe_customer_id",
-      { p_user_id: user.id }
+      "get_stripe_customer_id"
     )
 
     if (userData?.stripe_customer_id) {
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest) {
       // Link Stripe Customer to user
       try {
         await rpc("link_stripe_customer", {
-          p_user_id: user.id,
           p_stripe_customer_id: stripeCustomerId,
         })
       } catch (linkErr) {

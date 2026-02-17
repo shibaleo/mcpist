@@ -2,19 +2,18 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Users, Activity, Server, CreditCard, Play, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Copy, Check, LogIn } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getOrRegisterOAuthClient } from "@/lib/oauth-client"
+import { getOrRegisterOAuthClient } from "@/lib/oauth/client"
 import {
   listAllOAuthConsents,
   type OAuthConsentAdmin,
-} from "@/lib/oauth-consents"
-import { getMcpServerUrl } from "@/lib/env"
+} from "@/lib/oauth/consents"
 
 type VerifyStep = {
   name: string
@@ -307,7 +306,7 @@ function JsonResponseViewer({ data, label }: { data: unknown; label: string }) {
 // OAuth Authentication Flow Verification Component
 function OAuthVerificationCard() {
   const [mcpServerUrl, setMcpServerUrl] = useState(
-    getMcpServerUrl()
+    process.env.NEXT_PUBLIC_MCP_SERVER_URL!
   )
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifySteps, setVerifySteps] = useState<VerifyStep[]>([])

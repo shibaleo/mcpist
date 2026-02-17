@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { fetchAuthUserContext } from "@/lib/auth-context-actions"
+import { fetchAuthUserContext } from "@/lib/auth/auth-context-actions"
 import { CheckCircle2, Shield, AlertCircle, Loader2, RotateCcw } from "lucide-react"
 
 interface AuthorizationDetails {

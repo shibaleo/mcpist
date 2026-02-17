@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { rpc } from "@/lib/worker-client"
-import { saveDefaultToolSettings } from "@/lib/tool-settings"
+import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const ASANA_TOKEN_URL = "https://app.asana.com/-/oauth_token"
 
@@ -22,14 +21,6 @@ export async function GET(request: Request) {
     } catch {
       // state のパースに失敗した場合はデフォルト値を使用
     }
-  }
-
-  // 認証チェック
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url))
   }
 
   // エラーチェック
@@ -122,7 +113,6 @@ export async function GET(request: Request) {
     }
 
     await rpc("upsert_credential", {
-      p_user_id: user.id,
       p_module: "asana",
       p_credentials: tokenCredentials,
     })

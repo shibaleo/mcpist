@@ -1,7 +1,7 @@
 "use server"
 
 import { rpc } from "@/lib/worker-client"
-import { getModule, isDefaultEnabled } from "@/lib/module-data"
+import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
 
 interface ServiceConnection {
   module: string

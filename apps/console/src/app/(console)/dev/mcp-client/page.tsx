@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { getOrRegisterOAuthClient, getOAuthClientId } from '@/lib/oauth-client'
-import { getMcpServerUrl } from '@/lib/env'
+import { getOrRegisterOAuthClient, getOAuthClientId } from '@/lib/oauth/client'
 
 /**
  * MCP Client Mock - OAuth 2.1 + PKCE Authorization Flow
@@ -64,7 +63,7 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 export default function McpClientPage() {
-  const [mcpServerUrl, setMcpServerUrl] = useState(getMcpServerUrl())
+  const [mcpServerUrl, setMcpServerUrl] = useState(process.env.NEXT_PUBLIC_MCP_SERVER_URL!)
   const [consoleUrl, setConsoleUrl] = useState(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
   const [logs, setLogs] = useState<string[]>([])
   const [protectedResource, setProtectedResource] = useState<ProtectedResourceMetadata | null>(null)

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Sidebar } from "./sidebar"
 import { MobileHeader } from "./mobile-header"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface ConsoleLayoutProps {
   children: React.ReactNode

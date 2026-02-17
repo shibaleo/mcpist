@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { ModuleIcon } from "@/components/module-icon"
 import { ArchitectureDiagram } from "@/components/architecture-diagram"
-import { getModules } from "@/lib/module-data"
+import { getModules } from "@/lib/modules/module-data"
 
 function LandingPageContent() {
   const router = useRouter()

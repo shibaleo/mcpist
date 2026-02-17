@@ -14,12 +14,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ModuleIcon } from "@/components/module-icon"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import {
   getModules,
   getModuleDescription,
   type ModuleDef,
-} from "@/lib/module-data"
+} from "@/lib/modules/module-data"
 import {
   Plug,
   Cable,
@@ -41,9 +41,9 @@ import {
   type ServiceConnection,
   type ConnectionProgress,
   TokenVaultError,
-} from "@/lib/token-vault"
-import { getOAuthProviderForService, getOAuthAuthorizationUrl, OAuthAppError } from "@/lib/oauth-apps"
-import { getUserSettings, type Language } from "@/lib/user-settings"
+} from "@/lib/services/token-vault"
+import { getOAuthProviderForService, getOAuthAuthorizationUrl, OAuthAppError } from "@/lib/oauth/apps"
+import { getUserSettings, type Language } from "@/lib/settings/user-settings"
 
 // User preferences type
 interface UserPreferences {

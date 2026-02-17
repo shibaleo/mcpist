@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { AuthProvider, useAuth } from "@/lib/auth/auth-context"
 import { ConsoleLayout } from "@/components/console-layout"
 import { Loader2 } from "lucide-react"
 

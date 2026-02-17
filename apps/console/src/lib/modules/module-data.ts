@@ -1,7 +1,7 @@
 // Module data fetched from database via list_modules_with_tools RPC
 // Replaces the previous static tools.json import
 
-import { createClient } from "@/lib/supabase/client"
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL!
 
 // MCP Tool Annotations (MCP spec 2025-11-25)
 export interface ToolAnnotations {
@@ -59,16 +59,18 @@ interface ModuleRow {
 }
 
 async function fetchModulesFromDB(): Promise<ModuleDef[]> {
-  const supabase = createClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.rpc as any)("list_modules_with_tools")
+  const res = await fetch(`${WORKER_URL}/rpc/list_modules_with_tools`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  })
 
-  if (error) {
-    throw new Error(`Failed to fetch modules: ${error.message}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch modules: ${res.status} ${res.statusText}`)
   }
 
-  // data is an array of { id, name, status, descriptions, tools }
-  // tools and descriptions are JSONB which Supabase returns as parsed JSON
+  const data: ModuleRow[] = await res.json()
+
   return ((data || []) as ModuleRow[]).map((row) => ({
     id: row.id,
     name: moduleDisplayNames[row.id] || row.name,

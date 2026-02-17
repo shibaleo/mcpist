@@ -1,6 +1,6 @@
 "use server"
 
-import { revokeApiKey } from "@/lib/api-keys"
+import { revokeApiKey } from "@/lib/mcp/api-keys"
 
 /**
  * Revoke an API key — thin wrapper for backward compatibility
