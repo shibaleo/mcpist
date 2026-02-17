@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const TODOIST_TOKEN_URL = "https://todoist.com/oauth/access_token"
@@ -39,9 +39,10 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
-    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
-      "GET", "/v1/oauth/apps/todoist/credentials"
-    )
+    const client = await createWorkerClient()
+    const { data: credentials } = await client.GET("/v1/oauth/apps/{provider}/credentials", {
+      params: { path: { provider: "todoist" } },
+    })
 
     if (!credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credentials?.message)
@@ -90,9 +91,11 @@ export async function GET(request: Request) {
       expires_at: null,  // Todoist tokens don't expire (until revoked)
     }
 
-    await workerFetch("PUT", "/v1/credentials", {
-      module: "todoist",
-      credentials: tokenCredentials,
+    await client.PUT("/v1/credentials", {
+      body: {
+        module: "todoist",
+        credentials: tokenCredentials,
+      },
     })
 
     // デフォルトツール設定を保存

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 
 const MICROSOFT_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
 const MICROSOFT_SCOPES = [
@@ -23,9 +23,10 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
-    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
-      "GET", "/v1/oauth/apps/microsoft/credentials"
-    )
+    const client = await createWorkerClient()
+    const { data: credentials } = await client.GET("/v1/oauth/apps/{provider}/credentials", {
+      params: { path: { provider: "microsoft" } },
+    })
 
     if (!credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credentials?.message)

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
@@ -60,9 +60,10 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
-    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
-      "GET", "/v1/oauth/apps/atlassian/credentials"
-    )
+    const client = await createWorkerClient()
+    const { data: credentials } = await client.GET("/v1/oauth/apps/{provider}/credentials", {
+      params: { path: { provider: "atlassian" } },
+    })
 
     if (!credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credentials?.message)
@@ -141,9 +142,11 @@ export async function GET(request: Request) {
     const modulesToSave = moduleName === "atlassian" ? ["jira", "confluence"] : [moduleName]
 
     for (const mod of modulesToSave) {
-      await workerFetch("PUT", "/v1/credentials", {
-        module: mod,
-        credentials: tokenCredentials,
+      await client.PUT("/v1/credentials", {
+        body: {
+          module: mod,
+          credentials: tokenCredentials,
+        },
       })
 
       // デフォルトツール設定を保存

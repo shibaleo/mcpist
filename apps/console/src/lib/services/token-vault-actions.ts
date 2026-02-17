@@ -1,32 +1,33 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
 
-interface ServiceConnection {
-  module: string
-  created_at: string
-  updated_at: string
-}
-
-export async function listCredentials(): Promise<ServiceConnection[]> {
-  return workerFetch<ServiceConnection[]>("GET", "/v1/credentials")
+export async function listCredentials() {
+  const client = await createWorkerClient()
+  const { data } = await client.GET("/v1/credentials")
+  return data!
 }
 
 export async function upsertCredential(
   module: string,
   credentials: Record<string, unknown>
-): Promise<{ success: boolean; module: string }> {
-  return workerFetch<{ success: boolean; module: string }>("PUT", "/v1/credentials", {
-    module,
-    credentials,
+) {
+  const client = await createWorkerClient()
+  const { data } = await client.PUT("/v1/credentials", {
+    body: { module, credentials },
   })
+  return data!
 }
 
 export async function deleteCredential(
   module: string
-): Promise<{ success: boolean }> {
-  return workerFetch<{ success: boolean }>("DELETE", `/v1/credentials/${encodeURIComponent(module)}`)
+) {
+  const client = await createWorkerClient()
+  const { data } = await client.DELETE("/v1/credentials/{module}", {
+    params: { path: { module } },
+  })
+  return data!
 }
 
 export async function saveDefaultToolSettingsAction(
@@ -36,10 +37,10 @@ export async function saveDefaultToolSettingsAction(
   if (!mod) return
 
   // Check existing settings
-  const existing = await workerFetch<Array<{ tool_id: string }>>(
-    "GET",
-    `/v1/modules/config?module=${encodeURIComponent(moduleName)}`
-  )
+  const client = await createWorkerClient()
+  const { data: existing } = await client.GET("/v1/modules/config", {
+    params: { query: { module: moduleName } },
+  })
 
   if (existing && existing.length > 0) return
 
@@ -54,8 +55,11 @@ export async function saveDefaultToolSettingsAction(
     }
   }
 
-  await workerFetch("PUT", `/v1/modules/${encodeURIComponent(moduleName)}/tools`, {
-    enabled_tools: enabledTools,
-    disabled_tools: disabledTools,
+  await client.PUT("/v1/modules/{name}/tools", {
+    params: { path: { name: moduleName } },
+    body: {
+      enabled_tools: enabledTools,
+      disabled_tools: disabledTools,
+    },
   })
 }

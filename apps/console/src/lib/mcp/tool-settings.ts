@@ -1,25 +1,20 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
 import type { ToolSetting, ModuleDescription } from "./tool-settings-types"
 
 export type { ToolSetting, ModuleDescription } from "./tool-settings-types"
 
-// モジュール設定の取得結果型 (get_module_config)
-interface ModuleConfigRow {
-  module_name: string
-  description: string | null
-  tool_id: string
-  enabled: boolean
-}
-
 /**
  * 現在のユーザーのモジュール設定を一括取得
  */
-export async function getModuleConfig(moduleName?: string): Promise<ModuleConfigRow[]> {
-  const query = moduleName ? `?module=${encodeURIComponent(moduleName)}` : ""
-  return workerFetch<ModuleConfigRow[]>("GET", `/v1/modules/config${query}`)
+export async function getModuleConfig(moduleName?: string) {
+  const client = await createWorkerClient()
+  const { data } = await client.GET("/v1/modules/config", {
+    params: { query: { module: moduleName } },
+  })
+  return data!
 }
 
 /**
@@ -41,15 +36,16 @@ export async function upsertMyToolSettings(
   moduleName: string,
   enabledTools: string[],
   disabledTools: string[]
-): Promise<{ success: boolean; enabled_count: number; disabled_count: number }> {
-  return workerFetch<{ success: boolean; enabled_count: number; disabled_count: number }>(
-    "PUT",
-    `/v1/modules/${encodeURIComponent(moduleName)}/tools`,
-    {
+) {
+  const client = await createWorkerClient()
+  const { data } = await client.PUT("/v1/modules/{name}/tools", {
+    params: { path: { name: moduleName } },
+    body: {
       enabled_tools: enabledTools,
       disabled_tools: disabledTools,
-    }
-  )
+    },
+  })
+  return data!
 }
 
 /**
@@ -86,10 +82,7 @@ export async function saveDefaultToolSettings(
   const mod = await getModule(moduleName)
   if (!mod) return
 
-  const existing = await workerFetch<ModuleConfigRow[]>(
-    "GET",
-    `/v1/modules/config?module=${encodeURIComponent(moduleName)}`
-  )
+  const existing = await getModuleConfig(moduleName)
 
   if (existing && existing.length > 0) return
 
@@ -104,10 +97,7 @@ export async function saveDefaultToolSettings(
     }
   }
 
-  await workerFetch("PUT", `/v1/modules/${encodeURIComponent(moduleName)}/tools`, {
-    enabled_tools: enabledTools,
-    disabled_tools: disabledTools,
-  })
+  await upsertMyToolSettings(moduleName, enabledTools, disabledTools)
 }
 
 // =============================================================================
@@ -121,7 +111,7 @@ export async function getMyModuleDescriptions(): Promise<ModuleDescription[]> {
   const rows = await getModuleConfig()
   const map = new Map<string, string>()
   for (const r of rows) {
-    if (r.description && !map.has(r.module_name)) {
+    if (r.description != null && !map.has(r.module_name)) {
       map.set(r.module_name, r.description)
     }
   }
@@ -137,10 +127,11 @@ export async function getMyModuleDescriptions(): Promise<ModuleDescription[]> {
 export async function updateModuleDescription(
   moduleName: string,
   description: string
-): Promise<{ success: boolean }> {
-  return workerFetch<{ success: boolean }>(
-    "PUT",
-    `/v1/modules/${encodeURIComponent(moduleName)}/description`,
-    { description }
-  )
+) {
+  const client = await createWorkerClient()
+  const { data } = await client.PUT("/v1/modules/{name}/description", {
+    params: { path: { name: moduleName } },
+    body: { description },
+  })
+  return data!
 }

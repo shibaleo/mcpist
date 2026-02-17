@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 
 /**
  * POST /api/credits/grant-signup-bonus
@@ -8,14 +8,9 @@ import { workerFetch } from "@/lib/worker-client"
  */
 export async function POST() {
   try {
-    const result = await workerFetch<{
-      success: boolean
-      already_completed?: boolean
-      plan_id?: string
-      error?: string
-      message?: string
-    }>("POST", "/v1/user/onboarding", {
-      event_id: "onboarding",
+    const client = await createWorkerClient()
+    const { data: result } = await client.POST("/v1/user/onboarding", {
+      body: { event_id: "onboarding" },
     })
 
     if (result?.success) {

@@ -1,6 +1,7 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
+import type { components } from "@/lib/worker"
 
 export interface UserPlan {
   plan_id: string
@@ -22,24 +23,16 @@ export interface UserContext {
   daily_limit: number
 }
 
-interface UserContextRow {
-  account_status: string
-  plan_id: string
-  daily_used: number
-  daily_limit: number
-  role: string
-  settings: Record<string, unknown> | null
-  display_name: string | null
-  connected_count: number
-}
+export type UsageStats = components["schemas"]["UsageData"]
 
 /**
  * Get the current user's plan info
  */
 export async function getUserPlan(): Promise<UserPlan | null> {
   try {
-    const rows = await workerFetch<UserContextRow[]>("GET", "/v1/user/context")
-    const context = Array.isArray(rows) ? rows[0] : rows
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/context")
+    const context = data![0]
     if (!context) return null
 
     return {
@@ -57,12 +50,11 @@ export async function getUserPlan(): Promise<UserPlan | null> {
  */
 export async function getServiceConnections(): Promise<ServiceConnection[]> {
   try {
-    const data = await workerFetch<Array<{ module: string; created_at: string; updated_at: string }>>(
-      "GET",
-      "/v1/credentials"
-    )
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/credentials")
+    const rows = data!
 
-    return (data || []).map((item) => ({
+    return rows.map((item) => ({
       id: item.module,
       service: item.module,
       connected_at: item.created_at,
@@ -78,8 +70,9 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
  */
 export async function getUserContext(): Promise<UserContext | null> {
   try {
-    const rows = await workerFetch<UserContextRow[]>("GET", "/v1/user/context")
-    const context = Array.isArray(rows) ? rows[0] : rows
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/context")
+    const context = data![0]
     if (!context) return null
 
     return {
@@ -94,25 +87,20 @@ export async function getUserContext(): Promise<UserContext | null> {
 }
 
 /**
- * Usage statistics for a period
- */
-export interface UsageStats {
-  total_used: number
-  by_module: Record<string, number>
-  period: {
-    start: string
-    end: string
-  }
-}
-
-/**
  * Get the current user's usage statistics for a period
  */
 export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageStats | null> {
   try {
-    const start = encodeURIComponent(startDate.toISOString())
-    const end = encodeURIComponent(endDate.toISOString())
-    return workerFetch<UsageStats>("GET", `/v1/user/usage?start=${start}&end=${end}`)
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/usage", {
+      params: {
+        query: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+        },
+      },
+    })
+    return data!
   } catch {
     return null
   }

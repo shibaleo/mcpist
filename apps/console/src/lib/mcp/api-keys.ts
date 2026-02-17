@@ -1,39 +1,37 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
+import type { components } from "@/lib/worker"
 
-export interface ApiKey {
-  id: string
-  display_name: string
-  key_prefix: string
-  last_used_at: string | null
-  expires_at: string | null
-  revoked_at: string | null
-}
+export type ApiKey = components["schemas"]["ApiKey"]
+export type GenerateApiKeyResult = components["schemas"]["GenerateApiKeyResult"]
 
-export interface GenerateApiKeyResult {
-  api_key: string
-  key_prefix: string
-}
-
-export async function listApiKeys(): Promise<ApiKey[]> {
-  return workerFetch<ApiKey[]>("GET", "/v1/api-keys")
+export async function listApiKeys() {
+  const client = await createWorkerClient()
+  const { data } = await client.GET("/v1/api-keys")
+  return data!
 }
 
 export async function generateApiKey(
   name: string,
   expiresInDays: number | null = null
-): Promise<GenerateApiKeyResult> {
-  return workerFetch<GenerateApiKeyResult>("POST", "/v1/api-keys", {
-    display_name: name,
-    expires_at: expiresInDays
-      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-      : undefined,
+) {
+  const client = await createWorkerClient()
+  const { data } = await client.POST("/v1/api-keys", {
+    body: {
+      display_name: name,
+      expires_at: expiresInDays
+        ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+        : undefined,
+    },
   })
+  return data!
 }
 
-export async function revokeApiKey(
-  keyId: string
-): Promise<{ success: boolean }> {
-  return workerFetch<{ success: boolean }>("DELETE", `/v1/api-keys/${keyId}`)
+export async function revokeApiKey(keyId: string) {
+  const client = await createWorkerClient()
+  const { data } = await client.DELETE("/v1/api-keys/{id}", {
+    params: { path: { id: keyId } },
+  })
+  return data!
 }

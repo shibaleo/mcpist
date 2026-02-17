@@ -510,7 +510,7 @@ export default function McpConnectionPage() {
                     <p className="font-mono truncate">{apiKey.key_prefix}</p>
                     <div className="flex flex-wrap gap-x-3">
                       {apiKey.expires_at && <span>有効期限: {formatDate(apiKey.expires_at)}</span>}
-                      <span>最終使用: {formatLastUsed(apiKey.last_used_at)}</span>
+                      <span>最終使用: {formatLastUsed(apiKey.last_used_at ?? null)}</span>
                     </div>
                   </div>
                 </div>

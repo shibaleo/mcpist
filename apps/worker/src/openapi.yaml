@@ -160,6 +160,10 @@ paths:
       responses:
         "200":
           description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertToolSettingsResult"
         "401":
           description: Unauthorized
 
@@ -186,6 +190,10 @@ paths:
       responses:
         "200":
           description: Description updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
         "401":
           description: Unauthorized
 
@@ -248,6 +256,10 @@ paths:
       responses:
         "200":
           description: API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
         "401":
           description: Unauthorized
 
@@ -294,7 +306,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Prompt"
+                $ref: "#/components/schemas/UpsertPromptResult"
         "401":
           description: Unauthorized
 
@@ -319,7 +331,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Prompt"
+                $ref: "#/components/schemas/GetPromptResult"
         "401":
           description: Unauthorized
     delete:
@@ -339,6 +351,10 @@ paths:
       responses:
         "200":
           description: Prompt deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePromptResult"
         "401":
           description: Unauthorized
 
@@ -376,6 +392,10 @@ paths:
       responses:
         "200":
           description: Credential saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertCredentialResult"
         "401":
           description: Unauthorized
 
@@ -396,6 +416,10 @@ paths:
       responses:
         "200":
           description: Credential deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
         "401":
           description: Unauthorized
 
@@ -414,7 +438,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserContext"
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserContext"
         "401":
           description: Unauthorized
 
@@ -481,6 +507,10 @@ paths:
       responses:
         "200":
           description: Stripe customer linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
         "401":
           description: Unauthorized
 
@@ -500,6 +530,10 @@ paths:
       responses:
         "200":
           description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
         "401":
           description: Unauthorized
 
@@ -519,6 +553,10 @@ paths:
       responses:
         "200":
           description: Onboarding step completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingResult"
         "401":
           description: Unauthorized
 
@@ -580,6 +618,10 @@ paths:
       responses:
         "200":
           description: Consent revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeConsentResult"
         "401":
           description: Unauthorized
 
@@ -661,7 +703,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/OAuthConsent"
+                  $ref: "#/components/schemas/OAuthConsentAdmin"
         "401":
           description: Unauthorized
         "403":
@@ -678,31 +720,37 @@ components:
     # ── Modules ──
     ModuleWithTools:
       type: object
+      required: [id, name, status]
       properties:
-        module_name:
+        id:
           type: string
-        description:
+        name:
           type: string
+        status:
+          type: string
+        descriptions:
+          type: object
+          additionalProperties:
+            type: string
         tools:
           type: array
           items:
             type: object
+            additionalProperties: true
 
     ModuleConfig:
       type: object
+      required: [module_name, tool_id, enabled]
       properties:
         module_name:
           type: string
-        enabled_tools:
-          type: array
-          items:
-            type: string
-        disabled_tools:
-          type: array
-          items:
-            type: string
         description:
           type: string
+          nullable: true
+        tool_id:
+          type: string
+        enabled:
+          type: boolean
 
     UpsertToolSettingsBody:
       type: object
@@ -717,6 +765,17 @@ components:
           items:
             type: string
 
+    UpsertToolSettingsResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        enabled_count:
+          type: integer
+        disabled_count:
+          type: integer
+
     UpsertModuleDescriptionBody:
       type: object
       required: [description]
@@ -727,23 +786,27 @@ components:
     # ── API Keys ──
     ApiKey:
       type: object
+      required: [id, key_prefix, display_name]
       properties:
         id:
           type: string
           format: uuid
+        key_prefix:
+          type: string
         display_name:
           type: string
-        prefix:
-          type: string
-        created_at:
-          type: string
-          format: date-time
         expires_at:
           type: string
           format: date-time
+          nullable: true
         last_used_at:
           type: string
           format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
 
     GenerateApiKeyBody:
       type: object
@@ -758,44 +821,70 @@ components:
 
     GenerateApiKeyResult:
       type: object
+      required: [api_key, key_prefix]
       properties:
-        id:
-          type: string
-          format: uuid
         api_key:
           type: string
           description: Full API key (only returned at creation time)
-        display_name:
+        key_prefix:
           type: string
-        prefix:
-          type: string
-        expires_at:
-          type: string
-          format: date-time
 
     # ── Prompts ──
     Prompt:
       type: object
+      required: [id, name, content, enabled, created_at, updated_at]
       properties:
         id:
           type: string
           format: uuid
+        module_name:
+          type: string
+          nullable: true
         name:
           type: string
-        content:
+        description:
           type: string
-        module_name:
+          nullable: true
+        content:
           type: string
         enabled:
           type: boolean
-        description:
-          type: string
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+
+    GetPromptResult:
+      type: object
+      required: [found]
+      properties:
+        found:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        module_name:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        error:
+          type: string
 
     UpsertPromptBody:
       type: object
@@ -816,14 +905,39 @@ components:
         description:
           type: string
 
+    UpsertPromptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        error:
+          type: string
+
+    DeletePromptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
     # ── Credentials ──
     Credential:
       type: object
+      required: [module, created_at, updated_at]
       properties:
         module:
           type: string
-        has_credentials:
-          type: boolean
+        created_at:
+          type: string
+          format: date-time
         updated_at:
           type: string
           format: date-time
@@ -837,39 +951,87 @@ components:
           description: Module identifier (e.g. github, notion)
         credentials:
           type: object
+          additionalProperties: true
           description: Credential data (access_token, refresh_token, etc.)
+
+    UpsertCredentialResult:
+      type: object
+      required: [success, module]
+      properties:
+        success:
+          type: boolean
+        module:
+          type: string
+
+    SuccessResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
 
     # ── User ──
     UserContext:
       type: object
+      required: [account_status, plan_id, daily_used, daily_limit, role, connected_count]
       properties:
-        user_id:
+        account_status:
           type: string
-          format: uuid
+        plan_id:
+          type: string
+        daily_used:
+          type: integer
+        daily_limit:
+          type: integer
+        enabled_modules:
+          type: array
+          items:
+            type: string
+        enabled_tools:
+          type: object
+          additionalProperties: true
+        language:
+          type: string
+        module_descriptions:
+          type: object
+          additionalProperties: true
         role:
           type: string
-        plan:
+        settings:
+          type: object
+          additionalProperties: true
+          nullable: true
+        display_name:
           type: string
-        email:
-          type: string
+          nullable: true
+        connected_count:
+          type: integer
 
     UsageData:
       type: object
+      required: [total_used, by_module, period]
       properties:
-        total_requests:
+        total_used:
           type: integer
-        period_start:
-          type: string
-          format: date
-        period_end:
-          type: string
-          format: date
+        by_module:
+          type: object
+          additionalProperties:
+            type: integer
+        period:
+          type: object
+          required: [start, end]
+          properties:
+            start:
+              type: string
+            end:
+              type: string
 
     StripeCustomer:
       type: object
       properties:
         stripe_customer_id:
           type: string
+          nullable: true
 
     LinkStripeCustomerBody:
       type: object
@@ -884,6 +1046,7 @@ components:
       properties:
         settings:
           type: object
+          additionalProperties: true
           description: User settings object
 
     CompleteOnboardingBody:
@@ -893,34 +1056,87 @@ components:
         event_id:
           type: string
 
+    OnboardingResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        already_completed:
+          type: boolean
+        plan_id:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+
     # ── OAuth ──
     OAuthAppCredentials:
       type: object
+      required: [client_id, client_secret, redirect_uri]
       properties:
         provider:
           type: string
         client_id:
           type: string
+        client_secret:
+          type: string
         redirect_uri:
+          type: string
+        scopes:
+          type: string
+        error:
+          type: string
+        message:
           type: string
 
     OAuthConsent:
       type: object
+      required: [id, client_id, scopes, granted_at]
       properties:
         id:
           type: string
           format: uuid
-        provider:
+        client_id:
           type: string
         client_name:
           type: string
+          nullable: true
         scopes:
-          type: array
-          items:
-            type: string
-        created_at:
+          type: string
+        granted_at:
           type: string
           format: date-time
+
+    OAuthConsentAdmin:
+      type: object
+      required: [id, client_id, scopes, granted_at, user_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        user_email:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+        client_name:
+          type: string
+          nullable: true
+        scopes:
+          type: string
+        granted_at:
+          type: string
+          format: date-time
+
+    RevokeConsentResult:
+      type: object
+      properties:
+        revoked:
+          type: boolean
 
     # ── Admin ──
     OAuthApp:

@@ -1,49 +1,18 @@
-import { createClient } from "@/lib/supabase/server"
+/**
+ * Direct PostgREST access with service_role key.
+ * Used only by Stripe webhooks where no user JWT is available.
+ *
+ * For all other Worker API calls, use createWorkerClient() from @/lib/worker.
+ */
 
-const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_MCP_SERVER_URL!
-
-export class WorkerAPIError extends Error {
+export class PostgRESTError extends Error {
   constructor(
     public status: number,
     public body: string
   ) {
-    super(`Worker API error ${status}: ${body}`)
-    this.name = "WorkerAPIError"
+    super(`PostgREST error ${status}: ${body}`)
+    this.name = "PostgRESTError"
   }
-}
-
-/** @deprecated Use WorkerAPIError instead */
-export const PostgRESTError = WorkerAPIError
-
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
-
-/**
- * Worker RESTful API を呼び出す（JWT 認証付き）。
- * session cookie から JWT を取得し Authorization ヘッダーに付与。
- */
-export async function workerFetch<T>(
-  method: HttpMethod,
-  path: string,
-  body?: Record<string, unknown>
-): Promise<T> {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-
-  const headers: Record<string, string> = {}
-  if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`
-  }
-  if (body) {
-    headers["Content-Type"] = "application/json"
-  }
-
-  const res = await fetch(`${WORKER_URL}${path}`, {
-    method,
-    headers,
-    ...(body && { body: JSON.stringify(body) }),
-  })
-  if (!res.ok) throw new WorkerAPIError(res.status, await res.text())
-  return res.json()
 }
 
 /**
@@ -66,6 +35,6 @@ export async function rpcDirect<T>(
     },
     body: JSON.stringify(params),
   })
-  if (!res.ok) throw new WorkerAPIError(res.status, await res.text())
+  if (!res.ok) throw new PostgRESTError(res.status, await res.text())
   return res.json()
 }

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    const data = await workerFetch("PUT", "/v1/user/settings", {
-      settings: body,
+    const client = await createWorkerClient()
+    const { data } = await client.PUT("/v1/user/settings", {
+      body: { settings: body },
     })
 
     return NextResponse.json({ success: true, data })
@@ -21,8 +22,9 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const data = await workerFetch<{ settings: Record<string, unknown> }[]>("GET", "/v1/user/context")
-    const ctx = Array.isArray(data) ? data[0] : data
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/context")
+    const ctx = data?.[0]
     return NextResponse.json(ctx?.settings || {})
   } catch (error) {
     console.error("Preferences API error:", error)

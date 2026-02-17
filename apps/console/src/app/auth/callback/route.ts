@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
@@ -82,10 +82,11 @@ export async function GET(request: Request) {
 
   if (user) {
     // If account_status is pre_active, onboarding is required
-    const context = await workerFetch<{ account_status: string }[]>("GET", "/v1/user/context")
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/context")
 
     // Redirect to onboarding when needed
-    const row = Array.isArray(context) ? context[0] : context
+    const row = data?.[0]
     const needsOnboarding = row?.account_status === "pre_active"
 
     if (needsOnboarding && !returnTo.startsWith("/onboarding")) {

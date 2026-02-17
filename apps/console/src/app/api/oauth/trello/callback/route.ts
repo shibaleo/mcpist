@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 import crypto from "crypto"
 import { cookies } from "next/headers"
@@ -90,9 +90,10 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得
-    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
-      "GET", "/v1/oauth/apps/trello/credentials"
-    )
+    const client = await createWorkerClient()
+    const { data: credentials } = await client.GET("/v1/oauth/apps/{provider}/credentials", {
+      params: { path: { provider: "trello" } },
+    })
 
     if (!credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credentials?.message)
@@ -180,9 +181,11 @@ export async function GET(request: Request) {
       },
     }
 
-    await workerFetch("PUT", "/v1/credentials", {
-      module: "trello",
-      credentials: tokenCredentials,
+    await client.PUT("/v1/credentials", {
+      body: {
+        module: "trello",
+        credentials: tokenCredentials,
+      },
     })
 
     // デフォルトツール設定を保存

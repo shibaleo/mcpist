@@ -1,17 +1,6 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
-
-interface UserContextRow {
-  account_status: string
-  plan_id: string
-  daily_used: number
-  daily_limit: number
-  role: string
-  settings: Record<string, unknown> | null
-  display_name: string | null
-  connected_count: number
-}
+import { createWorkerClient } from "@/lib/worker"
 
 export interface AuthUserContext {
   role: "user" | "admin"
@@ -23,13 +12,15 @@ export interface AuthUserContext {
  */
 export async function fetchAuthUserContext(): Promise<AuthUserContext | null> {
   try {
-    const rows = await workerFetch<UserContextRow[]>("GET", "/v1/user/context")
-    const ctx = Array.isArray(rows) ? rows[0] : rows
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/context")
+    const rows = data!
+    const ctx = rows[0]
     if (!ctx) return null
 
     return {
       role: ctx.role === "admin" ? "admin" : "user",
-      displayName: ctx.display_name,
+      displayName: ctx.display_name ?? null,
     }
   } catch {
     return null

@@ -1,52 +1,28 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
+import type { components } from "@/lib/worker"
 
-export interface Prompt {
-  id: string
-  module_name: string | null
-  name: string
-  description: string | null
-  content: string
-  enabled: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface UpsertPromptResult {
-  success: boolean
-  id?: string
-  action?: string
-  error?: string
-}
-
-export interface DeletePromptResult {
-  success: boolean
-  error?: string
-}
+export type Prompt = components["schemas"]["Prompt"]
+export type UpsertPromptResult = components["schemas"]["UpsertPromptResult"]
+export type DeletePromptResult = components["schemas"]["DeletePromptResult"]
 
 export async function listPrompts(moduleName?: string): Promise<Prompt[]> {
-  const query = moduleName ? `?module=${encodeURIComponent(moduleName)}` : ""
-  return workerFetch<Prompt[]>("GET", `/v1/prompts${query}`)
-}
-
-interface GetPromptResponse {
-  found: boolean
-  id?: string
-  module_name?: string | null
-  name?: string
-  description?: string | null
-  content?: string
-  enabled?: boolean
-  created_at?: string
-  updated_at?: string
-  error?: string
+  const client = await createWorkerClient()
+  const { data } = await client.GET("/v1/prompts", {
+    params: { query: { module: moduleName } },
+  })
+  return data!
 }
 
 export async function getPrompt(promptId: string): Promise<Prompt | null> {
-  const response = await workerFetch<GetPromptResponse>("GET", `/v1/prompts/${promptId}`)
+  const client = await createWorkerClient()
+  const { data } = await client.GET("/v1/prompts/{id}", {
+    params: { path: { id: promptId } },
+  })
+  const response = data!
 
-  if (!response || !response.found) {
+  if (!response.found) {
     return null
   }
 
@@ -70,16 +46,24 @@ export async function upsertPrompt(
   enabled: boolean = true,
   description?: string
 ): Promise<UpsertPromptResult> {
-  return workerFetch<UpsertPromptResult>("PUT", "/v1/prompts", {
-    name,
-    content,
-    module_name: moduleName,
-    prompt_id: promptId,
-    enabled,
-    description,
+  const client = await createWorkerClient()
+  const { data } = await client.PUT("/v1/prompts", {
+    body: {
+      name,
+      content,
+      module_name: moduleName,
+      prompt_id: promptId,
+      enabled,
+      description,
+    },
   })
+  return data!
 }
 
 export async function deletePrompt(promptId: string): Promise<DeletePromptResult> {
-  return workerFetch<DeletePromptResult>("DELETE", `/v1/prompts/${promptId}`)
+  const client = await createWorkerClient()
+  const { data } = await client.DELETE("/v1/prompts/{id}", {
+    params: { path: { id: promptId } },
+  })
+  return data!
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 
 const TODOIST_AUTH_URL = "https://todoist.com/oauth/authorize"
 
@@ -26,9 +26,10 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）
-    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
-      "GET", "/v1/oauth/apps/todoist/credentials"
-    )
+    const client = await createWorkerClient()
+    const { data: credentials } = await client.GET("/v1/oauth/apps/{provider}/credentials", {
+      params: { path: { provider: "todoist" } },
+    })
 
     if (!credentials || credentials.error) {
       console.error("Failed to get OAuth credentials:", credentials?.message)

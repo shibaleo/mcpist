@@ -1,6 +1,6 @@
 "use server"
 
-import { workerFetch } from "@/lib/worker-client"
+import { createWorkerClient } from "@/lib/worker"
 
 export type Language = "en-US" | "ja-JP"
 
@@ -19,13 +19,9 @@ const DEFAULT_SETTINGS: UserSettings = {
  */
 export async function getUserSettings(): Promise<UserSettings> {
   try {
-    const rows = await workerFetch<Array<{
-      settings: Record<string, unknown> | null
-      display_name: string | null
-      language: string
-    }>>("GET", "/v1/user/context")
-
-    const ctx = Array.isArray(rows) ? rows[0] : rows
+    const client = await createWorkerClient()
+    const { data } = await client.GET("/v1/user/context")
+    const ctx = data![0]
     if (!ctx) return DEFAULT_SETTINGS
 
     return {
@@ -44,10 +40,11 @@ export async function updateUserSettings(
   settings: Partial<UserSettings>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const result = await workerFetch<{ success: boolean }>("PUT", "/v1/user/settings", {
-      settings,
+    const client = await createWorkerClient()
+    const { data } = await client.PUT("/v1/user/settings", {
+      body: { settings },
     })
-    return { success: result?.success ?? false }
+    return { success: data?.success ?? false }
   } catch (error) {
     console.error("Failed to update user settings:", error)
     return { success: false, error: String(error) }
