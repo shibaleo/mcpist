@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { createStripeClient } from "@/lib/billing/stripe"
 import { createWorkerClient } from "@/lib/worker"
 
@@ -9,20 +8,17 @@ import { createWorkerClient } from "@/lib/worker"
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const client = await createWorkerClient()
 
-    if (authError || !user) {
+    // Verify user is authenticated (createWorkerClient uses JWT)
+    const { data: contextRows } = await client.GET("/v1/user/context")
+    if (!contextRows?.[0]) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const stripe = createStripeClient()
 
     // Get Stripe Customer ID
-    const client = await createWorkerClient()
     const { data } = await client.GET("/v1/user/stripe")
     const stripeCustomerId = data?.stripe_customer_id
 

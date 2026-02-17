@@ -624,6 +624,9 @@ export interface components {
             success: boolean;
         };
         UserContext: {
+            /** Format: uuid */
+            user_id: string;
+            email: string;
             account_status: string;
             plan_id: string;
             daily_used: number;

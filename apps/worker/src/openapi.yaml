@@ -973,8 +973,13 @@ components:
     # ── User ──
     UserContext:
       type: object
-      required: [account_status, plan_id, daily_used, daily_limit, role, connected_count]
+      required: [user_id, email, account_status, plan_id, daily_used, daily_limit, role, connected_count]
       properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
         account_status:
           type: string
         plan_id:

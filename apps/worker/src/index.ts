@@ -24,6 +24,16 @@ type Bindings = Env;
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// --- Global Error Handler ---
+
+app.onError((err, c) => {
+  console.error(`[Worker] Unhandled error on ${c.req.method} ${c.req.path}:`, err);
+  return c.json(
+    { error: "Internal server error", message: err.message },
+    500
+  );
+});
+
 // --- Middleware ---
 
 app.use("*", cors());

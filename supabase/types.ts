@@ -94,6 +94,7 @@ export type Database = {
           daily_limit: number
           daily_used: number
           display_name: string
+          email: string
           enabled_modules: string[]
           enabled_tools: Json
           language: string
@@ -101,6 +102,7 @@ export type Database = {
           plan_id: string
           role: string
           settings: Json
+          user_id: string
         }[]
       }
       link_stripe_customer: {

@@ -43,7 +43,8 @@ export async function callPostgRESTRpc<T>(
     body: JSON.stringify(params),
   });
   if (!res.ok) {
-    throw new Error(`PostgREST RPC ${rpcName} failed: ${res.status}`);
+    const body = await res.text();
+    throw new Error(`PostgREST RPC ${rpcName} failed: ${res.status} ${body}`);
   }
   return res.json() as Promise<T>;
 }
