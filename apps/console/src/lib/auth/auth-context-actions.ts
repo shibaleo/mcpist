@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 interface UserContextRow {
   account_status: string
@@ -19,11 +19,11 @@ export interface AuthUserContext {
 }
 
 /**
- * Fetch authenticated user's role and display_name via get_user_context RPC
+ * Fetch authenticated user's role and display_name via GET /v1/user/context
  */
 export async function fetchAuthUserContext(): Promise<AuthUserContext | null> {
   try {
-    const rows = await rpc<UserContextRow[]>("get_user_context")
+    const rows = await workerFetch<UserContextRow[]>("GET", "/v1/user/context")
     const ctx = Array.isArray(rows) ? rows[0] : rows
     if (!ctx) return null
 

@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 export type Language = "en-US" | "ja-JP"
 
@@ -15,15 +15,15 @@ const DEFAULT_SETTINGS: UserSettings = {
 }
 
 /**
- * Get current user's settings via get_user_context
+ * Get current user's settings via GET /v1/user/context
  */
 export async function getUserSettings(): Promise<UserSettings> {
   try {
-    const rows = await rpc<Array<{
+    const rows = await workerFetch<Array<{
       settings: Record<string, unknown> | null
       display_name: string | null
       language: string
-    }>>("get_user_context")
+    }>>("GET", "/v1/user/context")
 
     const ctx = Array.isArray(rows) ? rows[0] : rows
     if (!ctx) return DEFAULT_SETTINGS
@@ -44,8 +44,8 @@ export async function updateUserSettings(
   settings: Partial<UserSettings>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const result = await rpc<{ success: boolean }>("update_settings", {
-      p_settings: settings,
+    const result = await workerFetch<{ success: boolean }>("PUT", "/v1/user/settings", {
+      settings,
     })
     return { success: result?.success ?? false }
   } catch (error) {

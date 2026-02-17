@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 export interface OAuthConsent {
   id: string
@@ -19,7 +19,7 @@ export interface OAuthConsentAdmin extends OAuthConsent {
  * ユーザー自身のOAuthコンセント一覧を取得
  */
 export async function listOAuthConsents(): Promise<OAuthConsent[]> {
-  const data = await rpc<OAuthConsent[]>("list_oauth_consents")
+  const data = await workerFetch<OAuthConsent[]>("GET", "/v1/oauth/consents")
   return data || []
 }
 
@@ -27,9 +27,7 @@ export async function listOAuthConsents(): Promise<OAuthConsent[]> {
  * OAuthコンセントを取り消し
  */
 export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
-  const data = await rpc<{ revoked?: boolean }>("revoke_oauth_consent", {
-    p_consent_id: consentId,
-  })
+  const data = await workerFetch<{ revoked?: boolean }>("DELETE", `/v1/oauth/consents/${consentId}`)
   return data?.revoked ?? false
 }
 
@@ -37,6 +35,6 @@ export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
  * 全ユーザーのOAuthコンセント一覧を取得（管理者用）
  */
 export async function listAllOAuthConsents(): Promise<OAuthConsentAdmin[]> {
-  const data = await rpc<OAuthConsentAdmin[]>("list_all_oauth_consents")
+  const data = await workerFetch<OAuthConsentAdmin[]>("GET", "/v1/admin/oauth/consents")
   return data || []
 }

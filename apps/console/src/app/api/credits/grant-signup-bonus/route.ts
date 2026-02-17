@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 /**
  * POST /api/credits/grant-signup-bonus
@@ -8,16 +8,14 @@ import { rpc } from "@/lib/worker-client"
  */
 export async function POST() {
   try {
-    // p_event_id は Worker 側で注入される p_user_id を使って生成されるため、
-    // ここでは固定プレフィックスのみ渡す（RPC 側で p_user_id と結合）
-    const result = await rpc<{
+    const result = await workerFetch<{
       success: boolean
       already_completed?: boolean
       plan_id?: string
       error?: string
       message?: string
-    }>("complete_user_onboarding", {
-      p_event_id: "onboarding",
+    }>("POST", "/v1/user/onboarding", {
+      event_id: "onboarding",
     })
 
     if (result?.success) {

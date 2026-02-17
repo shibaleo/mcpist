@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createStripeClient } from "@/lib/billing/stripe"
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 /**
  * POST /api/stripe/portal
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const stripe = createStripeClient()
 
     // Get Stripe Customer ID
-    const stripeCustomerId = await rpc<string>("get_stripe_customer_id")
+    const stripeCustomerId = await workerFetch<string>("GET", "/v1/user/stripe")
 
     if (!stripeCustomerId) {
       return NextResponse.json(

@@ -2,41 +2,47 @@ import { createClient } from "@/lib/supabase/server"
 
 const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_MCP_SERVER_URL!
 
-export class PostgRESTError extends Error {
+export class WorkerAPIError extends Error {
   constructor(
     public status: number,
     public body: string
   ) {
-    super(`PostgREST error ${status}: ${body}`)
-    this.name = "PostgRESTError"
+    super(`Worker API error ${status}: ${body}`)
+    this.name = "WorkerAPIError"
   }
 }
 
+/** @deprecated Use WorkerAPIError instead */
+export const PostgRESTError = WorkerAPIError
+
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
+
 /**
- * Worker 経由で RPC を呼び出す（認証付き）。
+ * Worker RESTful API を呼び出す（JWT 認証付き）。
  * session cookie から JWT を取得し Authorization ヘッダーに付与。
- * Worker が p_user_id を自動注入するため、呼び出し側で渡す必要なし。
  */
-export async function rpc<T>(
-  name: string,
-  params: Record<string, unknown> = {}
+export async function workerFetch<T>(
+  method: HttpMethod,
+  path: string,
+  body?: Record<string, unknown>
 ): Promise<T> {
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  }
+  const headers: Record<string, string> = {}
   if (session?.access_token) {
     headers["Authorization"] = `Bearer ${session.access_token}`
   }
+  if (body) {
+    headers["Content-Type"] = "application/json"
+  }
 
-  const res = await fetch(`${WORKER_URL}/v1/rpc/${name}`, {
-    method: "POST",
+  const res = await fetch(`${WORKER_URL}${path}`, {
+    method,
     headers,
-    body: JSON.stringify(params),
+    ...(body && { body: JSON.stringify(body) }),
   })
-  if (!res.ok) throw new PostgRESTError(res.status, await res.text())
+  if (!res.ok) throw new WorkerAPIError(res.status, await res.text())
   return res.json()
 }
 
@@ -60,6 +66,6 @@ export async function rpcDirect<T>(
     },
     body: JSON.stringify(params),
   })
-  if (!res.ok) throw new PostgRESTError(res.status, await res.text())
+  if (!res.ok) throw new WorkerAPIError(res.status, await res.text())
   return res.json()
 }

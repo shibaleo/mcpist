@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 const TICKTICK_AUTHORIZE_URL = "https://ticktick.com/oauth/authorize"
 
@@ -25,9 +25,8 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得
-    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
-      "get_oauth_app_credentials",
-      { p_provider: "ticktick" }
+    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; scopes?: string; error?: string; message?: string }>(
+      "GET", "/v1/oauth/apps/ticktick/credentials"
     )
 
     if (!credentials || credentials.error) {

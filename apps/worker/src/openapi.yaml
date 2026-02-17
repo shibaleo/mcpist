@@ -37,7 +37,7 @@ paths:
     get:
       operationId: getOAuthProtectedResource
       summary: OAuth Protected Resource Metadata (RFC 9728)
-      tags: [oauth]
+      tags: [oauth-discovery]
       responses:
         "200":
           description: Protected resource metadata JSON
@@ -46,7 +46,7 @@ paths:
     get:
       operationId: getOAuthAuthorizationServer
       summary: OAuth Authorization Server Metadata (RFC 8414)
-      tags: [oauth]
+      tags: [oauth-discovery]
       responses:
         "200":
           description: Authorization server metadata JSON
@@ -55,7 +55,7 @@ paths:
     get:
       operationId: getV1McpOAuthProtectedResource
       summary: MCP-scoped OAuth Protected Resource Metadata
-      tags: [oauth]
+      tags: [oauth-discovery]
       responses:
         "200":
           description: Protected resource metadata JSON
@@ -64,12 +64,12 @@ paths:
     get:
       operationId: getV1McpOAuthAuthorizationServer
       summary: MCP-scoped OAuth Authorization Server Metadata
-      tags: [oauth]
+      tags: [oauth-discovery]
       responses:
         "200":
           description: Authorization server metadata JSON
 
-  # ── MCP Endpoint ─────────────────────────────────────────────
+  # ── MCP Transport ──────────────────────────────────────────
   /v1/mcp/{path}:
     post:
       operationId: mcpTransport
@@ -92,21 +92,56 @@ paths:
         "200":
           description: MCP JSON-RPC response
         "401":
-          description: Unauthorized — missing or invalid credentials
+          description: Unauthorized
         "503":
           description: Service unavailable
 
-  # ── RPC Endpoint ─────────────────────────────────────────────
-  /v1/rpc/{name}:
-    post:
-      operationId: callRpc
-      summary: Call a server-side function
-      description: >-
-        Calls a named server-side function.
-        Some functions are public (no auth required),
-        some require admin privileges,
-        and most are user-scoped (require authentication).
-      tags: [rpc]
+  # ── Modules (public + user-scoped) ─────────────────────────
+  /v1/modules:
+    get:
+      operationId: listModules
+      summary: List available modules with their tools
+      tags: [modules]
+      responses:
+        "200":
+          description: Module list with tool definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleWithTools"
+
+  /v1/modules/config:
+    get:
+      operationId: getModuleConfig
+      summary: Get module configuration
+      tags: [modules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+          description: Filter by module name
+      responses:
+        "200":
+          description: Module configuration
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleConfig"
+        "401":
+          description: Unauthorized
+
+  /v1/modules/{name}/tools:
+    put:
+      operationId: upsertToolSettings
+      summary: Update tool enable/disable settings for a module
+      tags: [modules]
       security:
         - bearerAuth: []
       parameters:
@@ -115,60 +150,522 @@ paths:
           required: true
           schema:
             type: string
-            enum:
-              # Public (no auth required)
-              - list_modules_with_tools
-              - get_oauth_app_credentials
-              # Admin (requires admin role)
-              - list_oauth_apps
-              - upsert_oauth_app
-              - delete_oauth_app
-              - list_all_oauth_consents
-              # User-scoped (requires authentication)
-              - get_user_context
-              - get_usage
-              - get_stripe_customer_id
-              - link_stripe_customer
-              - list_credentials
-              - upsert_credential
-              - delete_credential
-              - get_module_config
-              - upsert_tool_settings
-              - upsert_module_description
-              - list_api_keys
-              - generate_api_key
-              - revoke_api_key
-              - list_prompts
-              - get_prompt
-              - upsert_prompt
-              - delete_prompt
-              - list_oauth_consents
-              - revoke_oauth_consent
-              - update_settings
-              - complete_user_onboarding
-          description: Function name to call
+          description: Module name
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              description: >-
-                Function parameters (JSON object). Varies per function.
-                See component schemas for per-function parameter details.
+              $ref: "#/components/schemas/UpsertToolSettingsBody"
       responses:
         "200":
-          description: Function result (JSON)
-        "400":
-          description: Invalid request body or unknown function name
+          description: Settings updated
         "401":
-          description: Unauthorized — missing or invalid credentials
+          description: Unauthorized
+
+  /v1/modules/{name}/description:
+    put:
+      operationId: upsertModuleDescription
+      summary: Update module description
+      tags: [modules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertModuleDescriptionBody"
+      responses:
+        "200":
+          description: Description updated
+        "401":
+          description: Unauthorized
+
+  # ── API Keys ───────────────────────────────────────────────
+  /v1/api-keys:
+    get:
+      operationId: listApiKeys
+      summary: List API keys
+      tags: [api-keys]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: API key list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: generateApiKey
+      summary: Generate a new API key
+      tags: [api-keys]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateApiKeyBody"
+      responses:
+        "200":
+          description: Generated API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateApiKeyResult"
+        "401":
+          description: Unauthorized
+
+  /v1/api-keys/{id}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoke an API key
+      tags: [api-keys]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: API key ID
+      responses:
+        "200":
+          description: API key revoked
+        "401":
+          description: Unauthorized
+
+  # ── Prompts ────────────────────────────────────────────────
+  /v1/prompts:
+    get:
+      operationId: listPrompts
+      summary: List prompts
+      tags: [prompts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+          description: Filter by module name
+      responses:
+        "200":
+          description: Prompt list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prompt"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: upsertPrompt
+      summary: Create or update a prompt
+      tags: [prompts]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertPromptBody"
+      responses:
+        "200":
+          description: Prompt created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "401":
+          description: Unauthorized
+
+  /v1/prompts/{id}:
+    get:
+      operationId: getPrompt
+      summary: Get a prompt by ID
+      tags: [prompts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Prompt ID
+      responses:
+        "200":
+          description: Prompt detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "401":
+          description: Unauthorized
+    delete:
+      operationId: deletePrompt
+      summary: Delete a prompt
+      tags: [prompts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Prompt ID
+      responses:
+        "200":
+          description: Prompt deleted
+        "401":
+          description: Unauthorized
+
+  # ── Credentials ────────────────────────────────────────────
+  /v1/credentials:
+    get:
+      operationId: listCredentials
+      summary: List stored credentials
+      tags: [credentials]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Credential list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Credential"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: upsertCredential
+      summary: Create or update credentials for a module
+      tags: [credentials]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertCredentialBody"
+      responses:
+        "200":
+          description: Credential saved
+        "401":
+          description: Unauthorized
+
+  /v1/credentials/{module}:
+    delete:
+      operationId: deleteCredential
+      summary: Delete credentials for a module
+      tags: [credentials]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module identifier
+      responses:
+        "200":
+          description: Credential deleted
+        "401":
+          description: Unauthorized
+
+  # ── User ───────────────────────────────────────────────────
+  /v1/user/context:
+    get:
+      operationId: getUserContext
+      summary: Get current user context
+      description: Returns user information including role, plan, and usage data.
+      tags: [user]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserContext"
+        "401":
+          description: Unauthorized
+
+  /v1/user/usage:
+    get:
+      operationId: getUsage
+      summary: Get usage statistics
+      tags: [user]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (ISO 8601)
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (ISO 8601)
+      responses:
+        "200":
+          description: Usage data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageData"
+        "401":
+          description: Unauthorized
+
+  /v1/user/stripe:
+    get:
+      operationId: getStripeCustomerId
+      summary: Get linked Stripe customer ID
+      tags: [user]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Stripe customer info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeCustomer"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: linkStripeCustomer
+      summary: Link a Stripe customer ID
+      tags: [user]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkStripeCustomerBody"
+      responses:
+        "200":
+          description: Stripe customer linked
+        "401":
+          description: Unauthorized
+
+  /v1/user/settings:
+    put:
+      operationId: updateSettings
+      summary: Update user settings
+      tags: [user]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+        "401":
+          description: Unauthorized
+
+  /v1/user/onboarding:
+    post:
+      operationId: completeUserOnboarding
+      summary: Complete a user onboarding step
+      tags: [user]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteOnboardingBody"
+      responses:
+        "200":
+          description: Onboarding step completed
+        "401":
+          description: Unauthorized
+
+  # ── OAuth ──────────────────────────────────────────────────
+  /v1/oauth/apps/{provider}/credentials:
+    get:
+      operationId: getOAuthAppCredentials
+      summary: Get OAuth app credentials for a provider
+      tags: [oauth]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: OAuth provider identifier (e.g. github, google)
+      responses:
+        "200":
+          description: OAuth app credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthAppCredentials"
+
+  /v1/oauth/consents:
+    get:
+      operationId: listOAuthConsents
+      summary: List OAuth consents
+      tags: [oauth]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OAuth consent list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OAuthConsent"
+        "401":
+          description: Unauthorized
+
+  /v1/oauth/consents/{id}:
+    delete:
+      operationId: revokeOAuthConsent
+      summary: Revoke an OAuth consent
+      tags: [oauth]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Consent ID
+      responses:
+        "200":
+          description: Consent revoked
+        "401":
+          description: Unauthorized
+
+  # ── Admin ──────────────────────────────────────────────────
+  /v1/admin/oauth/apps:
+    get:
+      operationId: listOAuthApps
+      summary: List all OAuth apps (admin only)
+      tags: [admin]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OAuth app list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OAuthApp"
+        "401":
+          description: Unauthorized
         "403":
-          description: Forbidden — insufficient privileges
-        "405":
-          description: Method not allowed (only POST is accepted)
-        "500":
-          description: Internal server error
+          description: Forbidden — admin role required
+    put:
+      operationId: upsertOAuthApp
+      summary: Create or update an OAuth app (admin only)
+      tags: [admin]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertOAuthAppBody"
+      responses:
+        "200":
+          description: OAuth app saved
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — admin role required
+
+  /v1/admin/oauth/apps/{provider}:
+    delete:
+      operationId: deleteOAuthApp
+      summary: Delete an OAuth app (admin only)
+      tags: [admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: OAuth provider identifier
+      responses:
+        "200":
+          description: OAuth app deleted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — admin role required
+
+  /v1/admin/oauth/consents:
+    get:
+      operationId: listAllOAuthConsents
+      summary: List all OAuth consents across users (admin only)
+      tags: [admin]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: All OAuth consents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OAuthConsent"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — admin role required
 
 components:
   securitySchemes:
@@ -178,192 +675,280 @@ components:
       description: JWT access token or MCPist API key (mpt_xxx)
 
   schemas:
-    # ── Public functions ──
-    ListModulesWithToolsParams:
-      type: object
-      description: No parameters required
-
-    GetOauthAppCredentialsParams:
-      type: object
-      required: [p_provider]
-      properties:
-        p_provider:
-          type: string
-          description: OAuth provider identifier (e.g. github, google)
-
-    # ── Admin functions ──
-    UpsertOauthAppParams:
-      type: object
-      required: [p_provider, p_client_id, p_client_secret, p_redirect_uri, p_enabled]
-      properties:
-        p_provider:
-          type: string
-        p_client_id:
-          type: string
-        p_client_secret:
-          type: string
-        p_redirect_uri:
-          type: string
-        p_enabled:
-          type: boolean
-
-    DeleteOauthAppParams:
-      type: object
-      required: [p_provider]
-      properties:
-        p_provider:
-          type: string
-
-    # ── User-scoped functions ──
-    GetUsageParams:
-      type: object
-      required: [p_start_date, p_end_date]
-      properties:
-        p_start_date:
-          type: string
-          format: date
-          description: Start date (ISO 8601)
-        p_end_date:
-          type: string
-          format: date
-          description: End date (ISO 8601)
-
-    LinkStripeCustomerParams:
-      type: object
-      required: [p_stripe_customer_id]
-      properties:
-        p_stripe_customer_id:
-          type: string
-
-    UpsertCredentialParams:
-      type: object
-      required: [p_module, p_credentials]
-      properties:
-        p_module:
-          type: string
-          description: Module identifier (e.g. github, notion)
-        p_credentials:
-          type: object
-          description: Credential data (access_token, refresh_token, etc.)
-
-    DeleteCredentialParams:
-      type: object
-      required: [p_module]
-      properties:
-        p_module:
-          type: string
-
-    GetModuleConfigParams:
+    # ── Modules ──
+    ModuleWithTools:
       type: object
       properties:
-        p_module_name:
+        module_name:
           type: string
-          description: Filter by module name (optional)
+        description:
+          type: string
+        tools:
+          type: array
+          items:
+            type: object
 
-    UpsertToolSettingsParams:
+    ModuleConfig:
       type: object
-      required: [p_module_name, p_enabled_tools, p_disabled_tools]
       properties:
-        p_module_name:
+        module_name:
           type: string
-        p_enabled_tools:
+        enabled_tools:
           type: array
           items:
             type: string
-        p_disabled_tools:
+        disabled_tools:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+
+    UpsertToolSettingsBody:
+      type: object
+      required: [enabled_tools, disabled_tools]
+      properties:
+        enabled_tools:
+          type: array
+          items:
+            type: string
+        disabled_tools:
           type: array
           items:
             type: string
 
-    UpsertModuleDescriptionParams:
+    UpsertModuleDescriptionBody:
       type: object
-      required: [p_module_name, p_description]
+      required: [description]
       properties:
-        p_module_name:
-          type: string
-        p_description:
+        description:
           type: string
 
-    GenerateApiKeyParams:
+    # ── API Keys ──
+    ApiKey:
       type: object
-      required: [p_display_name]
       properties:
-        p_display_name:
+        id:
           type: string
-        p_expires_at:
+          format: uuid
+        display_name:
+          type: string
+        prefix:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+
+    GenerateApiKeyBody:
+      type: object
+      required: [display_name]
+      properties:
+        display_name:
+          type: string
+        expires_at:
           type: string
           format: date-time
           description: Expiration timestamp (optional)
 
-    RevokeApiKeyParams:
+    GenerateApiKeyResult:
       type: object
-      required: [p_key_id]
       properties:
-        p_key_id:
+        id:
           type: string
           format: uuid
-
-    ListPromptsParams:
-      type: object
-      properties:
-        p_module_name:
+        api_key:
           type: string
-          description: Filter by module name (optional)
+          description: Full API key (only returned at creation time)
+        display_name:
+          type: string
+        prefix:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
 
-    GetPromptParams:
+    # ── Prompts ──
+    Prompt:
       type: object
-      required: [p_prompt_id]
       properties:
-        p_prompt_id:
+        id:
           type: string
           format: uuid
+        name:
+          type: string
+        content:
+          type: string
+        module_name:
+          type: string
+        enabled:
+          type: boolean
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
-    UpsertPromptParams:
+    UpsertPromptBody:
       type: object
-      required: [p_name, p_content, p_enabled]
+      required: [name, content, enabled]
       properties:
-        p_prompt_id:
+        prompt_id:
           type: string
           format: uuid
           description: Omit to create, include to update
-        p_name:
+        name:
           type: string
-        p_content:
+        content:
           type: string
-        p_module_name:
+        module_name:
           type: string
-        p_enabled:
+        enabled:
           type: boolean
-        p_description:
+        description:
           type: string
 
-    DeletePromptParams:
+    # ── Credentials ──
+    Credential:
       type: object
-      required: [p_prompt_id]
       properties:
-        p_prompt_id:
+        module:
+          type: string
+        has_credentials:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+
+    UpsertCredentialBody:
+      type: object
+      required: [module, credentials]
+      properties:
+        module:
+          type: string
+          description: Module identifier (e.g. github, notion)
+        credentials:
+          type: object
+          description: Credential data (access_token, refresh_token, etc.)
+
+    # ── User ──
+    UserContext:
+      type: object
+      properties:
+        user_id:
           type: string
           format: uuid
-
-    RevokeOauthConsentParams:
-      type: object
-      required: [p_consent_id]
-      properties:
-        p_consent_id:
+        role:
           type: string
-          format: uuid
+        plan:
+          type: string
+        email:
+          type: string
 
-    UpdateSettingsParams:
+    UsageData:
       type: object
-      required: [p_settings]
       properties:
-        p_settings:
+        total_requests:
+          type: integer
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+
+    StripeCustomer:
+      type: object
+      properties:
+        stripe_customer_id:
+          type: string
+
+    LinkStripeCustomerBody:
+      type: object
+      required: [stripe_customer_id]
+      properties:
+        stripe_customer_id:
+          type: string
+
+    UpdateSettingsBody:
+      type: object
+      required: [settings]
+      properties:
+        settings:
           type: object
           description: User settings object
 
-    CompleteUserOnboardingParams:
+    CompleteOnboardingBody:
       type: object
-      required: [p_event_id]
+      required: [event_id]
       properties:
-        p_event_id:
+        event_id:
           type: string
+
+    # ── OAuth ──
+    OAuthAppCredentials:
+      type: object
+      properties:
+        provider:
+          type: string
+        client_id:
+          type: string
+        redirect_uri:
+          type: string
+
+    OAuthConsent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+        client_name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # ── Admin ──
+    OAuthApp:
+      type: object
+      properties:
+        provider:
+          type: string
+        client_id:
+          type: string
+        redirect_uri:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    UpsertOAuthAppBody:
+      type: object
+      required: [provider, client_id, client_secret, redirect_uri, enabled]
+      properties:
+        provider:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+        redirect_uri:
+          type: string
+        enabled:
+          type: boolean

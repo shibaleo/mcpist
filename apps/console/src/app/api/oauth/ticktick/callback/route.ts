@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const TICKTICK_TOKEN_URL = "https://ticktick.com/oauth/token"
@@ -39,9 +39,8 @@ export async function GET(request: Request) {
 
   try {
     // OAuth App の認証情報を取得
-    const credentials = await rpc<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
-      "get_oauth_app_credentials",
-      { p_provider: "ticktick" }
+    const credentials = await workerFetch<{ client_id: string; client_secret: string; redirect_uri: string; error?: string; message?: string }>(
+      "GET", "/v1/oauth/apps/ticktick/credentials"
     )
 
     if (!credentials || credentials.error) {
@@ -107,9 +106,9 @@ export async function GET(request: Request) {
       expires_at: expiresAt,
     }
 
-    await rpc("upsert_credential", {
-      p_module: "ticktick",
-      p_credentials: tokenCredentials,
+    await workerFetch("PUT", "/v1/credentials", {
+      module: "ticktick",
+      credentials: tokenCredentials,
     })
 
     // デフォルトツール設定を保存

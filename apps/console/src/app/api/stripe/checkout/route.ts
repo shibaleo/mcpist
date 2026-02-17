@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createStripeClient, getStripeConfig } from "@/lib/billing/stripe"
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 interface StripeCustomerResult {
   stripe_customer_id: string | null
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     let stripeCustomerId: string
 
     // Check if user already has a Stripe Customer ID using RPC
-    const userData = await rpc<StripeCustomerResult>(
-      "get_stripe_customer_id"
+    const userData = await workerFetch<StripeCustomerResult>(
+      "GET", "/v1/user/stripe"
     )
 
     if (userData?.stripe_customer_id) {
@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
 
       // Link Stripe Customer to user
       try {
-        await rpc("link_stripe_customer", {
-          p_stripe_customer_id: stripeCustomerId,
+        await workerFetch("PUT", "/v1/user/stripe", {
+          stripe_customer_id: stripeCustomerId,
         })
       } catch (linkErr) {
         console.error("[stripe/checkout] Error linking customer:", linkErr)

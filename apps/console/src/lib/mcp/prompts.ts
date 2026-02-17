@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 export interface Prompt {
   id: string
@@ -26,9 +26,8 @@ export interface DeletePromptResult {
 }
 
 export async function listPrompts(moduleName?: string): Promise<Prompt[]> {
-  return rpc<Prompt[]>("list_prompts", {
-    p_module_name: moduleName,
-  })
+  const query = moduleName ? `?module=${encodeURIComponent(moduleName)}` : ""
+  return workerFetch<Prompt[]>("GET", `/v1/prompts${query}`)
 }
 
 interface GetPromptResponse {
@@ -45,9 +44,7 @@ interface GetPromptResponse {
 }
 
 export async function getPrompt(promptId: string): Promise<Prompt | null> {
-  const response = await rpc<GetPromptResponse>("get_prompt", {
-    p_prompt_id: promptId,
-  })
+  const response = await workerFetch<GetPromptResponse>("GET", `/v1/prompts/${promptId}`)
 
   if (!response || !response.found) {
     return null
@@ -73,18 +70,16 @@ export async function upsertPrompt(
   enabled: boolean = true,
   description?: string
 ): Promise<UpsertPromptResult> {
-  return rpc<UpsertPromptResult>("upsert_prompt", {
-    p_name: name,
-    p_content: content,
-    p_module_name: moduleName,
-    p_prompt_id: promptId,
-    p_enabled: enabled,
-    p_description: description,
+  return workerFetch<UpsertPromptResult>("PUT", "/v1/prompts", {
+    name,
+    content,
+    module_name: moduleName,
+    prompt_id: promptId,
+    enabled,
+    description,
   })
 }
 
 export async function deletePrompt(promptId: string): Promise<DeletePromptResult> {
-  return rpc<DeletePromptResult>("delete_prompt", {
-    p_prompt_id: promptId,
-  })
+  return workerFetch<DeletePromptResult>("DELETE", `/v1/prompts/${promptId}`)
 }

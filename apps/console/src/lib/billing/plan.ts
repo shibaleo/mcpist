@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 export interface UserPlan {
   plan_id: string
@@ -38,7 +38,7 @@ interface UserContextRow {
  */
 export async function getUserPlan(): Promise<UserPlan | null> {
   try {
-    const rows = await rpc<UserContextRow[]>("get_user_context")
+    const rows = await workerFetch<UserContextRow[]>("GET", "/v1/user/context")
     const context = Array.isArray(rows) ? rows[0] : rows
     if (!context) return null
 
@@ -57,8 +57,9 @@ export async function getUserPlan(): Promise<UserPlan | null> {
  */
 export async function getServiceConnections(): Promise<ServiceConnection[]> {
   try {
-    const data = await rpc<Array<{ module: string; created_at: string; updated_at: string }>>(
-      "list_credentials"
+    const data = await workerFetch<Array<{ module: string; created_at: string; updated_at: string }>>(
+      "GET",
+      "/v1/credentials"
     )
 
     return (data || []).map((item) => ({
@@ -77,7 +78,7 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
  */
 export async function getUserContext(): Promise<UserContext | null> {
   try {
-    const rows = await rpc<UserContextRow[]>("get_user_context")
+    const rows = await workerFetch<UserContextRow[]>("GET", "/v1/user/context")
     const context = Array.isArray(rows) ? rows[0] : rows
     if (!context) return null
 
@@ -109,10 +110,9 @@ export interface UsageStats {
  */
 export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageStats | null> {
   try {
-    return rpc<UsageStats>("get_usage", {
-      p_start_date: startDate.toISOString(),
-      p_end_date: endDate.toISOString(),
-    })
+    const start = encodeURIComponent(startDate.toISOString())
+    const end = encodeURIComponent(endDate.toISOString())
+    return workerFetch<UsageStats>("GET", `/v1/user/usage?start=${start}&end=${end}`)
   } catch {
     return null
   }

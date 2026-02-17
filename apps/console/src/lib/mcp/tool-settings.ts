@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
 import type { ToolSetting, ModuleDescription } from "./tool-settings-types"
 
@@ -18,9 +18,8 @@ interface ModuleConfigRow {
  * 現在のユーザーのモジュール設定を一括取得
  */
 export async function getModuleConfig(moduleName?: string): Promise<ModuleConfigRow[]> {
-  return rpc<ModuleConfigRow[]>("get_module_config", {
-    p_module_name: moduleName,
-  })
+  const query = moduleName ? `?module=${encodeURIComponent(moduleName)}` : ""
+  return workerFetch<ModuleConfigRow[]>("GET", `/v1/modules/config${query}`)
 }
 
 /**
@@ -43,12 +42,12 @@ export async function upsertMyToolSettings(
   enabledTools: string[],
   disabledTools: string[]
 ): Promise<{ success: boolean; enabled_count: number; disabled_count: number }> {
-  return rpc<{ success: boolean; enabled_count: number; disabled_count: number }>(
-    "upsert_tool_settings",
+  return workerFetch<{ success: boolean; enabled_count: number; disabled_count: number }>(
+    "PUT",
+    `/v1/modules/${encodeURIComponent(moduleName)}/tools`,
     {
-      p_module_name: moduleName,
-      p_enabled_tools: enabledTools,
-      p_disabled_tools: disabledTools,
+      enabled_tools: enabledTools,
+      disabled_tools: disabledTools,
     }
   )
 }
@@ -87,9 +86,10 @@ export async function saveDefaultToolSettings(
   const mod = await getModule(moduleName)
   if (!mod) return
 
-  const existing = await rpc<ModuleConfigRow[]>("get_module_config", {
-    p_module_name: moduleName,
-  })
+  const existing = await workerFetch<ModuleConfigRow[]>(
+    "GET",
+    `/v1/modules/config?module=${encodeURIComponent(moduleName)}`
+  )
 
   if (existing && existing.length > 0) return
 
@@ -104,10 +104,9 @@ export async function saveDefaultToolSettings(
     }
   }
 
-  await rpc("upsert_tool_settings", {
-    p_module_name: moduleName,
-    p_enabled_tools: enabledTools,
-    p_disabled_tools: disabledTools,
+  await workerFetch("PUT", `/v1/modules/${encodeURIComponent(moduleName)}/tools`, {
+    enabled_tools: enabledTools,
+    disabled_tools: disabledTools,
   })
 }
 
@@ -139,8 +138,9 @@ export async function updateModuleDescription(
   moduleName: string,
   description: string
 ): Promise<{ success: boolean }> {
-  return rpc<{ success: boolean }>("upsert_module_description", {
-    p_module_name: moduleName,
-    p_description: description,
-  })
+  return workerFetch<{ success: boolean }>(
+    "PUT",
+    `/v1/modules/${encodeURIComponent(moduleName)}/description`,
+    { description }
+  )
 }

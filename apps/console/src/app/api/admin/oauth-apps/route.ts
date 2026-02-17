@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 // GET: List OAuth apps (Worker handles admin check)
 export async function GET(): Promise<NextResponse> {
   try {
-    const data = await rpc("list_oauth_apps")
+    const data = await workerFetch("GET", "/v1/admin/oauth/apps")
     return NextResponse.json(data || [])
   } catch (err) {
     console.error("[admin/oauth-apps] error:", err)
@@ -23,12 +23,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "provider and client_id are required" }, { status: 400 })
     }
 
-    const data = await rpc("upsert_oauth_app", {
-      p_provider: provider,
-      p_client_id: client_id,
-      p_client_secret: client_secret,
-      p_redirect_uri: redirect_uri,
-      p_enabled: enabled ?? true,
+    const data = await workerFetch("PUT", "/v1/admin/oauth/apps", {
+      provider,
+      client_id,
+      client_secret,
+      redirect_uri,
+      enabled: enabled ?? true,
     })
 
     return NextResponse.json(data)
@@ -49,9 +49,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "provider is required" }, { status: 400 })
     }
 
-    const data = await rpc("delete_oauth_app", {
-      p_provider: provider,
-    })
+    const data = await workerFetch("DELETE", `/v1/admin/oauth/apps/${encodeURIComponent(provider)}`)
 
     return NextResponse.json(data)
   } catch (err) {

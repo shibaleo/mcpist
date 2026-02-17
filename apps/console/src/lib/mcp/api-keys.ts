@@ -1,6 +1,6 @@
 "use server"
 
-import { rpc } from "@/lib/worker-client"
+import { workerFetch } from "@/lib/worker-client"
 
 export interface ApiKey {
   id: string
@@ -17,16 +17,16 @@ export interface GenerateApiKeyResult {
 }
 
 export async function listApiKeys(): Promise<ApiKey[]> {
-  return rpc<ApiKey[]>("list_api_keys")
+  return workerFetch<ApiKey[]>("GET", "/v1/api-keys")
 }
 
 export async function generateApiKey(
   name: string,
   expiresInDays: number | null = null
 ): Promise<GenerateApiKeyResult> {
-  return rpc<GenerateApiKeyResult>("generate_api_key", {
-    p_display_name: name,
-    p_expires_at: expiresInDays
+  return workerFetch<GenerateApiKeyResult>("POST", "/v1/api-keys", {
+    display_name: name,
+    expires_at: expiresInDays
       ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
       : undefined,
   })
@@ -35,7 +35,5 @@ export async function generateApiKey(
 export async function revokeApiKey(
   keyId: string
 ): Promise<{ success: boolean }> {
-  return rpc<{ success: boolean }>("revoke_api_key", {
-    p_key_id: keyId,
-  })
+  return workerFetch<{ success: boolean }>("DELETE", `/v1/api-keys/${keyId}`)
 }

@@ -59,10 +59,9 @@ interface ModuleRow {
 }
 
 async function fetchModulesFromDB(): Promise<ModuleDef[]> {
-  const res = await fetch(`${WORKER_URL}/v1/rpc/list_modules_with_tools`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
+  const res = await fetch(`${WORKER_URL}/v1/modules`, {
+    method: "GET",
+    headers: { "Accept": "application/json" },
   })
 
   if (!res.ok) {
