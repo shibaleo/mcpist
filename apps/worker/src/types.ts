@@ -19,8 +19,8 @@ export interface Env {
   // Gateway Secret (Worker → Go Server)
   GATEWAY_SECRET: string;
 
-  // Internal Secret (Console → Worker for /internal/* endpoints)
-  INTERNAL_SECRET: string;
+  // Stripe Webhook
+  STRIPE_WEBHOOK_SECRET: string;
 
   // Grafana Loki
   GRAFANA_LOKI_URL: string;

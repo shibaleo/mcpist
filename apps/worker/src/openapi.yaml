@@ -709,6 +709,35 @@ paths:
         "403":
           description: Forbidden — admin role required
 
+  # ── Stripe ────────────────────────────────────────────────────
+  /v1/stripe/webhook:
+    post:
+      operationId: handleStripeWebhook
+      summary: Handle Stripe webhook events
+      description: >-
+        Receives Stripe webhook events (invoice.paid, customer.subscription.deleted).
+        Authenticated via Stripe signature verification, not JWT.
+      tags: [stripe]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+        "400":
+          description: Invalid signature or payload
+
 components:
   securitySchemes:
     bearerAuth:

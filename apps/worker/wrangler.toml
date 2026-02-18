@@ -37,7 +37,7 @@ id = "04a54e251d5b47f9bcc5d7a7143edbe7"
 # - GATEWAY_SECRET: オリジン直接アクセス防止用
 # - SUPABASE_PUBLISHABLE_KEY: JWT検証用 (Auth API)
 # - POSTGREST_API_KEY: PostgREST RPC呼び出し用 (DB)
-# - INTERNAL_SECRET: 内部API認証用
+# - STRIPE_WEBHOOK_SECRET: Stripe Webhook署名検証用
 # - GRAFANA_LOKI_URL: Loki Push API URL
 # - GRAFANA_LOKI_USER: Loki Basic Auth ユーザー名
 # - GRAFANA_LOKI_API_KEY: Loki Basic Auth APIキー
