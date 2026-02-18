@@ -171,6 +171,14 @@ async function verifyApiKey(apiKey: string, env: Env): Promise<AuthResult | null
   }
 }
 
+/**
+ * Go Server → Worker のサーバー間認証 (X-Gateway-Secret ヘッダー)
+ */
+export function authenticateGateway(request: Request, env: Env): boolean {
+  const secret = request.headers.get("X-Gateway-Secret");
+  return !!secret && secret === env.GATEWAY_SECRET;
+}
+
 async function hashApiKey(apiKey: string): Promise<string> {
   const data = new TextEncoder().encode(apiKey);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);

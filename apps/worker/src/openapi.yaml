@@ -112,6 +112,32 @@ paths:
                 items:
                   $ref: "#/components/schemas/ModuleWithTools"
 
+  /v1/modules/sync:
+    post:
+      operationId: syncModules
+      summary: Sync module definitions from Go Server
+      description: >-
+        Registers or updates module and tool definitions in the database.
+        Called by Go Server at startup. Authenticated via X-Gateway-Secret.
+      tags: [modules]
+      security:
+        - gatewaySecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncModulesBody"
+      responses:
+        "200":
+          description: Modules synced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncModulesResult"
+        "401":
+          description: Unauthorized
+
   /v1/modules/config:
     get:
       operationId: getModuleConfig
@@ -268,15 +294,35 @@ paths:
     get:
       operationId: listPrompts
       summary: List prompts
+      description: >-
+        Lists prompts for the authenticated user. Supports both bearer auth (Console)
+        and gateway auth (Go Server with ?user_id= query).
       tags: [prompts]
       security:
         - bearerAuth: []
+        - gatewaySecret: []
       parameters:
         - name: module
           in: query
           schema:
             type: string
           description: Filter by module name
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Target user ID (required for gateway auth)
+        - name: enabled_only
+          in: query
+          schema:
+            type: boolean
+          description: Return only enabled prompts (gateway auth)
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filter by prompt name (gateway auth)
       responses:
         "200":
           description: Prompt list
@@ -380,9 +426,13 @@ paths:
     put:
       operationId: upsertCredential
       summary: Create or update credentials for a module
+      description: >-
+        Supports both bearer auth (Console) and gateway auth (Go Server).
+        Gateway auth requires user_id in request body.
       tags: [credentials]
       security:
         - bearerAuth: []
+        - gatewaySecret: []
       requestBody:
         required: true
         content:
@@ -400,6 +450,40 @@ paths:
           description: Unauthorized
 
   /v1/credentials/{module}:
+    get:
+      operationId: getCredential
+      summary: Get credential for a module (Go Server)
+      description: >-
+        Returns decrypted credential for a specific module and user.
+        Called by Go Server before tool execution. Authenticated via X-Gateway-Secret.
+      tags: [credentials]
+      security:
+        - gatewaySecret: []
+      parameters:
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module identifier
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Target user ID
+      responses:
+        "200":
+          description: Credential data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialDetail"
+        "400":
+          description: Missing user_id
+        "401":
+          description: Unauthorized
     delete:
       operationId: deleteCredential
       summary: Delete credentials for a module
@@ -428,10 +512,20 @@ paths:
     get:
       operationId: getUserContext
       summary: Get current user context
-      description: Returns user information including role, plan, and usage data.
+      description: >-
+        Returns user information including role, plan, and usage data.
+        Supports both bearer auth (Console) and gateway auth (Go Server with ?user_id= query).
       tags: [user]
       security:
         - bearerAuth: []
+        - gatewaySecret: []
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Target user ID (required for gateway auth)
       responses:
         "200":
           description: User context
@@ -445,6 +539,26 @@ paths:
           description: Unauthorized
 
   /v1/user/usage:
+    post:
+      operationId: recordUsage
+      summary: Record tool usage
+      description: >-
+        Records tool usage for a user. Called by Go Server after tool execution.
+        Authenticated via X-Gateway-Secret.
+      tags: [user]
+      security:
+        - gatewaySecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordUsageBody"
+      responses:
+        "200":
+          description: Usage recorded
+        "401":
+          description: Unauthorized
     get:
       operationId: getUsage
       summary: Get usage statistics
@@ -744,6 +858,11 @@ components:
       type: http
       scheme: bearer
       description: JWT access token or MCPist API key (mpt_xxx)
+    gatewaySecret:
+      type: apiKey
+      in: header
+      name: X-Gateway-Secret
+      description: Server-to-server authentication between Go Server and Worker
 
   schemas:
     # ── Modules ──
@@ -992,12 +1111,88 @@ components:
         module:
           type: string
 
+    CredentialDetail:
+      type: object
+      properties:
+        module:
+          type: string
+        credentials:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+
     SuccessResult:
       type: object
       required: [success]
       properties:
         success:
           type: boolean
+
+    # ── Gateway (Go Server) ──
+    SyncModulesBody:
+      type: object
+      required: [modules]
+      properties:
+        modules:
+          type: array
+          items:
+            type: object
+            required: [name, status, descriptions, tools]
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+              descriptions:
+                type: object
+                additionalProperties:
+                  type: string
+              tools:
+                type: array
+                items:
+                  type: object
+                  required: [name, description, input_schema]
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    input_schema:
+                      type: object
+                      additionalProperties: true
+
+    SyncModulesResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        synced_count:
+          type: integer
+
+    RecordUsageBody:
+      type: object
+      required: [user_id, meta_tool, request_id, details]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        meta_tool:
+          type: string
+        request_id:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            required: [module, tool]
+            properties:
+              task_id:
+                type: string
+              module:
+                type: string
+              tool:
+                type: string
 
     # ── User ──
     UserContext:

@@ -1,7 +1,7 @@
 /**
  * /v1/prompts 関連ルート
  *
- * GET    /prompts      → list_prompts (auth, ?module= クエリ)
+ * GET    /prompts      → list_prompts / get_prompts (auth / gateway auth)
  * GET    /prompts/:id  → get_prompt (auth)
  * PUT    /prompts      → upsert_prompt (auth)
  * DELETE /prompts/:id  → delete_prompt (auth)
@@ -9,7 +9,7 @@
 
 import { Hono } from "hono";
 import type { Env } from "../../types";
-import { authenticate } from "../../auth";
+import { authenticate, authenticateGateway } from "../../auth";
 import { jsonResponse } from "../../http";
 import { forwardToPostgREST } from "../postgrest";
 
@@ -17,12 +17,29 @@ type Bindings = Env;
 
 const prompts = new Hono<{ Bindings: Bindings }>();
 
-// GET /prompts — list_prompts
+// GET /prompts — list_prompts / get_prompts (auth or gateway auth)
 prompts.get("/", async (c) => {
   const auth = await authenticate(c.req.raw, c.env);
-  if (!auth) return jsonResponse({ error: "Unauthorized" }, 401);
+  const isGateway = authenticateGateway(c.req.raw, c.env);
+  if (!auth && !isGateway) return jsonResponse({ error: "Unauthorized" }, 401);
 
-  const params: Record<string, unknown> = { p_user_id: auth.userId };
+  const userId = auth ? auth.userId : c.req.query("user_id");
+  if (!userId) return jsonResponse({ error: "Missing user_id" }, 400);
+
+  // Gateway auth (Go Server) uses get_prompts RPC with enabled_only/name filters
+  if (isGateway) {
+    const params: Record<string, unknown> = {
+      p_user_id: userId,
+      p_enabled_only: c.req.query("enabled_only") === "true",
+    };
+    const promptName = c.req.query("name");
+    if (promptName) params.p_prompt_name = promptName;
+
+    return forwardToPostgREST(c.env, "get_prompts", params);
+  }
+
+  // Console auth uses list_prompts RPC
+  const params: Record<string, unknown> = { p_user_id: userId };
   const moduleName = c.req.query("module");
   if (moduleName) params.p_module_name = moduleName;
 

@@ -3,13 +3,14 @@
  *
  * GET  /modules            → list_modules_with_tools (public)
  * GET  /modules/config     → get_module_config (auth, ?module= クエリ)
+ * POST /modules/sync       → sync_modules (gateway auth, Go Server 用)
  * PUT  /modules/:name/tools       → upsert_tool_settings (auth)
  * PUT  /modules/:name/description → upsert_module_description (auth)
  */
 
 import { Hono } from "hono";
 import type { Env } from "../../types";
-import { authenticate } from "../../auth";
+import { authenticate, authenticateGateway } from "../../auth";
 import { jsonResponse } from "../../http";
 import { forwardToPostgREST } from "../postgrest";
 
@@ -32,6 +33,26 @@ modules.get("/config", async (c) => {
   if (moduleName) params.p_module_name = moduleName;
 
   return forwardToPostgREST(c.env, "get_module_config", params);
+});
+
+// POST /modules/sync — sync_modules (Go Server → Worker, gateway auth)
+modules.post("/sync", async (c) => {
+  if (!authenticateGateway(c.req.raw, c.env)) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  const body = await c.req.json<{
+    modules: Array<{
+      name: string;
+      status: string;
+      descriptions: Record<string, string>;
+      tools: Array<{ name: string; description: string; input_schema: unknown }>;
+    }>;
+  }>();
+
+  return forwardToPostgREST(c.env, "sync_modules", {
+    p_modules: body.modules,
+  });
 });
 
 // PUT /modules/:name/tools — upsert_tool_settings (auth required)
