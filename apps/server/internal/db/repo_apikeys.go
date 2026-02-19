@@ -14,14 +14,13 @@ type APIKeyResponse struct {
 	Name       string     `json:"name"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
-	RevokedAt  *time.Time `json:"revoked_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 }
 
-// ListAPIKeys returns all non-revoked API keys for a user.
+// ListAPIKeys returns all API keys for a user.
 func ListAPIKeys(db *gorm.DB, userID string) ([]APIKeyResponse, error) {
 	var keys []APIKey
-	if err := db.Where("user_id = ? AND revoked_at IS NULL", userID).
+	if err := db.Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Find(&keys).Error; err != nil {
 		return nil, err
@@ -35,7 +34,6 @@ func ListAPIKeys(db *gorm.DB, userID string) ([]APIKeyResponse, error) {
 			Name:       k.Name,
 			ExpiresAt:  k.ExpiresAt,
 			LastUsedAt: k.LastUsedAt,
-			RevokedAt:  k.RevokedAt,
 			CreatedAt:  k.CreatedAt,
 		}
 	}
@@ -58,14 +56,11 @@ func CreateAPIKey(db *gorm.DB, userID, jwtKID, keyPrefix, name string, expiresAt
 	return &key, nil
 }
 
-// RevokeAPIKey soft-deletes an API key.
+// RevokeAPIKey physically deletes an API key.
 func RevokeAPIKey(db *gorm.DB, userID, keyID string) error {
-	now := time.Now()
-	result := db.Model(&APIKey{}).
-		Where("id = ? AND user_id = ? AND revoked_at IS NULL", keyID, userID).
-		Update("revoked_at", now)
+	result := db.Where("id = ? AND user_id = ?", keyID, userID).Delete(&APIKey{})
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("api key not found or already revoked")
+		return fmt.Errorf("api key not found")
 	}
 	return result.Error
 }

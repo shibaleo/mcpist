@@ -50,7 +50,7 @@ func (j *JSONB) UnmarshalJSON(data []byte) error {
 type User struct {
 	ID               string  `gorm:"primaryKey;type:uuid" json:"id"`
 	ClerkID          *string `gorm:"type:text;uniqueIndex" json:"clerk_id,omitempty"`
-	AccountStatus    string  `gorm:"type:text;not null;default:'pre_active'" json:"account_status"`
+	AccountStatus    string  `gorm:"type:text;not null;default:'active'" json:"account_status"`
 	PlanID           string  `gorm:"type:text;not null;default:'free'" json:"plan_id"`
 	DisplayName      *string `gorm:"type:text" json:"display_name,omitempty"`
 	AvatarURL        *string `gorm:"type:text" json:"avatar_url,omitempty"`
@@ -120,15 +120,14 @@ type Prompt struct {
 func (Prompt) TableName() string { return "mcpist.prompts" }
 
 type APIKey struct {
-	ID        string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	UserID    string     `gorm:"type:uuid;not null" json:"user_id"`
-	JwtKID    string     `gorm:"column:jwt_kid;type:text" json:"jwt_kid"`
-	KeyPrefix string     `gorm:"type:text;not null" json:"key_prefix"`
-	Name      string     `gorm:"type:text;not null" json:"name"`
-	ExpiresAt *time.Time `gorm:"type:timestamptz" json:"expires_at,omitempty"`
+	ID         string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	UserID     string     `gorm:"type:uuid;not null" json:"user_id"`
+	JwtKID     string     `gorm:"column:jwt_kid;type:text" json:"jwt_kid"`
+	KeyPrefix  string     `gorm:"type:text;not null" json:"key_prefix"`
+	Name       string     `gorm:"type:text;not null" json:"name"`
+	ExpiresAt  *time.Time `gorm:"type:timestamptz" json:"expires_at,omitempty"`
 	LastUsedAt *time.Time `gorm:"type:timestamptz" json:"last_used_at,omitempty"`
-	RevokedAt *time.Time `gorm:"type:timestamptz" json:"revoked_at,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
 func (APIKey) TableName() string { return "mcpist.api_keys" }

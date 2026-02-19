@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -45,16 +46,61 @@ func GetCredential(db *gorm.DB, userID, module string) (*UserCredential, error) 
 }
 
 // UpsertCredential creates or updates a credential.
+// Also auto-enables all tools for the module if no tool_settings exist yet.
 func UpsertCredential(db *gorm.DB, userID, module, credentials string) error {
-	cred := UserCredential{
-		UserID:      userID,
-		Module:      module,
-		Credentials: credentials,
-	}
-	return db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "user_id"}, {Name: "module"}},
-		DoUpdates: clause.AssignmentColumns([]string{"credentials", "updated_at"}),
-	}).Create(&cred).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		cred := UserCredential{
+			UserID:      userID,
+			Module:      module,
+			Credentials: credentials,
+		}
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "user_id"}, {Name: "module"}},
+			DoUpdates: clause.AssignmentColumns([]string{"credentials", "updated_at"}),
+		}).Create(&cred).Error; err != nil {
+			return err
+		}
+
+		// Auto-enable all tools for this module if user has no tool_settings yet
+		var mod Module
+		if err := tx.Where("name = ?", module).First(&mod).Error; err != nil {
+			return nil // Module not in DB — skip
+		}
+
+		var existingCount int64
+		tx.Model(&ToolSetting{}).Where("user_id = ? AND module_id = ?", userID, mod.ID).Count(&existingCount)
+		if existingCount > 0 {
+			return nil // Already has settings
+		}
+
+		type toolAnnotations struct {
+			DestructiveHint *bool `json:"destructiveHint,omitempty"`
+		}
+		type toolDef struct {
+			ID          string          `json:"id"`
+			Annotations toolAnnotations `json:"annotations"`
+		}
+		var tools []toolDef
+		if err := json.Unmarshal(mod.Tools, &tools); err != nil {
+			return nil // Can't parse — skip
+		}
+
+		for _, t := range tools {
+			// Skip destructive tools — user must explicitly enable them
+			if t.Annotations.DestructiveHint != nil && *t.Annotations.DestructiveHint {
+				continue
+			}
+			ts := ToolSetting{UserID: userID, ModuleID: mod.ID, ToolID: t.ID, Enabled: true}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "user_id"}, {Name: "module_id"}, {Name: "tool_id"}},
+				DoUpdates: clause.AssignmentColumns([]string{"enabled"}),
+			}).Create(&ts).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 // DeleteCredential removes a credential.

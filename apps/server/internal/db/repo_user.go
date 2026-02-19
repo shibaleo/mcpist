@@ -68,9 +68,10 @@ func FindOrCreateByClerkID(db *gorm.DB, clerkID, email string) (string, error) {
 
 	// Auto-create user
 	user = User{
-		ID:      uuid.New().String(),
-		ClerkID: &clerkID,
-		Email:   &email,
+		ID:            uuid.New().String(),
+		ClerkID:       &clerkID,
+		Email:         &email,
+		AccountStatus: "active",
 	}
 	if err := db.Create(&user).Error; err != nil {
 		// Race condition: another request may have created the user
@@ -104,7 +105,7 @@ func GetMCPContext(db *gorm.DB, userID string) (*MCPContext, error) {
 	var dailyUsed int64
 	db.Model(&UsageLog{}).Where("user_id = ? AND created_at >= ?", userID, today).Count(&dailyUsed)
 
-	// Get enabled tools grouped by module
+	// Get enabled tools grouped by module (only where credentials exist)
 	type toolRow struct {
 		ModuleName string `gorm:"column:module_name"`
 		ToolID     string `gorm:"column:tool_id"`
@@ -113,6 +114,7 @@ func GetMCPContext(db *gorm.DB, userID string) (*MCPContext, error) {
 	db.Table("mcpist.tool_settings ts").
 		Select("m.name AS module_name, ts.tool_id").
 		Joins("JOIN mcpist.modules m ON m.id = ts.module_id").
+		Joins("JOIN mcpist.user_credentials uc ON uc.user_id = ts.user_id AND uc.module = m.name").
 		Where("ts.user_id = ? AND ts.enabled = true AND m.status IN ('active', 'beta')", userID).
 		Find(&rows)
 

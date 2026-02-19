@@ -71,16 +71,16 @@ const iconComponents: Record<string, React.ComponentType<{ className?: string; s
 }
 
 interface ModuleIconProps {
-  moduleId: string
+  moduleName: string
   className?: string
   colored?: boolean
 }
 
-export function ModuleIcon({ moduleId, className, colored = true }: ModuleIconProps) {
-  const Icon = iconComponents[moduleId]
+export function ModuleIcon({ moduleName, className, colored = true }: ModuleIconProps) {
+  const Icon = iconComponents[moduleName]
   if (!Icon) {
     return <Wrench className={className} />
   }
-  const color = colored ? brandColors[moduleId] : undefined
+  const color = colored ? brandColors[moduleName] : undefined
   return <Icon className={className} style={color ? { color } : undefined} />
 }

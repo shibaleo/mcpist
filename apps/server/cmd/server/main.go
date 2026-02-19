@@ -107,7 +107,7 @@ func main() {
 		log.Printf("WARNING: SyncModules failed: %v", err)
 	}
 
-	authorizer := middleware.NewAuthorizer(userStore)
+	authorizer := middleware.NewAuthorizer(userStore, database)
 	gatewaySecret := os.Getenv("GATEWAY_SECRET")
 
 	// Create router (Go 1.22+ method-aware patterns)

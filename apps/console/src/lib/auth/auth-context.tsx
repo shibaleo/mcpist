@@ -47,9 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: "user",
     }
     setUser(appUser)
-    setIsLoading(false)
 
-    // Fetch role from backend
+    // Fetch role from backend before clearing isLoading
+    // so admin guards don't redirect prematurely
     fetchAuthUserContext().then((ctx) => {
       if (ctx) {
         setIsAdmin(ctx.role === "admin")
@@ -57,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }).catch(() => {
       // ignore
+    }).finally(() => {
+      setIsLoading(false)
     })
   }, [clerkUser, clerkLoaded])
 

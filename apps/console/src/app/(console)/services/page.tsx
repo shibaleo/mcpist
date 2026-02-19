@@ -444,7 +444,7 @@ export default function ServicesPage() {
     }
   }
 
-  const dialogModule = connectDialog ? modules.find((m) => m.id === connectDialog) : null
+  const dialogModule = connectDialog ? modules.find((m) => m.name === connectDialog) : null
   const dialogAuthConfig = connectDialog ? authConfig[connectDialog] : null
 
   if (loading) {
@@ -463,8 +463,8 @@ export default function ServicesPage() {
 
   // 接続済みと未接続に分類（検索フィルタ適用）
   const query = searchQuery.toLowerCase()
-  const connectedServices = modules.filter(m => connectedModuleIds.has(m.id) && (!query || m.name.toLowerCase().includes(query) || m.id.includes(query)))
-  const unconnectedServices = modules.filter(m => !connectedModuleIds.has(m.id) && (!query || m.name.toLowerCase().includes(query) || m.id.includes(query)))
+  const connectedServices = modules.filter(m => connectedModuleIds.has(m.name) && (!query || m.name.toLowerCase().includes(query)))
+  const unconnectedServices = modules.filter(m => !connectedModuleIds.has(m.name) && (!query || m.name.toLowerCase().includes(query)))
 
   return (
     <div className="p-6 space-y-6">
@@ -493,26 +493,26 @@ export default function ServicesPage() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[...unconnectedServices].sort((a, b) => {
-              const aPreferred = preferredModules.includes(a.id)
-              const bPreferred = preferredModules.includes(b.id)
+              const aPreferred = preferredModules.includes(a.name)
+              const bPreferred = preferredModules.includes(b.name)
               if (aPreferred && !bPreferred) return -1
               if (!aPreferred && bPreferred) return 1
-              return preferredModules.indexOf(a.id) - preferredModules.indexOf(b.id)
+              return preferredModules.indexOf(a.name) - preferredModules.indexOf(b.name)
             }).map((module) => (
               <div
                 key={module.id}
-                onClick={() => handleConnect(module.id)}
+                onClick={() => handleConnect(module.name)}
                 className="flex items-center gap-3 p-3 rounded-xl border bg-card/70 hover:bg-muted/50 transition-colors cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
-                  <ModuleIcon moduleId={module.id} className="h-5 w-5 text-foreground" />
+                  <ModuleIcon moduleName={module.name} className="h-5 w-5 text-foreground" />
                 </div>
                 <div className="min-w-0">
                   <span className="font-medium text-sm truncate block">{module.name}</span>
-                  {rateLimitInfo[module.id] && (
+                  {rateLimitInfo[module.name] && (
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Gauge className="h-2.5 w-2.5 shrink-0" />
-                      {rateLimitInfo[module.id].rate}
+                      {rateLimitInfo[module.name].rate}
                     </span>
                   )}
                 </div>
@@ -533,19 +533,19 @@ export default function ServicesPage() {
             {connectedServices.map((module) => (
               <div
                 key={module.id}
-                onClick={() => setDisconnectDialog(module.id)}
+                onClick={() => setDisconnectDialog(module.name)}
                 className="relative flex items-center gap-3 p-3 rounded-xl border bg-card/70 hover:bg-muted/50 transition-colors cursor-pointer group"
               >
                 <div className="relative w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
-                  <ModuleIcon moduleId={module.id} className="h-5 w-5 text-foreground" />
+                  <ModuleIcon moduleName={module.name} className="h-5 w-5 text-foreground" />
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="font-medium text-sm truncate block">{module.name}</span>
-                  {rateLimitInfo[module.id] && (
+                  {rateLimitInfo[module.name] && (
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Gauge className="h-2.5 w-2.5 shrink-0" />
-                      {rateLimitInfo[module.id].rate}
+                      {rateLimitInfo[module.name].rate}
                     </span>
                   )}
                 </div>
@@ -562,7 +562,7 @@ export default function ServicesPage() {
             <div className="flex items-center gap-3">
               {dialogModule && (
                 <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-                  <ModuleIcon moduleId={dialogModule.id} className="h-5 w-5 text-foreground" />
+                  <ModuleIcon moduleName={dialogModule.name} className="h-5 w-5 text-foreground" />
                 </div>
               )}
               <div>
@@ -811,7 +811,7 @@ export default function ServicesPage() {
           <DialogHeader>
             <DialogTitle>接続を解除しますか？</DialogTitle>
             <DialogDescription>
-              {disconnectDialog && modules.find((m) => m.id === disconnectDialog)?.name}
+              {disconnectDialog && modules.find((m) => m.name === disconnectDialog)?.name}
               との接続を解除します。この操作は取り消せません。
             </DialogDescription>
           </DialogHeader>

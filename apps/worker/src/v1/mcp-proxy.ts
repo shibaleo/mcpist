@@ -90,13 +90,15 @@ async function fetchBackend(
   env: Env
 ): Promise<Response> {
   const url = new URL(request.url);
-  const backendPath = url.pathname.replace(/^\/v1/, "");
-  const targetUrl = `${backendUrl}${backendPath}${url.search}`;
+  const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
 
   const headers = new Headers(request.headers);
   headers.set("X-User-ID", authResult.userId);
   headers.set("X-Auth-Type", authResult.type);
   headers.set("X-Request-ID", requestId);
+  if (authResult.email) {
+    headers.set("X-User-Email", authResult.email);
+  }
   if (env.GATEWAY_SECRET) {
     headers.set("X-Gateway-Secret", env.GATEWAY_SECRET);
   }

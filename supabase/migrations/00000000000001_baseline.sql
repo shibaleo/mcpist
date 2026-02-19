@@ -27,7 +27,7 @@ CREATE TABLE mcpist.plans (
 CREATE TABLE mcpist.users (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     clerk_id           TEXT UNIQUE,
-    account_status     TEXT NOT NULL DEFAULT 'pre_active',
+    account_status     TEXT NOT NULL DEFAULT 'active',
     plan_id            TEXT NOT NULL DEFAULT 'free' REFERENCES mcpist.plans(id),
     display_name       TEXT,
     avatar_url         TEXT,

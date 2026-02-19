@@ -138,7 +138,7 @@ export default function ToolsPage() {
   // モジュールのローカル設定を取得（DB設定がなければデフォルト値を使用）
   const getModuleToolSettings = useCallback(
     (moduleId: string): Record<string, boolean> => {
-      const mod = modules.find((m) => m.id === moduleId)
+      const mod = modules.find((m) => m.name === moduleId)
       if (!mod) return {}
 
       // ローカル設定があればそれを使用
@@ -160,15 +160,15 @@ export default function ToolsPage() {
   const connectedModuleIds = new Set(connections.map((c) => c.module))
 
   // 接続済みモジュールのみフィルタ
-  const connectedModules = modules.filter((m) => connectedModuleIds.has(m.id))
+  const connectedModules = modules.filter((m) => connectedModuleIds.has(m.name))
 
   // 選択中のモジュール情報
-  const selectedModule = modules.find((m) => m.id === selectedModuleId)
+  const selectedModule = modules.find((m) => m.name === selectedModuleId)
 
   // 初回ロード時に最初の接続済みモジュールを選択
   useEffect(() => {
     if (!loading && !selectedModuleId && connectedModules.length > 0) {
-      setSelectedModuleId(connectedModules[0].id)
+      setSelectedModuleId(connectedModules[0].name)
     }
   }, [loading, selectedModuleId, connectedModules])
 
@@ -212,7 +212,7 @@ export default function ToolsPage() {
   }
 
   const handleSelectAll = async (moduleId: string) => {
-    const mod = modules.find((m) => m.id === moduleId)
+    const mod = modules.find((m) => m.name === moduleId)
     if (!mod) return
 
     const current = getModuleToolSettings(moduleId)
@@ -244,7 +244,7 @@ export default function ToolsPage() {
   }
 
   const handleDeselectAll = async (moduleId: string) => {
-    const mod = modules.find((m) => m.id === moduleId)
+    const mod = modules.find((m) => m.name === moduleId)
     if (!mod) return
 
     const current = getModuleToolSettings(moduleId)
@@ -276,7 +276,7 @@ export default function ToolsPage() {
   }
 
   const handleSelectDefault = async (moduleId: string) => {
-    const mod = modules.find((m) => m.id === moduleId)
+    const mod = modules.find((m) => m.name === moduleId)
     if (!mod) return
 
     const current = getModuleToolSettings(moduleId)
@@ -414,11 +414,11 @@ export default function ToolsPage() {
             {selectedModule ? (
               <span className="flex items-center gap-2">
                 <span className="w-6 h-6 rounded-md bg-white flex items-center justify-center shrink-0">
-                  <ModuleIcon moduleId={selectedModule.id} className="h-3.5 w-3.5" />
+                  <ModuleIcon moduleName={selectedModule.name} className="h-3.5 w-3.5" />
                 </span>
                 <span>{selectedModule.name}</span>
                 <Badge variant="secondary" className="text-xs ml-1">
-                  {getEnabledToolCount(selectedModule.id)}/{selectedModule.tools.length}
+                  {getEnabledToolCount(selectedModule.name)}/{selectedModule.tools.length}
                 </Badge>
               </span>
             ) : (
@@ -434,25 +434,25 @@ export default function ToolsPage() {
               <CommandEmpty>見つかりません</CommandEmpty>
               <CommandGroup>
                 {connectedModules.map((module) => {
-                  const enabledCount = getEnabledToolCount(module.id)
+                  const enabledCount = getEnabledToolCount(module.name)
                   const totalCount = module.tools.length
                   return (
                     <CommandItem
-                      key={module.id}
+                      key={module.name}
                       value={module.name}
                       onSelect={() => {
-                        setSelectedModuleId(module.id)
+                        setSelectedModuleId(module.name)
                         setComboboxOpen(false)
                       }}
                     >
                       <span className="w-6 h-6 rounded-md bg-white flex items-center justify-center shrink-0">
-                        <ModuleIcon moduleId={module.id} className="h-3.5 w-3.5" />
+                        <ModuleIcon moduleName={module.name} className="h-3.5 w-3.5" />
                       </span>
                       <span className="flex-1">{module.name}</span>
                       <Badge variant="secondary" className="text-xs">
                         {enabledCount}/{totalCount}
                       </Badge>
-                      {selectedModuleId === module.id && (
+                      {selectedModuleId === module.name && (
                         <Check className="h-4 w-4 text-primary" />
                       )}
                     </CommandItem>
@@ -471,7 +471,7 @@ export default function ToolsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center">
-                  <ModuleIcon moduleId={selectedModule.id} className="h-6 w-6 text-foreground" />
+                  <ModuleIcon moduleName={selectedModule.name} className="h-6 w-6 text-foreground" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -499,28 +499,28 @@ export default function ToolsPage() {
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-sm text-foreground">カスタム説明</h3>
                 <span className="text-xs text-muted-foreground">
-                  {(editingModuleId === selectedModule.id ? editingDescription : getUserModuleDescription(selectedModule.id) || "").length}/256
+                  {(editingModuleId === selectedModule.name ? editingDescription : getUserModuleDescription(selectedModule.name) || "").length}/256
                 </span>
               </div>
               <Textarea
-                value={editingModuleId === selectedModule.id ? editingDescription : getUserModuleDescription(selectedModule.id) || ""}
+                value={editingModuleId === selectedModule.name ? editingDescription : getUserModuleDescription(selectedModule.name) || ""}
                 onChange={(e) => {
-                  if (editingModuleId !== selectedModule.id) {
-                    setEditingModuleId(selectedModule.id)
+                  if (editingModuleId !== selectedModule.name) {
+                    setEditingModuleId(selectedModule.name)
                   }
                   setEditingDescription(e.target.value)
                 }}
                 onFocus={() => {
-                  if (editingModuleId !== selectedModule.id) {
-                    setEditingModuleId(selectedModule.id)
-                    setEditingDescription(getUserModuleDescription(selectedModule.id) || "")
+                  if (editingModuleId !== selectedModule.name) {
+                    setEditingModuleId(selectedModule.name)
+                    setEditingDescription(getUserModuleDescription(selectedModule.name) || "")
                   }
                 }}
                 placeholder="このモジュールの使い方や注意点を記述してください（AIへの追加コンテキストとして使用されます）"
                 className="min-h-[80px] resize-y"
                 maxLength={256}
               />
-              {editingModuleId === selectedModule.id && (
+              {editingModuleId === selectedModule.name && (
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="ghost"
@@ -533,7 +533,7 @@ export default function ToolsPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => handleSaveModuleDescription(selectedModule.id)}
+                    onClick={() => handleSaveModuleDescription(selectedModule.name)}
                     disabled={savingDescription}
                   >
                     {savingDescription ? (
@@ -558,13 +558,13 @@ export default function ToolsPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-sm text-foreground">ツール</h3>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleSelectDefault(selectedModule.id)}>
+                <Button variant="outline" size="sm" onClick={() => handleSelectDefault(selectedModule.name)}>
                   デフォルト
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleSelectAll(selectedModule.id)}>
+                <Button variant="outline" size="sm" onClick={() => handleSelectAll(selectedModule.name)}>
                   全選択
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDeselectAll(selectedModule.id)}>
+                <Button variant="outline" size="sm" onClick={() => handleDeselectAll(selectedModule.name)}>
                   全解除
                 </Button>
               </div>
@@ -583,8 +583,8 @@ export default function ToolsPage() {
                   )}
                 >
                   <Switch
-                    checked={isToolEnabled(selectedModule.id, tool.id)}
-                    onCheckedChange={() => handleToggleTool(selectedModule.id, tool.id)}
+                    checked={isToolEnabled(selectedModule.name, tool.id)}
+                    onCheckedChange={() => handleToggleTool(selectedModule.name, tool.id)}
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">

@@ -166,7 +166,7 @@ function LandingPageContent() {
                         key={id}
                         className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-secondary/30 border border-border/40"
                       >
-                        <ModuleIcon moduleId={id} className="h-4 w-4" colored={false} />
+                        <ModuleIcon moduleName={id} className="h-4 w-4" colored={false} />
                         <span className="text-sm text-foreground capitalize">
                           {id.replace(/_/g, " ")}
                         </span>
@@ -323,7 +323,7 @@ function LandingPageContent() {
                   {service.name}
                 </span>
                 <ModuleIcon
-                  moduleId={service.id}
+                  moduleName={service.id}
                   className="h-8 w-8"
                   colored
                 />

@@ -142,7 +142,7 @@ export default function OnboardingPage() {
                     )}
                   >
                     <ModuleIcon
-                      moduleId={module.id}
+                      moduleName={module.name}
                       className={cn(
                         "h-6 w-6",
                         isSelected ? "text-primary" : "text-muted-foreground"

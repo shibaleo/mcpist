@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"os"
 
-	"mcpist/server/internal/observability"
 	"mcpist/server/internal/broker"
+	"mcpist/server/internal/db"
+	"mcpist/server/internal/observability"
+
+	"gorm.io/gorm"
 )
 
 // ContextKey is the type for context keys
@@ -47,11 +50,12 @@ func (ctx *AuthContext) WithinDailyLimit(count int) bool {
 type Authorizer struct {
 	gatewaySecret string
 	store         *broker.UserBroker
+	db            *gorm.DB
 }
 
 // NewAuthorizer creates a new authorizer.
 // Panics if GATEWAY_SECRET is not set — required in all environments.
-func NewAuthorizer(userStore *broker.UserBroker) *Authorizer {
+func NewAuthorizer(userStore *broker.UserBroker, database *gorm.DB) *Authorizer {
 	secret := os.Getenv("GATEWAY_SECRET")
 	if secret == "" {
 		log.Fatal("GATEWAY_SECRET is not set. Set it via environment variable or .env.dev")
@@ -59,6 +63,7 @@ func NewAuthorizer(userStore *broker.UserBroker) *Authorizer {
 	return &Authorizer{
 		gatewaySecret: secret,
 		store:         userStore,
+		db:            database,
 	}
 }
 
@@ -115,7 +120,23 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		authType = "unknown"
 	}
 
-	// 4. Get user's context from Store
+	// 4. Resolve Clerk ID → internal UUID for JWT auth
+	//    API key auth already uses internal UUID (embedded in JWT sub claim).
+	if authType == "jwt" {
+		email := r.Header.Get("X-User-Email")
+		internalID, err := db.FindOrCreateByClerkID(a.db, userID, email)
+		if err != nil {
+			log.Printf("Failed to resolve clerk_id %s: %v", userID, err)
+			return nil, &AuthError{
+				Code:    "USER_RESOLUTION_ERROR",
+				Message: "Failed to resolve user identity",
+				Status:  http.StatusInternalServerError,
+			}
+		}
+		userID = internalID
+	}
+
+	// 5. Get user's context from Store
 	userContext, err := a.store.GetUserContext(userID)
 	if err != nil {
 		log.Printf("Failed to get user context for user %s: %v", userID, err)
@@ -126,7 +147,7 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		}
 	}
 
-	// 5. Check account status
+	// 6. Check account status
 	if userContext.AccountStatus != "active" {
 		return nil, &AuthError{
 			Code:    "ACCOUNT_NOT_ACTIVE",
