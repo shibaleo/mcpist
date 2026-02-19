@@ -96,11 +96,9 @@ export async function GET(request: Request) {
         : null,
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "microsoft_todo",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "microsoft_todo" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

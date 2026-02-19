@@ -105,11 +105,9 @@ export async function GET(request: Request) {
       expires_at: expiresAt,
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "dropbox",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "dropbox" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

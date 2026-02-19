@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
 
 const NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
 
 export async function GET(request: Request) {
   // 認証チェック（ユーザーセッション確認）
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
+  const { userId } = await auth()
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

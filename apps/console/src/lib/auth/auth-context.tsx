@@ -1,11 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
-import type { User as SupabaseUser, SupabaseClient } from "@supabase/supabase-js"
-
-// Development auth bypass - set NEXT_PUBLIC_DEV_AUTH_BYPASS=true in .env.local
-const DEV_AUTH_BYPASS = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true"
+import { useUser, useClerk } from "@clerk/nextjs"
+import { fetchAuthUserContext } from "./auth-context-actions"
 
 interface User {
   id: string
@@ -17,8 +14,6 @@ interface User {
 
 interface AuthContextType {
   user: User | null
-  supabaseUser: SupabaseUser | null
-  supabase: SupabaseClient | null
   isLoading: boolean
   isAdmin: boolean
   signOut: () => Promise<void>
@@ -27,96 +22,46 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Dummy user for development bypass
-const DEV_BYPASS_USER: User = {
-  id: "dev-bypass-user-id",
-  name: "Dev User",
-  email: "dev@localhost",
-  role: "admin",
-}
-
-function buildUser(sbUser: SupabaseUser): User {
-  const role = sbUser.app_metadata?.role === "admin" ? "admin" : "user"
-  const displayName = sbUser.user_metadata?.display_name || sbUser.user_metadata?.full_name || sbUser.email?.split("@")[0] || "User"
-  return {
-    id: sbUser.id,
-    name: displayName,
-    email: sbUser.email || "",
-    avatar: sbUser.user_metadata?.avatar_url,
-    role,
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => DEV_AUTH_BYPASS ? DEV_BYPASS_USER : null)
-  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
-  const [supabase] = useState<SupabaseClient | null>(() => {
-    if (typeof window === "undefined") return null
-    return createClient()
-  })
-  const [isLoading, setIsLoading] = useState(!DEV_AUTH_BYPASS)
-  const [isAdmin, setIsAdmin] = useState(DEV_AUTH_BYPASS)
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
+  const clerk = useClerk()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    if (DEV_AUTH_BYPASS) {
-      console.warn("[Auth] DEV_AUTH_BYPASS enabled - using dummy user")
+    if (!clerkLoaded) return
+
+    if (!clerkUser) {
+      setUser(null)
+      setIsAdmin(false)
+      setIsLoading(false)
       return
     }
 
-    if (!supabase) return
+    const appUser: User = {
+      id: clerkUser.id,
+      name: clerkUser.fullName || clerkUser.firstName || clerkUser.emailAddresses[0]?.emailAddress?.split("@")[0] || "User",
+      email: clerkUser.emailAddresses[0]?.emailAddress || "",
+      avatar: clerkUser.imageUrl,
+      role: "user",
+    }
+    setUser(appUser)
+    setIsLoading(false)
 
-    // IMPORTANT: Auth initialization order matters to avoid deadlocks
-    // See: https://github.com/supabase/supabase-js/issues/1594
-    //
-    // 1. Set up onAuthStateChange BEFORE calling getSession()
-    //    - This ensures the listener is ready when session events fire
-    //
-    // 2. Use .then() instead of await for getSession()
-    //    - Prevents blocking the event loop during initialization
-    //
-    // 3. Wrap async operations (like buildUser) in setTimeout(..., 0)
-    //    - Defers execution to next tick, avoiding deadlocks with Supabase internals
-    //    - The Web Locks API can cause hangs if async calls happen synchronously
-    //      within onAuthStateChange callback
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const sbUser = session?.user ?? null
-      setSupabaseUser(sbUser)
-
-      if (sbUser) {
-        // setTimeout prevents deadlock with Supabase Web Locks API - do not remove!
-        setTimeout(() => {
-          const appUser = buildUser(sbUser)
-          setUser(appUser)
-          setIsAdmin(appUser.role === "admin")
-          setIsLoading(false)
-        }, 0)
-      } else {
-        setUser(null)
-        setIsAdmin(false)
-        setIsLoading(false)
-      }
-    })
-
-    // Use .then() not await - prevents blocking during init
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // onAuthStateChange will handle the state update
-      if (!session) {
-        setIsLoading(false)
+    // Fetch role from backend
+    fetchAuthUserContext().then((ctx) => {
+      if (ctx) {
+        setIsAdmin(ctx.role === "admin")
+        setUser((prev) => prev ? { ...prev, role: ctx.role } : prev)
       }
     }).catch(() => {
-      setIsLoading(false)
+      // ignore
     })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [supabase])
+  }, [clerkUser, clerkLoaded])
 
   const signOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut()
-    }
+    await clerk.signOut()
   }
 
   const updateName = (name: string) => {
@@ -124,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, supabaseUser, supabase, isLoading, isAdmin, signOut, updateName }}>
+    <AuthContext.Provider value={{ user, isLoading, isAdmin, signOut, updateName }}>
       {children}
     </AuthContext.Provider>
   )

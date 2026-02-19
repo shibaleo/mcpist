@@ -10,21 +10,25 @@ import (
 	"syscall"
 	"time"
 
+	"mcpist/server/internal/auth"
+	"mcpist/server/internal/broker"
+	"mcpist/server/internal/db"
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
+	"mcpist/server/internal/rest"
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/asana"
 	"mcpist/server/internal/modules/confluence"
 	"mcpist/server/internal/modules/dropbox"
 	"mcpist/server/internal/modules/github"
-	"mcpist/server/internal/modules/grafana"
+	"mcpist/server/internal/modules/google_apps_script"
 	"mcpist/server/internal/modules/google_calendar"
 	"mcpist/server/internal/modules/google_docs"
 	"mcpist/server/internal/modules/google_drive"
-	"mcpist/server/internal/modules/google_apps_script"
 	"mcpist/server/internal/modules/google_sheets"
 	"mcpist/server/internal/modules/google_tasks"
+	"mcpist/server/internal/modules/grafana"
 	"mcpist/server/internal/modules/jira"
 	"mcpist/server/internal/modules/microsoft_todo"
 	"mcpist/server/internal/modules/notion"
@@ -34,7 +38,6 @@ import (
 	"mcpist/server/internal/modules/todoist"
 	"mcpist/server/internal/modules/trello"
 	"mcpist/server/internal/observability"
-	"mcpist/server/internal/broker"
 )
 
 func init() {
@@ -85,8 +88,18 @@ func main() {
 	log.Printf("Registered modules: %v", moduleNames)
 	log.Printf("Instance: %s (region: %s)", instanceID, instanceRegion)
 
-	// Initialize stores and authorizer
-	userStore := broker.NewUserBroker()
+	// Initialize database
+	database := db.Open()
+	log.Printf("Database connected")
+
+	// Initialize Ed25519 signing keys for JWT API keys
+	if err := auth.Init(); err != nil {
+		log.Fatalf("Failed to initialize auth keys: %v", err)
+	}
+
+	// Initialize brokers with GORM DB
+	broker.InitTokenBroker(database)
+	userStore := broker.NewUserBroker(database)
 
 	// Sync modules+tools to database (non-blocking: log errors but don't abort)
 	syncEntries := buildSyncEntries(moduleNames)
@@ -95,8 +108,13 @@ func main() {
 	}
 
 	authorizer := middleware.NewAuthorizer(userStore)
+	gatewaySecret := os.Getenv("GATEWAY_SECRET")
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	// Create router (Go 1.22+ method-aware patterns)
+	mux := http.NewServeMux()
+
+	// Health check
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Instance-ID", instanceID)
 		w.Header().Set("X-Instance-Region", instanceRegion)
@@ -113,15 +131,21 @@ func main() {
 	})
 
 	// MCP endpoint with authorization + rate limit + transport middleware
-	// Note: Authentication is handled by Cloudflare Worker, not Go Server
-	// Worker sets X-User-ID and X-Gateway-Secret headers
-	// Chain: Recovery → Authorize → RateLimit(10 req/sec per user) → Transport → MCPHandler
 	rateLimiter := middleware.NewRateLimiter(10)
 	mcpHandler := mcp.NewHandler(userStore)
-	http.Handle("/mcp", middleware.Recovery(authorizer.Authorize(rateLimiter.Middleware(middleware.Transport(mcpHandler)))))
+	mux.Handle("/v1/mcp", middleware.Recovery(authorizer.Authorize(rateLimiter.Middleware(middleware.Transport(mcpHandler)))))
+
+	// REST endpoints
+	adminEmails := os.Getenv("ADMIN_EMAILS")
+	restHandler := rest.NewHandler(database, gatewaySecret, adminEmails)
+	restHandler.Register(mux)
+
+	// JWKS endpoint (public, for API key verification)
+	rest.RegisterJWKS(mux)
 
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%s", port),
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: mux,
 	}
 
 	// Start server in goroutine

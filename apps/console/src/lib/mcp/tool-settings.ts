@@ -11,7 +11,7 @@ export type { ToolSetting, ModuleDescription } from "./tool-settings-types"
  */
 export async function getModuleConfig(moduleName?: string) {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/modules/config", {
+  const { data } = await client.GET("/v1/me/modules/config", {
     params: { query: { module: moduleName } },
   })
   return data!
@@ -38,7 +38,7 @@ export async function upsertMyToolSettings(
   disabledTools: string[]
 ) {
   const client = await createWorkerClient()
-  const { data } = await client.PUT("/v1/modules/{name}/tools", {
+  const { data } = await client.PUT("/v1/me/modules/{name}/tools", {
     params: { path: { name: moduleName } },
     body: {
       enabled_tools: enabledTools,
@@ -129,7 +129,7 @@ export async function updateModuleDescription(
   description: string
 ) {
   const client = await createWorkerClient()
-  const { data } = await client.PUT("/v1/modules/{name}/description", {
+  const { data } = await client.PUT("/v1/me/modules/{name}/description", {
     params: { path: { name: moduleName } },
     body: { description },
   })

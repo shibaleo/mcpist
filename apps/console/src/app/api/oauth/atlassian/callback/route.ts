@@ -142,11 +142,9 @@ export async function GET(request: Request) {
     const modulesToSave = moduleName === "atlassian" ? ["jira", "confluence"] : [moduleName]
 
     for (const mod of modulesToSave) {
-      await client.PUT("/v1/credentials", {
-        body: {
-          module: mod,
-          credentials: tokenCredentials,
-        },
+      await client.PUT("/v1/me/credentials/{module}", {
+        params: { path: { module: mod } },
+        body: { credentials: tokenCredentials },
       })
 
       // デフォルトツール設定を保存

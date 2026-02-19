@@ -181,11 +181,9 @@ export async function GET(request: Request) {
       },
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "trello",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "trello" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

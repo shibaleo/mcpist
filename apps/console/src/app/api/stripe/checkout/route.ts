@@ -10,11 +10,10 @@ export async function POST(request: NextRequest) {
   try {
     const client = await createWorkerClient()
 
-    // Get authenticated user identity
-    const { data: contextRows } = await client.GET("/v1/user/context")
-    const userCtx = contextRows?.[0]
+    // Get authenticated user profile
+    const { data: profile } = await client.GET("/v1/me/profile")
 
-    if (!userCtx) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -24,23 +23,23 @@ export async function POST(request: NextRequest) {
     // Get or create Stripe Customer
     let stripeCustomerId: string
 
-    const { data: stripeData } = await client.GET("/v1/user/stripe")
+    const { data: stripeData } = await client.GET("/v1/me/stripe")
 
     if (stripeData?.stripe_customer_id) {
       stripeCustomerId = stripeData.stripe_customer_id
     } else {
       // Create new Stripe Customer
       const customer = await stripe.customers.create({
-        email: userCtx.email,
+        email: profile.email,
         metadata: {
-          supabase_user_id: userCtx.user_id,
+          user_id: profile.user_id,
         },
       })
       stripeCustomerId = customer.id
 
       // Link Stripe Customer to user
       try {
-        await client.PUT("/v1/user/stripe", {
+        await client.PUT("/v1/me/stripe", {
           body: { stripe_customer_id: stripeCustomerId },
         })
       } catch (linkErr) {
@@ -65,12 +64,12 @@ export async function POST(request: NextRequest) {
       success_url: `${origin}/plans?success=true`,
       cancel_url: `${origin}/plans?canceled=true`,
       metadata: {
-        user_id: userCtx.user_id,
+        user_id: profile.user_id,
         plan_id: "plus",
       },
       subscription_data: {
         metadata: {
-          user_id: userCtx.user_id,
+          user_id: profile.user_id,
           plan_id: "plus",
         },
       },

@@ -91,11 +91,9 @@ export async function GET(request: Request) {
       expires_at: null,  // Todoist tokens don't expire (until revoked)
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "todoist",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "todoist" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

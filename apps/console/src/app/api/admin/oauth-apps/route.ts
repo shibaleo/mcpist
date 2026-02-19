@@ -25,9 +25,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const client = await createWorkerClient()
-    const { data } = await client.PUT("/v1/admin/oauth/apps", {
+    const { data } = await client.PUT("/v1/admin/oauth/apps/{provider}", {
+      params: { path: { provider } },
       body: {
-        provider,
         client_id,
         client_secret,
         redirect_uri,

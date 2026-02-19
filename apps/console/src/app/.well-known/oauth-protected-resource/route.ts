@@ -8,13 +8,12 @@
 import { NextResponse } from 'next/server'
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_MCP_SERVER_URL!
 
 export async function GET() {
   const metadata = {
-    resource: `${BASE_URL}/api/mcp`,
-    // Supabase Auth をAuthorization Serverとして指定
-    authorization_servers: [`${SUPABASE_URL}/auth/v1`],
+    resource: `${WORKER_URL}/v1/mcp`,
+    authorization_servers: [`${WORKER_URL}/.well-known/oauth-authorization-server`],
     scopes_supported: ['openid', 'profile', 'email'],
     bearer_methods_supported: ['header'],
   }

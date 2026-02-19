@@ -2,7 +2,6 @@
  * v1 API サブルーター
  *
  * app.route("/v1", v1) でメインルーターにマウントされる。
- * RESTful ルーティングで各リソースを個別に定義。
  */
 
 import { Hono } from "hono";
@@ -15,11 +14,7 @@ import {
 
 // Route handlers
 import { modules } from "./routes/modules";
-import { apiKeys } from "./routes/api-keys";
-import { prompts } from "./routes/prompts";
-import { credentials } from "./routes/credentials";
-import { user } from "./routes/user";
-import { oauth } from "./routes/oauth";
+import { me } from "./routes/me";
 import { admin } from "./routes/admin";
 import { stripe } from "./routes/stripe";
 
@@ -35,11 +30,7 @@ v1.get("/mcp/.well-known/oauth-authorization-server", (c) =>
 
 // RESTful resource routes
 v1.route("/modules", modules);
-v1.route("/api-keys", apiKeys);
-v1.route("/prompts", prompts);
-v1.route("/credentials", credentials);
-v1.route("/user", user);
-v1.route("/oauth", oauth);
+v1.route("/me", me);
 v1.route("/admin", admin);
 v1.route("/stripe", stripe);
 

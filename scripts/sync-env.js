@@ -11,40 +11,35 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const ENV_LOCAL = path.join(ROOT_DIR, '.env.local');
+// .env.local を優先、なければ .env.dev にフォールバック
+const ENV_LOCAL = fs.existsSync(path.join(ROOT_DIR, '.env.local'))
+  ? path.join(ROOT_DIR, '.env.local')
+  : path.join(ROOT_DIR, '.env.dev');
 
 // 各モジュールが必要とする環境変数のマッピング
 const MODULE_ENV_MAP = {
   'apps/worker/.dev.vars': [
     'GATEWAY_SECRET',
     'INTERNAL_SECRET',
-    'SUPABASE_PUBLISHABLE_KEY',
-    'SUPABASE_URL',
-    'SUPABASE_JWKS_URL',
+    'CLERK_SECRET_KEY',
+    'CLERK_JWKS_URL',
     'PRIMARY_API_URL',
-    'SECONDARY_API_URL',
+    'API_SERVER_JWKS_URL',
   ],
   'apps/console/.env.local': [
     'ENVIRONMENT',
     'NEXT_PUBLIC_APP_URL',
     'NEXT_PUBLIC_MCP_SERVER_URL',
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-    'NEXT_PUBLIC_DEV_AUTH_BYPASS',
-    'SUPABASE_URL',
-    'SUPABASE_SECRET_KEY',
+    'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+    'CLERK_SECRET_KEY',
     'INTERNAL_SECRET',
-    'MCP_SERVER_URL',
-    'CONSOLE_URL',
-    'VAULT_URL',
-    'WORKER_URL',
   ],
 };
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
     console.error(`Error: ${filePath} not found`);
-    console.error('Please copy .env.example to .env.local and fill in the values');
+    console.error('Please copy .env.dev to .env.local and fill in the values');
     process.exit(1);
   }
 

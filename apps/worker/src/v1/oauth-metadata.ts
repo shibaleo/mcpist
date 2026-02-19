@@ -10,7 +10,7 @@ export function handleOAuthProtectedResourceMetadata(request: Request, env: Env)
 
   return new Response(JSON.stringify({
     resource: `${baseUrl}/v1/mcp`,
-    authorization_servers: [`${env.SUPABASE_URL}/auth/v1`],
+    authorization_servers: [`${baseUrl}/v1/mcp/.well-known/oauth-authorization-server`],
     scopes_supported: ["openid", "profile", "email"],
     bearer_methods_supported: ["header"],
   }), {
@@ -25,38 +25,15 @@ export function handleOAuthProtectedResourceMetadata(request: Request, env: Env)
 
 /**
  * OAuth Authorization Server Metadata (RFC 8414)
- * Supabase Auth のメタデータをプロキシ
+ * Clerk 認証のメタデータ
  */
 export async function handleOAuthAuthorizationServerMetadata(env: Env): Promise<Response> {
-  try {
-    const response = await fetch(
-      `${env.SUPABASE_URL}/auth/v1/.well-known/openid-configuration`
-    );
-    if (response.ok) {
-      const metadata = await response.json();
-      return new Response(JSON.stringify(metadata), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=3600",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    }
-  } catch {
-    // Fall through to manual metadata
-  }
-
-  // Fallback: 手動構築
+  // Clerk doesn't provide a standard OpenID discovery endpoint in the same way,
+  // so we return the JWKS URL for token verification.
   return new Response(JSON.stringify({
-    issuer: `${env.SUPABASE_URL}/auth/v1`,
-    authorization_endpoint: `${env.SUPABASE_URL}/auth/v1/authorize`,
-    token_endpoint: `${env.SUPABASE_URL}/auth/v1/token`,
-    registration_endpoint: `${env.SUPABASE_URL}/auth/v1/oauth/register`,
+    jwks_uri: env.CLERK_JWKS_URL,
     response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code", "refresh_token"],
-    code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["none"],
+    grant_types_supported: ["authorization_code"],
     scopes_supported: ["openid", "profile", "email"],
   }), {
     status: 200,

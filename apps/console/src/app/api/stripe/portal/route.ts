@@ -10,16 +10,16 @@ export async function POST(request: NextRequest) {
   try {
     const client = await createWorkerClient()
 
-    // Verify user is authenticated (createWorkerClient uses JWT)
-    const { data: contextRows } = await client.GET("/v1/user/context")
-    if (!contextRows?.[0]) {
+    // Verify user is authenticated
+    const { data: profile } = await client.GET("/v1/me/profile")
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const stripe = createStripeClient()
 
     // Get Stripe Customer ID
-    const { data } = await client.GET("/v1/user/stripe")
+    const { data } = await client.GET("/v1/me/stripe")
     const stripeCustomerId = data?.stripe_customer_id
 
     if (!stripeCustomerId) {

@@ -8,7 +8,7 @@ export type GenerateApiKeyResult = components["schemas"]["GenerateApiKeyResult"]
 
 export async function listApiKeys() {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/api-keys")
+  const { data } = await client.GET("/v1/me/apikeys")
   return data!
 }
 
@@ -17,7 +17,7 @@ export async function generateApiKey(
   expiresInDays: number | null = null
 ) {
   const client = await createWorkerClient()
-  const { data } = await client.POST("/v1/api-keys", {
+  const { data } = await client.POST("/v1/me/apikeys", {
     body: {
       display_name: name,
       expires_at: expiresInDays
@@ -30,7 +30,7 @@ export async function generateApiKey(
 
 export async function revokeApiKey(keyId: string) {
   const client = await createWorkerClient()
-  const { data } = await client.DELETE("/v1/api-keys/{id}", {
+  const { data } = await client.DELETE("/v1/me/apikeys/{id}", {
     params: { path: { id: keyId } },
   })
   return data!

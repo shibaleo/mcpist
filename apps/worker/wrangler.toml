@@ -13,30 +13,20 @@ invocation_logs = true
 [triggers]
 crons = ["*/5 * * * *"]
 
-# KV Namespaces
-# ローカル開発時はpreview_idを使用
-# APIキーキャッシュのみ使用（Rate LimitとHealth Stateは削除済み）
-[[kv_namespaces]]
-binding = "API_KEY_CACHE"
-id = "04a54e251d5b47f9bcc5d7a7143edbe7"
-preview_id = "dev-api-key-cache"
-
 # 環境変数
 # ローカル開発: .dev.vars から読み込み（pnpm env:sync で生成）
 # クラウド: wrangler secret で設定
 
 # 開発環境 (mcp.dev.mcpist.app)
 [env.dev]
-vars = { PRIMARY_API_URL = "REDACTED_PRIMARY_API_URL", SECONDARY_API_URL = "REDACTED_SECONDARY_API_URL", SUPABASE_URL = "https://xstfrjvgpqxvyuochtss.supabase.co", SUPABASE_JWKS_URL = "https://xstfrjvgpqxvyuochtss.supabase.co/auth/v1/.well-known/jwks.json", POSTGREST_URL = "https://xstfrjvgpqxvyuochtss.supabase.co/rest/v1", APP_ENV = "mcpist-dev" }
-
-[[env.dev.kv_namespaces]]
-binding = "API_KEY_CACHE"
-id = "04a54e251d5b47f9bcc5d7a7143edbe7"
+vars = { APP_ENV = "mcpist-dev" }
 
 # シークレット（wrangler secret で設定）
+# - PRIMARY_API_URL: Go Server URL
+# - SECONDARY_API_URL: セカンダリ Go Server URL
 # - GATEWAY_SECRET: オリジン直接アクセス防止用
-# - SUPABASE_PUBLISHABLE_KEY: JWT検証用 (Auth API)
-# - POSTGREST_API_KEY: PostgREST RPC呼び出し用 (DB)
+# - CLERK_JWKS_URL: Clerk JWT 検証用 JWKS URL
+# - API_SERVER_JWKS_URL: Go Server JWT API key 検証用 JWKS URL
 # - STRIPE_WEBHOOK_SECRET: Stripe Webhook署名検証用
 # - GRAFANA_LOKI_URL: Loki Push API URL
 # - GRAFANA_LOKI_USER: Loki Basic Auth ユーザー名

@@ -1,22 +1,20 @@
 # Air - Live reload for Go apps
-# https://github.com/cosmtrek/air
+# https://github.com/air-verse/air
+#
+# Usage: dotenv -e .env.local -- air -c apps/server/.air.toml
 
-root = "."
+root = "apps/server"
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/server.exe ./cmd/server"
-bin = "./tmp/server.exe"
+cmd = "go -C apps/server build -o tmp/server.exe ./cmd/server"
+entrypoint = "tmp/server.exe"
 include_ext = ["go"]
 exclude_dir = ["tmp", "vendor", "test"]
 delay = 1000
 
 [misc]
 clean_on_exit = true
-
-[env]
-# Load environment variables from .env.dev
-include_file = "../../.env.dev"
 
 [log]
 time = false

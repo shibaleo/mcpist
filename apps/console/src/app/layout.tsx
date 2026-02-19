@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Ubuntu, Noto_Sans_JP } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "@/styles/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceProvider } from "@/components/appearance-context";
@@ -20,6 +21,8 @@ const notoSansJP = Noto_Sans_JP({
   preload: false,
 });
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "MCPist Console",
   description: "MCPist User Console",
@@ -31,18 +34,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja" suppressHydrationWarning>
-      <body className={`${ubuntu.variable} ${notoSansJP.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AppearanceProvider>{children}</AppearanceProvider>
-          <Toaster richColors position="top-right" />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="ja" suppressHydrationWarning>
+        <body className={`${ubuntu.variable} ${notoSansJP.variable} font-sans antialiased`}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AppearanceProvider>{children}</AppearanceProvider>
+            <Toaster richColors position="top-right" />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

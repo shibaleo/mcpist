@@ -9,7 +9,7 @@ export type DeletePromptResult = components["schemas"]["DeletePromptResult"]
 
 export async function listPrompts(moduleName?: string): Promise<Prompt[]> {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/prompts", {
+  const { data } = await client.GET("/v1/me/prompts", {
     params: { query: { module: moduleName } },
   })
   return data!
@@ -17,7 +17,7 @@ export async function listPrompts(moduleName?: string): Promise<Prompt[]> {
 
 export async function getPrompt(promptId: string): Promise<Prompt | null> {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/prompts/{id}", {
+  const { data } = await client.GET("/v1/me/prompts/{id}", {
     params: { path: { id: promptId } },
   })
   const response = data!
@@ -47,12 +47,28 @@ export async function upsertPrompt(
   description?: string
 ): Promise<UpsertPromptResult> {
   const client = await createWorkerClient()
-  const { data } = await client.PUT("/v1/prompts", {
+
+  if (promptId) {
+    // Update existing prompt
+    const { data } = await client.PUT("/v1/me/prompts/{id}", {
+      params: { path: { id: promptId } },
+      body: {
+        name,
+        content,
+        module_name: moduleName,
+        enabled,
+        description,
+      },
+    })
+    return data!
+  }
+
+  // Create new prompt
+  const { data } = await client.POST("/v1/me/prompts", {
     body: {
       name,
       content,
       module_name: moduleName,
-      prompt_id: promptId,
       enabled,
       description,
     },
@@ -62,7 +78,7 @@ export async function upsertPrompt(
 
 export async function deletePrompt(promptId: string): Promise<DeletePromptResult> {
   const client = await createWorkerClient()
-  const { data } = await client.DELETE("/v1/prompts/{id}", {
+  const { data } = await client.DELETE("/v1/me/prompts/{id}", {
     params: { path: { id: promptId } },
   })
   return data!

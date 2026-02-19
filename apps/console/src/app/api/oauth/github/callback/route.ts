@@ -100,11 +100,9 @@ export async function GET(request: Request) {
       scope: tokenData.scope,
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "github",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "github" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

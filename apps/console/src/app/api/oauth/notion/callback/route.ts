@@ -107,11 +107,9 @@ export async function GET(request: Request) {
       },
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "notion",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "notion" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

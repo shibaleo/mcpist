@@ -96,7 +96,7 @@ paths:
         "503":
           description: Service unavailable
 
-  # ── Modules (public + user-scoped) ─────────────────────────
+  # ── Modules (public) ─────────────────────────────────────────
   /v1/modules:
     get:
       operationId: listModules
@@ -112,140 +112,52 @@ paths:
                 items:
                   $ref: "#/components/schemas/ModuleWithTools"
 
-  /v1/modules/sync:
-    post:
-      operationId: syncModules
-      summary: Sync module definitions from Go Server
-      description: >-
-        Registers or updates module and tool definitions in the database.
-        Called by Go Server at startup. Authenticated via X-Gateway-Secret.
-      tags: [modules]
-      security:
-        - gatewaySecret: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SyncModulesBody"
-      responses:
-        "200":
-          description: Modules synced
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SyncModulesResult"
-        "401":
-          description: Unauthorized
-
-  /v1/modules/config:
+  # ── Me (authenticated user) ─────────────────────────────────
+  /v1/me/profile:
     get:
-      operationId: getModuleConfig
-      summary: Get module configuration
-      tags: [modules]
+      operationId: getMyProfile
+      summary: Get current user profile
+      tags: [me]
       security:
         - bearerAuth: []
-      parameters:
-        - name: module
-          in: query
-          schema:
-            type: string
-          description: Filter by module name
       responses:
         "200":
-          description: Module configuration
+          description: User profile
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ModuleConfig"
+                $ref: "#/components/schemas/UserProfile"
         "401":
           description: Unauthorized
 
-  /v1/modules/{name}/tools:
+  /v1/me/settings:
     put:
-      operationId: upsertToolSettings
-      summary: Update tool enable/disable settings for a module
-      tags: [modules]
+      operationId: updateSettings
+      summary: Update user settings
+      tags: [me]
       security:
         - bearerAuth: []
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Module name
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpsertToolSettingsBody"
+              $ref: "#/components/schemas/UpdateSettingsBody"
       responses:
         "200":
           description: Settings updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UpsertToolSettingsResult"
-        "401":
-          description: Unauthorized
-
-  /v1/modules/{name}/description:
-    put:
-      operationId: upsertModuleDescription
-      summary: Update module description
-      tags: [modules]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Module name
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpsertModuleDescriptionBody"
-      responses:
-        "200":
-          description: Description updated
-          content:
-            application/json:
-              schema:
                 $ref: "#/components/schemas/SuccessResult"
         "401":
           description: Unauthorized
 
-  # ── API Keys ───────────────────────────────────────────────
-  /v1/api-keys:
-    get:
-      operationId: listApiKeys
-      summary: List API keys
-      tags: [api-keys]
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: API key list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ApiKey"
-        "401":
-          description: Unauthorized
+  /v1/me/onboarding:
     post:
-      operationId: generateApiKey
-      summary: Generate a new API key
-      tags: [api-keys]
+      operationId: completeUserOnboarding
+      summary: Complete a user onboarding step
+      tags: [me]
       security:
         - bearerAuth: []
       requestBody:
@@ -253,316 +165,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/GenerateApiKeyBody"
+              $ref: "#/components/schemas/CompleteOnboardingBody"
       responses:
         "200":
-          description: Generated API key
+          description: Onboarding step completed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenerateApiKeyResult"
+                $ref: "#/components/schemas/OnboardingResult"
         "401":
           description: Unauthorized
 
-  /v1/api-keys/{id}:
-    delete:
-      operationId: revokeApiKey
-      summary: Revoke an API key
-      tags: [api-keys]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: API key ID
-      responses:
-        "200":
-          description: API key revoked
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
-
-  # ── Prompts ────────────────────────────────────────────────
-  /v1/prompts:
-    get:
-      operationId: listPrompts
-      summary: List prompts
-      description: >-
-        Lists prompts for the authenticated user. Supports both bearer auth (Console)
-        and gateway auth (Go Server with ?user_id= query).
-      tags: [prompts]
-      security:
-        - bearerAuth: []
-        - gatewaySecret: []
-      parameters:
-        - name: module
-          in: query
-          schema:
-            type: string
-          description: Filter by module name
-        - name: user_id
-          in: query
-          schema:
-            type: string
-            format: uuid
-          description: Target user ID (required for gateway auth)
-        - name: enabled_only
-          in: query
-          schema:
-            type: boolean
-          description: Return only enabled prompts (gateway auth)
-        - name: name
-          in: query
-          schema:
-            type: string
-          description: Filter by prompt name (gateway auth)
-      responses:
-        "200":
-          description: Prompt list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Prompt"
-        "401":
-          description: Unauthorized
-    put:
-      operationId: upsertPrompt
-      summary: Create or update a prompt
-      tags: [prompts]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpsertPromptBody"
-      responses:
-        "200":
-          description: Prompt created or updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UpsertPromptResult"
-        "401":
-          description: Unauthorized
-
-  /v1/prompts/{id}:
-    get:
-      operationId: getPrompt
-      summary: Get a prompt by ID
-      tags: [prompts]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Prompt ID
-      responses:
-        "200":
-          description: Prompt detail
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GetPromptResult"
-        "401":
-          description: Unauthorized
-    delete:
-      operationId: deletePrompt
-      summary: Delete a prompt
-      tags: [prompts]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Prompt ID
-      responses:
-        "200":
-          description: Prompt deleted
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DeletePromptResult"
-        "401":
-          description: Unauthorized
-
-  # ── Credentials ────────────────────────────────────────────
-  /v1/credentials:
-    get:
-      operationId: listCredentials
-      summary: List stored credentials
-      tags: [credentials]
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Credential list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Credential"
-        "401":
-          description: Unauthorized
-    put:
-      operationId: upsertCredential
-      summary: Create or update credentials for a module
-      description: >-
-        Supports both bearer auth (Console) and gateway auth (Go Server).
-        Gateway auth requires user_id in request body.
-      tags: [credentials]
-      security:
-        - bearerAuth: []
-        - gatewaySecret: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpsertCredentialBody"
-      responses:
-        "200":
-          description: Credential saved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UpsertCredentialResult"
-        "401":
-          description: Unauthorized
-
-  /v1/credentials/{module}:
-    get:
-      operationId: getCredential
-      summary: Get credential for a module (Go Server)
-      description: >-
-        Returns decrypted credential for a specific module and user.
-        Called by Go Server before tool execution. Authenticated via X-Gateway-Secret.
-      tags: [credentials]
-      security:
-        - gatewaySecret: []
-      parameters:
-        - name: module
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Module identifier
-        - name: user_id
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Target user ID
-      responses:
-        "200":
-          description: Credential data
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CredentialDetail"
-        "400":
-          description: Missing user_id
-        "401":
-          description: Unauthorized
-    delete:
-      operationId: deleteCredential
-      summary: Delete credentials for a module
-      tags: [credentials]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: module
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Module identifier
-      responses:
-        "200":
-          description: Credential deleted
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
-
-  # ── User ───────────────────────────────────────────────────
-  /v1/user/context:
-    get:
-      operationId: getUserContext
-      summary: Get current user context
-      description: >-
-        Returns user information including role, plan, and usage data.
-        Supports both bearer auth (Console) and gateway auth (Go Server with ?user_id= query).
-      tags: [user]
-      security:
-        - bearerAuth: []
-        - gatewaySecret: []
-      parameters:
-        - name: user_id
-          in: query
-          schema:
-            type: string
-            format: uuid
-          description: Target user ID (required for gateway auth)
-      responses:
-        "200":
-          description: User context
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/UserContext"
-        "401":
-          description: Unauthorized
-
-  /v1/user/usage:
-    post:
-      operationId: recordUsage
-      summary: Record tool usage
-      description: >-
-        Records tool usage for a user. Called by Go Server after tool execution.
-        Authenticated via X-Gateway-Secret.
-      tags: [user]
-      security:
-        - gatewaySecret: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RecordUsageBody"
-      responses:
-        "200":
-          description: Usage recorded
-        "401":
-          description: Unauthorized
+  /v1/me/usage:
     get:
       operationId: getUsage
       summary: Get usage statistics
-      tags: [user]
+      tags: [me]
       security:
         - bearerAuth: []
       parameters:
@@ -590,11 +208,11 @@ paths:
         "401":
           description: Unauthorized
 
-  /v1/user/stripe:
+  /v1/me/stripe:
     get:
       operationId: getStripeCustomerId
       summary: Get linked Stripe customer ID
-      tags: [user]
+      tags: [me]
       security:
         - bearerAuth: []
       responses:
@@ -609,7 +227,7 @@ paths:
     put:
       operationId: linkStripeCustomer
       summary: Link a Stripe customer ID
-      tags: [user]
+      tags: [me]
       security:
         - bearerAuth: []
       requestBody:
@@ -628,22 +246,70 @@ paths:
         "401":
           description: Unauthorized
 
-  /v1/user/settings:
-    put:
-      operationId: updateSettings
-      summary: Update user settings
-      tags: [user]
+  /v1/me/credentials:
+    get:
+      operationId: listCredentials
+      summary: List stored credentials
+      tags: [me]
       security:
         - bearerAuth: []
+      responses:
+        "200":
+          description: Credential list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Credential"
+        "401":
+          description: Unauthorized
+
+  /v1/me/credentials/{module}:
+    put:
+      operationId: upsertCredential
+      summary: Create or update credentials for a module
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module identifier
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateSettingsBody"
+              $ref: "#/components/schemas/UpsertCredentialBody"
       responses:
         "200":
-          description: Settings updated
+          description: Credential saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertCredentialResult"
+        "401":
+          description: Unauthorized
+    delete:
+      operationId: deleteCredential
+      summary: Delete credentials for a module
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module identifier
+      responses:
+        "200":
+          description: Credential deleted
           content:
             application/json:
               schema:
@@ -651,11 +317,28 @@ paths:
         "401":
           description: Unauthorized
 
-  /v1/user/onboarding:
+  /v1/me/apikeys:
+    get:
+      operationId: listApiKeys
+      summary: List API keys
+      tags: [me]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: API key list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+        "401":
+          description: Unauthorized
     post:
-      operationId: completeUserOnboarding
-      summary: Complete a user onboarding step
-      tags: [user]
+      operationId: generateApiKey
+      summary: Generate a new API key
+      tags: [me]
       security:
         - bearerAuth: []
       requestBody:
@@ -663,43 +346,255 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CompleteOnboardingBody"
+              $ref: "#/components/schemas/GenerateApiKeyBody"
       responses:
         "200":
-          description: Onboarding step completed
+          description: Generated API key
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OnboardingResult"
+                $ref: "#/components/schemas/GenerateApiKeyResult"
         "401":
           description: Unauthorized
 
-  # ── OAuth ──────────────────────────────────────────────────
-  /v1/oauth/apps/{provider}/credentials:
-    get:
-      operationId: getOAuthAppCredentials
-      summary: Get OAuth app credentials for a provider
-      tags: [oauth]
+  /v1/me/apikeys/{id}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoke an API key
+      tags: [me]
+      security:
+        - bearerAuth: []
       parameters:
-        - name: provider
+        - name: id
           in: path
           required: true
           schema:
             type: string
-          description: OAuth provider identifier (e.g. github, google)
+            format: uuid
+          description: API key ID
       responses:
         "200":
-          description: OAuth app credentials
+          description: API key revoked
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OAuthAppCredentials"
+                $ref: "#/components/schemas/SuccessResult"
+        "401":
+          description: Unauthorized
 
-  /v1/oauth/consents:
+  /v1/me/prompts:
+    get:
+      operationId: listPrompts
+      summary: List prompts
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+          description: Filter by module name
+      responses:
+        "200":
+          description: Prompt list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prompt"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createPrompt
+      summary: Create a prompt
+      tags: [me]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePromptBody"
+      responses:
+        "200":
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertPromptResult"
+        "401":
+          description: Unauthorized
+
+  /v1/me/prompts/{id}:
+    get:
+      operationId: getPrompt
+      summary: Get a prompt by ID
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Prompt ID
+      responses:
+        "200":
+          description: Prompt detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPromptResult"
+        "401":
+          description: Unauthorized
+    put:
+      operationId: updatePrompt
+      summary: Update a prompt
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Prompt ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePromptBody"
+      responses:
+        "200":
+          description: Prompt updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertPromptResult"
+        "401":
+          description: Unauthorized
+    delete:
+      operationId: deletePrompt
+      summary: Delete a prompt
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Prompt ID
+      responses:
+        "200":
+          description: Prompt deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePromptResult"
+        "401":
+          description: Unauthorized
+
+  /v1/me/modules/config:
+    get:
+      operationId: getModuleConfig
+      summary: Get module configuration
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+          description: Filter by module name
+      responses:
+        "200":
+          description: Module configuration
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleConfig"
+        "401":
+          description: Unauthorized
+
+  /v1/me/modules/{name}/tools:
+    put:
+      operationId: upsertToolSettings
+      summary: Update tool enable/disable settings for a module
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertToolSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertToolSettingsResult"
+        "401":
+          description: Unauthorized
+
+  /v1/me/modules/{name}/description:
+    put:
+      operationId: upsertModuleDescription
+      summary: Update module description
+      tags: [me]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Module name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertModuleDescriptionBody"
+      responses:
+        "200":
+          description: Description updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+        "401":
+          description: Unauthorized
+
+  /v1/me/oauth/consents:
     get:
       operationId: listOAuthConsents
       summary: List OAuth consents
-      tags: [oauth]
+      tags: [me]
       security:
         - bearerAuth: []
       responses:
@@ -714,11 +609,11 @@ paths:
         "401":
           description: Unauthorized
 
-  /v1/oauth/consents/{id}:
+  /v1/me/oauth/consents/{id}:
     delete:
       operationId: revokeOAuthConsent
       summary: Revoke an OAuth consent
-      tags: [oauth]
+      tags: [me]
       security:
         - bearerAuth: []
       parameters:
@@ -738,6 +633,29 @@ paths:
                 $ref: "#/components/schemas/RevokeConsentResult"
         "401":
           description: Unauthorized
+
+  # ── OAuth App Credentials (public, for OAuth flow) ──────────
+  /v1/oauth/apps/{provider}/credentials:
+    get:
+      operationId: getOAuthAppCredentials
+      summary: Get OAuth app credentials for a provider
+      tags: [oauth]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: OAuth provider identifier (e.g. github, google)
+      responses:
+        "200":
+          description: OAuth app credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthAppCredentials"
 
   # ── Admin ──────────────────────────────────────────────────
   /v1/admin/oauth/apps:
@@ -760,12 +678,21 @@ paths:
           description: Unauthorized
         "403":
           description: Forbidden — admin role required
+
+  /v1/admin/oauth/apps/{provider}:
     put:
       operationId: upsertOAuthApp
       summary: Create or update an OAuth app (admin only)
       tags: [admin]
       security:
         - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: OAuth provider identifier
       requestBody:
         required: true
         content:
@@ -779,8 +706,6 @@ paths:
           description: Unauthorized
         "403":
           description: Forbidden — admin role required
-
-  /v1/admin/oauth/apps/{provider}:
     delete:
       operationId: deleteOAuthApp
       summary: Delete an OAuth app (admin only)
@@ -857,12 +782,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: JWT access token or MCPist API key (mpt_xxx)
-    gatewaySecret:
-      type: apiKey
-      in: header
-      name: X-Gateway-Secret
-      description: Server-to-server authentication between Go Server and Worker
+      description: Clerk JWT or MCPist API key (mpt_xxx)
 
   schemas:
     # ── Modules ──
@@ -1034,14 +954,25 @@ components:
         error:
           type: string
 
-    UpsertPromptBody:
+    CreatePromptBody:
       type: object
       required: [name, content, enabled]
       properties:
-        prompt_id:
+        name:
           type: string
-          format: uuid
-          description: Omit to create, include to update
+        content:
+          type: string
+        module_name:
+          type: string
+        enabled:
+          type: boolean
+        description:
+          type: string
+
+    UpdatePromptBody:
+      type: object
+      required: [name, content, enabled]
+      properties:
         name:
           type: string
         content:
@@ -1092,11 +1023,8 @@ components:
 
     UpsertCredentialBody:
       type: object
-      required: [module, credentials]
+      required: [credentials]
       properties:
-        module:
-          type: string
-          description: Module identifier (e.g. github, notion)
         credentials:
           type: object
           additionalProperties: true
@@ -1111,17 +1039,6 @@ components:
         module:
           type: string
 
-    CredentialDetail:
-      type: object
-      properties:
-        module:
-          type: string
-        credentials:
-          type: object
-          additionalProperties: true
-        error:
-          type: string
-
     SuccessResult:
       type: object
       required: [success]
@@ -1129,73 +1046,8 @@ components:
         success:
           type: boolean
 
-    # ── Gateway (Go Server) ──
-    SyncModulesBody:
-      type: object
-      required: [modules]
-      properties:
-        modules:
-          type: array
-          items:
-            type: object
-            required: [name, status, descriptions, tools]
-            properties:
-              name:
-                type: string
-              status:
-                type: string
-              descriptions:
-                type: object
-                additionalProperties:
-                  type: string
-              tools:
-                type: array
-                items:
-                  type: object
-                  required: [name, description, input_schema]
-                  properties:
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    input_schema:
-                      type: object
-                      additionalProperties: true
-
-    SyncModulesResult:
-      type: object
-      properties:
-        success:
-          type: boolean
-        synced_count:
-          type: integer
-
-    RecordUsageBody:
-      type: object
-      required: [user_id, meta_tool, request_id, details]
-      properties:
-        user_id:
-          type: string
-          format: uuid
-        meta_tool:
-          type: string
-        request_id:
-          type: string
-        details:
-          type: array
-          items:
-            type: object
-            required: [module, tool]
-            properties:
-              task_id:
-                type: string
-              module:
-                type: string
-              tool:
-                type: string
-
     # ── User ──
-    UserContext:
+    UserProfile:
       type: object
       required: [user_id, email, account_status, plan_id, daily_used, daily_limit, role, connected_count]
       properties:
@@ -1212,18 +1064,6 @@ components:
           type: integer
         daily_limit:
           type: integer
-        enabled_modules:
-          type: array
-          items:
-            type: string
-        enabled_tools:
-          type: object
-          additionalProperties: true
-        language:
-          type: string
-        module_descriptions:
-          type: object
-          additionalProperties: true
         role:
           type: string
         settings:
@@ -1385,10 +1225,8 @@ components:
 
     UpsertOAuthAppBody:
       type: object
-      required: [provider, client_id, client_secret, redirect_uri, enabled]
+      required: [client_id, client_secret, redirect_uri, enabled]
       properties:
-        provider:
-          type: string
         client_id:
           type: string
         client_secret:

@@ -1,6 +1,5 @@
-import { createServerClient } from "@supabase/ssr"
+import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 function normalizeReturnTo(raw: string | null, origin: string): string {
@@ -19,89 +18,30 @@ function normalizeReturnTo(raw: string | null, origin: string): string {
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
-  const requestId = request.headers.get("x-vercel-id") || request.headers.get("x-request-id") || "unknown"
-  const code = searchParams.get("code")
-  const errorParam = searchParams.get("error")
-  const errorDescription = searchParams.get("error_description")
-
-  // Support both 'next' and 'returnTo' params
   const returnTo = normalizeReturnTo(searchParams.get("returnTo") || searchParams.get("next"), origin)
 
-  // Log OAuth error from provider if present
-  if (errorParam) {
-    console.error(`[Auth Callback] OAuth error from provider (requestId=${requestId}):`, errorParam, errorDescription)
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(errorParam)}&error_description=${encodeURIComponent(errorDescription || '')}`
-    )
+  const { userId } = await auth()
+
+  if (!userId) {
+    return NextResponse.redirect(`${origin}/login`)
   }
 
-  if (!code) {
-    console.error(`[Auth Callback] Missing code (requestId=${requestId})`)
-    return NextResponse.redirect(`${origin}/login?error=auth_callback_error&error_description=missing_code`)
-  }
-
-  const cookieStore = await cookies()
-
-  // Debug: log received cookies
-  const allCookies = cookieStore.getAll()
-  console.log(`[Auth Callback] Received cookies (requestId=${requestId}):`, allCookies.map(c => c.name))
-  const pkceVerifier = allCookies.find(c => c.name.includes('code-verifier'))
-  console.log(`[Auth Callback] PKCE code_verifier cookie present (requestId=${requestId}):`, !!pkceVerifier)
-
-  // Track cookies to set on the response
-  const cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[] = []
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookies) {
-          cookies.forEach((cookie) => {
-            cookiesToSet.push(cookie)
-          })
-        },
-      },
-    }
-  )
-
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-  if (error) {
-    console.error(`[Auth Callback] exchangeCodeForSession error (requestId=${requestId}):`, error.message, error)
-    return NextResponse.redirect(
-      `${origin}/login?error=auth_callback_error&error_description=${encodeURIComponent(error.message)}`
-    )
-  }
-
-  // Fetch user and check onboarding state
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (user) {
-    // If account_status is pre_active, onboarding is required
+  // Ensure user record exists in DB, then check onboarding state
+  try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/user/context")
 
-    // Redirect to onboarding when needed
-    const row = data?.[0]
-    const needsOnboarding = row?.account_status === "pre_active"
+    // Register (idempotent — creates user if not exists)
+    await client.POST("/v1/me/register" as never)
+
+    const { data } = await client.GET("/v1/me/profile")
+    const needsOnboarding = data?.account_status === "pre_active"
 
     if (needsOnboarding && !returnTo.startsWith("/onboarding")) {
-      const response = NextResponse.redirect(`${origin}/onboarding`)
-      cookiesToSet.forEach(({ name, value, options }) => {
-        response.cookies.set(name, value, options as Record<string, unknown>)
-      })
-      return response
+      return NextResponse.redirect(`${origin}/onboarding`)
     }
+  } catch {
+    // If register/profile fetch fails, continue to dashboard
   }
 
-  const response = NextResponse.redirect(`${origin}${returnTo}`)
-  // Important: set cookies on the response
-  cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options as Record<string, unknown>)
-  })
-  return response
+  return NextResponse.redirect(`${origin}${returnTo}`)
 }

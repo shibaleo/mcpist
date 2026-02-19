@@ -11,7 +11,7 @@ export type OAuthConsentAdmin = components["schemas"]["OAuthConsentAdmin"]
  */
 export async function listOAuthConsents(): Promise<OAuthConsent[]> {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/oauth/consents")
+  const { data } = await client.GET("/v1/me/oauth/consents")
   return data ?? []
 }
 
@@ -20,7 +20,7 @@ export async function listOAuthConsents(): Promise<OAuthConsent[]> {
  */
 export async function revokeOAuthConsent(consentId: string): Promise<boolean> {
   const client = await createWorkerClient()
-  const { data } = await client.DELETE("/v1/oauth/consents/{id}", {
+  const { data } = await client.DELETE("/v1/me/oauth/consents/{id}", {
     params: { path: { id: consentId } },
   })
   return data?.revoked ?? false

@@ -3,180 +3,59 @@
 import { Suspense } from "react"
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { createClient } from "@/lib/supabase/client"
 import { fetchAuthUserContext } from "@/lib/auth/auth-context-actions"
-import { CheckCircle2, Shield, AlertCircle, Loader2, RotateCcw } from "lucide-react"
-
-interface AuthorizationDetails {
-  id: string
-  client_id: string
-  redirect_uri: string
-  scope: string
-  scopes?: string[]
-  state: string | null
-}
+import { CheckCircle2, Shield, AlertCircle, Loader2 } from "lucide-react"
 
 function ConsentContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [authDetails, setAuthDetails] = useState<AuthorizationDetails | null>(null)
-  const [user, setUser] = useState<{ id: string; email: string | null } | null>(null)
+  const { user: clerkUser, isLoaded } = useUser()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isAlreadyAuthorized, setIsAlreadyAuthorized] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
+  const scopes = searchParams.get("scope")?.split(" ") || ["openid", "profile", "email"]
+  const redirectUri = searchParams.get("redirect_uri") || ""
+  const clientId = searchParams.get("client_id") || "MCPist"
+  const state = searchParams.get("state") || null
+
   useEffect(() => {
-    const init = async () => {
-      // Get authorization_id from query params (Supabase OAuth Server compatible)
-      const authorizationId = searchParams.get("authorization_id")
+    if (!isLoaded) return
 
-      if (!authorizationId) {
-        setError("認可リクエストが見つかりません")
-        setLoading(false)
-        return
-      }
-
-      // Check user session first
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        // Redirect to login with return URL
-        const currentUrl = window.location.href
-        router.push(`/login?returnTo=${encodeURIComponent(currentUrl)}`)
-        return
-      }
-
-      setUser({ id: user.id, email: user.email ?? null })
-
-      // Check if user is admin using Server Action
-      const ctx = await fetchAuthUserContext()
-      setIsAdmin(ctx?.role === 'admin')
-
-      // Fetch authorization details from Supabase OAuth Server
-      try {
-        const { data, error: oauthError } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)
-
-        // Debug: log the response structure
-        console.log("[OAuth Consent] Authorization details:", JSON.stringify(data, null, 2))
-
-        if (oauthError || !data) {
-          console.error("Supabase OAuth error:", oauthError)
-          // ユーザーフレンドリーなエラーメッセージ
-          if (oauthError?.message?.includes("cannot be processed") ||
-              oauthError?.message?.includes("not found") ||
-              oauthError?.message?.includes("expired")) {
-            setError("この認可リクエストは無効または期限切れです。接続元のアプリに戻って再度お試しください。")
-          } else {
-            setError(oauthError?.message || "認可リクエストの取得に失敗しました")
-          }
-          setLoading(false)
-          return
-        }
-
-        // Check if already authorized (redirect_url present but no client info requiring consent)
-        const alreadyAuthorized = !!(data.redirect_url && !data.client)
-        setIsAlreadyAuthorized(alreadyAuthorized)
-
-        // Parse scope string into array
-        const scopeArray = data.scope ? data.scope.split(' ') : []
-
-        setAuthDetails({
-          id: authorizationId,
-          client_id: data.client?.name || 'MCPist',
-          redirect_uri: data.redirect_url || '',
-          scope: data.scope || '',
-          scopes: scopeArray,
-          state: null,
-        })
-      } catch (err) {
-        console.error("Failed to fetch authorization details:", err)
-        setError("認可サーバーとの通信に失敗しました")
-        setLoading(false)
-        return
-      }
-
-      setLoading(false)
+    if (!clerkUser) {
+      const currentUrl = window.location.href
+      router.push(`/login?returnTo=${encodeURIComponent(currentUrl)}`)
+      return
     }
 
-    init()
-  }, [searchParams, router])
+    // Check if user is admin
+    fetchAuthUserContext().then((ctx) => {
+      setIsAdmin(ctx?.role === "admin")
+    }).catch(() => {})
+
+    setLoading(false)
+  }, [clerkUser, isLoaded, router])
 
   const handleApprove = async () => {
-    if (!authDetails || !user) return
-
-    setSubmitting(true)
-    setError(null)
-
-    try {
-      // If we already have a redirect_url from getAuthorizationDetails, use it directly
-      // This happens when authorization was auto-approved by Supabase
-      if (authDetails.redirect_uri) {
-        console.log("[OAuth Consent] Using existing redirect_url:", authDetails.redirect_uri)
-        window.location.href = authDetails.redirect_uri
-        return
-      }
-
-      const authorizationId = searchParams.get("authorization_id")
-      const supabase = createClient()
-
-      const { data, error: oauthError } = await supabase.auth.oauth.approveAuthorization(authorizationId!)
-
-      if (oauthError) {
-        // 既に処理済みの場合、redirect_uriがあればそれを使用
-        if (oauthError.message?.includes("cannot be processed") && authDetails.redirect_uri) {
-          console.log("[OAuth Consent] Authorization already processed, using stored redirect_uri")
-          window.location.href = authDetails.redirect_uri
-          return
-        }
-        throw new Error(oauthError.message || "認可の承認に失敗しました")
-      }
-
-      // Supabase handles the redirect automatically via data.redirect_url
-      if (data?.redirect_url) {
-        window.location.href = data.redirect_url
-      } else if (authDetails.redirect_uri) {
-        // Fallback to stored redirect_uri
-        window.location.href = authDetails.redirect_uri
-      } else {
-        throw new Error("リダイレクト先が取得できませんでした")
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "エラーが発生しました")
-      setSubmitting(false)
+    if (!redirectUri) {
+      setError("リダイレクト先が指定されていません")
+      return
     }
+    setSubmitting(true)
+    window.location.href = redirectUri
   }
 
-  const handleDeny = async () => {
-    if (!authDetails) return
-
-    const authorizationId = searchParams.get("authorization_id")
-
-    try {
-      const supabase = createClient()
-      const { data, error: oauthError } = await supabase.auth.oauth.denyAuthorization(authorizationId!)
-
-      if (!oauthError && data?.redirect_url) {
-        window.location.href = data.redirect_url
-        return
-      }
-    } catch (err) {
-      console.error("Failed to deny authorization:", err)
-    }
-
-    // Fallback: redirect with error using local data
-    const redirectUrl = new URL(authDetails.redirect_uri)
-    redirectUrl.searchParams.set("error", "access_denied")
-    redirectUrl.searchParams.set("error_description", "User denied the request")
-    if (authDetails.state) {
-      redirectUrl.searchParams.set("state", authDetails.state)
-    }
-
-    window.location.href = redirectUrl.toString()
+  const handleDeny = () => {
+    if (!redirectUri) return
+    const url = new URL(redirectUri)
+    url.searchParams.set("error", "access_denied")
+    url.searchParams.set("error_description", "User denied the request")
+    if (state) url.searchParams.set("state", state)
+    window.location.href = url.toString()
   }
 
   if (loading) {
@@ -187,7 +66,7 @@ function ConsentContent() {
     )
   }
 
-  if (error && !authDetails) {
+  if (error && !redirectUri) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -201,79 +80,6 @@ function ConsentContent() {
     )
   }
 
-  const scopes = authDetails?.scopes || authDetails?.scope.split(" ") || []
-
-  // Already authorized - show confirmation screen
-  if (isAlreadyAuthorized && authDetails) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center space-y-4">
-            <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-xl bg-green-500 flex items-center justify-center">
-                <CheckCircle2 className="h-8 w-8 text-white" />
-              </div>
-            </div>
-            <div>
-              <CardTitle className="text-xl">認可済み</CardTitle>
-              <CardDescription className="mt-2">
-                このアプリケーションは既に認可されています。
-                続行してアプリに戻ります。
-              </CardDescription>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-3 text-sm">
-              <div className="text-muted-foreground">ログイン中のアカウント</div>
-              <div className="font-medium">{user?.email}</div>
-            </div>
-
-            {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
-                {error}
-              </div>
-            )}
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-3">
-            <Button
-              className="w-full"
-              onClick={handleApprove}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  リダイレクト中...
-                </>
-              ) : (
-                "続行"
-              )}
-            </Button>
-
-            {/* Admin only: Force re-authorization */}
-            {isAdmin && (
-              <Button
-                variant="outline"
-                className="w-full text-muted-foreground"
-                onClick={() => {
-                  // Clear the authorized state and show consent screen
-                  setIsAlreadyAuthorized(false)
-                }}
-                disabled={submitting}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                セッションを破棄して再認可（管理者）
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      </div>
-    )
-  }
-
-  // First time authorization - show consent screen
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -286,20 +92,18 @@ function ConsentContent() {
           <div>
             <CardTitle className="text-xl">アクセス許可の確認</CardTitle>
             <CardDescription className="mt-2">
-              <span className="font-medium text-foreground">{authDetails?.client_id?.toLowerCase().includes("mcpist") ? "MCPist Console" : authDetails?.client_id}</span>
+              <span className="font-medium text-foreground">{clientId.toLowerCase().includes("mcpist") ? "MCPist Console" : clientId}</span>
               {" "}があなたのアカウントへのアクセスを要求しています
             </CardDescription>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* User info */}
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <div className="text-muted-foreground">ログイン中のアカウント</div>
-            <div className="font-medium">{user?.email}</div>
+            <div className="font-medium">{clerkUser?.emailAddresses[0]?.emailAddress}</div>
           </div>
 
-          {/* Requested permissions */}
           <div className="space-y-2">
             <div className="text-sm font-medium">要求されている権限:</div>
             <ul className="space-y-2">

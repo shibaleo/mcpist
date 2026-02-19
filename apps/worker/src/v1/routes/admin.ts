@@ -1,89 +1,53 @@
 /**
  * /v1/admin 関連ルート（admin ロール必須）
  *
- * GET    /admin/oauth/apps             → list_oauth_apps
- * PUT    /admin/oauth/apps             → upsert_oauth_app
- * DELETE /admin/oauth/apps/:provider   → delete_oauth_app
- * GET    /admin/oauth/consents         → list_all_oauth_consents
+ * PUT    /admin/oauth/apps/:provider  → upsert_oauth_app (Go Server)
+ * GET    /admin/oauth/consents        → list_all_oauth_consents (Go Server)
  */
 
 import { Hono } from "hono";
 import type { Env } from "../../types";
 import { authenticate } from "../../auth";
 import { jsonResponse } from "../../http";
-import { forwardToPostgREST, callPostgRESTRpc } from "../postgrest";
+import { forwardToGoServer } from "../go-server";
 
 type Bindings = Env;
 
 const admin = new Hono<{ Bindings: Bindings }>();
 
-/** admin ロールを検証する共通関数 */
-async function requireAdmin(
+/** 認証 + ヘッダーを付けて Go Server にプロキシ */
+async function requireAuthAndProxy(
   req: Request,
-  env: Env
-): Promise<{ userId: string } | Response> {
+  env: Env,
+  method: string,
+  path: string,
+  body?: string | null
+): Promise<Response> {
   const auth = await authenticate(req, env);
   if (!auth) return jsonResponse({ error: "Unauthorized" }, 401);
 
-  const rows = await callPostgRESTRpc<{ role?: string }[]>(
-    env,
-    "get_user_context",
-    { p_user_id: auth.userId }
-  );
-  const context = Array.isArray(rows) ? rows[0] : rows;
-  if (context?.role !== "admin") {
-    return jsonResponse({ error: "Forbidden" }, 403);
-  }
+  const header: Record<string, string> = auth.type === "api_key"
+    ? { "X-User-ID": auth.userId }
+    : { "X-Clerk-ID": auth.userId };
 
-  return { userId: auth.userId };
+  return forwardToGoServer(env, method, path, header, body);
 }
 
-// GET /admin/oauth/apps — list_oauth_apps
-admin.get("/oauth/apps", async (c) => {
-  const result = await requireAdmin(c.req.raw, c.env);
-  if (result instanceof Response) return result;
-
-  return forwardToPostgREST(c.env, "list_oauth_apps", {});
+// PUT /admin/oauth/apps/:provider — upsert OAuth app
+admin.put("/oauth/apps/:provider", async (c) => {
+  const provider = c.req.param("provider");
+  return requireAuthAndProxy(
+    c.req.raw,
+    c.env,
+    "PUT",
+    `/v1/admin/oauth/apps/${provider}`,
+    await c.req.text()
+  );
 });
 
-// PUT /admin/oauth/apps — upsert_oauth_app
-admin.put("/oauth/apps", async (c) => {
-  const result = await requireAdmin(c.req.raw, c.env);
-  if (result instanceof Response) return result;
-
-  const body = await c.req.json<{
-    provider: string;
-    client_id: string;
-    client_secret: string;
-    redirect_uri: string;
-    enabled: boolean;
-  }>();
-
-  return forwardToPostgREST(c.env, "upsert_oauth_app", {
-    p_provider: body.provider,
-    p_client_id: body.client_id,
-    p_client_secret: body.client_secret,
-    p_redirect_uri: body.redirect_uri,
-    p_enabled: body.enabled,
-  });
-});
-
-// DELETE /admin/oauth/apps/:provider — delete_oauth_app
-admin.delete("/oauth/apps/:provider", async (c) => {
-  const result = await requireAdmin(c.req.raw, c.env);
-  if (result instanceof Response) return result;
-
-  return forwardToPostgREST(c.env, "delete_oauth_app", {
-    p_provider: c.req.param("provider"),
-  });
-});
-
-// GET /admin/oauth/consents — list_all_oauth_consents
+// GET /admin/oauth/consents — list all OAuth consents
 admin.get("/oauth/consents", async (c) => {
-  const result = await requireAdmin(c.req.raw, c.env);
-  if (result instanceof Response) return result;
-
-  return forwardToPostgREST(c.env, "list_all_oauth_consents", {});
+  return requireAuthAndProxy(c.req.raw, c.env, "GET", "/v1/admin/oauth/consents");
 });
 
 export { admin };

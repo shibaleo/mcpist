@@ -5,7 +5,7 @@ project_id = "mcpist"
 [api]
 enabled = true
 # Port to use for the API URL.
-port = 54321
+port = 57321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` is always included.
 schemas = ["public", "mcpist"]
@@ -17,9 +17,9 @@ max_rows = 1000
 
 [db]
 # Port to use for the local database URL.
-port = 54322
+port = 57432
 # Port used by db diff command to initialize the shadow database.
-shadow_port = 54320
+shadow_port = 57430
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
 # server_version;` on the remote database to check.
 major_version = 17
@@ -27,7 +27,7 @@ major_version = 17
 [studio]
 enabled = true
 # Port to use for Supabase Studio.
-port = 54323
+port = 57323
 # External URL of the API server that frontend connects to.
 api_url = "http://127.0.0.1"
 
@@ -36,7 +36,7 @@ api_url = "http://127.0.0.1"
 [inbucket]
 enabled = true
 # Port to use for the email testing server web interface.
-port = 54324
+port = 57324
 # Uncomment to expose additional ports for testing user applications that send emails.
 # smtp_port = 54325
 # pop3_port = 54326
@@ -86,5 +86,5 @@ redirect_uri = ""
 
 [analytics]
 enabled = false
-port = 54327
-vector_port = 54328
+port = 57327
+vector_port = 57328

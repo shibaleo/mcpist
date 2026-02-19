@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from "openapi-fetch"
-import { createClient as createSupabase } from "@/lib/supabase/server"
+import { auth } from "@clerk/nextjs/server"
 import type { paths } from "./types"
 
 const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_MCP_SERVER_URL!
@@ -26,17 +26,17 @@ const throwOnError: Middleware = {
 }
 
 /**
- * Create a typed Worker API client with JWT auth from the current Supabase session.
+ * Create a typed Worker API client with JWT auth from the current Clerk session.
  * Call this per-request in server components / API routes.
  */
 export async function createWorkerClient() {
-  const supabase = await createSupabase()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { getToken } = await auth()
+  const token = await getToken()
 
   const client = createClient<paths>({
     baseUrl: WORKER_URL,
-    headers: session?.access_token
-      ? { Authorization: `Bearer ${session.access_token}` }
+    headers: token
+      ? { Authorization: `Bearer ${token}` }
       : {},
   })
   client.use(throwOnError)
@@ -45,7 +45,7 @@ export async function createWorkerClient() {
 
 /**
  * Create a typed Worker API client without auth.
- * For public endpoints (e.g. /v1/modules, /v1/oauth/apps/{provider}/credentials).
+ * For public endpoints (e.g. /v1/modules).
  */
 export function createPublicWorkerClient() {
   const client = createClient<paths>({ baseUrl: WORKER_URL })

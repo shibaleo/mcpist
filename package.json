@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm env:sync && concurrently -n console,server,worker -c blue,green,yellow \"pnpm dev:console\" \"pnpm dev:server\" \"pnpm dev:worker\"",
     "dev:console": "pnpm --filter @mcpist/console dev",
-    "dev:server": "dotenv -e .env.local -- go run -C apps/server ./cmd/server",
+    "dev:server": "dotenv -e .env.local -- go run github.com/air-verse/air@latest -c apps/server/.air.toml",
     "dev:worker": "pnpm --filter @mcpist/worker dev",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",

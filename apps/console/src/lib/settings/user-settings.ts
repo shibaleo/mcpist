@@ -15,18 +15,19 @@ const DEFAULT_SETTINGS: UserSettings = {
 }
 
 /**
- * Get current user's settings via GET /v1/user/context
+ * Get current user's settings via GET /v1/me/profile
  */
 export async function getUserSettings(): Promise<UserSettings> {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/user/context")
-    const ctx = data![0]
-    if (!ctx) return DEFAULT_SETTINGS
+    const { data } = await client.GET("/v1/me/profile")
+    const profile = data!
+    if (!profile) return DEFAULT_SETTINGS
 
+    const settings = profile.settings as Record<string, unknown> | null
     return {
-      language: (ctx.language as Language) || DEFAULT_SETTINGS.language,
-      display_name: ctx.display_name || DEFAULT_SETTINGS.display_name,
+      language: (settings?.language as Language) || DEFAULT_SETTINGS.language,
+      display_name: profile.display_name || DEFAULT_SETTINGS.display_name,
     }
   } catch {
     return DEFAULT_SETTINGS
@@ -41,7 +42,7 @@ export async function updateUserSettings(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.PUT("/v1/user/settings", {
+    const { data } = await client.PUT("/v1/me/settings", {
       body: { settings },
     })
     return { success: data?.success ?? false }

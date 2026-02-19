@@ -2,9 +2,9 @@
  * MCPist API Gateway - Cloudflare Worker (Hono)
  *
  * 責務:
- * 1. JWT / API Key 認証
+ * 1. Clerk JWT / JWT API Key 認証
  * 2. /v1/mcp/* → Go Server プロキシ
- * 3. /v1/* RESTful API → PostgREST RPC 転送（p_user_id 自動注入）
+ * 3. /v1/me/* → Go Server REST プロキシ
  * 4. OAuth メタデータ配信
  */
 

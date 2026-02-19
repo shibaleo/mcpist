@@ -143,15 +143,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/modules/config": {
+    "/v1/me/profile": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get module configuration */
-        get: operations["getModuleConfig"];
+        /** Get current user profile */
+        get: operations["getMyProfile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -160,7 +160,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/modules/{name}/tools": {
+    "/v1/me/settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -168,8 +168,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update tool enable/disable settings for a module */
-        put: operations["upsertToolSettings"];
+        /** Update user settings */
+        put: operations["updateSettings"];
         post?: never;
         delete?: never;
         options?: never;
@@ -177,42 +177,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/modules/{name}/description": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update module description */
-        put: operations["upsertModuleDescription"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/api-keys": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List API keys */
-        get: operations["listApiKeys"];
-        put?: never;
-        /** Generate a new API key */
-        post: operations["generateApiKey"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/api-keys/{id}": {
+    "/v1/me/onboarding": {
         parameters: {
             query?: never;
             header?: never;
@@ -221,106 +186,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        /** Revoke an API key */
-        delete: operations["revokeApiKey"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/prompts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List prompts */
-        get: operations["listPrompts"];
-        /** Create or update a prompt */
-        put: operations["upsertPrompt"];
-        post?: never;
+        /** Complete a user onboarding step */
+        post: operations["completeUserOnboarding"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/v1/prompts/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a prompt by ID */
-        get: operations["getPrompt"];
-        put?: never;
-        post?: never;
-        /** Delete a prompt */
-        delete: operations["deletePrompt"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/credentials": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List stored credentials */
-        get: operations["listCredentials"];
-        /** Create or update credentials for a module */
-        put: operations["upsertCredential"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/credentials/{module}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete credentials for a module */
-        delete: operations["deleteCredential"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/user/context": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get current user context
-         * @description Returns user information including role, plan, and usage data.
-         */
-        get: operations["getUserContext"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/user/usage": {
+    "/v1/me/usage": {
         parameters: {
             query?: never;
             header?: never;
@@ -337,7 +211,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/user/stripe": {
+    "/v1/me/stripe": {
         parameters: {
             query?: never;
             header?: never;
@@ -355,16 +229,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/user/settings": {
+    "/v1/me/credentials": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        /** Update user settings */
-        put: operations["updateSettings"];
+        /** List stored credentials */
+        get: operations["listCredentials"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -372,7 +246,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/user/onboarding": {
+    "/v1/me/credentials/{module}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Create or update credentials for a module */
+        put: operations["upsertCredential"];
+        post?: never;
+        /** Delete credentials for a module */
+        delete: operations["deleteCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/apikeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List API keys */
+        get: operations["listApiKeys"];
+        put?: never;
+        /** Generate a new API key */
+        post: operations["generateApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/apikeys/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -381,9 +291,131 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Complete a user onboarding step */
-        post: operations["completeUserOnboarding"];
+        post?: never;
+        /** Revoke an API key */
+        delete: operations["revokeApiKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/prompts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List prompts */
+        get: operations["listPrompts"];
+        put?: never;
+        /** Create a prompt */
+        post: operations["createPrompt"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/prompts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a prompt by ID */
+        get: operations["getPrompt"];
+        /** Update a prompt */
+        put: operations["updatePrompt"];
+        post?: never;
+        /** Delete a prompt */
+        delete: operations["deletePrompt"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/modules/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get module configuration */
+        get: operations["getModuleConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/modules/{name}/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update tool enable/disable settings for a module */
+        put: operations["upsertToolSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/modules/{name}/description": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update module description */
+        put: operations["upsertModuleDescription"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/oauth/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List OAuth consents */
+        get: operations["listOAuthConsents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/oauth/consents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an OAuth consent */
+        delete: operations["revokeOAuthConsent"];
         options?: never;
         head?: never;
         patch?: never;
@@ -406,40 +438,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/oauth/consents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List OAuth consents */
-        get: operations["listOAuthConsents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/oauth/consents/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Revoke an OAuth consent */
-        delete: operations["revokeOAuthConsent"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/admin/oauth/apps": {
         parameters: {
             query?: never;
@@ -449,8 +447,7 @@ export interface paths {
         };
         /** List all OAuth apps (admin only) */
         get: operations["listOAuthApps"];
-        /** Create or update an OAuth app (admin only) */
-        put: operations["upsertOAuthApp"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -466,7 +463,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /** Create or update an OAuth app (admin only) */
+        put: operations["upsertOAuthApp"];
         post?: never;
         /** Delete an OAuth app (admin only) */
         delete: operations["deleteOAuthApp"];
@@ -486,6 +484,26 @@ export interface paths {
         get: operations["listAllOAuthConsents"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stripe/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Handle Stripe webhook events
+         * @description Receives Stripe webhook events (invoice.paid, customer.subscription.deleted). Authenticated via Stripe signature verification, not JWT.
+         */
+        post: operations["handleStripeWebhook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -578,12 +596,14 @@ export interface components {
             updated_at?: string;
             error?: string;
         };
-        UpsertPromptBody: {
-            /**
-             * Format: uuid
-             * @description Omit to create, include to update
-             */
-            prompt_id?: string;
+        CreatePromptBody: {
+            name: string;
+            content: string;
+            module_name?: string;
+            enabled: boolean;
+            description?: string;
+        };
+        UpdatePromptBody: {
             name: string;
             content: string;
             module_name?: string;
@@ -609,8 +629,6 @@ export interface components {
             updated_at: string;
         };
         UpsertCredentialBody: {
-            /** @description Module identifier (e.g. github, notion) */
-            module: string;
             /** @description Credential data (access_token, refresh_token, etc.) */
             credentials: {
                 [key: string]: unknown;
@@ -623,7 +641,7 @@ export interface components {
         SuccessResult: {
             success: boolean;
         };
-        UserContext: {
+        UserProfile: {
             /** Format: uuid */
             user_id: string;
             email: string;
@@ -631,14 +649,6 @@ export interface components {
             plan_id: string;
             daily_used: number;
             daily_limit: number;
-            enabled_modules?: string[];
-            enabled_tools?: {
-                [key: string]: unknown;
-            };
-            language?: string;
-            module_descriptions?: {
-                [key: string]: unknown;
-            };
             role: string;
             settings?: {
                 [key: string]: unknown;
@@ -719,7 +729,6 @@ export interface components {
             created_at?: string;
         };
         UpsertOAuthAppBody: {
-            provider: string;
             client_id: string;
             client_secret: string;
             redirect_uri: string;
@@ -897,25 +906,22 @@ export interface operations {
             };
         };
     };
-    getModuleConfig: {
+    getMyProfile: {
         parameters: {
-            query?: {
-                /** @description Filter by module name */
-                module?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Module configuration */
+            /** @description User profile */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ModuleConfig"][];
+                    "application/json": components["schemas"]["UserProfile"];
                 };
             };
             /** @description Unauthorized */
@@ -927,19 +933,16 @@ export interface operations {
             };
         };
     };
-    upsertToolSettings: {
+    updateSettings: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @description Module name */
-                name: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpsertToolSettingsBody"];
+                "application/json": components["schemas"]["UpdateSettingsBody"];
             };
         };
         responses: {
@@ -949,7 +952,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UpsertToolSettingsResult"];
+                    "application/json": components["schemas"]["SuccessResult"];
                 };
             };
             /** @description Unauthorized */
@@ -961,23 +964,201 @@ export interface operations {
             };
         };
     };
-    upsertModuleDescription: {
+    completeUserOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteOnboardingBody"];
+            };
+        };
+        responses: {
+            /** @description Onboarding step completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getUsage: {
+        parameters: {
+            query: {
+                /** @description Start date (ISO 8601) */
+                start: string;
+                /** @description End date (ISO 8601) */
+                end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usage data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageData"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getStripeCustomerId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stripe customer info */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeCustomer"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    linkStripeCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkStripeCustomerBody"];
+            };
+        };
+        responses: {
+            /** @description Stripe customer linked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Credential"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    upsertCredential: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Module name */
-                name: string;
+                /** @description Module identifier */
+                module: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpsertModuleDescriptionBody"];
+                "application/json": components["schemas"]["UpsertCredentialBody"];
             };
         };
         responses: {
-            /** @description Description updated */
+            /** @description Credential saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpsertCredentialResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Module identifier */
+                module: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Credential deleted */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1113,7 +1294,7 @@ export interface operations {
             };
         };
     };
-    upsertPrompt: {
+    createPrompt: {
         parameters: {
             query?: never;
             header?: never;
@@ -1122,11 +1303,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpsertPromptBody"];
+                "application/json": components["schemas"]["CreatePromptBody"];
             };
         };
         responses: {
-            /** @description Prompt created or updated */
+            /** @description Prompt created */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1174,6 +1355,40 @@ export interface operations {
             };
         };
     };
+    updatePrompt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Prompt ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePromptBody"];
+            };
+        };
+        responses: {
+            /** @description Prompt updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpsertPromptResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     deletePrompt: {
         parameters: {
             query?: never;
@@ -1204,22 +1419,25 @@ export interface operations {
             };
         };
     };
-    listCredentials: {
+    getModuleConfig: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter by module name */
+                module?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Credential list */
+            /** @description Module configuration */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Credential"][];
+                    "application/json": components["schemas"]["ModuleConfig"][];
                 };
             };
             /** @description Unauthorized */
@@ -1231,194 +1449,19 @@ export interface operations {
             };
         };
     };
-    upsertCredential: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpsertCredentialBody"];
-            };
-        };
-        responses: {
-            /** @description Credential saved */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UpsertCredentialResult"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    deleteCredential: {
+    upsertToolSettings: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Module identifier */
-                module: string;
+                /** @description Module name */
+                name: string;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Credential deleted */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResult"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getUserContext: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User context */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserContext"][];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getUsage: {
-        parameters: {
-            query: {
-                /** @description Start date (ISO 8601) */
-                start: string;
-                /** @description End date (ISO 8601) */
-                end: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Usage data */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UsageData"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getStripeCustomerId: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Stripe customer info */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StripeCustomer"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    linkStripeCustomer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LinkStripeCustomerBody"];
-            };
-        };
-        responses: {
-            /** @description Stripe customer linked */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SuccessResult"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    updateSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSettingsBody"];
+                "application/json": components["schemas"]["UpsertToolSettingsBody"];
             };
         };
         responses: {
@@ -1428,6 +1471,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["UpsertToolSettingsResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    upsertModuleDescription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Module name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertModuleDescriptionBody"];
+            };
+        };
+        responses: {
+            /** @description Description updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["SuccessResult"];
                 };
             };
@@ -1437,60 +1514,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-        };
-    };
-    completeUserOnboarding: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CompleteOnboardingBody"];
-            };
-        };
-        responses: {
-            /** @description Onboarding step completed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OnboardingResult"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getOAuthAppCredentials: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description OAuth provider identifier (e.g. github, google) */
-                provider: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OAuth app credentials */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OAuthAppCredentials"];
-                };
             };
         };
     };
@@ -1551,6 +1574,29 @@ export interface operations {
             };
         };
     };
+    getOAuthAppCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description OAuth provider identifier (e.g. github, google) */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OAuth app credentials */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthAppCredentials"];
+                };
+            };
+        };
+    };
     listOAuthApps: {
         parameters: {
             query?: never;
@@ -1589,7 +1635,10 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description OAuth provider identifier */
+                provider: string;
+            };
             cookie?: never;
         };
         requestBody: {
@@ -1683,6 +1732,39 @@ export interface operations {
             };
             /** @description Forbidden — admin role required */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    handleStripeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Webhook received */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        received?: boolean;
+                    };
+                };
+            };
+            /** @description Invalid signature or payload */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

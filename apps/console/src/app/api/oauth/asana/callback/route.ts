@@ -112,11 +112,9 @@ export async function GET(request: Request) {
       } : null,
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "asana",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "asana" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

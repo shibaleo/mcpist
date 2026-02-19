@@ -23,6 +23,11 @@ export interface UserContext {
   daily_limit: number
 }
 
+export interface UsageSummary {
+  daily_used: number
+  daily_limit: number
+}
+
 export type UsageStats = components["schemas"]["UsageData"]
 
 /**
@@ -31,14 +36,18 @@ export type UsageStats = components["schemas"]["UsageData"]
 export async function getUserPlan(): Promise<UserPlan | null> {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/user/context")
-    const context = data![0]
-    if (!context) return null
+    const [profileRes, usageRes] = await Promise.all([
+      client.GET("/v1/me/profile"),
+      client.GET("/v1/me/usage"),
+    ])
+    const profile = profileRes.data!
+    const usage = usageRes.data as UsageSummary | undefined
+    if (!profile) return null
 
     return {
-      plan_id: context.plan_id,
-      daily_used: context.daily_used,
-      daily_limit: context.daily_limit,
+      plan_id: profile.plan_id,
+      daily_used: usage?.daily_used ?? 0,
+      daily_limit: usage?.daily_limit ?? 0,
     }
   } catch {
     return null
@@ -51,7 +60,7 @@ export async function getUserPlan(): Promise<UserPlan | null> {
 export async function getServiceConnections(): Promise<ServiceConnection[]> {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/credentials")
+    const { data } = await client.GET("/v1/me/credentials")
     const rows = data!
 
     return rows.map((item) => ({
@@ -71,15 +80,19 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
 export async function getUserContext(): Promise<UserContext | null> {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/user/context")
-    const context = data![0]
-    if (!context) return null
+    const [profileRes, usageRes] = await Promise.all([
+      client.GET("/v1/me/profile"),
+      client.GET("/v1/me/usage"),
+    ])
+    const profile = profileRes.data!
+    const usage = usageRes.data as UsageSummary | undefined
+    if (!profile) return null
 
     return {
-      account_status: context.account_status,
-      plan_id: context.plan_id,
-      daily_used: context.daily_used,
-      daily_limit: context.daily_limit,
+      account_status: profile.account_status,
+      plan_id: profile.plan_id,
+      daily_used: usage?.daily_used ?? 0,
+      daily_limit: usage?.daily_limit ?? 0,
     }
   } catch {
     return null
@@ -92,7 +105,7 @@ export async function getUserContext(): Promise<UserContext | null> {
 export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageStats | null> {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/user/usage", {
+    const { data } = await client.GET("/v1/me/usage", {
       params: {
         query: {
           start: startDate.toISOString(),

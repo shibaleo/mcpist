@@ -126,11 +126,9 @@ export async function GET(request: Request) {
       expires_at: expiresAt,
     }
 
-    await client.PUT("/v1/credentials", {
-      body: {
-        module: "airtable",
-        credentials: tokenCredentials,
-      },
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: "airtable" } },
+      body: { credentials: tokenCredentials },
     })
 
     // デフォルトツール設定を保存

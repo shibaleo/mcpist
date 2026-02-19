@@ -5,7 +5,7 @@ import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
 
 export async function listCredentials() {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/credentials")
+  const { data } = await client.GET("/v1/me/credentials")
   return data!
 }
 
@@ -14,8 +14,9 @@ export async function upsertCredential(
   credentials: Record<string, unknown>
 ) {
   const client = await createWorkerClient()
-  const { data } = await client.PUT("/v1/credentials", {
-    body: { module, credentials },
+  const { data } = await client.PUT("/v1/me/credentials/{module}", {
+    params: { path: { module } },
+    body: { credentials },
   })
   return data!
 }
@@ -24,7 +25,7 @@ export async function deleteCredential(
   module: string
 ) {
   const client = await createWorkerClient()
-  const { data } = await client.DELETE("/v1/credentials/{module}", {
+  const { data } = await client.DELETE("/v1/me/credentials/{module}", {
     params: { path: { module } },
   })
   return data!
@@ -38,7 +39,7 @@ export async function saveDefaultToolSettingsAction(
 
   // Check existing settings
   const client = await createWorkerClient()
-  const { data: existing } = await client.GET("/v1/modules/config", {
+  const { data: existing } = await client.GET("/v1/me/modules/config", {
     params: { query: { module: moduleName } },
   })
 
@@ -55,7 +56,7 @@ export async function saveDefaultToolSettingsAction(
     }
   }
 
-  await client.PUT("/v1/modules/{name}/tools", {
+  await client.PUT("/v1/me/modules/{name}/tools", {
     params: { path: { name: moduleName } },
     body: {
       enabled_tools: enabledTools,

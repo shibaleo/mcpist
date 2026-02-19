@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
 import crypto from "crypto"
 
@@ -51,16 +51,8 @@ function buildOAuthHeader(params: Record<string, string>): string {
 
 export async function GET(request: Request) {
   // 認証チェック
-  console.log("[trello/authorize] Starting...")
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  console.log("[trello/authorize] Auth result:", { user: user?.id, error: authError?.message })
-
-  if (!user) {
+  const { userId } = await auth()
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

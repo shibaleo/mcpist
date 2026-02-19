@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     const client = await createWorkerClient()
-    const { data } = await client.PUT("/v1/user/settings", {
+    const { data } = await client.PUT("/v1/me/settings", {
       body: { settings: body },
     })
 
@@ -23,9 +23,8 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const client = await createWorkerClient()
-    const { data } = await client.GET("/v1/user/context")
-    const ctx = data?.[0]
-    return NextResponse.json(ctx?.settings || {})
+    const { data } = await client.GET("/v1/me/profile")
+    return NextResponse.json(data?.settings || {})
   } catch (error) {
     console.error("Preferences API error:", error)
     return NextResponse.json(

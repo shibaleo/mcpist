@@ -4,12 +4,11 @@ import { createWorkerClient } from "@/lib/worker"
 /**
  * POST /api/credits/grant-signup-bonus
  * Activate new user account (set status to active, assign free plan)
- * Uses idempotency key to prevent duplicate activations
  */
 export async function POST() {
   try {
     const client = await createWorkerClient()
-    const { data: result } = await client.POST("/v1/user/onboarding", {
+    const { data: result } = await client.POST("/v1/me/onboarding", {
       body: { event_id: "onboarding" },
     })
 
