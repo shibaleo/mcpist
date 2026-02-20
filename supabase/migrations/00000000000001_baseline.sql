@@ -98,7 +98,6 @@ CREATE TABLE mcpist.api_keys (
     name         TEXT NOT NULL,
     expires_at   TIMESTAMPTZ,
     last_used_at TIMESTAMPTZ,
-    revoked_at   TIMESTAMPTZ,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

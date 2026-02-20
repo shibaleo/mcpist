@@ -79,10 +79,10 @@ echo ""
 echo "--- Cloudflare (Worker) ---"
 if command -v wrangler &> /dev/null; then
   WORKER_SECRETS=(
-    "PRIMARY_API_URL"
+    "SERVER_URL"
     "GATEWAY_SIGNING_KEY"
     "CLERK_JWKS_URL"
-    "API_SERVER_JWKS_URL"
+    "SERVER_JWKS_URL"
     "STRIPE_WEBHOOK_SECRET"
   )
 

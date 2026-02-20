@@ -17,7 +17,7 @@ stripe.post("/webhook", async (c) => {
   const body = await c.req.text();
   const signature = c.req.header("stripe-signature") || "";
 
-  const url = `${c.env.PRIMARY_API_URL}/v1/stripe/webhook`;
+  const url = `${c.env.SERVER_URL}/v1/stripe/webhook`;
   const response = await fetch(url, {
     method: "POST",
     headers: {

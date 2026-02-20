@@ -37,7 +37,7 @@ export async function handleMcpProxy(
       });
     }
 
-    const response = await fetchBackend(request, requestId, env.PRIMARY_API_URL, authResult, env);
+    const response = await fetchBackend(request, requestId, env.SERVER_URL, authResult, env);
     const result = addCORSToResponse(response);
     const durationMs = Date.now() - startTime;
     const extra = {

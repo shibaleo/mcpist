@@ -50,7 +50,7 @@ async function verifyApiKey(apiKey: string, env: Env): Promise<AuthResult | null
     // Strip mpt_ prefix to get the JWT
     const jwt = apiKey.slice(4);
 
-    const jwks = jose.createRemoteJWKSet(new URL(env.API_SERVER_JWKS_URL));
+    const jwks = jose.createRemoteJWKSet(new URL(env.SERVER_JWKS_URL));
     const { payload } = await jose.jwtVerify(jwt, jwks);
 
     if (!payload.sub) return null;

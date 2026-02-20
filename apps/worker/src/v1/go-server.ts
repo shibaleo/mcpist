@@ -20,7 +20,7 @@ export async function forwardToGoServer(
   body?: string | null
 ): Promise<Response> {
   const token = await signGatewayToken(env.GATEWAY_SIGNING_KEY, claims ?? {});
-  const url = `${env.PRIMARY_API_URL}${path}`;
+  const url = `${env.SERVER_URL}${path}`;
 
   const response = await fetch(url, {
     method,
@@ -53,7 +53,7 @@ export async function callGoServer<T>(
   body?: unknown
 ): Promise<T> {
   const token = await signGatewayToken(env.GATEWAY_SIGNING_KEY, {});
-  const url = `${env.PRIMARY_API_URL}${path}`;
+  const url = `${env.SERVER_URL}${path}`;
 
   const response = await fetch(url, {
     method,

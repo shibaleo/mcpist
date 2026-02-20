@@ -22,10 +22,10 @@ crons = ["*/5 * * * *"]
 vars = { APP_ENV = "mcpist-dev" }
 
 # シークレット（wrangler secret で設定）
-# - PRIMARY_API_URL: Go Server URL
+# - SERVER_URL: Go Server URL
 # - GATEWAY_SIGNING_KEY: Ed25519 seed (Worker → Go Server JWT 署名用)
 # - CLERK_JWKS_URL: Clerk JWT 検証用 JWKS URL
-# - API_SERVER_JWKS_URL: Go Server JWT API key 検証用 JWKS URL
+# - SERVER_JWKS_URL: Go Server JWT API key 検証用 JWKS URL
 # - STRIPE_WEBHOOK_SECRET: Stripe Webhook署名検証用
 # - GRAFANA_LOKI_URL: Loki Push API URL
 # - GRAFANA_LOKI_USER: Loki Basic Auth ユーザー名

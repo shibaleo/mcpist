@@ -21,11 +21,10 @@ const MODULE_ENV_MAP = {
   'apps/worker/.dev.vars': [
     'GATEWAY_SIGNING_KEY',
     'CLERK_JWKS_URL',
-    'PRIMARY_API_URL',
-    'API_SERVER_JWKS_URL',
+    'SERVER_URL',
+    'SERVER_JWKS_URL',
   ],
   'apps/console/.env.local': [
-    'ENVIRONMENT',
     'NEXT_PUBLIC_APP_URL',
     'NEXT_PUBLIC_MCP_SERVER_URL',
     'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',

@@ -17,7 +17,7 @@ interface HealthCheckResult {
 }
 
 export async function handleHealthCheck(env: Env): Promise<Response> {
-  const result = await checkBackendHealth(env.PRIMARY_API_URL);
+  const result = await checkBackendHealth(env.SERVER_URL);
 
   return jsonResponse({
     status: "ok",
@@ -26,7 +26,7 @@ export async function handleHealthCheck(env: Env): Promise<Response> {
 }
 
 export async function performScheduledHealthCheck(env: Env): Promise<void> {
-  const result = await checkBackendHealth(env.PRIMARY_API_URL);
+  const result = await checkBackendHealth(env.SERVER_URL);
   console.log(`[Cron] Health check - Primary: ${result.healthy}`);
 }
 
