@@ -85,7 +85,8 @@ me.post("/onboarding", async (c) => {
 me.get("/usage", async (c) => {
   const r = await requireAuth(c.req.raw, c.env);
   if (r instanceof Response) return r;
-  return proxy(c.env, r, "GET", "/usage");
+  const qs = new URL(c.req.url).search;
+  return proxy(c.env, r, "GET", `/usage${qs}`);
 });
 
 // ── Stripe ──────────────────────────────────────────────────────

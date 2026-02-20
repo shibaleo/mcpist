@@ -17,6 +17,7 @@ import { modules } from "./routes/modules";
 import { me } from "./routes/me";
 import { admin } from "./routes/admin";
 import { stripe } from "./routes/stripe";
+import { oauth } from "./routes/oauth";
 
 type Bindings = Env;
 
@@ -33,6 +34,7 @@ v1.route("/modules", modules);
 v1.route("/me", me);
 v1.route("/admin", admin);
 v1.route("/stripe", stripe);
+v1.route("/oauth", oauth);
 
 // MCP Proxy: MCP Client → Worker → Go Server
 v1.all("/mcp/*", (c) => {

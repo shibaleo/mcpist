@@ -26,29 +26,59 @@ func RecordUsage(db *gorm.DB, userID, metaTool, requestID string, details interf
 	return db.Create(&entry).Error
 }
 
-// UsageSummary is the response for GET /v1/me/usage.
-type UsageSummary struct {
-	DailyUsed  int `json:"daily_used"`
-	DailyLimit int `json:"daily_limit"`
+// UsageData is the response for GET /v1/me/usage (matches OpenAPI spec).
+type UsageData struct {
+	TotalUsed int            `json:"total_used"`
+	ByModule  map[string]int `json:"by_module"`
+	Period    UsagePeriod    `json:"period"`
 }
 
-// GetUsage returns the user's current daily usage and limit.
-func GetUsage(db *gorm.DB, userID string) (*UsageSummary, error) {
-	var plan Plan
-	if err := db.Table("mcpist.plans AS p").
-		Select("p.daily_limit").
-		Joins("JOIN mcpist.users u ON u.plan_id = p.id").
-		Where("u.id = ?", userID).
-		First(&plan).Error; err != nil {
+// UsagePeriod represents the date range for usage data.
+type UsagePeriod struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
+// moduleCount is a helper struct for the GROUP BY query.
+type moduleCount struct {
+	Module string
+	Count  int
+}
+
+// GetUsageByDateRange returns usage counts grouped by module for a date range.
+func GetUsageByDateRange(database *gorm.DB, userID string, start, end time.Time) (*UsageData, error) {
+	// Total count in date range
+	var totalUsed int64
+	if err := database.Model(&UsageLog{}).
+		Where("user_id = ? AND created_at >= ? AND created_at < ?", userID, start, end).
+		Count(&totalUsed).Error; err != nil {
 		return nil, err
 	}
 
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	var dailyUsed int64
-	db.Model(&UsageLog{}).Where("user_id = ? AND created_at >= ?", userID, today).Count(&dailyUsed)
+	// Count by module: extract module from details JSONB array
+	// details is an array like [{"module":"notion","tool":"search_pages"}]
+	var counts []moduleCount
+	database.Raw(`
+		SELECT elem->>'module' AS module, COUNT(*) AS count
+		FROM mcpist.usage_log,
+		     jsonb_array_elements(details) AS elem
+		WHERE user_id = ? AND created_at >= ? AND created_at < ?
+		  AND elem->>'module' IS NOT NULL
+		GROUP BY elem->>'module'
+		ORDER BY count DESC
+	`, userID, start, end).Scan(&counts)
 
-	return &UsageSummary{
-		DailyUsed:  int(dailyUsed),
-		DailyLimit: plan.DailyLimit,
+	byModule := make(map[string]int, len(counts))
+	for _, c := range counts {
+		byModule[c.Module] = c.Count
+	}
+
+	return &UsageData{
+		TotalUsed: int(totalUsed),
+		ByModule:  byModule,
+		Period: UsagePeriod{
+			Start: start.Format("2006-01-02"),
+			End:   end.Format("2006-01-02"),
+		},
 	}, nil
 }

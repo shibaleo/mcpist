@@ -1,4 +1,4 @@
-package rest
+package ogenserver
 
 import (
 	"crypto/hmac"
@@ -16,60 +16,64 @@ import (
 	"time"
 
 	"mcpist/server/internal/db"
+
+	"gorm.io/gorm"
 )
 
 const stripeTimestampTolerance = 300 // 5 minutes
 
-// POST /v1/stripe/webhook
-func (h *Handler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
-	secret := os.Getenv("STRIPE_WEBHOOK_SECRET")
-	if secret == "" {
-		writeError(w, http.StatusInternalServerError, "webhook secret not configured")
-		return
-	}
+// NewStripeWebhookHandler returns an http.HandlerFunc for POST /v1/stripe/webhook.
+// This is kept outside ogen scope because Stripe webhooks require raw body
+// reading and custom signature verification.
+func NewStripeWebhookHandler(database *gorm.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		secret := os.Getenv("STRIPE_WEBHOOK_SECRET")
+		if secret == "" {
+			writeErrorJSON(w, http.StatusInternalServerError, "webhook secret not configured")
+			return
+		}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read body")
-		return
-	}
-	defer r.Body.Close()
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			writeErrorJSON(w, http.StatusBadRequest, "failed to read body")
+			return
+		}
+		defer r.Body.Close()
 
-	// Verify Stripe signature
-	sigHeader := r.Header.Get("Stripe-Signature")
-	if err := verifyStripeSignature(body, sigHeader, secret); err != nil {
-		writeError(w, http.StatusUnauthorized, err.Error())
-		return
-	}
+		sigHeader := r.Header.Get("Stripe-Signature")
+		if err := verifyStripeSignature(body, sigHeader, secret); err != nil {
+			writeErrorJSON(w, http.StatusUnauthorized, err.Error())
+			return
+		}
 
-	// Parse event
-	var event struct {
-		ID   string `json:"id"`
-		Type string `json:"type"`
-		Data struct {
-			Object json.RawMessage `json:"object"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &event); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid event JSON")
-		return
-	}
+		var event struct {
+			ID   string `json:"id"`
+			Type string `json:"type"`
+			Data struct {
+				Object json.RawMessage `json:"object"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(body, &event); err != nil {
+			writeErrorJSON(w, http.StatusBadRequest, "invalid event JSON")
+			return
+		}
 
-	log.Printf("[stripe] Received event: %s (%s)", event.Type, event.ID)
+		log.Printf("[stripe] Received event: %s (%s)", event.Type, event.ID)
 
-	switch event.Type {
-	case "invoice.paid":
-		h.handleInvoicePaid(event.ID, event.Data.Object)
-	case "customer.subscription.deleted":
-		h.handleSubscriptionDeleted(event.ID, event.Data.Object)
-	default:
-		log.Printf("[stripe] Ignoring event type: %s", event.Type)
+		switch event.Type {
+		case "invoice.paid":
+			handleInvoicePaid(database, event.ID, event.Data.Object)
+		case "customer.subscription.deleted":
+			handleSubscriptionDeleted(database, event.ID, event.Data.Object)
+		default:
+			log.Printf("[stripe] Ignoring event type: %s", event.Type)
+		}
+
+		writeSuccessJSON(w, http.StatusOK)
 	}
-
-	writeJSON(w, http.StatusOK, map[string]bool{"received": true})
 }
 
-func (h *Handler) handleInvoicePaid(eventID string, data json.RawMessage) {
+func handleInvoicePaid(database *gorm.DB, eventID string, data json.RawMessage) {
 	var invoice struct {
 		Customer string `json:"customer"`
 		Metadata struct {
@@ -83,8 +87,7 @@ func (h *Handler) handleInvoicePaid(eventID string, data json.RawMessage) {
 
 	userID := invoice.Metadata.UserID
 	if userID == "" && invoice.Customer != "" {
-		// Resolve user from Stripe customer ID
-		user, err := db.GetUserByStripeCustomer(h.db, invoice.Customer)
+		user, err := db.GetUserByStripeCustomer(database, invoice.Customer)
 		if err != nil {
 			log.Printf("[stripe] Failed to find user for customer %s: %v", invoice.Customer, err)
 			return
@@ -97,14 +100,14 @@ func (h *Handler) handleInvoicePaid(eventID string, data json.RawMessage) {
 		return
 	}
 
-	if err := db.ActivateSubscription(h.db, userID, "plus", eventID); err != nil {
+	if err := db.ActivateSubscription(database, userID, "plus", eventID); err != nil {
 		log.Printf("[stripe] Failed to activate subscription for %s: %v", userID, err)
 		return
 	}
 	log.Printf("[stripe] Subscription activated for user %s", userID)
 }
 
-func (h *Handler) handleSubscriptionDeleted(eventID string, data json.RawMessage) {
+func handleSubscriptionDeleted(database *gorm.DB, eventID string, data json.RawMessage) {
 	var subscription struct {
 		Metadata struct {
 			UserID string `json:"user_id"`
@@ -121,20 +124,18 @@ func (h *Handler) handleSubscriptionDeleted(eventID string, data json.RawMessage
 		return
 	}
 
-	if err := db.ActivateSubscription(h.db, userID, "free", eventID); err != nil {
+	if err := db.ActivateSubscription(database, userID, "free", eventID); err != nil {
 		log.Printf("[stripe] Failed to downgrade user %s: %v", userID, err)
 		return
 	}
 	log.Printf("[stripe] Subscription downgraded to free for user %s", userID)
 }
 
-// verifyStripeSignature validates the Stripe-Signature header.
 func verifyStripeSignature(payload []byte, header, secret string) error {
 	if header == "" {
 		return fmt.Errorf("missing signature")
 	}
 
-	// Parse header: t=timestamp,v1=signature
 	var timestamp string
 	var signatures []string
 	for _, part := range strings.Split(header, ",") {
@@ -154,7 +155,6 @@ func verifyStripeSignature(payload []byte, header, secret string) error {
 		return fmt.Errorf("invalid signature format")
 	}
 
-	// Check timestamp tolerance (replay protection)
 	ts, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid timestamp")
@@ -163,13 +163,11 @@ func verifyStripeSignature(payload []byte, header, secret string) error {
 		return fmt.Errorf("timestamp outside tolerance")
 	}
 
-	// Compute expected signature
 	signedPayload := timestamp + "." + string(payload)
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(signedPayload))
 	expected := hex.EncodeToString(mac.Sum(nil))
 
-	// Compare with provided signatures (constant-time)
 	for _, sig := range signatures {
 		if hmac.Equal([]byte(expected), []byte(sig)) {
 			return nil
@@ -177,4 +175,18 @@ func verifyStripeSignature(payload []byte, header, secret string) error {
 	}
 
 	return fmt.Errorf("signature mismatch")
+}
+
+// writeErrorJSON writes a JSON error response (used outside ogen).
+func writeErrorJSON(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// writeSuccessJSON writes {"received": true} response.
+func writeSuccessJSON(w http.ResponseWriter, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]bool{"received": true})
 }

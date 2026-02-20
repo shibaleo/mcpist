@@ -1,101 +1,12 @@
-openapi: "3.1.0"
+openapi: "3.0.3"
 info:
-  title: MCPist API
+  title: MCPist Server API
   version: "1.0.0"
   description: >-
-    MCPist API — connect AI assistants to external tools
-    via the Model Context Protocol (MCP).
-
-servers:
-  - url: https://mcp.mcpist.app
-    description: Production
-  - url: https://mcp.dev.mcpist.app
-    description: Development
+    Internal REST API for the MCPist Go Server.
+    Authenticated via X-Gateway-Token (Ed25519 JWT signed by Worker).
 
 paths:
-  # ── System ───────────────────────────────────────────────────
-  /health:
-    get:
-      operationId: getHealth
-      summary: Health check
-      tags: [system]
-      responses:
-        "200":
-          description: Service is healthy
-
-  /openapi.json:
-    get:
-      operationId: getOpenApiSpec
-      summary: OpenAPI specification
-      tags: [system]
-      responses:
-        "200":
-          description: OpenAPI 3.1 JSON document
-
-  # ── OAuth Discovery ──────────────────────────────────────────
-  /.well-known/oauth-protected-resource:
-    get:
-      operationId: getOAuthProtectedResource
-      summary: OAuth Protected Resource Metadata (RFC 9728)
-      tags: [oauth-discovery]
-      responses:
-        "200":
-          description: Protected resource metadata JSON
-
-  /.well-known/oauth-authorization-server:
-    get:
-      operationId: getOAuthAuthorizationServer
-      summary: OAuth Authorization Server Metadata (RFC 8414)
-      tags: [oauth-discovery]
-      responses:
-        "200":
-          description: Authorization server metadata JSON
-
-  /v1/mcp/.well-known/oauth-protected-resource:
-    get:
-      operationId: getV1McpOAuthProtectedResource
-      summary: MCP-scoped OAuth Protected Resource Metadata
-      tags: [oauth-discovery]
-      responses:
-        "200":
-          description: Protected resource metadata JSON
-
-  /v1/mcp/.well-known/oauth-authorization-server:
-    get:
-      operationId: getV1McpOAuthAuthorizationServer
-      summary: MCP-scoped OAuth Authorization Server Metadata
-      tags: [oauth-discovery]
-      responses:
-        "200":
-          description: Authorization server metadata JSON
-
-  # ── MCP Transport ──────────────────────────────────────────
-  /v1/mcp/{path}:
-    post:
-      operationId: mcpTransport
-      summary: MCP transport endpoint (Streamable HTTP)
-      description: >-
-        Accepts MCP protocol messages (JSON-RPC 2.0) and returns responses.
-        Supports initialize, tools/list, tools/call, prompts/list, prompts/get,
-        and other standard MCP methods.
-      tags: [mcp]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: path
-          in: path
-          required: true
-          schema:
-            type: string
-          description: MCP transport sub-path
-      responses:
-        "200":
-          description: MCP JSON-RPC response
-        "401":
-          description: Unauthorized
-        "503":
-          description: Service unavailable
-
   # ── Modules (public) ─────────────────────────────────────────
   /v1/modules:
     get:
@@ -112,17 +23,14 @@ paths:
                 items:
                   $ref: "#/components/schemas/ModuleWithTools"
 
-  # ── Me (authenticated user) ─────────────────────────────────
+  # ── Registration (gateway-only, user may not exist yet) ──────
   /v1/me/register:
     post:
       operationId: registerUser
       summary: Register or find existing user from Clerk ID
-      description: >-
-        Creates a new user record if one does not already exist for the
-        authenticated Clerk user. Returns the internal user ID.
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: User registered or already exists
@@ -131,17 +39,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/RegisterResult"
         "400":
-          description: Missing email in token
-        "401":
-          description: Unauthorized
+          description: Missing clerk_id or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
+  # ── Profile ──────────────────────────────────────────────────
   /v1/me/profile:
     get:
       operationId: getMyProfile
       summary: Get current user profile
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: User profile
@@ -149,8 +60,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserProfile"
-        "401":
-          description: Unauthorized
 
   /v1/me/settings:
     put:
@@ -158,7 +67,7 @@ paths:
       summary: Update user settings
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       requestBody:
         required: true
         content:
@@ -172,8 +81,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
 
   /v1/me/onboarding:
     post:
@@ -181,7 +88,7 @@ paths:
       summary: Complete a user onboarding step
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       requestBody:
         required: true
         content:
@@ -194,17 +101,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OnboardingResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/SuccessResult"
 
+  # ── Usage ────────────────────────────────────────────────────
   /v1/me/usage:
     get:
       operationId: getUsage
       summary: Get usage statistics
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: start
           in: query
@@ -212,14 +118,14 @@ paths:
           schema:
             type: string
             format: date
-          description: Start date (ISO 8601)
+          description: Start date (YYYY-MM-DD)
         - name: end
           in: query
           required: true
           schema:
             type: string
             format: date
-          description: End date (ISO 8601)
+          description: End date (YYYY-MM-DD)
       responses:
         "200":
           description: Usage data
@@ -227,16 +133,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UsageData"
-        "401":
-          description: Unauthorized
 
+  # ── Stripe ───────────────────────────────────────────────────
   /v1/me/stripe:
     get:
       operationId: getStripeCustomerId
       summary: Get linked Stripe customer ID
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: Stripe customer info
@@ -244,14 +149,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StripeCustomer"
-        "401":
-          description: Unauthorized
     put:
       operationId: linkStripeCustomer
       summary: Link a Stripe customer ID
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       requestBody:
         required: true
         content:
@@ -265,16 +168,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
 
+  # ── Credentials ──────────────────────────────────────────────
   /v1/me/credentials:
     get:
       operationId: listCredentials
       summary: List stored credentials
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: Credential list
@@ -284,8 +186,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Credential"
-        "401":
-          description: Unauthorized
 
   /v1/me/credentials/{module}:
     put:
@@ -293,14 +193,13 @@ paths:
       summary: Create or update credentials for a module
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: module
           in: path
           required: true
           schema:
             type: string
-          description: Module identifier
       requestBody:
         required: true
         content:
@@ -313,22 +212,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UpsertCredentialResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/SuccessResult"
     delete:
       operationId: deleteCredential
       summary: Delete credentials for a module
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: module
           in: path
           required: true
           schema:
             type: string
-          description: Module identifier
       responses:
         "200":
           description: Credential deleted
@@ -336,16 +232,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
 
+  # ── API Keys ─────────────────────────────────────────────────
   /v1/me/apikeys:
     get:
       operationId: listApiKeys
       summary: List API keys
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: API key list
@@ -355,14 +250,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ApiKey"
-        "401":
-          description: Unauthorized
     post:
       operationId: generateApiKey
       summary: Generate a new API key
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       requestBody:
         required: true
         content:
@@ -370,14 +263,12 @@ paths:
             schema:
               $ref: "#/components/schemas/GenerateApiKeyBody"
       responses:
-        "200":
+        "201":
           description: Generated API key
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerateApiKeyResult"
-        "401":
-          description: Unauthorized
 
   /v1/me/apikeys/{id}:
     delete:
@@ -385,15 +276,13 @@ paths:
       summary: Revoke an API key
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
-          description: API key ID
       responses:
         "200":
           description: API key revoked
@@ -401,16 +290,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
 
+  # ── Prompts ──────────────────────────────────────────────────
   /v1/me/prompts:
     get:
       operationId: listPrompts
       summary: List prompts
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: module
           in: query
@@ -426,14 +314,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Prompt"
-        "401":
-          description: Unauthorized
     post:
       operationId: createPrompt
       summary: Create a prompt
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       requestBody:
         required: true
         content:
@@ -441,14 +327,12 @@ paths:
             schema:
               $ref: "#/components/schemas/CreatePromptBody"
       responses:
-        "200":
+        "201":
           description: Prompt created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UpsertPromptResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/Prompt"
 
   /v1/me/prompts/{id}:
     get:
@@ -456,38 +340,32 @@ paths:
       summary: Get a prompt by ID
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
-          description: Prompt ID
       responses:
         "200":
           description: Prompt detail
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GetPromptResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/Prompt"
     put:
       operationId: updatePrompt
       summary: Update a prompt
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
-          description: Prompt ID
       requestBody:
         required: true
         content:
@@ -500,46 +378,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UpsertPromptResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/SuccessResult"
     delete:
       operationId: deletePrompt
       summary: Delete a prompt
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
-          description: Prompt ID
       responses:
         "200":
           description: Prompt deleted
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeletePromptResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/SuccessResult"
 
+  # ── Module Config ────────────────────────────────────────────
   /v1/me/modules/config:
     get:
       operationId: getModuleConfig
       summary: Get module configuration
       tags: [me]
       security:
-        - bearerAuth: []
-      parameters:
-        - name: module
-          in: query
-          schema:
-            type: string
-          description: Filter by module name
+        - gatewayToken: []
       responses:
         "200":
           description: Module configuration
@@ -549,8 +416,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ModuleConfig"
-        "401":
-          description: Unauthorized
 
   /v1/me/modules/{name}/tools:
     put:
@@ -558,14 +423,13 @@ paths:
       summary: Update tool enable/disable settings for a module
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: name
           in: path
           required: true
           schema:
             type: string
-          description: Module name
       requestBody:
         required: true
         content:
@@ -578,9 +442,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UpsertToolSettingsResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/SuccessResult"
 
   /v1/me/modules/{name}/description:
     put:
@@ -588,14 +450,13 @@ paths:
       summary: Update module description
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: name
           in: path
           required: true
           schema:
             type: string
-          description: Module name
       requestBody:
         required: true
         content:
@@ -609,16 +470,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResult"
-        "401":
-          description: Unauthorized
 
+  # ── OAuth Consents ───────────────────────────────────────────
   /v1/me/oauth/consents:
     get:
       operationId: listOAuthConsents
       summary: List OAuth consents
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: OAuth consent list
@@ -628,8 +488,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OAuthConsent"
-        "401":
-          description: Unauthorized
 
   /v1/me/oauth/consents/{id}:
     delete:
@@ -637,40 +495,35 @@ paths:
       summary: Revoke an OAuth consent
       tags: [me]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-            format: uuid
-          description: Consent ID
       responses:
         "200":
           description: Consent revoked
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RevokeConsentResult"
-        "401":
-          description: Unauthorized
+                $ref: "#/components/schemas/SuccessResult"
 
-  # ── OAuth App Credentials (public, for OAuth flow) ──────────
+  # ── OAuth App Credentials ────────────────────────────────────
   /v1/oauth/apps/{provider}/credentials:
     get:
       operationId: getOAuthAppCredentials
       summary: Get OAuth app credentials for a provider
       tags: [oauth]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: provider
           in: path
           required: true
           schema:
             type: string
-          description: OAuth provider identifier (e.g. github, google)
       responses:
         "200":
           description: OAuth app credentials
@@ -679,14 +532,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/OAuthAppCredentials"
 
-  # ── Admin ──────────────────────────────────────────────────
+  # ── Admin ────────────────────────────────────────────────────
   /v1/admin/oauth/apps:
     get:
       operationId: listOAuthApps
       summary: List all OAuth apps (admin only)
       tags: [admin]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: OAuth app list
@@ -696,10 +549,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OAuthApp"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden — admin role required
 
   /v1/admin/oauth/apps/{provider}:
     put:
@@ -707,14 +556,13 @@ paths:
       summary: Create or update an OAuth app (admin only)
       tags: [admin]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: provider
           in: path
           required: true
           schema:
             type: string
-          description: OAuth provider identifier
       requestBody:
         required: true
         content:
@@ -724,30 +572,29 @@ paths:
       responses:
         "200":
           description: OAuth app saved
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden — admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
     delete:
       operationId: deleteOAuthApp
       summary: Delete an OAuth app (admin only)
       tags: [admin]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       parameters:
         - name: provider
           in: path
           required: true
           schema:
             type: string
-          description: OAuth provider identifier
       responses:
         "200":
           description: OAuth app deleted
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden — admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
 
   /v1/admin/oauth/consents:
     get:
@@ -755,7 +602,7 @@ paths:
       summary: List all OAuth consents across users (admin only)
       tags: [admin]
       security:
-        - bearerAuth: []
+        - gatewayToken: []
       responses:
         "200":
           description: All OAuth consents
@@ -765,52 +612,35 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/OAuthConsentAdmin"
-        "401":
-          description: Unauthorized
-        "403":
-          description: Forbidden — admin role required
-
-  # ── Stripe ────────────────────────────────────────────────────
-  /v1/stripe/webhook:
-    post:
-      operationId: handleStripeWebhook
-      summary: Handle Stripe webhook events
-      description: >-
-        Receives Stripe webhook events (invoice.paid, customer.subscription.deleted).
-        Authenticated via Stripe signature verification, not JWT.
-      tags: [stripe]
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        "200":
-          description: Webhook received
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  received:
-                    type: boolean
-        "400":
-          description: Invalid signature or payload
 
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      description: Clerk JWT or MCPist API key (mpt_xxx)
+    gatewayToken:
+      type: apiKey
+      in: header
+      name: X-Gateway-Token
+      description: Ed25519 JWT signed by Worker gateway
 
   schemas:
+    # ── Common ──
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    SuccessResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
     # ── Modules ──
     ModuleWithTools:
       type: object
-      required: [id, name, status]
+      required: [id, name, status, tools]
       properties:
         id:
           type: string
@@ -818,53 +648,39 @@ components:
           type: string
         status:
           type: string
-        descriptions:
-          type: object
-          additionalProperties:
-            type: string
-        tools:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
+        tools: {}
+        created_at:
+          type: string
+          format: date-time
 
     ModuleConfig:
       type: object
-      required: [module_name, tool_id, enabled]
+      required: [module_name, enabled, description]
       properties:
         module_name:
           type: string
-        description:
-          type: string
-          nullable: true
-        tool_id:
-          type: string
         enabled:
           type: boolean
-
-    UpsertToolSettingsBody:
-      type: object
-      required: [enabled_tools, disabled_tools]
-      properties:
+        description:
+          type: string
         enabled_tools:
           type: array
           items:
             type: string
-        disabled_tools:
+          nullable: true
+
+    UpsertToolSettingsBody:
+      type: object
+      required: [enabled, disabled]
+      properties:
+        enabled:
           type: array
           items:
             type: string
-
-    UpsertToolSettingsResult:
-      type: object
-      required: [success]
-      properties:
-        success:
-          type: boolean
-        enabled_count:
-          type: integer
-        disabled_count:
-          type: integer
+        disabled:
+          type: array
+          items:
+            type: string
 
     UpsertModuleDescriptionBody:
       type: object
@@ -873,17 +689,118 @@ components:
         description:
           type: string
 
-    # ── API Keys ──
-    ApiKey:
+    # ── Registration ──
+    RegisterResult:
       type: object
-      required: [id, key_prefix, display_name]
+      required: [id]
       properties:
         id:
           type: string
-          format: uuid
-        key_prefix:
+
+    # ── User ──
+    UserProfile:
+      type: object
+      required: [id, account_status, plan_id, role, connected_count]
+      properties:
+        id:
+          type: string
+        account_status:
+          type: string
+        plan_id:
           type: string
         display_name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        role:
+          type: string
+        settings: {}
+        connected_count:
+          type: integer
+
+    UsageData:
+      type: object
+      required: [total_used, by_module, period]
+      properties:
+        total_used:
+          type: integer
+        by_module:
+          type: object
+          additionalProperties:
+            type: integer
+        period:
+          $ref: "#/components/schemas/UsagePeriod"
+
+    UsagePeriod:
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+
+    UpdateSettingsBody:
+      type: object
+      required: [settings]
+      properties:
+        settings: {}
+
+    CompleteOnboardingBody:
+      type: object
+      required: [event_id]
+      properties:
+        event_id:
+          type: string
+
+    # ── Stripe ──
+    StripeCustomer:
+      type: object
+      properties:
+        stripe_customer_id:
+          type: string
+          nullable: true
+
+    LinkStripeCustomerBody:
+      type: object
+      required: [stripe_customer_id]
+      properties:
+        stripe_customer_id:
+          type: string
+
+    # ── Credentials ──
+    Credential:
+      type: object
+      required: [module, created_at, updated_at]
+      properties:
+        module:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    UpsertCredentialBody:
+      type: object
+      required: [credentials]
+      properties:
+        credentials: {}
+
+    # ── API Keys ──
+    ApiKey:
+      type: object
+      required: [id, key_prefix, name]
+      properties:
+        id:
+          type: string
+        key_prefix:
+          type: string
+        name:
           type: string
         expires_at:
           type: string
@@ -893,10 +810,9 @@ components:
           type: string
           format: date-time
           nullable: true
-        revoked_at:
+        created_at:
           type: string
           format: date-time
-          nullable: true
 
     GenerateApiKeyBody:
       type: object
@@ -904,20 +820,39 @@ components:
       properties:
         display_name:
           type: string
+        name:
+          type: string
+        expires_in:
+          type: integer
+          description: Expiration in seconds
         expires_at:
           type: string
           format: date-time
-          description: Expiration timestamp (optional)
+          description: Expiration timestamp (ISO 8601)
 
     GenerateApiKeyResult:
       type: object
-      required: [api_key, key_prefix]
+      required: [id, api_key, key_prefix, name]
       properties:
+        id:
+          type: string
         api_key:
           type: string
-          description: Full API key (only returned at creation time)
+        key:
+          type: string
         key_prefix:
           type: string
+        name:
+          type: string
+        display_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
 
     # ── Prompts ──
     Prompt:
@@ -926,8 +861,12 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+        user_id:
+          type: string
         module_name:
+          type: string
+          nullable: true
+        module_id:
           type: string
           nullable: true
         name:
@@ -945,36 +884,6 @@ components:
         updated_at:
           type: string
           format: date-time
-
-    GetPromptResult:
-      type: object
-      required: [found]
-      properties:
-        found:
-          type: boolean
-        id:
-          type: string
-          format: uuid
-        module_name:
-          type: string
-          nullable: true
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        content:
-          type: string
-        enabled:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        error:
-          type: string
 
     CreatePromptBody:
       type: object
@@ -993,7 +902,6 @@ components:
 
     UpdatePromptBody:
       type: object
-      required: [name, content, enabled]
       properties:
         name:
           type: string
@@ -1006,176 +914,10 @@ components:
         description:
           type: string
 
-    UpsertPromptResult:
-      type: object
-      required: [success]
-      properties:
-        success:
-          type: boolean
-        id:
-          type: string
-          format: uuid
-        action:
-          type: string
-        error:
-          type: string
-
-    DeletePromptResult:
-      type: object
-      required: [success]
-      properties:
-        success:
-          type: boolean
-        error:
-          type: string
-
-    # ── Credentials ──
-    Credential:
-      type: object
-      required: [module, created_at, updated_at]
-      properties:
-        module:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-
-    UpsertCredentialBody:
-      type: object
-      required: [credentials]
-      properties:
-        credentials:
-          type: object
-          additionalProperties: true
-          description: Credential data (access_token, refresh_token, etc.)
-
-    UpsertCredentialResult:
-      type: object
-      required: [success, module]
-      properties:
-        success:
-          type: boolean
-        module:
-          type: string
-
-    SuccessResult:
-      type: object
-      required: [success]
-      properties:
-        success:
-          type: boolean
-
-    # ── Registration ──
-    RegisterResult:
-      type: object
-      required: [id]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Internal MCPist user ID
-
-    # ── User ──
-    UserProfile:
-      type: object
-      required: [user_id, email, account_status, plan_id, daily_used, daily_limit, role, connected_count]
-      properties:
-        user_id:
-          type: string
-          format: uuid
-        email:
-          type: string
-        account_status:
-          type: string
-        plan_id:
-          type: string
-        daily_used:
-          type: integer
-        daily_limit:
-          type: integer
-        role:
-          type: string
-        settings:
-          type: object
-          additionalProperties: true
-          nullable: true
-        display_name:
-          type: string
-          nullable: true
-        connected_count:
-          type: integer
-
-    UsageData:
-      type: object
-      required: [total_used, by_module, period]
-      properties:
-        total_used:
-          type: integer
-        by_module:
-          type: object
-          additionalProperties:
-            type: integer
-        period:
-          type: object
-          required: [start, end]
-          properties:
-            start:
-              type: string
-            end:
-              type: string
-
-    StripeCustomer:
-      type: object
-      properties:
-        stripe_customer_id:
-          type: string
-          nullable: true
-
-    LinkStripeCustomerBody:
-      type: object
-      required: [stripe_customer_id]
-      properties:
-        stripe_customer_id:
-          type: string
-
-    UpdateSettingsBody:
-      type: object
-      required: [settings]
-      properties:
-        settings:
-          type: object
-          additionalProperties: true
-          description: User settings object
-
-    CompleteOnboardingBody:
-      type: object
-      required: [event_id]
-      properties:
-        event_id:
-          type: string
-
-    OnboardingResult:
-      type: object
-      required: [success]
-      properties:
-        success:
-          type: boolean
-        already_completed:
-          type: boolean
-        plan_id:
-          type: string
-        error:
-          type: string
-        message:
-          type: string
-
     # ── OAuth ──
     OAuthAppCredentials:
       type: object
-      required: [client_id, client_secret, redirect_uri]
+      required: [provider, client_id, client_secret, redirect_uri]
       properties:
         provider:
           type: string
@@ -1185,65 +927,43 @@ components:
           type: string
         redirect_uri:
           type: string
-        error:
-          type: string
-        message:
-          type: string
 
     OAuthConsent:
       type: object
-      required: [id, client_id, scopes, granted_at]
+      required: [id, module, created_at]
       properties:
         id:
           type: string
-          format: uuid
-        client_id:
+        module:
           type: string
-        client_name:
+        created_at:
           type: string
-          nullable: true
-        scopes:
-          type: string
-        granted_at:
-          type: string
-          format: date-time
 
     OAuthConsentAdmin:
       type: object
-      required: [id, client_id, scopes, granted_at, user_id]
+      required: [id, user_id, module, created_at]
       properties:
         id:
           type: string
-          format: uuid
         user_id:
           type: string
-        user_email:
+        module:
           type: string
-          nullable: true
-        client_id:
-          type: string
-        client_name:
-          type: string
-          nullable: true
-        scopes:
-          type: string
-        granted_at:
+        created_at:
           type: string
           format: date-time
-
-    RevokeConsentResult:
-      type: object
-      properties:
-        revoked:
-          type: boolean
 
     # ── Admin ──
     OAuthApp:
       type: object
       properties:
+        id:
+          type: string
         provider:
           type: string
         client_id:
+          type: string
+        client_secret:
           type: string
         redirect_uri:
           type: string
@@ -1252,10 +972,13 @@ components:
         created_at:
           type: string
           format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     UpsertOAuthAppBody:
       type: object
-      required: [client_id, client_secret, redirect_uri, enabled]
+      required: [client_id, client_secret, redirect_uri]
       properties:
         client_id:
           type: string

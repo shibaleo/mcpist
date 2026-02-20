@@ -15,7 +15,7 @@ export async function fetchAuthUserContext(): Promise<AuthUserContext | null> {
     const client = await createWorkerClient()
 
     // Register (idempotent — creates user if not exists)
-    await client.POST("/v1/me/register" as never)
+    await client.POST("/v1/me/register")
 
     const { data } = await client.GET("/v1/me/profile")
     const profile = data!

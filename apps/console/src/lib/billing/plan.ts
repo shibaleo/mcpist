@@ -23,12 +23,15 @@ export interface UserContext {
   daily_limit: number
 }
 
-export interface UsageSummary {
-  daily_used: number
-  daily_limit: number
-}
-
 export type UsageStats = components["schemas"]["UsageData"]
+
+/** Format a Date to YYYY-MM-DD for the usage API */
+function formatDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
 
 /**
  * Get the current user's plan info
@@ -36,22 +39,21 @@ export type UsageStats = components["schemas"]["UsageData"]
 export async function getUserPlan(): Promise<UserPlan | null> {
   try {
     const client = await createWorkerClient()
-    const now = new Date()
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const today = formatDate(new Date())
     const [profileRes, usageRes] = await Promise.all([
       client.GET("/v1/me/profile"),
       client.GET("/v1/me/usage", {
-        params: { query: { start: startOfDay.toISOString(), end: now.toISOString() } },
+        params: { query: { start: today, end: today } },
       }),
     ])
     const profile = profileRes.data!
-    const usage = usageRes.data as UsageSummary | undefined
+    const usage = usageRes.data
     if (!profile) return null
 
     return {
       plan_id: profile.plan_id,
-      daily_used: usage?.daily_used ?? 0,
-      daily_limit: usage?.daily_limit ?? 0,
+      daily_used: usage?.total_used ?? 0,
+      daily_limit: profile.daily_limit,
     }
   } catch {
     return null
@@ -84,23 +86,22 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
 export async function getUserContext(): Promise<UserContext | null> {
   try {
     const client = await createWorkerClient()
-    const now = new Date()
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const today = formatDate(new Date())
     const [profileRes, usageRes] = await Promise.all([
       client.GET("/v1/me/profile"),
       client.GET("/v1/me/usage", {
-        params: { query: { start: startOfDay.toISOString(), end: now.toISOString() } },
+        params: { query: { start: today, end: today } },
       }),
     ])
     const profile = profileRes.data!
-    const usage = usageRes.data as UsageSummary | undefined
+    const usage = usageRes.data
     if (!profile) return null
 
     return {
       account_status: profile.account_status,
       plan_id: profile.plan_id,
-      daily_used: usage?.daily_used ?? 0,
-      daily_limit: usage?.daily_limit ?? 0,
+      daily_used: usage?.total_used ?? 0,
+      daily_limit: profile.daily_limit,
     }
   } catch {
     return null
@@ -116,8 +117,8 @@ export async function getMyUsage(startDate: Date, endDate: Date): Promise<UsageS
     const { data } = await client.GET("/v1/me/usage", {
       params: {
         query: {
-          start: startDate.toISOString(),
-          end: endDate.toISOString(),
+          start: formatDate(startDate),
+          end: formatDate(endDate),
         },
       },
     })

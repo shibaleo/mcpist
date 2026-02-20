@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,7 +18,8 @@ import (
 	"mcpist/server/internal/mcp"
 	"mcpist/server/internal/middleware"
 	"mcpist/server/internal/modules"
-	"mcpist/server/internal/rest"
+	"mcpist/server/internal/ogenserver"
+	gen "mcpist/server/internal/ogenserver/gen"
 	"mcpist/server/internal/modules/airtable"
 	"mcpist/server/internal/modules/asana"
 	"mcpist/server/internal/modules/confluence"
@@ -139,13 +142,21 @@ func main() {
 	mcpHandler := mcp.NewHandler(userStore)
 	mux.Handle("/v1/mcp", middleware.Recovery(authorizer.Authorize(rateLimiter.Middleware(middleware.Transport(mcpHandler)))))
 
-	// REST endpoints
+	// REST endpoints (ogen-generated server)
 	adminEmails := os.Getenv("ADMIN_EMAILS")
-	restHandler := rest.NewHandler(database, gatewayVerifier, adminEmails)
-	restHandler.Register(mux)
+	ogenHandler := ogenserver.NewHandler(database, adminEmails)
+	ogenSecurity := ogenserver.NewSecurityHandler(gatewayVerifier, database, adminEmails)
+	ogenSrv, err := gen.NewServer(ogenHandler, ogenSecurity)
+	if err != nil {
+		log.Fatalf("Failed to create ogen server: %v", err)
+	}
+	mux.Handle("/v1/", ogenSrv)
+
+	// Stripe webhook (outside ogen — needs raw body + Stripe signature)
+	mux.HandleFunc("POST /v1/stripe/webhook", ogenserver.NewStripeWebhookHandler(database))
 
 	// JWKS endpoint (public, for API key verification)
-	rest.RegisterJWKS(mux)
+	mux.HandleFunc("GET /.well-known/jwks.json", handleJWKS)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
@@ -212,4 +223,23 @@ func buildSyncEntries(moduleNames []string) []broker.SyncModuleEntry {
 		})
 	}
 	return entries
+}
+
+// handleJWKS serves the JWKS endpoint for API key verification.
+func handleJWKS(w http.ResponseWriter, r *http.Request) {
+	kp := auth.GetKeyPair()
+	w.Header().Set("Content-Type", "application/json")
+	if kp == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"keys": []interface{}{}})
+		return
+	}
+	jwk := map[string]interface{}{
+		"kty": "OKP",
+		"crv": "Ed25519",
+		"x":   base64.RawURLEncoding.EncodeToString(kp.PublicKey),
+		"kid": kp.KID,
+		"use": "sig",
+		"alg": "EdDSA",
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"keys": []interface{}{jwk}})
 }

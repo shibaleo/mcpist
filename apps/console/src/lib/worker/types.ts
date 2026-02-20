@@ -143,6 +143,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register or find existing user from Clerk ID
+         * @description Creates a new user record if one does not already exist for the authenticated Clerk user. Returns the internal user ID.
+         */
+        post: operations["registerUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/profile": {
         parameters: {
             query?: never;
@@ -641,6 +661,13 @@ export interface components {
         SuccessResult: {
             success: boolean;
         };
+        RegisterResult: {
+            /**
+             * Format: uuid
+             * @description Internal MCPist user ID
+             */
+            id: string;
+        };
         UserProfile: {
             /** Format: uuid */
             user_id: string;
@@ -693,7 +720,6 @@ export interface components {
             client_id: string;
             client_secret: string;
             redirect_uri: string;
-            scopes?: string;
             error?: string;
             message?: string;
         };
@@ -903,6 +929,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ModuleWithTools"][];
                 };
+            };
+        };
+    };
+    registerUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User registered or already exists */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterResult"];
+                };
+            };
+            /** @description Missing email in token */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
