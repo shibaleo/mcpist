@@ -6,6 +6,30 @@ import (
 	"mcpist/server/internal/db"
 )
 
+// GET /v1/admin/oauth/apps
+func (h *Handler) listOAuthApps(w http.ResponseWriter, r *http.Request) {
+	apps, err := db.ListOAuthApps(h.db)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list OAuth apps")
+		return
+	}
+	writeJSON(w, http.StatusOK, apps)
+}
+
+// DELETE /v1/admin/oauth/apps/{provider}
+func (h *Handler) deleteOAuthApp(w http.ResponseWriter, r *http.Request) {
+	provider := r.PathValue("provider")
+	if provider == "" {
+		writeError(w, http.StatusBadRequest, "provider is required")
+		return
+	}
+	if err := db.DeleteOAuthApp(h.db, provider); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"success": true, "provider": provider})
+}
+
 // PUT /v1/admin/oauth/apps/{provider}
 func (h *Handler) upsertOAuthApp(w http.ResponseWriter, r *http.Request) {
 	provider := r.PathValue("provider")

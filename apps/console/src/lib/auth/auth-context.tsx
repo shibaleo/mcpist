@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
 import { useUser, useClerk } from "@clerk/nextjs"
 import { fetchAuthUserContext } from "./auth-context-actions"
 
@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const fetchedForRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!clerkLoaded) return
@@ -36,8 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       setIsAdmin(false)
       setIsLoading(false)
+      fetchedForRef.current = null
       return
     }
+
+    // 同じ Clerk ユーザーに対して重複フェッチを防止
+    if (fetchedForRef.current === clerkUser.id) return
+    fetchedForRef.current = clerkUser.id
 
     const appUser: User = {
       id: clerkUser.id,
@@ -60,7 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }).finally(() => {
       setIsLoading(false)
     })
-  }, [clerkUser, clerkLoaded])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- clerkUser はオブジェクト参照が毎回変わるため id で安定化
+  }, [clerkUser?.id, clerkLoaded])
 
   const signOut = async () => {
     await clerk.signOut()

@@ -18,6 +18,7 @@ import {
   handleOAuthAuthorizationServerMetadata,
 } from "./v1/oauth-metadata";
 import { handleOpenApiSpec } from "./openapi";
+import { getJwksResponse } from "./gateway-token";
 import { v1 } from "./v1";
 
 type Bindings = Env;
@@ -55,6 +56,10 @@ app.get("/.well-known/oauth-protected-resource", (c) =>
   handleOAuthProtectedResourceMetadata(c.req.raw, c.env));
 app.get("/.well-known/oauth-authorization-server", (c) =>
   handleOAuthAuthorizationServerMetadata(c.env));
+
+// Gateway JWKS (Go Server がこの公開鍵で Gateway JWT を検証)
+app.get("/.well-known/jwks.json", (c) =>
+  getJwksResponse(c.env.GATEWAY_SIGNING_KEY));
 
 // --- Versioned Routes ---
 

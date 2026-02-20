@@ -23,8 +23,7 @@ vars = { APP_ENV = "mcpist-dev" }
 
 # シークレット（wrangler secret で設定）
 # - PRIMARY_API_URL: Go Server URL
-# - SECONDARY_API_URL: セカンダリ Go Server URL
-# - GATEWAY_SECRET: オリジン直接アクセス防止用
+# - GATEWAY_SIGNING_KEY: Ed25519 seed (Worker → Go Server JWT 署名用)
 # - CLERK_JWKS_URL: Clerk JWT 検証用 JWKS URL
 # - API_SERVER_JWKS_URL: Go Server JWT API key 検証用 JWKS URL
 # - STRIPE_WEBHOOK_SECRET: Stripe Webhook署名検証用

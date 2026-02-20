@@ -10,6 +10,7 @@ import type { Env } from "../../types";
 import { authenticate } from "../../auth";
 import { jsonResponse } from "../../http";
 import { forwardToGoServer } from "../go-server";
+import type { GatewayTokenClaims } from "../../gateway-token";
 
 type Bindings = Env;
 const me = new Hono<{ Bindings: Bindings }>();
@@ -28,15 +29,15 @@ async function requireAuth(
 }
 
 /**
- * 認証タイプに応じた Go Server 向けヘッダーを生成
- * - Clerk JWT  → X-Clerk-ID (clerk_id)
- * - API Key    → X-User-ID  (mcpist internal UUID)
+ * 認証タイプに応じた Gateway JWT claims を生成
+ * - Clerk JWT  → clerk_id
+ * - API Key    → user_id (mcpist internal UUID)
  */
-function userIdHeader(auth: AuthOk): Record<string, string> {
+function buildClaims(auth: AuthOk): GatewayTokenClaims {
   if (auth.type === "api_key") {
-    return { "X-User-ID": auth.userId };
+    return { user_id: auth.userId, email: auth.email };
   }
-  return { "X-Clerk-ID": auth.userId };
+  return { clerk_id: auth.userId, email: auth.email };
 }
 
 /** Go Server にプロキシするヘルパー */
@@ -47,7 +48,7 @@ function proxy(
   path: string,
   body?: string | null
 ) {
-  return forwardToGoServer(env, method, `/v1/me${path}`, userIdHeader(auth), body);
+  return forwardToGoServer(env, method, `/v1/me${path}`, buildClaims(auth), body);
 }
 
 // ── Register ────────────────────────────────────────────────────
@@ -56,11 +57,7 @@ me.post("/register", async (c) => {
   const r = await requireAuth(c.req.raw, c.env);
   if (r instanceof Response) return r;
   if (!r.email) return jsonResponse({ error: "email is required for registration" }, 400);
-  const headers: Record<string, string> = {
-    ...userIdHeader(r),
-    "X-User-Email": r.email,
-  };
-  return forwardToGoServer(c.env, "POST", "/v1/me/register", headers);
+  return forwardToGoServer(c.env, "POST", "/v1/me/register", buildClaims(r));
 });
 
 // ── Profile ─────────────────────────────────────────────────────
@@ -68,9 +65,7 @@ me.post("/register", async (c) => {
 me.get("/profile", async (c) => {
   const r = await requireAuth(c.req.raw, c.env);
   if (r instanceof Response) return r;
-  const headers: Record<string, string> = { ...userIdHeader(r) };
-  if (r.email) headers["X-User-Email"] = r.email;
-  return forwardToGoServer(c.env, "GET", "/v1/me/profile", headers);
+  return forwardToGoServer(c.env, "GET", "/v1/me/profile", buildClaims(r));
 });
 
 me.put("/settings", async (c) => {

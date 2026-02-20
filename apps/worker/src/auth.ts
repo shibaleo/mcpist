@@ -62,11 +62,3 @@ async function verifyApiKey(apiKey: string, env: Env): Promise<AuthResult | null
     return null;
   }
 }
-
-/**
- * Go Server → Worker のサーバー間認証 (X-Gateway-Secret ヘッダー)
- */
-export function authenticateGateway(request: Request, env: Env): boolean {
-  const secret = request.headers.get("X-Gateway-Secret");
-  return !!secret && secret === env.GATEWAY_SECRET;
-}

@@ -19,9 +19,7 @@ const ENV_LOCAL = fs.existsSync(path.join(ROOT_DIR, '.env.local'))
 // 各モジュールが必要とする環境変数のマッピング
 const MODULE_ENV_MAP = {
   'apps/worker/.dev.vars': [
-    'GATEWAY_SECRET',
-    'INTERNAL_SECRET',
-    'CLERK_SECRET_KEY',
+    'GATEWAY_SIGNING_KEY',
     'CLERK_JWKS_URL',
     'PRIMARY_API_URL',
     'API_SERVER_JWKS_URL',
@@ -33,7 +31,6 @@ const MODULE_ENV_MAP = {
     'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
     'CLERK_SECRET_KEY',
     'CLERK_JWKS_URL',
-    'INTERNAL_SECRET',
   ],
 };
 

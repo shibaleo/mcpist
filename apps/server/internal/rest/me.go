@@ -11,18 +11,17 @@ import (
 
 // POST /v1/me/register
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
-	clerkID := r.Header.Get("X-Clerk-ID")
-	if clerkID == "" {
-		writeError(w, http.StatusBadRequest, "missing X-Clerk-ID")
+	claims := getGatewayClaims(r)
+	if claims == nil || claims.ClerkID == "" {
+		writeError(w, http.StatusBadRequest, "missing clerk_id in gateway token")
 		return
 	}
-	email := r.Header.Get("X-User-Email")
-	if email == "" {
-		writeError(w, http.StatusBadRequest, "missing X-User-Email")
+	if claims.Email == "" {
+		writeError(w, http.StatusBadRequest, "missing email in gateway token")
 		return
 	}
 
-	userID, err := db.FindOrCreateByClerkID(h.db, clerkID, email)
+	userID, err := db.FindOrCreateByClerkID(h.db, claims.ClerkID, claims.Email)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to register user")
 		return

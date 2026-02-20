@@ -5,48 +5,66 @@ import (
 	"net/http"
 	"strings"
 
+	authpkg "mcpist/server/internal/auth"
 	"mcpist/server/internal/db"
 )
 
 type contextKey string
 
-const userIDKey contextKey = "userID"
+const (
+	userIDKey        contextKey = "userID"
+	gatewayClaimsKey contextKey = "gatewayClaims"
+)
 
-// withAuth validates gateway secret and resolves the user to internal UUID.
-// Two mutually exclusive headers are supported:
-//   - X-User-ID: internal mcpist UUID (from API key auth)
-//   - X-Clerk-ID: Clerk user ID (from Clerk JWT auth)
+// verifyGatewayToken extracts and verifies the X-Gateway-Token JWT.
+func (h *Handler) verifyGatewayToken(r *http.Request) (*authpkg.GatewayClaims, error) {
+	token := r.Header.Get("X-Gateway-Token")
+	if token == "" {
+		return nil, &httpError{status: http.StatusUnauthorized, msg: "missing gateway token"}
+	}
+	claims, err := h.gatewayVerifier.VerifyToken(token)
+	if err != nil {
+		return nil, &httpError{status: http.StatusUnauthorized, msg: "invalid gateway token"}
+	}
+	return claims, nil
+}
+
+type httpError struct {
+	status int
+	msg    string
+}
+
+func (e *httpError) Error() string { return e.msg }
+
+// withAuth validates gateway JWT and resolves the user to internal UUID.
+// JWT claims carry user identity:
+//   - claims.UserID: internal mcpist UUID (from API key auth)
+//   - claims.ClerkID: Clerk user ID (from Clerk JWT auth)
 //
-// Exactly one must be present. Returns 404 if user not found.
+// Returns 404 if user not found.
 func (h *Handler) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Gateway-Secret") != h.gatewaySecret {
-			writeError(w, http.StatusUnauthorized, "invalid gateway secret")
+		claims, err := h.verifyGatewayToken(r)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid gateway token")
 			return
 		}
 
-		mcpistUserID := r.Header.Get("X-User-ID")
-		clerkID := r.Header.Get("X-Clerk-ID")
-
-		if mcpistUserID == "" && clerkID == "" {
-			writeError(w, http.StatusUnauthorized, "missing X-User-ID or X-Clerk-ID")
-			return
-		}
-		if mcpistUserID != "" && clerkID != "" {
-			writeError(w, http.StatusBadRequest, "provide X-User-ID or X-Clerk-ID, not both")
+		if claims.UserID == "" && claims.ClerkID == "" {
+			writeError(w, http.StatusUnauthorized, "missing user_id or clerk_id in token")
 			return
 		}
 
 		var userID string
-		if mcpistUserID != "" {
-			user, err := db.FindByID(h.db, mcpistUserID)
+		if claims.UserID != "" {
+			user, err := db.FindByID(h.db, claims.UserID)
 			if err != nil {
 				writeError(w, http.StatusNotFound, "user not found")
 				return
 			}
 			userID = user.ID
 		} else {
-			user, err := db.FindByClerkID(h.db, clerkID)
+			user, err := db.FindByClerkID(h.db, claims.ClerkID)
 			if err != nil {
 				writeError(w, http.StatusNotFound, "user not found")
 				return
@@ -65,16 +83,26 @@ func getUserID(r *http.Request) string {
 	return id
 }
 
-// withGateway validates the gateway secret only (no user lookup).
+// withGateway validates the gateway JWT only (no user lookup).
 // Used for endpoints where the user may not exist yet (e.g. registration).
+// Stores GatewayClaims in context for handler access.
 func (h *Handler) withGateway(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Gateway-Secret") != h.gatewaySecret {
-			writeError(w, http.StatusUnauthorized, "invalid gateway secret")
+		claims, err := h.verifyGatewayToken(r)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid gateway token")
 			return
 		}
-		next(w, r)
+
+		ctx := context.WithValue(r.Context(), gatewayClaimsKey, claims)
+		next(w, r.WithContext(ctx))
 	}
+}
+
+// getGatewayClaims extracts gateway claims from the request context.
+func getGatewayClaims(r *http.Request) *authpkg.GatewayClaims {
+	claims, _ := r.Context().Value(gatewayClaimsKey).(*authpkg.GatewayClaims)
+	return claims
 }
 
 // isAdmin checks if an email is in the admin list (from ADMIN_EMAILS env var).

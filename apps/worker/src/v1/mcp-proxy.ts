@@ -3,12 +3,13 @@ import { authenticate } from "../auth";
 import { addCORSToResponse, jsonResponse } from "../http";
 import { logRequest, logSecurityEvent } from "../logging";
 import { pushRequestLog, pushSecurityEvent } from "../observability";
+import { signGatewayToken } from "../gateway-token";
 
 const FETCH_TIMEOUT_MS = 30000;
 
 /**
  * /mcp/* リクエストを Go Server にプロキシする。
- * JWT / API Key 認証 → Primary / Secondary フェイルオーバー。
+ * JWT / API Key 認証 → Go Server へ転送。
  */
 export async function handleMcpProxy(
   request: Request,
@@ -36,12 +37,12 @@ export async function handleMcpProxy(
       });
     }
 
-    const result = await proxyWithFailover(request, requestId, authResult, env);
+    const response = await fetchBackend(request, requestId, env.PRIMARY_API_URL, authResult, env);
+    const result = addCORSToResponse(response);
     const durationMs = Date.now() - startTime;
     const extra = {
       user_id: authResult.userId,
       auth_type: authResult.type,
-      backend: result.headers.get("X-Backend") || "unknown",
     };
     logRequest(env, requestId, request.method, url.pathname, result.status, durationMs, extra);
     ctx.waitUntil(pushRequestLog(env, requestId, request.method, url.pathname, result.status, durationMs, extra));
@@ -56,32 +57,6 @@ export async function handleMcpProxy(
   }
 }
 
-async function proxyWithFailover(
-  request: Request,
-  requestId: string,
-  authResult: AuthResult,
-  env: Env
-): Promise<Response> {
-  try {
-    const response = await fetchBackend(request, requestId, env.PRIMARY_API_URL, authResult, env);
-    return addCORSToResponse(response, "primary");
-  } catch (primaryError) {
-    console.error("Primary backend failed:", primaryError);
-  }
-
-  try {
-    const response = await fetchBackend(request, requestId, env.SECONDARY_API_URL, authResult, env);
-    return addCORSToResponse(response, "secondary");
-  } catch (secondaryError) {
-    console.error("Secondary backend also failed:", secondaryError);
-    return jsonResponse(
-      { error: "Service unavailable", retryAfter: 30 },
-      503,
-      { "Retry-After": "30" }
-    );
-  }
-}
-
 async function fetchBackend(
   request: Request,
   requestId: string,
@@ -92,16 +67,16 @@ async function fetchBackend(
   const url = new URL(request.url);
   const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
 
+  // Sign a gateway JWT with user claims instead of raw headers
+  const token = await signGatewayToken(env.GATEWAY_SIGNING_KEY, {
+    user_id: authResult.type === "api_key" ? authResult.userId : undefined,
+    clerk_id: authResult.type === "jwt" ? authResult.userId : undefined,
+    email: authResult.email,
+  });
+
   const headers = new Headers(request.headers);
-  headers.set("X-User-ID", authResult.userId);
-  headers.set("X-Auth-Type", authResult.type);
+  headers.set("X-Gateway-Token", token);
   headers.set("X-Request-ID", requestId);
-  if (authResult.email) {
-    headers.set("X-User-Email", authResult.email);
-  }
-  if (env.GATEWAY_SECRET) {
-    headers.set("X-Gateway-Secret", env.GATEWAY_SECRET);
-  }
   headers.delete("Authorization");
 
   const proxyReq = new Request(targetUrl, {

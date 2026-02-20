@@ -1,96 +1,125 @@
 #!/bin/bash
-# MCPist - Deploy Secrets to Production Services
+# MCPist - Deploy Secrets to Cloud Services
 #
 # Prerequisites:
 #   - vercel CLI: npm i -g vercel
-#   - koyeb CLI: https://www.koyeb.com/docs/cli/installation
+#   - render CLI: or set via Render Dashboard
 #   - wrangler CLI: npm i -g wrangler
-#   - supabase CLI: npm i -g supabase
 #
 # Usage:
-#   # Set environment variables first
-#   export SUPABASE_SERVICE_ROLE_KEY=xxx
-#   export INTERNAL_SERVICE_KEY=xxx
+#   # Load from .env.local or set environment variables
+#   source .env.local
 #
-#   # Run script
-#   ./scripts/deploy-secrets.sh
+#   # Deploy to specific environment
+#   ./scripts/deploy-secrets.sh [dev|prd]
 
 set -e
 
-echo "=== MCPist Secret Deployment ==="
+ENV="${1:-dev}"
+echo "=== MCPist Secret Deployment (${ENV}) ==="
 
-# Check required environment variables
-if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-  echo "Error: SUPABASE_SERVICE_ROLE_KEY is not set"
-  exit 1
+# ── Required environment variables ──
+REQUIRED_VARS=(
+  "DATABASE_URL"
+  "GATEWAY_SIGNING_KEY"
+  "CLERK_SECRET_KEY"
+  "CLERK_JWKS_URL"
+  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+  "API_KEY_PRIVATE_KEY"
+  "ADMIN_EMAILS"
+)
+
+for var in "${REQUIRED_VARS[@]}"; do
+  if [ -z "${!var}" ]; then
+    echo "Error: ${var} is not set"
+    exit 1
+  fi
+done
+
+# ── Environment-specific URLs ──
+if [ "$ENV" = "prd" ]; then
+  CONSOLE_URL="https://mcpist.app"
+  MCP_SERVER_URL="https://mcp.mcpist.app"
+  WORKER_JWKS_URL="https://mcp.mcpist.app/.well-known/jwks.json"
+  WRANGLER_ENV=""
+else
+  CONSOLE_URL="https://dev.mcpist.app"
+  MCP_SERVER_URL="https://mcp.dev.mcpist.app"
+  WORKER_JWKS_URL="https://mcp.dev.mcpist.app/.well-known/jwks.json"
+  WRANGLER_ENV="--env dev"
 fi
-
-if [ -z "$INTERNAL_SERVICE_KEY" ]; then
-  echo "Error: INTERNAL_SERVICE_KEY is not set"
-  exit 1
-fi
-
-# Production URLs
-SUPABASE_URL="https://xstfrjvgpqxvyuochtss.supabase.co"
-CONSOLE_URL="https://console.mcpist.app"
-SERVER_URL="https://mcp.mcpist.app"
-WORKER_URL="https://api.mcpist.app"
 
 echo ""
 echo "--- Vercel (Console) ---"
 if command -v vercel &> /dev/null; then
-  vercel env rm NEXT_PUBLIC_SUPABASE_URL production -y 2>/dev/null || true
-  echo "$SUPABASE_URL" | vercel env add NEXT_PUBLIC_SUPABASE_URL production
+  VERCEL_ENV="${ENV}"
+  [ "$ENV" = "prd" ] && VERCEL_ENV="production"
+  [ "$ENV" = "dev" ] && VERCEL_ENV="preview"
 
-  vercel env rm SUPABASE_SERVICE_ROLE_KEY production -y 2>/dev/null || true
-  echo "$SUPABASE_SERVICE_ROLE_KEY" | vercel env add SUPABASE_SERVICE_ROLE_KEY production
+  declare -A VERCEL_VARS=(
+    ["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"]="$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"
+    ["CLERK_SECRET_KEY"]="$CLERK_SECRET_KEY"
+    ["CLERK_JWKS_URL"]="$CLERK_JWKS_URL"
+    ["NEXT_PUBLIC_APP_URL"]="$CONSOLE_URL"
+    ["NEXT_PUBLIC_MCP_SERVER_URL"]="$MCP_SERVER_URL"
+    ["ENVIRONMENT"]="$ENV"
+  )
 
-  vercel env rm NEXT_PUBLIC_APP_URL production -y 2>/dev/null || true
-  echo "$CONSOLE_URL" | vercel env add NEXT_PUBLIC_APP_URL production
+  for key in "${!VERCEL_VARS[@]}"; do
+    vercel env rm "$key" "$VERCEL_ENV" -y 2>/dev/null || true
+    echo "${VERCEL_VARS[$key]}" | vercel env add "$key" "$VERCEL_ENV"
+  done
 
-  vercel env rm INTERNAL_SERVICE_KEY production -y 2>/dev/null || true
-  echo "$INTERNAL_SERVICE_KEY" | vercel env add INTERNAL_SERVICE_KEY production
-
-  echo "Vercel secrets updated"
+  echo "Vercel secrets updated for ${VERCEL_ENV}"
 else
   echo "Skipped: vercel CLI not found"
 fi
 
 echo ""
-echo "--- Koyeb (Server) ---"
-if command -v koyeb &> /dev/null; then
-  koyeb secrets create SUPABASE_URL --value "$SUPABASE_URL" 2>/dev/null || \
-    koyeb secrets update SUPABASE_URL --value "$SUPABASE_URL"
-
-  koyeb secrets create SUPABASE_SERVICE_ROLE_KEY --value "$SUPABASE_SERVICE_ROLE_KEY" 2>/dev/null || \
-    koyeb secrets update SUPABASE_SERVICE_ROLE_KEY --value "$SUPABASE_SERVICE_ROLE_KEY"
-
-  koyeb secrets create CONSOLE_URL --value "$CONSOLE_URL" 2>/dev/null || \
-    koyeb secrets update CONSOLE_URL --value "$CONSOLE_URL"
-
-  koyeb secrets create VAULT_URL --value "${CONSOLE_URL}/api" 2>/dev/null || \
-    koyeb secrets update VAULT_URL --value "${CONSOLE_URL}/api"
-
-  koyeb secrets create INTERNAL_SERVICE_KEY --value "$INTERNAL_SERVICE_KEY" 2>/dev/null || \
-    koyeb secrets update INTERNAL_SERVICE_KEY --value "$INTERNAL_SERVICE_KEY"
-
-  echo "Koyeb secrets updated"
-else
-  echo "Skipped: koyeb CLI not found"
-fi
-
-echo ""
 echo "--- Cloudflare (Worker) ---"
 if command -v wrangler &> /dev/null; then
-  echo "$SUPABASE_URL" | wrangler secret put SUPABASE_URL
-  echo "$SUPABASE_SERVICE_ROLE_KEY" | wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-  echo "$SERVER_URL" | wrangler secret put SERVER_URL
-  echo "$INTERNAL_SERVICE_KEY" | wrangler secret put INTERNAL_SERVICE_KEY
+  WORKER_SECRETS=(
+    "PRIMARY_API_URL"
+    "GATEWAY_SIGNING_KEY"
+    "CLERK_JWKS_URL"
+    "API_SERVER_JWKS_URL"
+    "STRIPE_WEBHOOK_SECRET"
+  )
+
+  for secret in "${WORKER_SECRETS[@]}"; do
+    if [ -n "${!secret}" ]; then
+      echo "${!secret}" | wrangler secret put "$secret" $WRANGLER_ENV
+    fi
+  done
+
+  # Grafana (optional)
+  for secret in GRAFANA_LOKI_URL GRAFANA_LOKI_USER GRAFANA_LOKI_API_KEY; do
+    if [ -n "${!secret}" ]; then
+      echo "${!secret}" | wrangler secret put "$secret" $WRANGLER_ENV
+    fi
+  done
 
   echo "Cloudflare secrets updated"
 else
   echo "Skipped: wrangler CLI not found"
 fi
+
+echo ""
+echo "--- Render (Go Server) ---"
+echo "Set the following environment variables in Render Dashboard:"
+echo ""
+echo "  DATABASE_URL          = ${DATABASE_URL}"
+echo "  WORKER_JWKS_URL       = ${WORKER_JWKS_URL}"
+echo "  ADMIN_EMAILS          = ${ADMIN_EMAILS}"
+echo "  API_KEY_PRIVATE_KEY   = ${API_KEY_PRIVATE_KEY}"
+echo "  CLERK_JWKS_URL        = ${CLERK_JWKS_URL}"
+echo "  PORT                  = 8080"
+echo "  ENVIRONMENT           = ${ENV}"
+echo "  INSTANCE_ID           = render-${ENV}"
+echo "  INSTANCE_REGION       = oregon"
+echo ""
+echo "Note: Render does not have a CLI for secrets. Use the Dashboard."
+echo "      https://dashboard.render.com"
 
 echo ""
 echo "=== Done ==="

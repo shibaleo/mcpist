@@ -2,7 +2,6 @@
 export interface Env {
   // バックエンド設定 (Go Server)
   PRIMARY_API_URL: string;
-  SECONDARY_API_URL: string;
 
   // Clerk 認証
   CLERK_JWKS_URL: string;
@@ -10,8 +9,8 @@ export interface Env {
   // Go Server JWKS (JWT API key 検証用)
   API_SERVER_JWKS_URL: string;
 
-  // Gateway Secret (Worker → Go Server)
-  GATEWAY_SECRET: string;
+  // Gateway Signing Key (Ed25519 seed, base64, Worker → Go Server JWT 署名用)
+  GATEWAY_SIGNING_KEY: string;
 
   // Stripe Webhook
   STRIPE_WEBHOOK_SECRET: string;

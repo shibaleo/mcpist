@@ -17,26 +17,17 @@ interface HealthCheckResult {
 }
 
 export async function handleHealthCheck(env: Env): Promise<Response> {
-  const [primaryResult, secondaryResult] = await Promise.all([
-    checkBackendHealth(env.PRIMARY_API_URL),
-    checkBackendHealth(env.SECONDARY_API_URL),
-  ]);
+  const result = await checkBackendHealth(env.PRIMARY_API_URL);
 
   return jsonResponse({
     status: "ok",
-    backends: {
-      primary: buildBackendInfo(primaryResult),
-      secondary: buildBackendInfo(secondaryResult),
-    },
+    backend: buildBackendInfo(result),
   }, 200);
 }
 
 export async function performScheduledHealthCheck(env: Env): Promise<void> {
-  const [primaryResult, secondaryResult] = await Promise.all([
-    checkBackendHealth(env.PRIMARY_API_URL),
-    checkBackendHealth(env.SECONDARY_API_URL),
-  ]);
-  console.log(`[Cron] Health check - Primary: ${primaryResult.healthy}, Secondary: ${secondaryResult.healthy}`);
+  const result = await checkBackendHealth(env.PRIMARY_API_URL);
+  console.log(`[Cron] Health check - Primary: ${result.healthy}`);
 }
 
 async function checkBackendHealth(url: string): Promise<HealthCheckResult> {

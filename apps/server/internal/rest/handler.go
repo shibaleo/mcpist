@@ -6,19 +6,21 @@ import (
 	"net/http"
 	"strings"
 
+	"mcpist/server/internal/auth"
+
 	"gorm.io/gorm"
 )
 
 // Handler holds dependencies for REST endpoints.
 type Handler struct {
-	db            *gorm.DB
-	gatewaySecret string
-	adminEmails   map[string]bool
+	db              *gorm.DB
+	gatewayVerifier *auth.GatewayVerifier
+	adminEmails     map[string]bool
 }
 
 // NewHandler creates a new REST handler.
 // adminEmailsCSV is a comma-separated list of admin email addresses.
-func NewHandler(db *gorm.DB, gatewaySecret, adminEmailsCSV string) *Handler {
+func NewHandler(db *gorm.DB, gatewayVerifier *auth.GatewayVerifier, adminEmailsCSV string) *Handler {
 	emails := map[string]bool{}
 	for _, e := range strings.Split(adminEmailsCSV, ",") {
 		e = strings.TrimSpace(e)
@@ -27,9 +29,9 @@ func NewHandler(db *gorm.DB, gatewaySecret, adminEmailsCSV string) *Handler {
 		}
 	}
 	return &Handler{
-		db:            db,
-		gatewaySecret: gatewaySecret,
-		adminEmails:   emails,
+		db:              db,
+		gatewayVerifier: gatewayVerifier,
+		adminEmails:     emails,
 	}
 }
 
@@ -66,7 +68,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/me/oauth/consents/{id}", h.withAuth(h.revokeOAuthConsent))
 
 	// Admin (requires gateway auth + admin check)
+	mux.HandleFunc("GET /v1/admin/oauth/apps", h.withAuth(h.withAdmin(h.listOAuthApps)))
 	mux.HandleFunc("PUT /v1/admin/oauth/apps/{provider}", h.withAuth(h.withAdmin(h.upsertOAuthApp)))
+	mux.HandleFunc("DELETE /v1/admin/oauth/apps/{provider}", h.withAuth(h.withAdmin(h.deleteOAuthApp)))
 	mux.HandleFunc("GET /v1/admin/oauth/consents", h.withAuth(h.withAdmin(h.listAllOAuthConsents)))
 
 	// Stripe webhook (no gateway auth — signature validation only)

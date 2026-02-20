@@ -4,12 +4,11 @@
  * ここではプロキシ先から返った生 Response を加工する用途に限定。
  */
 
-export function addCORSToResponse(response: Response, backend: string): Response {
+export function addCORSToResponse(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("Access-Control-Allow-Origin", "*");
   headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  headers.set("X-Backend", backend);
 
   return new Response(response.body, {
     status: response.status,

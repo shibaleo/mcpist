@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	"mcpist/server/internal/auth"
 	"mcpist/server/internal/broker"
 	"mcpist/server/internal/db"
 	"mcpist/server/internal/observability"
@@ -48,22 +49,17 @@ func (ctx *AuthContext) WithinDailyLimit(count int) bool {
 
 // Authorizer handles authorization checks
 type Authorizer struct {
-	gatewaySecret string
-	store         *broker.UserBroker
-	db            *gorm.DB
+	gatewayVerifier *auth.GatewayVerifier
+	store           *broker.UserBroker
+	db              *gorm.DB
 }
 
 // NewAuthorizer creates a new authorizer.
-// Panics if GATEWAY_SECRET is not set — required in all environments.
-func NewAuthorizer(userStore *broker.UserBroker, database *gorm.DB) *Authorizer {
-	secret := os.Getenv("GATEWAY_SECRET")
-	if secret == "" {
-		log.Fatal("GATEWAY_SECRET is not set. Set it via environment variable or .env.dev")
-	}
+func NewAuthorizer(userStore *broker.UserBroker, database *gorm.DB, gatewayVerifier *auth.GatewayVerifier) *Authorizer {
 	return &Authorizer{
-		gatewaySecret: secret,
-		store:         userStore,
-		db:            database,
+		gatewayVerifier: gatewayVerifier,
+		store:           userStore,
+		db:              database,
 	}
 }
 
@@ -91,42 +87,46 @@ func (a *Authorizer) Authorize(next http.Handler) http.Handler {
 
 // ValidateRequest validates the request and returns auth context
 func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
-	// 1. Verify gateway secret (ensures request came from Worker)
-	requestSecret := r.Header.Get("X-Gateway-Secret")
-	if requestSecret != a.gatewaySecret {
-		observability.LogSecurityEvent("", "", "invalid_gateway_secret", map[string]any{
+	// 1. Verify gateway JWT (ensures request came from Worker)
+	token := r.Header.Get("X-Gateway-Token")
+	if token == "" {
+		observability.LogSecurityEvent("", "", "missing_gateway_token", map[string]any{
 			"remote_addr": r.RemoteAddr,
 		})
 		return nil, &AuthError{
-			Code:    "INVALID_GATEWAY_SECRET",
-			Message: "Invalid gateway secret",
+			Code:    "MISSING_GATEWAY_TOKEN",
+			Message: "Missing gateway token",
 			Status:  http.StatusUnauthorized,
 		}
 	}
 
-	// 2. Get user ID from X-User-ID header (set by Worker after authentication)
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
+	claims, err := a.gatewayVerifier.VerifyToken(token)
+	if err != nil {
+		observability.LogSecurityEvent("", "", "invalid_gateway_token", map[string]any{
+			"remote_addr": r.RemoteAddr,
+			"error":       err.Error(),
+		})
 		return nil, &AuthError{
-			Code:    "MISSING_USER_ID",
-			Message: "Missing user ID",
+			Code:    "INVALID_GATEWAY_TOKEN",
+			Message: "Invalid gateway token",
 			Status:  http.StatusUnauthorized,
 		}
 	}
 
-	// 3. Get auth type from header
-	authType := r.Header.Get("X-Auth-Type")
-	if authType == "" {
-		authType = "unknown"
-	}
+	// 2. Determine user ID and auth type from JWT claims
+	var userID string
+	var authType string
 
-	// 4. Resolve Clerk ID → internal UUID for JWT auth
-	//    API key auth already uses internal UUID (embedded in JWT sub claim).
-	if authType == "jwt" {
-		email := r.Header.Get("X-User-Email")
-		internalID, err := db.FindOrCreateByClerkID(a.db, userID, email)
+	if claims.UserID != "" {
+		// API key auth — claims.UserID is already the internal mcpist UUID
+		userID = claims.UserID
+		authType = "api_key"
+	} else if claims.ClerkID != "" {
+		// Clerk JWT auth — resolve Clerk ID to internal UUID
+		authType = "jwt"
+		internalID, err := db.FindOrCreateByClerkID(a.db, claims.ClerkID, claims.Email)
 		if err != nil {
-			log.Printf("Failed to resolve clerk_id %s: %v", userID, err)
+			log.Printf("Failed to resolve clerk_id %s: %v", claims.ClerkID, err)
 			return nil, &AuthError{
 				Code:    "USER_RESOLUTION_ERROR",
 				Message: "Failed to resolve user identity",
@@ -134,9 +134,15 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 			}
 		}
 		userID = internalID
+	} else {
+		return nil, &AuthError{
+			Code:    "MISSING_USER_ID",
+			Message: "Missing user identity in gateway token",
+			Status:  http.StatusUnauthorized,
+		}
 	}
 
-	// 5. Get user's context from Store
+	// 3. Get user's context from Store
 	userContext, err := a.store.GetUserContext(userID)
 	if err != nil {
 		log.Printf("Failed to get user context for user %s: %v", userID, err)
@@ -147,7 +153,7 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		}
 	}
 
-	// 6. Check account status
+	// 4. Check account status
 	if userContext.AccountStatus != "active" {
 		return nil, &AuthError{
 			Code:    "ACCOUNT_NOT_ACTIVE",

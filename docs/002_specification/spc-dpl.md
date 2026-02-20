@@ -169,13 +169,14 @@ GitHub Actions → Supabase (マイグレーション適用)
 
 | 変数名 | 説明 | 種別 |
 |--------|------|------|
-| `PRIMARY_API_URL` | Render URL | vars |
-| `SECONDARY_API_URL` | Koyeb URL | vars |
-| `SUPABASE_URL` | Supabase URL | vars |
-| `SUPABASE_JWKS_URL` | JWKS URL | vars |
+| `PRIMARY_API_URL` | Go Server URL | secret |
+| `CLERK_JWKS_URL` | Clerk JWT 検証用 JWKS URL | secret |
+| `API_SERVER_JWKS_URL` | Go Server JWT API key 検証用 JWKS URL | secret |
 | `GATEWAY_SECRET` | Gateway認証シークレット | secret |
-| `SUPABASE_PUBLISHABLE_KEY` | Supabase Publishable Key | secret |
-| `INTERNAL_SECRET` | 内部API認証シークレット | secret |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook署名検証用 | secret |
+| `GRAFANA_LOKI_URL` | Loki Push API URL | secret |
+| `GRAFANA_LOKI_USER` | Loki Basic Auth ユーザー名 | secret |
+| `GRAFANA_LOKI_API_KEY` | Loki Basic Auth APIキー | secret |
 
 ### Server (Render / Koyeb)
 

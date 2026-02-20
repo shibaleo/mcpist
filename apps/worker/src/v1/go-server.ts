@@ -1,34 +1,33 @@
 /**
  * Go Server REST クライアント
  *
- * PostgREST RPC を置換し、Go Server の REST エンドポイントにプロキシする。
+ * Go Server の REST エンドポイントにプロキシする。
+ * Gateway JWT で Worker → Go Server 間を認証。
  */
 
 import type { Env } from "../types";
-import { jsonResponse } from "../http";
+import { signGatewayToken, type GatewayTokenClaims } from "../gateway-token";
 
 /**
  * Go Server へリクエストをプロキシし、レスポンスをそのまま返す。
- * CORS ヘッダーを追加。
+ * Gateway JWT に claims（user_id/clerk_id/email）を含める。
  */
 export async function forwardToGoServer(
   env: Env,
   method: string,
   path: string,
-  headers?: Record<string, string>,
+  claims?: GatewayTokenClaims,
   body?: string | null
 ): Promise<Response> {
+  const token = await signGatewayToken(env.GATEWAY_SIGNING_KEY, claims ?? {});
   const url = `${env.PRIMARY_API_URL}${path}`;
-
-  const reqHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-    "X-Gateway-Secret": env.GATEWAY_SECRET,
-    ...headers,
-  };
 
   const response = await fetch(url, {
     method,
-    headers: reqHeaders,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Gateway-Token": token,
+    },
     body: body ?? undefined,
   });
 
@@ -45,6 +44,7 @@ export async function forwardToGoServer(
 
 /**
  * Go Server の REST エンドポイントを呼び出し、JSON レスポンスをパースして返す。
+ * ユーザーコンテキストなし（サーバー間通信用）。
  */
 export async function callGoServer<T>(
   env: Env,
@@ -52,13 +52,14 @@ export async function callGoServer<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
+  const token = await signGatewayToken(env.GATEWAY_SIGNING_KEY, {});
   const url = `${env.PRIMARY_API_URL}${path}`;
 
   const response = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
-      "X-Gateway-Secret": env.GATEWAY_SECRET,
+      "X-Gateway-Token": token,
     },
     body: body ? JSON.stringify(body) : undefined,
   });

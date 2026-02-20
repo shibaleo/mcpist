@@ -107,8 +107,12 @@ func main() {
 		log.Printf("WARNING: SyncModules failed: %v", err)
 	}
 
-	authorizer := middleware.NewAuthorizer(userStore, database)
-	gatewaySecret := os.Getenv("GATEWAY_SECRET")
+	workerJwksURL := os.Getenv("WORKER_JWKS_URL")
+	if workerJwksURL == "" {
+		log.Fatal("WORKER_JWKS_URL is not set. Set it via environment variable or .env.dev")
+	}
+	gatewayVerifier := auth.NewGatewayVerifier(workerJwksURL)
+	authorizer := middleware.NewAuthorizer(userStore, database, gatewayVerifier)
 
 	// Create router (Go 1.22+ method-aware patterns)
 	mux := http.NewServeMux()
@@ -137,7 +141,7 @@ func main() {
 
 	// REST endpoints
 	adminEmails := os.Getenv("ADMIN_EMAILS")
-	restHandler := rest.NewHandler(database, gatewaySecret, adminEmails)
+	restHandler := rest.NewHandler(database, gatewayVerifier, adminEmails)
 	restHandler.Register(mux)
 
 	// JWKS endpoint (public, for API key verification)

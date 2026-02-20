@@ -14,7 +14,7 @@ const modules = new Hono<{ Bindings: Bindings }>();
 
 // GET /modules — list modules (public, no auth)
 modules.get("/", async (c) => {
-  return forwardToGoServer(c.env, "GET", "/v1/modules");
+  return forwardToGoServer(c.env, "GET", "/v1/modules", {});
 });
 
 export { modules };
