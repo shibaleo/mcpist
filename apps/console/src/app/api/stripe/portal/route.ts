@@ -17,6 +17,12 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = createStripeClient()
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Stripe is not configured" },
+        { status: 503 }
+      )
+    }
 
     // Get Stripe Customer ID
     const { data } = await client.GET("/v1/me/stripe")

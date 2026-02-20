@@ -103,14 +103,14 @@ func (h *Handler) getStripe(w http.ResponseWriter, r *http.Request) {
 // PUT /v1/me/stripe
 func (h *Handler) linkStripe(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		CustomerID string `json:"customer_id"`
+		StripeCustomerID string `json:"stripe_customer_id"`
 	}
-	if err := decodeJSON(r, &body); err != nil || body.CustomerID == "" {
-		writeError(w, http.StatusBadRequest, "customer_id is required")
+	if err := decodeJSON(r, &body); err != nil || body.StripeCustomerID == "" {
+		writeError(w, http.StatusBadRequest, "stripe_customer_id is required")
 		return
 	}
 
-	if err := db.LinkStripeCustomer(h.db, getUserID(r), body.CustomerID); err != nil {
+	if err := db.LinkStripeCustomer(h.db, getUserID(r), body.StripeCustomerID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to link stripe customer")
 		return
 	}

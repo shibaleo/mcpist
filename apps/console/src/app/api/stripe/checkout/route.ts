@@ -18,6 +18,12 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = createStripeClient()
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Stripe is not configured" },
+        { status: 503 }
+      )
+    }
     const config = getStripeConfig()
 
     // Get or create Stripe Customer
@@ -37,15 +43,10 @@ export async function POST(request: NextRequest) {
       })
       stripeCustomerId = customer.id
 
-      // Link Stripe Customer to user
-      try {
-        await client.PUT("/v1/me/stripe", {
-          body: { stripe_customer_id: stripeCustomerId },
-        })
-      } catch (linkErr) {
-        console.error("[stripe/checkout] Error linking customer:", linkErr)
-        // Continue anyway - the customer was created in Stripe
-      }
+      // Link Stripe Customer to user (must succeed before creating checkout)
+      await client.PUT("/v1/me/stripe", {
+        body: { stripe_customer_id: stripeCustomerId },
+      })
     }
 
     // Get the origin for success/cancel URLs
