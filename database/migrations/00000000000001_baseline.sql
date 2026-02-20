@@ -158,6 +158,6 @@ CREATE TABLE mcpist.processed_webhook_events (
 -- Plans
 INSERT INTO mcpist.plans (id, name, daily_limit, price_monthly, features) VALUES
     ('free',  'Free',  50,  0,    '{"modules": "all"}'),
-    ('pro',   'Pro',   500, 980,  '{"modules": "all", "priority": true}'),
+    ('plus',  'Plus',  500, 980,  '{"modules": "all", "priority": true}'),
     ('team',  'Team',  2000, 4980, '{"modules": "all", "priority": true, "team": true}')
 ON CONFLICT (id) DO NOTHING;

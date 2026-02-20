@@ -8,10 +8,6 @@ nul
 *.wrangler
 .dev.vars
 
-# Supabase local
-supabase/.branches
-supabase/.snippets
-
 # Documatation
 *.vitepress
 *.obsidian
@@ -173,9 +169,6 @@ vendor/
 
 # Air (Go hot reload)
 apps/server/tmp/
-
-# Supabase
-supabase/.temp/
 
 # IDE
 .idea/
