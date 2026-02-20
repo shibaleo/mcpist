@@ -36,9 +36,13 @@ export type UsageStats = components["schemas"]["UsageData"]
 export async function getUserPlan(): Promise<UserPlan | null> {
   try {
     const client = await createWorkerClient()
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const [profileRes, usageRes] = await Promise.all([
       client.GET("/v1/me/profile"),
-      client.GET("/v1/me/usage"),
+      client.GET("/v1/me/usage", {
+        params: { query: { start: startOfDay.toISOString(), end: now.toISOString() } },
+      }),
     ])
     const profile = profileRes.data!
     const usage = usageRes.data as UsageSummary | undefined
@@ -80,9 +84,13 @@ export async function getServiceConnections(): Promise<ServiceConnection[]> {
 export async function getUserContext(): Promise<UserContext | null> {
   try {
     const client = await createWorkerClient()
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const [profileRes, usageRes] = await Promise.all([
       client.GET("/v1/me/profile"),
-      client.GET("/v1/me/usage"),
+      client.GET("/v1/me/usage", {
+        params: { query: { start: startOfDay.toISOString(), end: now.toISOString() } },
+      }),
     ])
     const profile = profileRes.data!
     const usage = usageRes.data as UsageSummary | undefined

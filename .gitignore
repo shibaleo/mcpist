@@ -190,3 +190,5 @@ Thumbs.db
 # Auth keys (auto-generated for development)
 .auth-private-key.pem
 .auth-public-key.pem
+
+.vercel
