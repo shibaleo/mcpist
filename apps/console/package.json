@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "generate:api": "openapi-typescript ../../apps/worker/src/openapi.yaml -o src/lib/worker/types.ts",
+    "generate:api": "openapi-typescript ../../apps/server/api/openapi/server-openapi.yaml -o src/lib/worker/types.ts",
     "dev": "pnpm generate:api && next dev -p 3000",
     "build": "pnpm generate:api && next build",
     "start": "next start",

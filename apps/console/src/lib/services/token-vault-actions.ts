@@ -39,9 +39,8 @@ export async function saveDefaultToolSettingsAction(
 
   // Check existing settings
   const client = await createWorkerClient()
-  const { data: existing } = await client.GET("/v1/me/modules/config", {
-    params: { query: { module: moduleName } },
-  })
+  const { data: allConfig } = await client.GET("/v1/me/modules/config")
+  const existing = allConfig?.filter((r) => r.module_name === moduleName)
 
   if (existing && existing.length > 0) return
 

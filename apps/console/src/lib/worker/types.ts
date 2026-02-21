@@ -4,128 +4,6 @@
  */
 
 export interface paths {
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health check */
-        get: operations["getHealth"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/openapi.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** OpenAPI specification */
-        get: operations["getOpenApiSpec"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/.well-known/oauth-protected-resource": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** OAuth Protected Resource Metadata (RFC 9728) */
-        get: operations["getOAuthProtectedResource"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/.well-known/oauth-authorization-server": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** OAuth Authorization Server Metadata (RFC 8414) */
-        get: operations["getOAuthAuthorizationServer"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/mcp/.well-known/oauth-protected-resource": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** MCP-scoped OAuth Protected Resource Metadata */
-        get: operations["getV1McpOAuthProtectedResource"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/mcp/.well-known/oauth-authorization-server": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** MCP-scoped OAuth Authorization Server Metadata */
-        get: operations["getV1McpOAuthAuthorizationServer"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/mcp/{path}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * MCP transport endpoint (Streamable HTTP)
-         * @description Accepts MCP protocol messages (JSON-RPC 2.0) and returns responses. Supports initialize, tools/list, tools/call, prompts/list, prompts/get, and other standard MCP methods.
-         */
-        post: operations["mcpTransport"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/modules": {
         parameters: {
             query?: never;
@@ -152,10 +30,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Register or find existing user from Clerk ID
-         * @description Creates a new user record if one does not already exist for the authenticated Clerk user. Returns the internal user ID.
-         */
+        /** Register or find existing user from Clerk ID */
         post: operations["registerUser"];
         delete?: never;
         options?: never;
@@ -510,30 +385,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/stripe/webhook": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Handle Stripe webhook events
-         * @description Receives Stripe webhook events (invoice.paid, customer.subscription.deleted). Authenticated via Stripe signature verification, not JWT.
-         */
-        post: operations["handleStripeWebhook"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ErrorResponse: {
+            error: string;
+        };
+        SuccessResult: {
+            success: boolean;
+        };
         ModuleWithTools: {
             id: string;
             name: string;
@@ -541,9 +402,7 @@ export interface components {
             descriptions?: {
                 [key: string]: string;
             };
-            tools?: {
-                [key: string]: unknown;
-            }[];
+            tools?: unknown[];
         };
         ModuleConfig: {
             module_name: string;
@@ -563,8 +422,66 @@ export interface components {
         UpsertModuleDescriptionBody: {
             description: string;
         };
+        RegisterResult: {
+            id: string;
+        };
+        UserProfile: {
+            user_id: string;
+            email: string;
+            account_status: string;
+            plan_id: string;
+            daily_used: number;
+            daily_limit: number;
+            role: string;
+            settings?: unknown;
+            display_name?: string | null;
+            connected_count: number;
+        };
+        UsageData: {
+            total_used: number;
+            by_module: {
+                [key: string]: number;
+            };
+            period: components["schemas"]["UsagePeriod"];
+        };
+        UsagePeriod: {
+            start: string;
+            end: string;
+        };
+        UpdateSettingsBody: {
+            settings: unknown;
+        };
+        CompleteOnboardingBody: {
+            event_id: string;
+        };
+        OnboardingResult: {
+            success: boolean;
+            already_completed?: boolean;
+            plan_id?: string;
+            error?: string;
+            message?: string;
+        };
+        StripeCustomer: {
+            stripe_customer_id?: string | null;
+        };
+        LinkStripeCustomerBody: {
+            stripe_customer_id: string;
+        };
+        Credential: {
+            module: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        UpsertCredentialBody: {
+            credentials: unknown;
+        };
+        UpsertCredentialResult: {
+            success: boolean;
+            module: string;
+        };
         ApiKey: {
-            /** Format: uuid */
             id: string;
             key_prefix: string;
             display_name: string;
@@ -589,7 +506,6 @@ export interface components {
             key_prefix: string;
         };
         Prompt: {
-            /** Format: uuid */
             id: string;
             module_name?: string | null;
             name: string;
@@ -603,7 +519,6 @@ export interface components {
         };
         GetPromptResult: {
             found: boolean;
-            /** Format: uuid */
             id?: string;
             module_name?: string | null;
             name?: string;
@@ -632,7 +547,6 @@ export interface components {
         };
         UpsertPromptResult: {
             success: boolean;
-            /** Format: uuid */
             id?: string;
             action?: string;
             error?: string;
@@ -640,80 +554,6 @@ export interface components {
         DeletePromptResult: {
             success: boolean;
             error?: string;
-        };
-        Credential: {
-            module: string;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        };
-        UpsertCredentialBody: {
-            /** @description Credential data (access_token, refresh_token, etc.) */
-            credentials: {
-                [key: string]: unknown;
-            };
-        };
-        UpsertCredentialResult: {
-            success: boolean;
-            module: string;
-        };
-        SuccessResult: {
-            success: boolean;
-        };
-        RegisterResult: {
-            /**
-             * Format: uuid
-             * @description Internal MCPist user ID
-             */
-            id: string;
-        };
-        UserProfile: {
-            /** Format: uuid */
-            user_id: string;
-            email: string;
-            account_status: string;
-            plan_id: string;
-            daily_used: number;
-            daily_limit: number;
-            role: string;
-            settings?: {
-                [key: string]: unknown;
-            } | null;
-            display_name?: string | null;
-            connected_count: number;
-        };
-        UsageData: {
-            total_used: number;
-            by_module: {
-                [key: string]: number;
-            };
-            period: {
-                start: string;
-                end: string;
-            };
-        };
-        StripeCustomer: {
-            stripe_customer_id?: string | null;
-        };
-        LinkStripeCustomerBody: {
-            stripe_customer_id: string;
-        };
-        UpdateSettingsBody: {
-            /** @description User settings object */
-            settings: {
-                [key: string]: unknown;
-            };
-        };
-        CompleteOnboardingBody: {
-            event_id: string;
-        };
-        OnboardingResult: {
-            success: boolean;
-            already_completed?: boolean;
-            plan_id?: string;
-            error?: string;
-            message?: string;
         };
         OAuthAppCredentials: {
             provider?: string;
@@ -724,7 +564,6 @@ export interface components {
             message?: string;
         };
         OAuthConsent: {
-            /** Format: uuid */
             id: string;
             client_id: string;
             client_name?: string | null;
@@ -733,7 +572,6 @@ export interface components {
             granted_at: string;
         };
         OAuthConsentAdmin: {
-            /** Format: uuid */
             id: string;
             user_id: string;
             user_email?: string | null;
@@ -769,149 +607,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    getHealth: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Service is healthy */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getOpenApiSpec: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OpenAPI 3.1 JSON document */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getOAuthProtectedResource: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Protected resource metadata JSON */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getOAuthAuthorizationServer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Authorization server metadata JSON */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getV1McpOAuthProtectedResource: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Protected resource metadata JSON */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getV1McpOAuthAuthorizationServer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Authorization server metadata JSON */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    mcpTransport: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description MCP transport sub-path */
-                path: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description MCP JSON-RPC response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Service unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     listModules: {
         parameters: {
             query?: never;
@@ -950,19 +645,14 @@ export interface operations {
                     "application/json": components["schemas"]["RegisterResult"];
                 };
             };
-            /** @description Missing email in token */
+            /** @description Missing clerk_id or email */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
-                content?: never;
             };
         };
     };
@@ -983,13 +673,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserProfile"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1015,13 +698,6 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     completeUserOnboarding: {
@@ -1046,21 +722,14 @@ export interface operations {
                     "application/json": components["schemas"]["OnboardingResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     getUsage: {
         parameters: {
             query: {
-                /** @description Start date (ISO 8601) */
+                /** @description Start date (YYYY-MM-DD) */
                 start: string;
-                /** @description End date (ISO 8601) */
+                /** @description End date (YYYY-MM-DD) */
                 end: string;
             };
             header?: never;
@@ -1077,13 +746,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UsageData"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1104,13 +766,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StripeCustomer"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1136,13 +791,6 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     listCredentials: {
@@ -1163,13 +811,6 @@ export interface operations {
                     "application/json": components["schemas"]["Credential"][];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     upsertCredential: {
@@ -1177,7 +818,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Module identifier */
                 module: string;
             };
             cookie?: never;
@@ -1197,13 +837,6 @@ export interface operations {
                     "application/json": components["schemas"]["UpsertCredentialResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     deleteCredential: {
@@ -1211,7 +844,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Module identifier */
                 module: string;
             };
             cookie?: never;
@@ -1226,13 +858,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessResult"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1254,13 +879,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKey"][];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     generateApiKey: {
@@ -1277,20 +895,13 @@ export interface operations {
         };
         responses: {
             /** @description Generated API key */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["GenerateApiKeyResult"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1299,7 +910,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description API key ID */
                 id: string;
             };
             cookie?: never;
@@ -1314,13 +924,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessResult"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1345,13 +948,6 @@ export interface operations {
                     "application/json": components["schemas"]["Prompt"][];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     createPrompt: {
@@ -1368,20 +964,13 @@ export interface operations {
         };
         responses: {
             /** @description Prompt created */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["UpsertPromptResult"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1390,7 +979,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Prompt ID */
                 id: string;
             };
             cookie?: never;
@@ -1406,13 +994,6 @@ export interface operations {
                     "application/json": components["schemas"]["GetPromptResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     updatePrompt: {
@@ -1420,7 +1001,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Prompt ID */
                 id: string;
             };
             cookie?: never;
@@ -1440,13 +1020,6 @@ export interface operations {
                     "application/json": components["schemas"]["UpsertPromptResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     deletePrompt: {
@@ -1454,7 +1027,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Prompt ID */
                 id: string;
             };
             cookie?: never;
@@ -1470,21 +1042,11 @@ export interface operations {
                     "application/json": components["schemas"]["DeletePromptResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     getModuleConfig: {
         parameters: {
-            query?: {
-                /** @description Filter by module name */
-                module?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1500,13 +1062,6 @@ export interface operations {
                     "application/json": components["schemas"]["ModuleConfig"][];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     upsertToolSettings: {
@@ -1514,7 +1069,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Module name */
                 name: string;
             };
             cookie?: never;
@@ -1534,13 +1088,6 @@ export interface operations {
                     "application/json": components["schemas"]["UpsertToolSettingsResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     upsertModuleDescription: {
@@ -1548,7 +1095,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Module name */
                 name: string;
             };
             cookie?: never;
@@ -1567,13 +1113,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessResult"];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1595,13 +1134,6 @@ export interface operations {
                     "application/json": components["schemas"]["OAuthConsent"][];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     revokeOAuthConsent: {
@@ -1609,7 +1141,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Consent ID */
                 id: string;
             };
             cookie?: never;
@@ -1625,13 +1156,6 @@ export interface operations {
                     "application/json": components["schemas"]["RevokeConsentResult"];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     getOAuthAppCredentials: {
@@ -1639,7 +1163,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description OAuth provider identifier (e.g. github, google) */
                 provider: string;
             };
             cookie?: never;
@@ -1675,20 +1198,6 @@ export interface operations {
                     "application/json": components["schemas"]["OAuthApp"][];
                 };
             };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden — admin role required */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     upsertOAuthApp: {
@@ -1696,7 +1205,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description OAuth provider identifier */
                 provider: string;
             };
             cookie?: never;
@@ -1712,21 +1220,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": components["schemas"]["SuccessResult"];
                 };
-                content?: never;
-            };
-            /** @description Forbidden — admin role required */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1735,7 +1231,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description OAuth provider identifier */
                 provider: string;
             };
             cookie?: never;
@@ -1747,21 +1242,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": components["schemas"]["SuccessResult"];
                 };
-                content?: never;
-            };
-            /** @description Forbidden — admin role required */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -1782,53 +1265,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OAuthConsentAdmin"][];
                 };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden — admin role required */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    handleStripeWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": Record<string, never>;
-            };
-        };
-        responses: {
-            /** @description Webhook received */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        received?: boolean;
-                    };
-                };
-            };
-            /** @description Invalid signature or payload */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

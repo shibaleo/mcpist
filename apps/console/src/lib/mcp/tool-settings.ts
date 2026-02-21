@@ -11,10 +11,13 @@ export type { ToolSetting, ModuleDescription } from "./tool-settings-types"
  */
 export async function getModuleConfig(moduleName?: string) {
   const client = await createWorkerClient()
-  const { data } = await client.GET("/v1/me/modules/config", {
-    params: { query: { module: moduleName } },
-  })
-  return data!
+  const { data } = await client.GET("/v1/me/modules/config")
+  if (!data) return []
+  // Filter client-side if module specified
+  if (moduleName) {
+    return data.filter((r) => r.module_name === moduleName)
+  }
+  return data
 }
 
 /**

@@ -18,7 +18,7 @@ var _ Handler = UnimplementedHandler{}
 // Complete a user onboarding step.
 //
 // POST /v1/me/onboarding
-func (UnimplementedHandler) CompleteUserOnboarding(ctx context.Context, req *CompleteOnboardingBody) (r *SuccessResult, _ error) {
+func (UnimplementedHandler) CompleteUserOnboarding(ctx context.Context, req *CompleteOnboardingBody) (r *OnboardingResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -27,7 +27,7 @@ func (UnimplementedHandler) CompleteUserOnboarding(ctx context.Context, req *Com
 // Create a prompt.
 //
 // POST /v1/me/prompts
-func (UnimplementedHandler) CreatePrompt(ctx context.Context, req *CreatePromptBody) (r *Prompt, _ error) {
+func (UnimplementedHandler) CreatePrompt(ctx context.Context, req *CreatePromptBody) (r *UpsertPromptResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -54,7 +54,7 @@ func (UnimplementedHandler) DeleteOAuthApp(ctx context.Context, params DeleteOAu
 // Delete a prompt.
 //
 // DELETE /v1/me/prompts/{id}
-func (UnimplementedHandler) DeletePrompt(ctx context.Context, params DeletePromptParams) (r *SuccessResult, _ error) {
+func (UnimplementedHandler) DeletePrompt(ctx context.Context, params DeletePromptParams) (r *DeletePromptResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -99,7 +99,7 @@ func (UnimplementedHandler) GetOAuthAppCredentials(ctx context.Context, params G
 // Get a prompt by ID.
 //
 // GET /v1/me/prompts/{id}
-func (UnimplementedHandler) GetPrompt(ctx context.Context, params GetPromptParams) (r *Prompt, _ error) {
+func (UnimplementedHandler) GetPrompt(ctx context.Context, params GetPromptParams) (r *GetPromptResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -216,7 +216,7 @@ func (UnimplementedHandler) RevokeApiKey(ctx context.Context, params RevokeApiKe
 // Revoke an OAuth consent.
 //
 // DELETE /v1/me/oauth/consents/{id}
-func (UnimplementedHandler) RevokeOAuthConsent(ctx context.Context, params RevokeOAuthConsentParams) (r *SuccessResult, _ error) {
+func (UnimplementedHandler) RevokeOAuthConsent(ctx context.Context, params RevokeOAuthConsentParams) (r *RevokeConsentResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -225,7 +225,7 @@ func (UnimplementedHandler) RevokeOAuthConsent(ctx context.Context, params Revok
 // Update a prompt.
 //
 // PUT /v1/me/prompts/{id}
-func (UnimplementedHandler) UpdatePrompt(ctx context.Context, req *UpdatePromptBody, params UpdatePromptParams) (r *SuccessResult, _ error) {
+func (UnimplementedHandler) UpdatePrompt(ctx context.Context, req *UpdatePromptBody, params UpdatePromptParams) (r *UpsertPromptResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -243,7 +243,7 @@ func (UnimplementedHandler) UpdateSettings(ctx context.Context, req *UpdateSetti
 // Create or update credentials for a module.
 //
 // PUT /v1/me/credentials/{module}
-func (UnimplementedHandler) UpsertCredential(ctx context.Context, req *UpsertCredentialBody, params UpsertCredentialParams) (r *SuccessResult, _ error) {
+func (UnimplementedHandler) UpsertCredential(ctx context.Context, req *UpsertCredentialBody, params UpsertCredentialParams) (r *UpsertCredentialResult, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -270,6 +270,6 @@ func (UnimplementedHandler) UpsertOAuthApp(ctx context.Context, req *UpsertOAuth
 // Update tool enable/disable settings for a module.
 //
 // PUT /v1/me/modules/{name}/tools
-func (UnimplementedHandler) UpsertToolSettings(ctx context.Context, req *UpsertToolSettingsBody, params UpsertToolSettingsParams) (r *SuccessResult, _ error) {
+func (UnimplementedHandler) UpsertToolSettings(ctx context.Context, req *UpsertToolSettingsBody, params UpsertToolSettingsParams) (r *UpsertToolSettingsResult, _ error) {
 	return r, ht.ErrNotImplemented
 }

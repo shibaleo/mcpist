@@ -10,7 +10,8 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const yamlPath = resolve(__dirname, "../src/openapi.yaml");
+// Use Go Server spec as the public API spec (single source of truth)
+const yamlPath = resolve(__dirname, "../../server/api/openapi/server-openapi.yaml");
 const jsonPath = resolve(__dirname, "../src/openapi.generated.json");
 
 const yamlContent = readFileSync(yamlPath, "utf-8");

@@ -169,7 +169,7 @@ func (s *Server) handleCompleteUserOnboardingRequest(args [0]string, argsEscaped
 		}
 	}()
 
-	var response *SuccessResult
+	var response *OnboardingResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -185,7 +185,7 @@ func (s *Server) handleCompleteUserOnboardingRequest(args [0]string, argsEscaped
 		type (
 			Request  = *CompleteOnboardingBody
 			Params   = struct{}
-			Response = *SuccessResult
+			Response = *OnboardingResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -354,7 +354,7 @@ func (s *Server) handleCreatePromptRequest(args [0]string, argsEscaped bool, w h
 		}
 	}()
 
-	var response *Prompt
+	var response *UpsertPromptResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -370,7 +370,7 @@ func (s *Server) handleCreatePromptRequest(args [0]string, argsEscaped bool, w h
 		type (
 			Request  = *CreatePromptBody
 			Params   = struct{}
-			Response = *Prompt
+			Response = *UpsertPromptResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -904,7 +904,7 @@ func (s *Server) handleDeletePromptRequest(args [1]string, argsEscaped bool, w h
 
 	var rawBody []byte
 
-	var response *SuccessResult
+	var response *DeletePromptResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -925,7 +925,7 @@ func (s *Server) handleDeletePromptRequest(args [1]string, argsEscaped bool, w h
 		type (
 			Request  = struct{}
 			Params   = DeletePromptParams
-			Response = *SuccessResult
+			Response = *DeletePromptResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1799,7 +1799,7 @@ func (s *Server) handleGetPromptRequest(args [1]string, argsEscaped bool, w http
 
 	var rawBody []byte
 
-	var response *Prompt
+	var response *GetPromptResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -1820,7 +1820,7 @@ func (s *Server) handleGetPromptRequest(args [1]string, argsEscaped bool, w http
 		type (
 			Request  = struct{}
 			Params   = GetPromptParams
-			Response = *Prompt
+			Response = *GetPromptResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4040,7 +4040,7 @@ func (s *Server) handleRevokeOAuthConsentRequest(args [1]string, argsEscaped boo
 
 	var rawBody []byte
 
-	var response *SuccessResult
+	var response *RevokeConsentResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4061,7 +4061,7 @@ func (s *Server) handleRevokeOAuthConsentRequest(args [1]string, argsEscaped boo
 		type (
 			Request  = struct{}
 			Params   = RevokeOAuthConsentParams
-			Response = *SuccessResult
+			Response = *RevokeConsentResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4240,7 +4240,7 @@ func (s *Server) handleUpdatePromptRequest(args [1]string, argsEscaped bool, w h
 		}
 	}()
 
-	var response *SuccessResult
+	var response *UpsertPromptResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4261,7 +4261,7 @@ func (s *Server) handleUpdatePromptRequest(args [1]string, argsEscaped bool, w h
 		type (
 			Request  = *UpdatePromptBody
 			Params   = UpdatePromptParams
-			Response = *SuccessResult
+			Response = *UpsertPromptResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4625,7 +4625,7 @@ func (s *Server) handleUpsertCredentialRequest(args [1]string, argsEscaped bool,
 		}
 	}()
 
-	var response *SuccessResult
+	var response *UpsertCredentialResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4646,7 +4646,7 @@ func (s *Server) handleUpsertCredentialRequest(args [1]string, argsEscaped bool,
 		type (
 			Request  = *UpsertCredentialBody
 			Params   = UpsertCredentialParams
-			Response = *SuccessResult
+			Response = *UpsertCredentialResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5225,7 +5225,7 @@ func (s *Server) handleUpsertToolSettingsRequest(args [1]string, argsEscaped boo
 		}
 	}()
 
-	var response *SuccessResult
+	var response *UpsertToolSettingsResult
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -5246,7 +5246,7 @@ func (s *Server) handleUpsertToolSettingsRequest(args [1]string, argsEscaped boo
 		type (
 			Request  = *UpsertToolSettingsBody
 			Params   = UpsertToolSettingsParams
-			Response = *SuccessResult
+			Response = *UpsertToolSettingsResult
 		)
 		response, err = middleware.HookMiddleware[
 			Request,

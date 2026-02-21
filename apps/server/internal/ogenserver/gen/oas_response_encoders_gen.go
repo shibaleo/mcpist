@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func encodeCompleteUserOnboardingResponse(response *SuccessResult, w http.ResponseWriter, span trace.Span) error {
+func encodeCompleteUserOnboardingResponse(response *OnboardingResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -25,7 +25,7 @@ func encodeCompleteUserOnboardingResponse(response *SuccessResult, w http.Respon
 	return nil
 }
 
-func encodeCreatePromptResponse(response *Prompt, w http.ResponseWriter, span trace.Span) error {
+func encodeCreatePromptResponse(response *UpsertPromptResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(201)
 	span.SetStatus(codes.Ok, http.StatusText(201))
@@ -67,7 +67,7 @@ func encodeDeleteOAuthAppResponse(response *SuccessResult, w http.ResponseWriter
 	return nil
 }
 
-func encodeDeletePromptResponse(response *SuccessResult, w http.ResponseWriter, span trace.Span) error {
+func encodeDeletePromptResponse(response *DeletePromptResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -141,7 +141,7 @@ func encodeGetOAuthAppCredentialsResponse(response *OAuthAppCredentials, w http.
 	return nil
 }
 
-func encodeGetPromptResponse(response *Prompt, w http.ResponseWriter, span trace.Span) error {
+func encodeGetPromptResponse(response *GetPromptResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -370,7 +370,7 @@ func encodeRevokeApiKeyResponse(response *SuccessResult, w http.ResponseWriter, 
 	return nil
 }
 
-func encodeRevokeOAuthConsentResponse(response *SuccessResult, w http.ResponseWriter, span trace.Span) error {
+func encodeRevokeOAuthConsentResponse(response *RevokeConsentResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -384,7 +384,7 @@ func encodeRevokeOAuthConsentResponse(response *SuccessResult, w http.ResponseWr
 	return nil
 }
 
-func encodeUpdatePromptResponse(response *SuccessResult, w http.ResponseWriter, span trace.Span) error {
+func encodeUpdatePromptResponse(response *UpsertPromptResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -412,7 +412,7 @@ func encodeUpdateSettingsResponse(response *SuccessResult, w http.ResponseWriter
 	return nil
 }
 
-func encodeUpsertCredentialResponse(response *SuccessResult, w http.ResponseWriter, span trace.Span) error {
+func encodeUpsertCredentialResponse(response *UpsertCredentialResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))
@@ -454,7 +454,7 @@ func encodeUpsertOAuthAppResponse(response *SuccessResult, w http.ResponseWriter
 	return nil
 }
 
-func encodeUpsertToolSettingsResponse(response *SuccessResult, w http.ResponseWriter, span trace.Span) error {
+func encodeUpsertToolSettingsResponse(response *UpsertToolSettingsResult, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 	span.SetStatus(codes.Ok, http.StatusText(200))

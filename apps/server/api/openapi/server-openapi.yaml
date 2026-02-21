@@ -5,6 +5,8 @@ info:
   description: >-
     Internal REST API for the MCPist Go Server.
     Authenticated via X-Gateway-Token (Ed25519 JWT signed by Worker).
+    This spec is the single source of truth for shared schemas
+    (Console type generation via openapi-typescript).
 
 paths:
   # ── Modules (public) ─────────────────────────────────────────
@@ -101,7 +103,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: "#/components/schemas/OnboardingResult"
 
   # ── Usage ────────────────────────────────────────────────────
   /v1/me/usage:
@@ -212,7 +214,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: "#/components/schemas/UpsertCredentialResult"
     delete:
       operationId: deleteCredential
       summary: Delete credentials for a module
@@ -332,7 +334,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Prompt"
+                $ref: "#/components/schemas/UpsertPromptResult"
 
   /v1/me/prompts/{id}:
     get:
@@ -353,7 +355,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Prompt"
+                $ref: "#/components/schemas/GetPromptResult"
     put:
       operationId: updatePrompt
       summary: Update a prompt
@@ -378,7 +380,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: "#/components/schemas/UpsertPromptResult"
     delete:
       operationId: deletePrompt
       summary: Delete a prompt
@@ -397,7 +399,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: "#/components/schemas/DeletePromptResult"
 
   # ── Module Config ────────────────────────────────────────────
   /v1/me/modules/config:
@@ -442,7 +444,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: "#/components/schemas/UpsertToolSettingsResult"
 
   /v1/me/modules/{name}/description:
     put:
@@ -508,7 +510,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: "#/components/schemas/RevokeConsentResult"
 
   # ── OAuth App Credentials ────────────────────────────────────
   /v1/oauth/apps/{provider}/credentials:
@@ -640,7 +642,7 @@ components:
     # ── Modules ──
     ModuleWithTools:
       type: object
-      required: [id, name, status, tools]
+      required: [id, name, status]
       properties:
         id:
           type: string
@@ -648,10 +650,13 @@ components:
           type: string
         status:
           type: string
-        tools: {}
-        created_at:
-          type: string
-          format: date-time
+        descriptions:
+          type: object
+          additionalProperties:
+            type: string
+        tools:
+          type: array
+          items: {}
 
     ModuleConfig:
       type: object
@@ -680,6 +685,17 @@ components:
           items:
             type: string
 
+    UpsertToolSettingsResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        enabled_count:
+          type: integer
+        disabled_count:
+          type: integer
+
     UpsertModuleDescriptionBody:
       type: object
       required: [description]
@@ -698,26 +714,26 @@ components:
     # ── User ──
     UserProfile:
       type: object
-      required: [id, account_status, plan_id, role, connected_count]
+      required: [user_id, email, account_status, plan_id, daily_used, daily_limit, role, connected_count]
       properties:
-        id:
+        user_id:
+          type: string
+        email:
           type: string
         account_status:
           type: string
         plan_id:
           type: string
-        display_name:
-          type: string
-          nullable: true
-        avatar_url:
-          type: string
-          nullable: true
-        email:
-          type: string
-          nullable: true
+        daily_used:
+          type: integer
+        daily_limit:
+          type: integer
         role:
           type: string
         settings: {}
+        display_name:
+          type: string
+          nullable: true
         connected_count:
           type: integer
 
@@ -756,6 +772,21 @@ components:
         event_id:
           type: string
 
+    OnboardingResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        already_completed:
+          type: boolean
+        plan_id:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+
     # ── Stripe ──
     StripeCustomer:
       type: object
@@ -780,8 +811,10 @@ components:
           type: string
         created_at:
           type: string
+          format: date-time
         updated_at:
           type: string
+          format: date-time
 
     UpsertCredentialBody:
       type: object
@@ -789,16 +822,25 @@ components:
       properties:
         credentials: {}
 
+    UpsertCredentialResult:
+      type: object
+      required: [success, module]
+      properties:
+        success:
+          type: boolean
+        module:
+          type: string
+
     # ── API Keys ──
     ApiKey:
       type: object
-      required: [id, key_prefix, name]
+      required: [id, key_prefix, display_name]
       properties:
         id:
           type: string
         key_prefix:
           type: string
-        name:
+        display_name:
           type: string
         expires_at:
           type: string
@@ -808,9 +850,10 @@ components:
           type: string
           format: date-time
           nullable: true
-        created_at:
+        revoked_at:
           type: string
           format: date-time
+          nullable: true
 
     GenerateApiKeyBody:
       type: object
@@ -818,39 +861,20 @@ components:
       properties:
         display_name:
           type: string
-        name:
-          type: string
-        expires_in:
-          type: integer
-          description: Expiration in seconds
         expires_at:
           type: string
           format: date-time
-          description: Expiration timestamp (ISO 8601)
+          description: Expiration timestamp (optional)
 
     GenerateApiKeyResult:
       type: object
-      required: [id, api_key, key_prefix, name]
+      required: [api_key, key_prefix]
       properties:
-        id:
-          type: string
         api_key:
           type: string
-        key:
-          type: string
+          description: Full API key (only returned at creation time)
         key_prefix:
           type: string
-        name:
-          type: string
-        display_name:
-          type: string
-        expires_at:
-          type: string
-          format: date-time
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
 
     # ── Prompts ──
     Prompt:
@@ -859,12 +883,7 @@ components:
       properties:
         id:
           type: string
-        user_id:
-          type: string
         module_name:
-          type: string
-          nullable: true
-        module_id:
           type: string
           nullable: true
         name:
@@ -882,6 +901,35 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    GetPromptResult:
+      type: object
+      required: [found]
+      properties:
+        found:
+          type: boolean
+        id:
+          type: string
+        module_name:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        error:
+          type: string
 
     CreatePromptBody:
       type: object
@@ -900,6 +948,7 @@ components:
 
     UpdatePromptBody:
       type: object
+      required: [name, content, enabled]
       properties:
         name:
           type: string
@@ -912,10 +961,32 @@ components:
         description:
           type: string
 
+    UpsertPromptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        id:
+          type: string
+        action:
+          type: string
+        error:
+          type: string
+
+    DeletePromptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
     # ── OAuth ──
     OAuthAppCredentials:
       type: object
-      required: [provider, client_id, client_secret, redirect_uri]
+      required: [client_id, client_secret, redirect_uri]
       properties:
         provider:
           type: string
@@ -925,43 +996,63 @@ components:
           type: string
         redirect_uri:
           type: string
+        error:
+          type: string
+        message:
+          type: string
 
     OAuthConsent:
       type: object
-      required: [id, module, created_at]
+      required: [id, client_id, scopes, granted_at]
       properties:
         id:
           type: string
-        module:
+        client_id:
           type: string
-        created_at:
+        client_name:
           type: string
+          nullable: true
+        scopes:
+          type: string
+        granted_at:
+          type: string
+          format: date-time
 
     OAuthConsentAdmin:
       type: object
-      required: [id, user_id, module, created_at]
+      required: [id, client_id, scopes, granted_at, user_id]
       properties:
         id:
           type: string
         user_id:
           type: string
-        module:
+        user_email:
           type: string
-        created_at:
+          nullable: true
+        client_id:
+          type: string
+        client_name:
+          type: string
+          nullable: true
+        scopes:
+          type: string
+        granted_at:
           type: string
           format: date-time
+
+    RevokeConsentResult:
+      type: object
+      properties:
+        revoked:
+          type: boolean
 
     # ── Admin ──
     OAuthApp:
       type: object
       properties:
-        id:
-          type: string
         provider:
           type: string
         client_id:
-          type: string
-        client_secret:
           type: string
         redirect_uri:
           type: string
@@ -970,13 +1061,10 @@ components:
         created_at:
           type: string
           format: date-time
-        updated_at:
-          type: string
-          format: date-time
 
     UpsertOAuthAppBody:
       type: object
-      required: [client_id, client_secret, redirect_uri]
+      required: [client_id, client_secret, redirect_uri, enabled]
       properties:
         client_id:
           type: string

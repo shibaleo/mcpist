@@ -10,12 +10,12 @@ import (
 
 // Ref: #/components/schemas/ApiKey
 type ApiKey struct {
-	ID         string         `json:"id"`
-	KeyPrefix  string         `json:"key_prefix"`
-	Name       string         `json:"name"`
-	ExpiresAt  OptNilDateTime `json:"expires_at"`
-	LastUsedAt OptNilDateTime `json:"last_used_at"`
-	CreatedAt  OptDateTime    `json:"created_at"`
+	ID          string         `json:"id"`
+	KeyPrefix   string         `json:"key_prefix"`
+	DisplayName string         `json:"display_name"`
+	ExpiresAt   OptNilDateTime `json:"expires_at"`
+	LastUsedAt  OptNilDateTime `json:"last_used_at"`
+	RevokedAt   OptNilDateTime `json:"revoked_at"`
 }
 
 // GetID returns the value of ID.
@@ -28,9 +28,9 @@ func (s *ApiKey) GetKeyPrefix() string {
 	return s.KeyPrefix
 }
 
-// GetName returns the value of Name.
-func (s *ApiKey) GetName() string {
-	return s.Name
+// GetDisplayName returns the value of DisplayName.
+func (s *ApiKey) GetDisplayName() string {
+	return s.DisplayName
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
@@ -43,9 +43,9 @@ func (s *ApiKey) GetLastUsedAt() OptNilDateTime {
 	return s.LastUsedAt
 }
 
-// GetCreatedAt returns the value of CreatedAt.
-func (s *ApiKey) GetCreatedAt() OptDateTime {
-	return s.CreatedAt
+// GetRevokedAt returns the value of RevokedAt.
+func (s *ApiKey) GetRevokedAt() OptNilDateTime {
+	return s.RevokedAt
 }
 
 // SetID sets the value of ID.
@@ -58,9 +58,9 @@ func (s *ApiKey) SetKeyPrefix(val string) {
 	s.KeyPrefix = val
 }
 
-// SetName sets the value of Name.
-func (s *ApiKey) SetName(val string) {
-	s.Name = val
+// SetDisplayName sets the value of DisplayName.
+func (s *ApiKey) SetDisplayName(val string) {
+	s.DisplayName = val
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
@@ -73,9 +73,9 @@ func (s *ApiKey) SetLastUsedAt(val OptNilDateTime) {
 	s.LastUsedAt = val
 }
 
-// SetCreatedAt sets the value of CreatedAt.
-func (s *ApiKey) SetCreatedAt(val OptDateTime) {
-	s.CreatedAt = val
+// SetRevokedAt sets the value of RevokedAt.
+func (s *ApiKey) SetRevokedAt(val OptNilDateTime) {
+	s.RevokedAt = val
 }
 
 // Ref: #/components/schemas/CompleteOnboardingBody
@@ -154,9 +154,9 @@ func (s *CreatePromptBody) SetDescription(val OptString) {
 
 // Ref: #/components/schemas/Credential
 type Credential struct {
-	Module    string `json:"module"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	Module    string    `json:"module"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // GetModule returns the value of Module.
@@ -165,12 +165,12 @@ func (s *Credential) GetModule() string {
 }
 
 // GetCreatedAt returns the value of CreatedAt.
-func (s *Credential) GetCreatedAt() string {
+func (s *Credential) GetCreatedAt() time.Time {
 	return s.CreatedAt
 }
 
 // GetUpdatedAt returns the value of UpdatedAt.
-func (s *Credential) GetUpdatedAt() string {
+func (s *Credential) GetUpdatedAt() time.Time {
 	return s.UpdatedAt
 }
 
@@ -180,13 +180,39 @@ func (s *Credential) SetModule(val string) {
 }
 
 // SetCreatedAt sets the value of CreatedAt.
-func (s *Credential) SetCreatedAt(val string) {
+func (s *Credential) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
 }
 
 // SetUpdatedAt sets the value of UpdatedAt.
-func (s *Credential) SetUpdatedAt(val string) {
+func (s *Credential) SetUpdatedAt(val time.Time) {
 	s.UpdatedAt = val
+}
+
+// Ref: #/components/schemas/DeletePromptResult
+type DeletePromptResult struct {
+	Success bool      `json:"success"`
+	Error   OptString `json:"error"`
+}
+
+// GetSuccess returns the value of Success.
+func (s *DeletePromptResult) GetSuccess() bool {
+	return s.Success
+}
+
+// GetError returns the value of Error.
+func (s *DeletePromptResult) GetError() OptString {
+	return s.Error
+}
+
+// SetSuccess sets the value of Success.
+func (s *DeletePromptResult) SetSuccess(val bool) {
+	s.Success = val
+}
+
+// SetError sets the value of Error.
+func (s *DeletePromptResult) SetError(val OptString) {
+	s.Error = val
 }
 
 // Ref: #/components/schemas/ErrorResponse
@@ -233,27 +259,14 @@ func (s *GatewayToken) SetRoles(val []string) {
 
 // Ref: #/components/schemas/GenerateApiKeyBody
 type GenerateApiKeyBody struct {
-	DisplayName string    `json:"display_name"`
-	Name        OptString `json:"name"`
-	// Expiration in seconds.
-	ExpiresIn OptInt `json:"expires_in"`
-	// Expiration timestamp (ISO 8601).
+	DisplayName string `json:"display_name"`
+	// Expiration timestamp (optional).
 	ExpiresAt OptDateTime `json:"expires_at"`
 }
 
 // GetDisplayName returns the value of DisplayName.
 func (s *GenerateApiKeyBody) GetDisplayName() string {
 	return s.DisplayName
-}
-
-// GetName returns the value of Name.
-func (s *GenerateApiKeyBody) GetName() OptString {
-	return s.Name
-}
-
-// GetExpiresIn returns the value of ExpiresIn.
-func (s *GenerateApiKeyBody) GetExpiresIn() OptInt {
-	return s.ExpiresIn
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
@@ -266,16 +279,6 @@ func (s *GenerateApiKeyBody) SetDisplayName(val string) {
 	s.DisplayName = val
 }
 
-// SetName sets the value of Name.
-func (s *GenerateApiKeyBody) SetName(val OptString) {
-	s.Name = val
-}
-
-// SetExpiresIn sets the value of ExpiresIn.
-func (s *GenerateApiKeyBody) SetExpiresIn(val OptInt) {
-	s.ExpiresIn = val
-}
-
 // SetExpiresAt sets the value of ExpiresAt.
 func (s *GenerateApiKeyBody) SetExpiresAt(val OptDateTime) {
 	s.ExpiresAt = val
@@ -283,19 +286,9 @@ func (s *GenerateApiKeyBody) SetExpiresAt(val OptDateTime) {
 
 // Ref: #/components/schemas/GenerateApiKeyResult
 type GenerateApiKeyResult struct {
-	ID          string         `json:"id"`
-	APIKey      string         `json:"api_key"`
-	Key         OptString      `json:"key"`
-	KeyPrefix   string         `json:"key_prefix"`
-	Name        string         `json:"name"`
-	DisplayName OptString      `json:"display_name"`
-	ExpiresAt   OptNilDateTime `json:"expires_at"`
-	CreatedAt   OptDateTime    `json:"created_at"`
-}
-
-// GetID returns the value of ID.
-func (s *GenerateApiKeyResult) GetID() string {
-	return s.ID
+	// Full API key (only returned at creation time).
+	APIKey    string `json:"api_key"`
+	KeyPrefix string `json:"key_prefix"`
 }
 
 // GetAPIKey returns the value of APIKey.
@@ -303,39 +296,9 @@ func (s *GenerateApiKeyResult) GetAPIKey() string {
 	return s.APIKey
 }
 
-// GetKey returns the value of Key.
-func (s *GenerateApiKeyResult) GetKey() OptString {
-	return s.Key
-}
-
 // GetKeyPrefix returns the value of KeyPrefix.
 func (s *GenerateApiKeyResult) GetKeyPrefix() string {
 	return s.KeyPrefix
-}
-
-// GetName returns the value of Name.
-func (s *GenerateApiKeyResult) GetName() string {
-	return s.Name
-}
-
-// GetDisplayName returns the value of DisplayName.
-func (s *GenerateApiKeyResult) GetDisplayName() OptString {
-	return s.DisplayName
-}
-
-// GetExpiresAt returns the value of ExpiresAt.
-func (s *GenerateApiKeyResult) GetExpiresAt() OptNilDateTime {
-	return s.ExpiresAt
-}
-
-// GetCreatedAt returns the value of CreatedAt.
-func (s *GenerateApiKeyResult) GetCreatedAt() OptDateTime {
-	return s.CreatedAt
-}
-
-// SetID sets the value of ID.
-func (s *GenerateApiKeyResult) SetID(val string) {
-	s.ID = val
 }
 
 // SetAPIKey sets the value of APIKey.
@@ -343,34 +306,123 @@ func (s *GenerateApiKeyResult) SetAPIKey(val string) {
 	s.APIKey = val
 }
 
-// SetKey sets the value of Key.
-func (s *GenerateApiKeyResult) SetKey(val OptString) {
-	s.Key = val
-}
-
 // SetKeyPrefix sets the value of KeyPrefix.
 func (s *GenerateApiKeyResult) SetKeyPrefix(val string) {
 	s.KeyPrefix = val
 }
 
+// Ref: #/components/schemas/GetPromptResult
+type GetPromptResult struct {
+	Found       bool         `json:"found"`
+	ID          OptString    `json:"id"`
+	ModuleName  OptNilString `json:"module_name"`
+	Name        OptString    `json:"name"`
+	Description OptNilString `json:"description"`
+	Content     OptString    `json:"content"`
+	Enabled     OptBool      `json:"enabled"`
+	CreatedAt   OptDateTime  `json:"created_at"`
+	UpdatedAt   OptDateTime  `json:"updated_at"`
+	Error       OptString    `json:"error"`
+}
+
+// GetFound returns the value of Found.
+func (s *GetPromptResult) GetFound() bool {
+	return s.Found
+}
+
+// GetID returns the value of ID.
+func (s *GetPromptResult) GetID() OptString {
+	return s.ID
+}
+
+// GetModuleName returns the value of ModuleName.
+func (s *GetPromptResult) GetModuleName() OptNilString {
+	return s.ModuleName
+}
+
+// GetName returns the value of Name.
+func (s *GetPromptResult) GetName() OptString {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *GetPromptResult) GetDescription() OptNilString {
+	return s.Description
+}
+
+// GetContent returns the value of Content.
+func (s *GetPromptResult) GetContent() OptString {
+	return s.Content
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *GetPromptResult) GetEnabled() OptBool {
+	return s.Enabled
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *GetPromptResult) GetCreatedAt() OptDateTime {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *GetPromptResult) GetUpdatedAt() OptDateTime {
+	return s.UpdatedAt
+}
+
+// GetError returns the value of Error.
+func (s *GetPromptResult) GetError() OptString {
+	return s.Error
+}
+
+// SetFound sets the value of Found.
+func (s *GetPromptResult) SetFound(val bool) {
+	s.Found = val
+}
+
+// SetID sets the value of ID.
+func (s *GetPromptResult) SetID(val OptString) {
+	s.ID = val
+}
+
+// SetModuleName sets the value of ModuleName.
+func (s *GetPromptResult) SetModuleName(val OptNilString) {
+	s.ModuleName = val
+}
+
 // SetName sets the value of Name.
-func (s *GenerateApiKeyResult) SetName(val string) {
+func (s *GetPromptResult) SetName(val OptString) {
 	s.Name = val
 }
 
-// SetDisplayName sets the value of DisplayName.
-func (s *GenerateApiKeyResult) SetDisplayName(val OptString) {
-	s.DisplayName = val
+// SetDescription sets the value of Description.
+func (s *GetPromptResult) SetDescription(val OptNilString) {
+	s.Description = val
 }
 
-// SetExpiresAt sets the value of ExpiresAt.
-func (s *GenerateApiKeyResult) SetExpiresAt(val OptNilDateTime) {
-	s.ExpiresAt = val
+// SetContent sets the value of Content.
+func (s *GetPromptResult) SetContent(val OptString) {
+	s.Content = val
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *GetPromptResult) SetEnabled(val OptBool) {
+	s.Enabled = val
 }
 
 // SetCreatedAt sets the value of CreatedAt.
-func (s *GenerateApiKeyResult) SetCreatedAt(val OptDateTime) {
+func (s *GetPromptResult) SetCreatedAt(val OptDateTime) {
 	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *GetPromptResult) SetUpdatedAt(val OptDateTime) {
+	s.UpdatedAt = val
+}
+
+// SetError sets the value of Error.
+func (s *GetPromptResult) SetError(val OptString) {
+	s.Error = val
 }
 
 // Ref: #/components/schemas/LinkStripeCustomerBody
@@ -438,11 +490,11 @@ func (s *ModuleConfig) SetEnabled(val bool) {
 
 // Ref: #/components/schemas/ModuleWithTools
 type ModuleWithTools struct {
-	ID        string      `json:"id"`
-	Name      string      `json:"name"`
-	Status    string      `json:"status"`
-	Tools     jx.Raw      `json:"tools"`
-	CreatedAt OptDateTime `json:"created_at"`
+	ID           string                         `json:"id"`
+	Name         string                         `json:"name"`
+	Status       string                         `json:"status"`
+	Descriptions OptModuleWithToolsDescriptions `json:"descriptions"`
+	Tools        []jx.Raw                       `json:"tools"`
 }
 
 // GetID returns the value of ID.
@@ -460,14 +512,14 @@ func (s *ModuleWithTools) GetStatus() string {
 	return s.Status
 }
 
-// GetTools returns the value of Tools.
-func (s *ModuleWithTools) GetTools() jx.Raw {
-	return s.Tools
+// GetDescriptions returns the value of Descriptions.
+func (s *ModuleWithTools) GetDescriptions() OptModuleWithToolsDescriptions {
+	return s.Descriptions
 }
 
-// GetCreatedAt returns the value of CreatedAt.
-func (s *ModuleWithTools) GetCreatedAt() OptDateTime {
-	return s.CreatedAt
+// GetTools returns the value of Tools.
+func (s *ModuleWithTools) GetTools() []jx.Raw {
+	return s.Tools
 }
 
 // SetID sets the value of ID.
@@ -485,31 +537,34 @@ func (s *ModuleWithTools) SetStatus(val string) {
 	s.Status = val
 }
 
+// SetDescriptions sets the value of Descriptions.
+func (s *ModuleWithTools) SetDescriptions(val OptModuleWithToolsDescriptions) {
+	s.Descriptions = val
+}
+
 // SetTools sets the value of Tools.
-func (s *ModuleWithTools) SetTools(val jx.Raw) {
+func (s *ModuleWithTools) SetTools(val []jx.Raw) {
 	s.Tools = val
 }
 
-// SetCreatedAt sets the value of CreatedAt.
-func (s *ModuleWithTools) SetCreatedAt(val OptDateTime) {
-	s.CreatedAt = val
+type ModuleWithToolsDescriptions map[string]string
+
+func (s *ModuleWithToolsDescriptions) init() ModuleWithToolsDescriptions {
+	m := *s
+	if m == nil {
+		m = map[string]string{}
+		*s = m
+	}
+	return m
 }
 
 // Ref: #/components/schemas/OAuthApp
 type OAuthApp struct {
-	ID           OptString   `json:"id"`
-	Provider     OptString   `json:"provider"`
-	ClientID     OptString   `json:"client_id"`
-	ClientSecret OptString   `json:"client_secret"`
-	RedirectURI  OptString   `json:"redirect_uri"`
-	Enabled      OptBool     `json:"enabled"`
-	CreatedAt    OptDateTime `json:"created_at"`
-	UpdatedAt    OptDateTime `json:"updated_at"`
-}
-
-// GetID returns the value of ID.
-func (s *OAuthApp) GetID() OptString {
-	return s.ID
+	Provider    OptString   `json:"provider"`
+	ClientID    OptString   `json:"client_id"`
+	RedirectURI OptString   `json:"redirect_uri"`
+	Enabled     OptBool     `json:"enabled"`
+	CreatedAt   OptDateTime `json:"created_at"`
 }
 
 // GetProvider returns the value of Provider.
@@ -520,11 +575,6 @@ func (s *OAuthApp) GetProvider() OptString {
 // GetClientID returns the value of ClientID.
 func (s *OAuthApp) GetClientID() OptString {
 	return s.ClientID
-}
-
-// GetClientSecret returns the value of ClientSecret.
-func (s *OAuthApp) GetClientSecret() OptString {
-	return s.ClientSecret
 }
 
 // GetRedirectURI returns the value of RedirectURI.
@@ -542,16 +592,6 @@ func (s *OAuthApp) GetCreatedAt() OptDateTime {
 	return s.CreatedAt
 }
 
-// GetUpdatedAt returns the value of UpdatedAt.
-func (s *OAuthApp) GetUpdatedAt() OptDateTime {
-	return s.UpdatedAt
-}
-
-// SetID sets the value of ID.
-func (s *OAuthApp) SetID(val OptString) {
-	s.ID = val
-}
-
 // SetProvider sets the value of Provider.
 func (s *OAuthApp) SetProvider(val OptString) {
 	s.Provider = val
@@ -560,11 +600,6 @@ func (s *OAuthApp) SetProvider(val OptString) {
 // SetClientID sets the value of ClientID.
 func (s *OAuthApp) SetClientID(val OptString) {
 	s.ClientID = val
-}
-
-// SetClientSecret sets the value of ClientSecret.
-func (s *OAuthApp) SetClientSecret(val OptString) {
-	s.ClientSecret = val
 }
 
 // SetRedirectURI sets the value of RedirectURI.
@@ -582,21 +617,18 @@ func (s *OAuthApp) SetCreatedAt(val OptDateTime) {
 	s.CreatedAt = val
 }
 
-// SetUpdatedAt sets the value of UpdatedAt.
-func (s *OAuthApp) SetUpdatedAt(val OptDateTime) {
-	s.UpdatedAt = val
-}
-
 // Ref: #/components/schemas/OAuthAppCredentials
 type OAuthAppCredentials struct {
-	Provider     string `json:"provider"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	RedirectURI  string `json:"redirect_uri"`
+	Provider     OptString `json:"provider"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret"`
+	RedirectURI  string    `json:"redirect_uri"`
+	Error        OptString `json:"error"`
+	Message      OptString `json:"message"`
 }
 
 // GetProvider returns the value of Provider.
-func (s *OAuthAppCredentials) GetProvider() string {
+func (s *OAuthAppCredentials) GetProvider() OptString {
 	return s.Provider
 }
 
@@ -615,8 +647,18 @@ func (s *OAuthAppCredentials) GetRedirectURI() string {
 	return s.RedirectURI
 }
 
+// GetError returns the value of Error.
+func (s *OAuthAppCredentials) GetError() OptString {
+	return s.Error
+}
+
+// GetMessage returns the value of Message.
+func (s *OAuthAppCredentials) GetMessage() OptString {
+	return s.Message
+}
+
 // SetProvider sets the value of Provider.
-func (s *OAuthAppCredentials) SetProvider(val string) {
+func (s *OAuthAppCredentials) SetProvider(val OptString) {
 	s.Provider = val
 }
 
@@ -635,11 +677,23 @@ func (s *OAuthAppCredentials) SetRedirectURI(val string) {
 	s.RedirectURI = val
 }
 
+// SetError sets the value of Error.
+func (s *OAuthAppCredentials) SetError(val OptString) {
+	s.Error = val
+}
+
+// SetMessage sets the value of Message.
+func (s *OAuthAppCredentials) SetMessage(val OptString) {
+	s.Message = val
+}
+
 // Ref: #/components/schemas/OAuthConsent
 type OAuthConsent struct {
-	ID        string `json:"id"`
-	Module    string `json:"module"`
-	CreatedAt string `json:"created_at"`
+	ID         string       `json:"id"`
+	ClientID   string       `json:"client_id"`
+	ClientName OptNilString `json:"client_name"`
+	Scopes     string       `json:"scopes"`
+	GrantedAt  time.Time    `json:"granted_at"`
 }
 
 // GetID returns the value of ID.
@@ -647,14 +701,24 @@ func (s *OAuthConsent) GetID() string {
 	return s.ID
 }
 
-// GetModule returns the value of Module.
-func (s *OAuthConsent) GetModule() string {
-	return s.Module
+// GetClientID returns the value of ClientID.
+func (s *OAuthConsent) GetClientID() string {
+	return s.ClientID
 }
 
-// GetCreatedAt returns the value of CreatedAt.
-func (s *OAuthConsent) GetCreatedAt() string {
-	return s.CreatedAt
+// GetClientName returns the value of ClientName.
+func (s *OAuthConsent) GetClientName() OptNilString {
+	return s.ClientName
+}
+
+// GetScopes returns the value of Scopes.
+func (s *OAuthConsent) GetScopes() string {
+	return s.Scopes
+}
+
+// GetGrantedAt returns the value of GrantedAt.
+func (s *OAuthConsent) GetGrantedAt() time.Time {
+	return s.GrantedAt
 }
 
 // SetID sets the value of ID.
@@ -662,22 +726,35 @@ func (s *OAuthConsent) SetID(val string) {
 	s.ID = val
 }
 
-// SetModule sets the value of Module.
-func (s *OAuthConsent) SetModule(val string) {
-	s.Module = val
+// SetClientID sets the value of ClientID.
+func (s *OAuthConsent) SetClientID(val string) {
+	s.ClientID = val
 }
 
-// SetCreatedAt sets the value of CreatedAt.
-func (s *OAuthConsent) SetCreatedAt(val string) {
-	s.CreatedAt = val
+// SetClientName sets the value of ClientName.
+func (s *OAuthConsent) SetClientName(val OptNilString) {
+	s.ClientName = val
+}
+
+// SetScopes sets the value of Scopes.
+func (s *OAuthConsent) SetScopes(val string) {
+	s.Scopes = val
+}
+
+// SetGrantedAt sets the value of GrantedAt.
+func (s *OAuthConsent) SetGrantedAt(val time.Time) {
+	s.GrantedAt = val
 }
 
 // Ref: #/components/schemas/OAuthConsentAdmin
 type OAuthConsentAdmin struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Module    string    `json:"module"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         string       `json:"id"`
+	UserID     string       `json:"user_id"`
+	UserEmail  OptNilString `json:"user_email"`
+	ClientID   string       `json:"client_id"`
+	ClientName OptNilString `json:"client_name"`
+	Scopes     string       `json:"scopes"`
+	GrantedAt  time.Time    `json:"granted_at"`
 }
 
 // GetID returns the value of ID.
@@ -690,14 +767,29 @@ func (s *OAuthConsentAdmin) GetUserID() string {
 	return s.UserID
 }
 
-// GetModule returns the value of Module.
-func (s *OAuthConsentAdmin) GetModule() string {
-	return s.Module
+// GetUserEmail returns the value of UserEmail.
+func (s *OAuthConsentAdmin) GetUserEmail() OptNilString {
+	return s.UserEmail
 }
 
-// GetCreatedAt returns the value of CreatedAt.
-func (s *OAuthConsentAdmin) GetCreatedAt() time.Time {
-	return s.CreatedAt
+// GetClientID returns the value of ClientID.
+func (s *OAuthConsentAdmin) GetClientID() string {
+	return s.ClientID
+}
+
+// GetClientName returns the value of ClientName.
+func (s *OAuthConsentAdmin) GetClientName() OptNilString {
+	return s.ClientName
+}
+
+// GetScopes returns the value of Scopes.
+func (s *OAuthConsentAdmin) GetScopes() string {
+	return s.Scopes
+}
+
+// GetGrantedAt returns the value of GrantedAt.
+func (s *OAuthConsentAdmin) GetGrantedAt() time.Time {
+	return s.GrantedAt
 }
 
 // SetID sets the value of ID.
@@ -710,14 +802,88 @@ func (s *OAuthConsentAdmin) SetUserID(val string) {
 	s.UserID = val
 }
 
-// SetModule sets the value of Module.
-func (s *OAuthConsentAdmin) SetModule(val string) {
-	s.Module = val
+// SetUserEmail sets the value of UserEmail.
+func (s *OAuthConsentAdmin) SetUserEmail(val OptNilString) {
+	s.UserEmail = val
 }
 
-// SetCreatedAt sets the value of CreatedAt.
-func (s *OAuthConsentAdmin) SetCreatedAt(val time.Time) {
-	s.CreatedAt = val
+// SetClientID sets the value of ClientID.
+func (s *OAuthConsentAdmin) SetClientID(val string) {
+	s.ClientID = val
+}
+
+// SetClientName sets the value of ClientName.
+func (s *OAuthConsentAdmin) SetClientName(val OptNilString) {
+	s.ClientName = val
+}
+
+// SetScopes sets the value of Scopes.
+func (s *OAuthConsentAdmin) SetScopes(val string) {
+	s.Scopes = val
+}
+
+// SetGrantedAt sets the value of GrantedAt.
+func (s *OAuthConsentAdmin) SetGrantedAt(val time.Time) {
+	s.GrantedAt = val
+}
+
+// Ref: #/components/schemas/OnboardingResult
+type OnboardingResult struct {
+	Success          bool      `json:"success"`
+	AlreadyCompleted OptBool   `json:"already_completed"`
+	PlanID           OptString `json:"plan_id"`
+	Error            OptString `json:"error"`
+	Message          OptString `json:"message"`
+}
+
+// GetSuccess returns the value of Success.
+func (s *OnboardingResult) GetSuccess() bool {
+	return s.Success
+}
+
+// GetAlreadyCompleted returns the value of AlreadyCompleted.
+func (s *OnboardingResult) GetAlreadyCompleted() OptBool {
+	return s.AlreadyCompleted
+}
+
+// GetPlanID returns the value of PlanID.
+func (s *OnboardingResult) GetPlanID() OptString {
+	return s.PlanID
+}
+
+// GetError returns the value of Error.
+func (s *OnboardingResult) GetError() OptString {
+	return s.Error
+}
+
+// GetMessage returns the value of Message.
+func (s *OnboardingResult) GetMessage() OptString {
+	return s.Message
+}
+
+// SetSuccess sets the value of Success.
+func (s *OnboardingResult) SetSuccess(val bool) {
+	s.Success = val
+}
+
+// SetAlreadyCompleted sets the value of AlreadyCompleted.
+func (s *OnboardingResult) SetAlreadyCompleted(val OptBool) {
+	s.AlreadyCompleted = val
+}
+
+// SetPlanID sets the value of PlanID.
+func (s *OnboardingResult) SetPlanID(val OptString) {
+	s.PlanID = val
+}
+
+// SetError sets the value of Error.
+func (s *OnboardingResult) SetError(val OptString) {
+	s.Error = val
+}
+
+// SetMessage sets the value of Message.
+func (s *OnboardingResult) SetMessage(val OptString) {
+	s.Message = val
 }
 
 // NewOptBool returns new OptBool with value set to v.
@@ -852,6 +1018,52 @@ func (o OptInt) Get() (v int, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt) Or(d int) int {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptModuleWithToolsDescriptions returns new OptModuleWithToolsDescriptions with value set to v.
+func NewOptModuleWithToolsDescriptions(v ModuleWithToolsDescriptions) OptModuleWithToolsDescriptions {
+	return OptModuleWithToolsDescriptions{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptModuleWithToolsDescriptions is optional ModuleWithToolsDescriptions.
+type OptModuleWithToolsDescriptions struct {
+	Value ModuleWithToolsDescriptions
+	Set   bool
+}
+
+// IsSet returns true if OptModuleWithToolsDescriptions was set.
+func (o OptModuleWithToolsDescriptions) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptModuleWithToolsDescriptions) Reset() {
+	var v ModuleWithToolsDescriptions
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptModuleWithToolsDescriptions) SetTo(v ModuleWithToolsDescriptions) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptModuleWithToolsDescriptions) Get() (v ModuleWithToolsDescriptions, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptModuleWithToolsDescriptions) Or(d ModuleWithToolsDescriptions) ModuleWithToolsDescriptions {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1033,9 +1245,7 @@ func (o OptString) Or(d string) string {
 // Ref: #/components/schemas/Prompt
 type Prompt struct {
 	ID          string       `json:"id"`
-	UserID      OptString    `json:"user_id"`
 	ModuleName  OptNilString `json:"module_name"`
-	ModuleID    OptNilString `json:"module_id"`
 	Name        string       `json:"name"`
 	Description OptNilString `json:"description"`
 	Content     string       `json:"content"`
@@ -1049,19 +1259,9 @@ func (s *Prompt) GetID() string {
 	return s.ID
 }
 
-// GetUserID returns the value of UserID.
-func (s *Prompt) GetUserID() OptString {
-	return s.UserID
-}
-
 // GetModuleName returns the value of ModuleName.
 func (s *Prompt) GetModuleName() OptNilString {
 	return s.ModuleName
-}
-
-// GetModuleID returns the value of ModuleID.
-func (s *Prompt) GetModuleID() OptNilString {
-	return s.ModuleID
 }
 
 // GetName returns the value of Name.
@@ -1099,19 +1299,9 @@ func (s *Prompt) SetID(val string) {
 	s.ID = val
 }
 
-// SetUserID sets the value of UserID.
-func (s *Prompt) SetUserID(val OptString) {
-	s.UserID = val
-}
-
 // SetModuleName sets the value of ModuleName.
 func (s *Prompt) SetModuleName(val OptNilString) {
 	s.ModuleName = val
-}
-
-// SetModuleID sets the value of ModuleID.
-func (s *Prompt) SetModuleID(val OptNilString) {
-	s.ModuleID = val
 }
 
 // SetName sets the value of Name.
@@ -1161,6 +1351,21 @@ func (s *RegisterResult) SetID(val string) {
 
 func (*RegisterResult) registerUserRes() {}
 
+// Ref: #/components/schemas/RevokeConsentResult
+type RevokeConsentResult struct {
+	Revoked OptBool `json:"revoked"`
+}
+
+// GetRevoked returns the value of Revoked.
+func (s *RevokeConsentResult) GetRevoked() OptBool {
+	return s.Revoked
+}
+
+// SetRevoked sets the value of Revoked.
+func (s *RevokeConsentResult) SetRevoked(val OptBool) {
+	s.Revoked = val
+}
+
 // Ref: #/components/schemas/StripeCustomer
 type StripeCustomer struct {
 	StripeCustomerID OptNilString `json:"stripe_customer_id"`
@@ -1193,20 +1398,20 @@ func (s *SuccessResult) SetSuccess(val bool) {
 
 // Ref: #/components/schemas/UpdatePromptBody
 type UpdatePromptBody struct {
-	Name        OptString `json:"name"`
-	Content     OptString `json:"content"`
+	Name        string    `json:"name"`
+	Content     string    `json:"content"`
 	ModuleName  OptString `json:"module_name"`
-	Enabled     OptBool   `json:"enabled"`
+	Enabled     bool      `json:"enabled"`
 	Description OptString `json:"description"`
 }
 
 // GetName returns the value of Name.
-func (s *UpdatePromptBody) GetName() OptString {
+func (s *UpdatePromptBody) GetName() string {
 	return s.Name
 }
 
 // GetContent returns the value of Content.
-func (s *UpdatePromptBody) GetContent() OptString {
+func (s *UpdatePromptBody) GetContent() string {
 	return s.Content
 }
 
@@ -1216,7 +1421,7 @@ func (s *UpdatePromptBody) GetModuleName() OptString {
 }
 
 // GetEnabled returns the value of Enabled.
-func (s *UpdatePromptBody) GetEnabled() OptBool {
+func (s *UpdatePromptBody) GetEnabled() bool {
 	return s.Enabled
 }
 
@@ -1226,12 +1431,12 @@ func (s *UpdatePromptBody) GetDescription() OptString {
 }
 
 // SetName sets the value of Name.
-func (s *UpdatePromptBody) SetName(val OptString) {
+func (s *UpdatePromptBody) SetName(val string) {
 	s.Name = val
 }
 
 // SetContent sets the value of Content.
-func (s *UpdatePromptBody) SetContent(val OptString) {
+func (s *UpdatePromptBody) SetContent(val string) {
 	s.Content = val
 }
 
@@ -1241,7 +1446,7 @@ func (s *UpdatePromptBody) SetModuleName(val OptString) {
 }
 
 // SetEnabled sets the value of Enabled.
-func (s *UpdatePromptBody) SetEnabled(val OptBool) {
+func (s *UpdatePromptBody) SetEnabled(val bool) {
 	s.Enabled = val
 }
 
@@ -1280,6 +1485,32 @@ func (s *UpsertCredentialBody) SetCredentials(val jx.Raw) {
 	s.Credentials = val
 }
 
+// Ref: #/components/schemas/UpsertCredentialResult
+type UpsertCredentialResult struct {
+	Success bool   `json:"success"`
+	Module  string `json:"module"`
+}
+
+// GetSuccess returns the value of Success.
+func (s *UpsertCredentialResult) GetSuccess() bool {
+	return s.Success
+}
+
+// GetModule returns the value of Module.
+func (s *UpsertCredentialResult) GetModule() string {
+	return s.Module
+}
+
+// SetSuccess sets the value of Success.
+func (s *UpsertCredentialResult) SetSuccess(val bool) {
+	s.Success = val
+}
+
+// SetModule sets the value of Module.
+func (s *UpsertCredentialResult) SetModule(val string) {
+	s.Module = val
+}
+
 // Ref: #/components/schemas/UpsertModuleDescriptionBody
 type UpsertModuleDescriptionBody struct {
 	Description string `json:"description"`
@@ -1297,10 +1528,10 @@ func (s *UpsertModuleDescriptionBody) SetDescription(val string) {
 
 // Ref: #/components/schemas/UpsertOAuthAppBody
 type UpsertOAuthAppBody struct {
-	ClientID     string  `json:"client_id"`
-	ClientSecret string  `json:"client_secret"`
-	RedirectURI  string  `json:"redirect_uri"`
-	Enabled      OptBool `json:"enabled"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	RedirectURI  string `json:"redirect_uri"`
+	Enabled      bool   `json:"enabled"`
 }
 
 // GetClientID returns the value of ClientID.
@@ -1319,7 +1550,7 @@ func (s *UpsertOAuthAppBody) GetRedirectURI() string {
 }
 
 // GetEnabled returns the value of Enabled.
-func (s *UpsertOAuthAppBody) GetEnabled() OptBool {
+func (s *UpsertOAuthAppBody) GetEnabled() bool {
 	return s.Enabled
 }
 
@@ -1339,8 +1570,56 @@ func (s *UpsertOAuthAppBody) SetRedirectURI(val string) {
 }
 
 // SetEnabled sets the value of Enabled.
-func (s *UpsertOAuthAppBody) SetEnabled(val OptBool) {
+func (s *UpsertOAuthAppBody) SetEnabled(val bool) {
 	s.Enabled = val
+}
+
+// Ref: #/components/schemas/UpsertPromptResult
+type UpsertPromptResult struct {
+	Success bool      `json:"success"`
+	ID      OptString `json:"id"`
+	Action  OptString `json:"action"`
+	Error   OptString `json:"error"`
+}
+
+// GetSuccess returns the value of Success.
+func (s *UpsertPromptResult) GetSuccess() bool {
+	return s.Success
+}
+
+// GetID returns the value of ID.
+func (s *UpsertPromptResult) GetID() OptString {
+	return s.ID
+}
+
+// GetAction returns the value of Action.
+func (s *UpsertPromptResult) GetAction() OptString {
+	return s.Action
+}
+
+// GetError returns the value of Error.
+func (s *UpsertPromptResult) GetError() OptString {
+	return s.Error
+}
+
+// SetSuccess sets the value of Success.
+func (s *UpsertPromptResult) SetSuccess(val bool) {
+	s.Success = val
+}
+
+// SetID sets the value of ID.
+func (s *UpsertPromptResult) SetID(val OptString) {
+	s.ID = val
+}
+
+// SetAction sets the value of Action.
+func (s *UpsertPromptResult) SetAction(val OptString) {
+	s.Action = val
+}
+
+// SetError sets the value of Error.
+func (s *UpsertPromptResult) SetError(val OptString) {
+	s.Error = val
 }
 
 // Ref: #/components/schemas/UpsertToolSettingsBody
@@ -1367,6 +1646,43 @@ func (s *UpsertToolSettingsBody) SetEnabledTools(val []string) {
 // SetDisabledTools sets the value of DisabledTools.
 func (s *UpsertToolSettingsBody) SetDisabledTools(val []string) {
 	s.DisabledTools = val
+}
+
+// Ref: #/components/schemas/UpsertToolSettingsResult
+type UpsertToolSettingsResult struct {
+	Success       bool   `json:"success"`
+	EnabledCount  OptInt `json:"enabled_count"`
+	DisabledCount OptInt `json:"disabled_count"`
+}
+
+// GetSuccess returns the value of Success.
+func (s *UpsertToolSettingsResult) GetSuccess() bool {
+	return s.Success
+}
+
+// GetEnabledCount returns the value of EnabledCount.
+func (s *UpsertToolSettingsResult) GetEnabledCount() OptInt {
+	return s.EnabledCount
+}
+
+// GetDisabledCount returns the value of DisabledCount.
+func (s *UpsertToolSettingsResult) GetDisabledCount() OptInt {
+	return s.DisabledCount
+}
+
+// SetSuccess sets the value of Success.
+func (s *UpsertToolSettingsResult) SetSuccess(val bool) {
+	s.Success = val
+}
+
+// SetEnabledCount sets the value of EnabledCount.
+func (s *UpsertToolSettingsResult) SetEnabledCount(val OptInt) {
+	s.EnabledCount = val
+}
+
+// SetDisabledCount sets the value of DisabledCount.
+func (s *UpsertToolSettingsResult) SetDisabledCount(val OptInt) {
+	s.DisabledCount = val
 }
 
 // Ref: #/components/schemas/UsageData
@@ -1445,20 +1761,26 @@ func (s *UsagePeriod) SetEnd(val string) {
 
 // Ref: #/components/schemas/UserProfile
 type UserProfile struct {
-	ID             string       `json:"id"`
+	UserID         string       `json:"user_id"`
+	Email          string       `json:"email"`
 	AccountStatus  string       `json:"account_status"`
 	PlanID         string       `json:"plan_id"`
-	DisplayName    OptNilString `json:"display_name"`
-	AvatarURL      OptNilString `json:"avatar_url"`
-	Email          OptNilString `json:"email"`
+	DailyUsed      int          `json:"daily_used"`
+	DailyLimit     int          `json:"daily_limit"`
 	Role           string       `json:"role"`
 	Settings       jx.Raw       `json:"settings"`
+	DisplayName    OptNilString `json:"display_name"`
 	ConnectedCount int          `json:"connected_count"`
 }
 
-// GetID returns the value of ID.
-func (s *UserProfile) GetID() string {
-	return s.ID
+// GetUserID returns the value of UserID.
+func (s *UserProfile) GetUserID() string {
+	return s.UserID
+}
+
+// GetEmail returns the value of Email.
+func (s *UserProfile) GetEmail() string {
+	return s.Email
 }
 
 // GetAccountStatus returns the value of AccountStatus.
@@ -1471,19 +1793,14 @@ func (s *UserProfile) GetPlanID() string {
 	return s.PlanID
 }
 
-// GetDisplayName returns the value of DisplayName.
-func (s *UserProfile) GetDisplayName() OptNilString {
-	return s.DisplayName
+// GetDailyUsed returns the value of DailyUsed.
+func (s *UserProfile) GetDailyUsed() int {
+	return s.DailyUsed
 }
 
-// GetAvatarURL returns the value of AvatarURL.
-func (s *UserProfile) GetAvatarURL() OptNilString {
-	return s.AvatarURL
-}
-
-// GetEmail returns the value of Email.
-func (s *UserProfile) GetEmail() OptNilString {
-	return s.Email
+// GetDailyLimit returns the value of DailyLimit.
+func (s *UserProfile) GetDailyLimit() int {
+	return s.DailyLimit
 }
 
 // GetRole returns the value of Role.
@@ -1496,14 +1813,24 @@ func (s *UserProfile) GetSettings() jx.Raw {
 	return s.Settings
 }
 
+// GetDisplayName returns the value of DisplayName.
+func (s *UserProfile) GetDisplayName() OptNilString {
+	return s.DisplayName
+}
+
 // GetConnectedCount returns the value of ConnectedCount.
 func (s *UserProfile) GetConnectedCount() int {
 	return s.ConnectedCount
 }
 
-// SetID sets the value of ID.
-func (s *UserProfile) SetID(val string) {
-	s.ID = val
+// SetUserID sets the value of UserID.
+func (s *UserProfile) SetUserID(val string) {
+	s.UserID = val
+}
+
+// SetEmail sets the value of Email.
+func (s *UserProfile) SetEmail(val string) {
+	s.Email = val
 }
 
 // SetAccountStatus sets the value of AccountStatus.
@@ -1516,19 +1843,14 @@ func (s *UserProfile) SetPlanID(val string) {
 	s.PlanID = val
 }
 
-// SetDisplayName sets the value of DisplayName.
-func (s *UserProfile) SetDisplayName(val OptNilString) {
-	s.DisplayName = val
+// SetDailyUsed sets the value of DailyUsed.
+func (s *UserProfile) SetDailyUsed(val int) {
+	s.DailyUsed = val
 }
 
-// SetAvatarURL sets the value of AvatarURL.
-func (s *UserProfile) SetAvatarURL(val OptNilString) {
-	s.AvatarURL = val
-}
-
-// SetEmail sets the value of Email.
-func (s *UserProfile) SetEmail(val OptNilString) {
-	s.Email = val
+// SetDailyLimit sets the value of DailyLimit.
+func (s *UserProfile) SetDailyLimit(val int) {
+	s.DailyLimit = val
 }
 
 // SetRole sets the value of Role.
@@ -1539,6 +1861,11 @@ func (s *UserProfile) SetRole(val string) {
 // SetSettings sets the value of Settings.
 func (s *UserProfile) SetSettings(val jx.Raw) {
 	s.Settings = val
+}
+
+// SetDisplayName sets the value of DisplayName.
+func (s *UserProfile) SetDisplayName(val OptNilString) {
+	s.DisplayName = val
 }
 
 // SetConnectedCount sets the value of ConnectedCount.

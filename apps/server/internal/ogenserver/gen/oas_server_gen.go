@@ -13,13 +13,13 @@ type Handler interface {
 	// Complete a user onboarding step.
 	//
 	// POST /v1/me/onboarding
-	CompleteUserOnboarding(ctx context.Context, req *CompleteOnboardingBody) (*SuccessResult, error)
+	CompleteUserOnboarding(ctx context.Context, req *CompleteOnboardingBody) (*OnboardingResult, error)
 	// CreatePrompt implements createPrompt operation.
 	//
 	// Create a prompt.
 	//
 	// POST /v1/me/prompts
-	CreatePrompt(ctx context.Context, req *CreatePromptBody) (*Prompt, error)
+	CreatePrompt(ctx context.Context, req *CreatePromptBody) (*UpsertPromptResult, error)
 	// DeleteCredential implements deleteCredential operation.
 	//
 	// Delete credentials for a module.
@@ -37,7 +37,7 @@ type Handler interface {
 	// Delete a prompt.
 	//
 	// DELETE /v1/me/prompts/{id}
-	DeletePrompt(ctx context.Context, params DeletePromptParams) (*SuccessResult, error)
+	DeletePrompt(ctx context.Context, params DeletePromptParams) (*DeletePromptResult, error)
 	// GenerateApiKey implements generateApiKey operation.
 	//
 	// Generate a new API key.
@@ -67,7 +67,7 @@ type Handler interface {
 	// Get a prompt by ID.
 	//
 	// GET /v1/me/prompts/{id}
-	GetPrompt(ctx context.Context, params GetPromptParams) (*Prompt, error)
+	GetPrompt(ctx context.Context, params GetPromptParams) (*GetPromptResult, error)
 	// GetStripeCustomerId implements getStripeCustomerId operation.
 	//
 	// Get linked Stripe customer ID.
@@ -145,13 +145,13 @@ type Handler interface {
 	// Revoke an OAuth consent.
 	//
 	// DELETE /v1/me/oauth/consents/{id}
-	RevokeOAuthConsent(ctx context.Context, params RevokeOAuthConsentParams) (*SuccessResult, error)
+	RevokeOAuthConsent(ctx context.Context, params RevokeOAuthConsentParams) (*RevokeConsentResult, error)
 	// UpdatePrompt implements updatePrompt operation.
 	//
 	// Update a prompt.
 	//
 	// PUT /v1/me/prompts/{id}
-	UpdatePrompt(ctx context.Context, req *UpdatePromptBody, params UpdatePromptParams) (*SuccessResult, error)
+	UpdatePrompt(ctx context.Context, req *UpdatePromptBody, params UpdatePromptParams) (*UpsertPromptResult, error)
 	// UpdateSettings implements updateSettings operation.
 	//
 	// Update user settings.
@@ -163,7 +163,7 @@ type Handler interface {
 	// Create or update credentials for a module.
 	//
 	// PUT /v1/me/credentials/{module}
-	UpsertCredential(ctx context.Context, req *UpsertCredentialBody, params UpsertCredentialParams) (*SuccessResult, error)
+	UpsertCredential(ctx context.Context, req *UpsertCredentialBody, params UpsertCredentialParams) (*UpsertCredentialResult, error)
 	// UpsertModuleDescription implements upsertModuleDescription operation.
 	//
 	// Update module description.
@@ -181,7 +181,7 @@ type Handler interface {
 	// Update tool enable/disable settings for a module.
 	//
 	// PUT /v1/me/modules/{name}/tools
-	UpsertToolSettings(ctx context.Context, req *UpsertToolSettingsBody, params UpsertToolSettingsParams) (*SuccessResult, error)
+	UpsertToolSettings(ctx context.Context, req *UpsertToolSettingsBody, params UpsertToolSettingsParams) (*UpsertToolSettingsResult, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

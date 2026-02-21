@@ -50,10 +50,11 @@ func (h *handler) ListModules(ctx context.Context) ([]gen.ModuleWithTools, error
 			ID:     m.ID,
 			Name:   m.Name,
 			Status: m.Status,
-			Tools:  jx.Raw(m.Tools),
 		}
-		if !m.CreatedAt.IsZero() {
-			out[i].CreatedAt = gen.NewOptDateTime(m.CreatedAt)
+		// Tools is []jx.Raw; wrap the JSONB array items
+		var items []jx.Raw
+		if err := json.Unmarshal(m.Tools, &items); err == nil {
+			out[i].Tools = items
 		}
 	}
 	return out, nil
@@ -92,22 +93,41 @@ func (h *handler) GetMyProfile(ctx context.Context) (*gen.UserProfile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("user not found")
 	}
+
+	email := ""
+	if profile.Email != nil {
+		email = *profile.Email
+	}
+
+	// Compute daily usage
+	now := time.Now().UTC()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	usage, _ := db.GetUsageByDateRange(h.db, userID, startOfDay, endOfDay)
+	dailyUsed := 0
+	if usage != nil {
+		dailyUsed = usage.TotalUsed
+	}
+	// Get daily limit from plan
+	dailyLimit := 0
+	var plan db.Plan
+	if h.db.Select("daily_limit").Where("id = ?", profile.PlanID).First(&plan).Error == nil {
+		dailyLimit = plan.DailyLimit
+	}
+
 	out := &gen.UserProfile{
-		ID:             profile.ID,
+		UserID:         profile.ID,
+		Email:          email,
 		AccountStatus:  profile.AccountStatus,
 		PlanID:         profile.PlanID,
+		DailyUsed:      dailyUsed,
+		DailyLimit:     dailyLimit,
 		Role:           profile.Role,
 		Settings:       jx.Raw(profile.Settings),
 		ConnectedCount: profile.ConnectedCount,
 	}
 	if profile.DisplayName != nil {
 		out.DisplayName = gen.NewOptNilString(*profile.DisplayName)
-	}
-	if profile.AvatarURL != nil {
-		out.AvatarURL = gen.NewOptNilString(*profile.AvatarURL)
-	}
-	if profile.Email != nil {
-		out.Email = gen.NewOptNilString(*profile.Email)
 	}
 	return out, nil
 }
@@ -119,14 +139,14 @@ func (h *handler) UpdateSettings(ctx context.Context, req *gen.UpdateSettingsBod
 	return &gen.SuccessResult{Success: true}, nil
 }
 
-func (h *handler) CompleteUserOnboarding(ctx context.Context, req *gen.CompleteOnboardingBody) (*gen.SuccessResult, error) {
+func (h *handler) CompleteUserOnboarding(ctx context.Context, req *gen.CompleteOnboardingBody) (*gen.OnboardingResult, error) {
 	if req.EventID == "" {
-		return nil, fmt.Errorf("event_id is required")
+		return &gen.OnboardingResult{Success: false, Error: gen.NewOptString("event_id is required")}, nil
 	}
 	if err := db.CompleteOnboarding(h.db, getUserID(ctx), req.EventID); err != nil {
-		return nil, fmt.Errorf("failed to complete onboarding")
+		return &gen.OnboardingResult{Success: false, Error: gen.NewOptString("failed to complete onboarding")}, nil
 	}
-	return &gen.SuccessResult{Success: true}, nil
+	return &gen.OnboardingResult{Success: true}, nil
 }
 
 // ── Usage ────────────────────────────────────────────────────
@@ -183,20 +203,22 @@ func (h *handler) ListCredentials(ctx context.Context) ([]gen.Credential, error)
 	}
 	out := make([]gen.Credential, len(creds))
 	for i, c := range creds {
+		createdAt, _ := time.Parse(time.RFC3339, c.CreatedAt)
+		updatedAt, _ := time.Parse(time.RFC3339, c.UpdatedAt)
 		out[i] = gen.Credential{
 			Module:    c.Module,
-			CreatedAt: c.CreatedAt,
-			UpdatedAt: c.UpdatedAt,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		}
 	}
 	return out, nil
 }
 
-func (h *handler) UpsertCredential(ctx context.Context, req *gen.UpsertCredentialBody, params gen.UpsertCredentialParams) (*gen.SuccessResult, error) {
+func (h *handler) UpsertCredential(ctx context.Context, req *gen.UpsertCredentialBody, params gen.UpsertCredentialParams) (*gen.UpsertCredentialResult, error) {
 	if err := db.UpsertCredential(h.db, getUserID(ctx), params.Module, string(req.Credentials)); err != nil {
 		return nil, fmt.Errorf("failed to upsert credential")
 	}
-	return &gen.SuccessResult{Success: true}, nil
+	return &gen.UpsertCredentialResult{Success: true, Module: params.Module}, nil
 }
 
 func (h *handler) DeleteCredential(ctx context.Context, params gen.DeleteCredentialParams) (*gen.SuccessResult, error) {
@@ -216,10 +238,9 @@ func (h *handler) ListApiKeys(ctx context.Context) ([]gen.ApiKey, error) {
 	out := make([]gen.ApiKey, len(keys))
 	for i, k := range keys {
 		out[i] = gen.ApiKey{
-			ID:        k.ID,
-			KeyPrefix: k.KeyPrefix,
-			Name:      k.Name,
-			CreatedAt: gen.NewOptDateTime(k.CreatedAt),
+			ID:          k.ID,
+			KeyPrefix:   k.KeyPrefix,
+			DisplayName: k.Name,
 		}
 		if k.ExpiresAt != nil {
 			out[i].ExpiresAt = gen.NewOptNilDateTime(*k.ExpiresAt)
@@ -231,18 +252,16 @@ func (h *handler) ListApiKeys(ctx context.Context) ([]gen.ApiKey, error) {
 		} else {
 			out[i].LastUsedAt.SetToNull()
 		}
+		// DB does not track revoked_at (keys are deleted on revoke)
+		out[i].RevokedAt.SetToNull()
 	}
 	return out, nil
 }
 
 func (h *handler) GenerateApiKey(ctx context.Context, req *gen.GenerateApiKeyBody) (*gen.GenerateApiKeyResult, error) {
-	// Accept both "name" and "display_name"
-	name := req.Name.Or("")
+	name := req.DisplayName
 	if name == "" {
-		name = req.DisplayName
-	}
-	if name == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, fmt.Errorf("display_name is required")
 	}
 
 	userID := getUserID(ctx)
@@ -251,9 +270,6 @@ func (h *handler) GenerateApiKey(ctx context.Context, req *gen.GenerateApiKeyBod
 	var expiresAt *time.Time
 	if ea, ok := req.ExpiresAt.Get(); ok {
 		expiresAt = &ea
-	} else if ei, ok := req.ExpiresIn.Get(); ok {
-		t := time.Now().Add(time.Duration(ei) * time.Second)
-		expiresAt = &t
 	}
 
 	key, err := db.CreateAPIKey(h.db, userID, "", "mpt_", name, expiresAt)
@@ -272,19 +288,10 @@ func (h *handler) GenerateApiKey(ctx context.Context, req *gen.GenerateApiKeyBod
 		"key_prefix": prefix,
 	})
 
-	out := &gen.GenerateApiKeyResult{
-		ID:          key.ID,
-		APIKey:      token,
-		Key:         gen.NewOptString(token),
-		KeyPrefix:   prefix,
-		Name:        name,
-		DisplayName: gen.NewOptString(name),
-		CreatedAt:   gen.NewOptDateTime(key.CreatedAt),
-	}
-	if expiresAt != nil {
-		out.ExpiresAt = gen.NewOptNilDateTime(*expiresAt)
-	}
-	return out, nil
+	return &gen.GenerateApiKeyResult{
+		APIKey:    token,
+		KeyPrefix: prefix,
+	}, nil
 }
 
 func (h *handler) RevokeApiKey(ctx context.Context, params gen.RevokeApiKeyParams) (*gen.SuccessResult, error) {
@@ -305,23 +312,34 @@ func (h *handler) ListPrompts(ctx context.Context, params gen.ListPromptsParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list prompts")
 	}
+	moduleNameMap := h.buildModuleNameMap()
 	out := make([]gen.Prompt, len(prompts))
 	for i, p := range prompts {
-		out[i] = dbPromptToGen(p)
+		out[i] = dbPromptToGen(p, moduleNameMap)
 	}
 	return out, nil
 }
 
-func (h *handler) GetPrompt(ctx context.Context, params gen.GetPromptParams) (*gen.Prompt, error) {
+func (h *handler) GetPrompt(ctx context.Context, params gen.GetPromptParams) (*gen.GetPromptResult, error) {
 	p, err := db.GetPrompt(h.db, getUserID(ctx), params.ID)
 	if err != nil {
-		return nil, fmt.Errorf("prompt not found")
+		return &gen.GetPromptResult{Found: false, Error: gen.NewOptString("prompt not found")}, nil
 	}
-	out := dbPromptToGen(*p)
-	return &out, nil
+	moduleName := h.resolveModuleName(p.ModuleID)
+	return &gen.GetPromptResult{
+		Found:       true,
+		ID:          gen.NewOptString(p.ID),
+		Name:        gen.NewOptString(p.Name),
+		Content:     gen.NewOptString(p.Content),
+		Enabled:     gen.NewOptBool(p.Enabled),
+		CreatedAt:   gen.NewOptDateTime(p.CreatedAt),
+		UpdatedAt:   gen.NewOptDateTime(p.UpdatedAt),
+		ModuleName:  optNilStringFromPtr(moduleName),
+		Description: optNilStringFromPtr(p.Description),
+	}, nil
 }
 
-func (h *handler) CreatePrompt(ctx context.Context, req *gen.CreatePromptBody) (*gen.Prompt, error) {
+func (h *handler) CreatePrompt(ctx context.Context, req *gen.CreatePromptBody) (*gen.UpsertPromptResult, error) {
 	p := db.Prompt{
 		UserID:  getUserID(ctx),
 		Name:    req.Name,
@@ -331,43 +349,51 @@ func (h *handler) CreatePrompt(ctx context.Context, req *gen.CreatePromptBody) (
 	if desc, ok := req.Description.Get(); ok {
 		p.Description = &desc
 	}
-	// module_name is handled via the Prompt struct's json binding
-	if err := db.CreatePrompt(h.db, &p); err != nil {
-		return nil, fmt.Errorf("failed to create prompt")
+	if mn, ok := req.ModuleName.Get(); ok {
+		moduleID := h.resolveModuleID(mn)
+		p.ModuleID = moduleID
 	}
-	out := dbPromptToGen(p)
-	return &out, nil
+	if err := db.CreatePrompt(h.db, &p); err != nil {
+		return &gen.UpsertPromptResult{Success: false, Error: gen.NewOptString("failed to create prompt")}, nil
+	}
+	return &gen.UpsertPromptResult{
+		Success: true,
+		ID:      gen.NewOptString(p.ID),
+		Action:  gen.NewOptString("created"),
+	}, nil
 }
 
-func (h *handler) UpdatePrompt(ctx context.Context, req *gen.UpdatePromptBody, params gen.UpdatePromptParams) (*gen.SuccessResult, error) {
-	updates := map[string]interface{}{}
-	if v, ok := req.Name.Get(); ok {
-		updates["name"] = v
-	}
-	if v, ok := req.Content.Get(); ok {
-		updates["content"] = v
-	}
-	if v, ok := req.Enabled.Get(); ok {
-		updates["enabled"] = v
+func (h *handler) UpdatePrompt(ctx context.Context, req *gen.UpdatePromptBody, params gen.UpdatePromptParams) (*gen.UpsertPromptResult, error) {
+	updates := map[string]interface{}{
+		"name":    req.Name,
+		"content": req.Content,
+		"enabled": req.Enabled,
 	}
 	if v, ok := req.Description.Get(); ok {
 		updates["description"] = v
 	}
 	if v, ok := req.ModuleName.Get(); ok {
-		updates["module_name"] = v
+		moduleID := h.resolveModuleID(v)
+		if moduleID != nil {
+			updates["module_id"] = *moduleID
+		}
 	}
 
 	if err := db.UpdatePrompt(h.db, getUserID(ctx), params.ID, updates); err != nil {
-		return nil, fmt.Errorf("prompt not found")
+		return &gen.UpsertPromptResult{Success: false, Error: gen.NewOptString("prompt not found")}, nil
 	}
-	return &gen.SuccessResult{Success: true}, nil
+	return &gen.UpsertPromptResult{
+		Success: true,
+		ID:      gen.NewOptString(params.ID),
+		Action:  gen.NewOptString("updated"),
+	}, nil
 }
 
-func (h *handler) DeletePrompt(ctx context.Context, params gen.DeletePromptParams) (*gen.SuccessResult, error) {
+func (h *handler) DeletePrompt(ctx context.Context, params gen.DeletePromptParams) (*gen.DeletePromptResult, error) {
 	if err := db.DeletePrompt(h.db, getUserID(ctx), params.ID); err != nil {
-		return nil, fmt.Errorf("prompt not found")
+		return &gen.DeletePromptResult{Success: false, Error: gen.NewOptString("prompt not found")}, nil
 	}
-	return &gen.SuccessResult{Success: true}, nil
+	return &gen.DeletePromptResult{Success: true}, nil
 }
 
 // ── Module Config ────────────────────────────────────────────
@@ -391,11 +417,15 @@ func (h *handler) GetModuleConfig(ctx context.Context) ([]gen.ModuleConfig, erro
 	return out, nil
 }
 
-func (h *handler) UpsertToolSettings(ctx context.Context, req *gen.UpsertToolSettingsBody, params gen.UpsertToolSettingsParams) (*gen.SuccessResult, error) {
+func (h *handler) UpsertToolSettings(ctx context.Context, req *gen.UpsertToolSettingsBody, params gen.UpsertToolSettingsParams) (*gen.UpsertToolSettingsResult, error) {
 	if err := db.UpsertToolSettings(h.db, getUserID(ctx), params.Name, req.EnabledTools, req.DisabledTools); err != nil {
 		return nil, fmt.Errorf("module not found")
 	}
-	return &gen.SuccessResult{Success: true}, nil
+	return &gen.UpsertToolSettingsResult{
+		Success:       true,
+		EnabledCount:  gen.NewOptInt(len(req.EnabledTools)),
+		DisabledCount: gen.NewOptInt(len(req.DisabledTools)),
+	}, nil
 }
 
 func (h *handler) UpsertModuleDescription(ctx context.Context, req *gen.UpsertModuleDescriptionBody, params gen.UpsertModuleDescriptionParams) (*gen.SuccessResult, error) {
@@ -414,20 +444,22 @@ func (h *handler) ListOAuthConsents(ctx context.Context) ([]gen.OAuthConsent, er
 	}
 	out := make([]gen.OAuthConsent, len(consents))
 	for i, c := range consents {
+		grantedAt, _ := time.Parse(time.RFC3339, c.CreatedAt)
 		out[i] = gen.OAuthConsent{
 			ID:        c.ID,
-			Module:    c.Module,
-			CreatedAt: c.CreatedAt,
+			ClientID:  c.Module,
+			Scopes:    "",
+			GrantedAt: grantedAt,
 		}
 	}
 	return out, nil
 }
 
-func (h *handler) RevokeOAuthConsent(ctx context.Context, params gen.RevokeOAuthConsentParams) (*gen.SuccessResult, error) {
+func (h *handler) RevokeOAuthConsent(ctx context.Context, params gen.RevokeOAuthConsentParams) (*gen.RevokeConsentResult, error) {
 	if err := db.RevokeOAuthConsent(h.db, getUserID(ctx), params.ID); err != nil {
 		return nil, fmt.Errorf("consent not found")
 	}
-	return &gen.SuccessResult{Success: true}, nil
+	return &gen.RevokeConsentResult{Revoked: gen.NewOptBool(true)}, nil
 }
 
 // ── OAuth App Credentials ────────────────────────────────────
@@ -438,7 +470,7 @@ func (h *handler) GetOAuthAppCredentials(ctx context.Context, params gen.GetOAut
 		return nil, fmt.Errorf("OAuth app not configured for provider: %s", params.Provider)
 	}
 	return &gen.OAuthAppCredentials{
-		Provider:     app.Provider,
+		Provider:     gen.NewOptString(app.Provider),
 		ClientID:     app.ClientID,
 		ClientSecret: app.ClientSecret,
 		RedirectURI:  app.RedirectURI,
@@ -455,14 +487,11 @@ func (h *handler) ListOAuthApps(ctx context.Context) ([]gen.OAuthApp, error) {
 	out := make([]gen.OAuthApp, len(apps))
 	for i, a := range apps {
 		out[i] = gen.OAuthApp{
-			ID:           gen.NewOptString(a.ID),
-			Provider:     gen.NewOptString(a.Provider),
-			ClientID:     gen.NewOptString(a.ClientID),
-			ClientSecret: gen.NewOptString(a.ClientSecret),
-			RedirectURI:  gen.NewOptString(a.RedirectURI),
-			Enabled:      gen.NewOptBool(a.Enabled),
-			CreatedAt:    gen.NewOptDateTime(a.CreatedAt),
-			UpdatedAt:    gen.NewOptDateTime(a.UpdatedAt),
+			Provider:  gen.NewOptString(a.Provider),
+			ClientID:  gen.NewOptString(a.ClientID),
+			RedirectURI: gen.NewOptString(a.RedirectURI),
+			Enabled:   gen.NewOptBool(a.Enabled),
+			CreatedAt: gen.NewOptDateTime(a.CreatedAt),
 		}
 	}
 	return out, nil
@@ -474,7 +503,7 @@ func (h *handler) UpsertOAuthApp(ctx context.Context, req *gen.UpsertOAuthAppBod
 		ClientID:     req.ClientID,
 		ClientSecret: req.ClientSecret,
 		RedirectURI:  req.RedirectURI,
-		Enabled:      req.Enabled.Or(true),
+		Enabled:      req.Enabled,
 	}
 	if err := db.UpsertOAuthApp(h.db, app); err != nil {
 		return nil, fmt.Errorf("failed to upsert OAuth app")
@@ -499,8 +528,9 @@ func (h *handler) ListAllOAuthConsents(ctx context.Context) ([]gen.OAuthConsentA
 		out[i] = gen.OAuthConsentAdmin{
 			ID:        c.ID,
 			UserID:    c.UserID,
-			Module:    c.Module,
-			CreatedAt: c.CreatedAt,
+			ClientID:  c.Module,
+			Scopes:    "",
+			GrantedAt: c.CreatedAt, // UserCredential.CreatedAt is time.Time
 		}
 	}
 	return out, nil
@@ -508,10 +538,9 @@ func (h *handler) ListAllOAuthConsents(ctx context.Context) ([]gen.OAuthConsentA
 
 // ── Helpers ──────────────────────────────────────────────────
 
-func dbPromptToGen(p db.Prompt) gen.Prompt {
+func dbPromptToGen(p db.Prompt, moduleNameMap map[string]string) gen.Prompt {
 	out := gen.Prompt{
 		ID:        p.ID,
-		UserID:    gen.NewOptString(p.UserID),
 		Name:      p.Name,
 		Content:   p.Content,
 		Enabled:   p.Enabled,
@@ -522,7 +551,48 @@ func dbPromptToGen(p db.Prompt) gen.Prompt {
 		out.Description = gen.NewOptNilString(*p.Description)
 	}
 	if p.ModuleID != nil {
-		out.ModuleID = gen.NewOptNilString(*p.ModuleID)
+		if name, ok := moduleNameMap[*p.ModuleID]; ok {
+			out.ModuleName = gen.NewOptNilString(name)
+		}
 	}
 	return out
+}
+
+func optNilStringFromPtr(s *string) gen.OptNilString {
+	if s != nil {
+		return gen.NewOptNilString(*s)
+	}
+	return gen.OptNilString{}
+}
+
+// buildModuleNameMap returns a map of module ID → module name.
+func (h *handler) buildModuleNameMap() map[string]string {
+	var modules []db.Module
+	h.db.Select("id", "name").Find(&modules)
+	m := make(map[string]string, len(modules))
+	for _, mod := range modules {
+		m[mod.ID] = mod.Name
+	}
+	return m
+}
+
+// resolveModuleName returns a module name pointer from a module ID pointer.
+func (h *handler) resolveModuleName(moduleID *string) *string {
+	if moduleID == nil {
+		return nil
+	}
+	var mod db.Module
+	if h.db.Select("name").Where("id = ?", *moduleID).First(&mod).Error == nil {
+		return &mod.Name
+	}
+	return nil
+}
+
+// resolveModuleID returns a module ID pointer from a module name.
+func (h *handler) resolveModuleID(moduleName string) *string {
+	var mod db.Module
+	if h.db.Select("id").Where("name = ?", moduleName).First(&mod).Error == nil {
+		return &mod.ID
+	}
+	return nil
 }
