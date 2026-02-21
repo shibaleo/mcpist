@@ -240,19 +240,30 @@ async function main() {
     console.log(`  ${key}: ${issues.length} issues`);
   }
 
-  // Merge: Jira rows replace existing jira rows, local rows are preserved
+  // Merge: Jira rows update existing, deleted issues are marked as "deleted"
   const existing = parseExistingCSV(BACKLOG_PATH);
+  const existingJiraRows = existing.filter((r) => r.source === "jira");
   const localRows = existing.filter((r) => r.source !== "jira");
 
   const jiraRows = allIssues.map(issueToRow);
-  const allRows = [...jiraRows, ...localRows];
+  const jiraIds = new Set(jiraRows.map((r) => r.id));
+
+  // Rows in CSV but not in Jira anymore → mark as deleted
+  const deletedRows = existingJiraRows
+    .filter((r) => !jiraIds.has(r.id) && r.status !== "deleted")
+    .map((r) => ({ ...r, status: "deleted", updated: new Date().toISOString().slice(0, 10) }));
+
+  // Already-deleted rows from previous syncs
+  const previouslyDeleted = existingJiraRows.filter((r) => r.status === "deleted" && !jiraIds.has(r.id));
+
+  const allRows = [...jiraRows, ...deletedRows, ...previouslyDeleted, ...localRows];
 
   const csvContent =
     [CSV_COLUMNS.join(","), ...allRows.map(rowToCSVLine)].join("\n") + "\n";
 
   writeFileSync(BACKLOG_PATH, csvContent, "utf-8");
   console.log(`\nWrote ${allRows.length} rows to dev/workdir/backlog.csv`);
-  console.log(`  Jira: ${jiraRows.length}, Local: ${localRows.length}`);
+  console.log(`  Jira: ${jiraRows.length}, Deleted: ${deletedRows.length + previouslyDeleted.length}, Local: ${localRows.length}`);
 }
 
 main().catch((err) => {
