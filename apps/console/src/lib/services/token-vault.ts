@@ -3,7 +3,6 @@ import {
   listCredentials,
   upsertCredential,
   deleteCredential,
-  saveDefaultToolSettingsAction,
 } from './token-vault-actions'
 
 // RPC: list_credentials の戻り値に対応
@@ -146,8 +145,7 @@ export async function upsertTokenWithVerification(
     throw new TokenVaultError('接続の確認に失敗しました')
   }
 
-  // Step 4: デフォルトツール設定を保存（Server Action 経由）
-  await saveDefaultToolSettingsAction(params.service)
+  // Step 4: デフォルトツール設定はサーバー側の UpsertCredential で自動作成される
 
   // Step 5: 完了
   onProgress({ step: 'completed', message: '接続完了' })

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 import crypto from "crypto"
 import { cookies } from "next/headers"
 
@@ -185,9 +184,6 @@ export async function GET(request: Request) {
       params: { path: { module: "trello" } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, "trello")
 
     // 成功
     const redirectUrl = new URL(returnTo, request.url)

@@ -11,7 +11,6 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useAppearance, accentColors } from "@/components/appearance-context"
 import {
   getModules,
-  isDefaultEnabled,
   isDangerous,
   getModuleDescription,
   getToolDescription,
@@ -146,10 +145,10 @@ export default function ToolsPage() {
         return localToolSettings[moduleId]
       }
 
-      // なければデフォルト値を構築
+      // DBにレコードがない場合は全て無効（サーバーが接続時に自動作成するので通常到達しない）
       const defaults: Record<string, boolean> = {}
       mod.tools.forEach((t) => {
-        defaults[t.id] = isDefaultEnabled(t)
+        defaults[t.id] = false
       })
       return defaults
     },
@@ -264,38 +263,6 @@ export default function ToolsPage() {
       setToolSettings((prev) => ({
         ...prev,
         [moduleId]: allDisabled,
-      }))
-    } catch (error) {
-      // Revert on failure
-      setLocalToolSettings((prev) => ({
-        ...prev,
-        [moduleId]: current,
-      }))
-      toast.error("ツールの保存に失敗しました")
-    }
-  }
-
-  const handleSelectDefault = async (moduleId: string) => {
-    const mod = modules.find((m) => m.name === moduleId)
-    if (!mod) return
-
-    const current = getModuleToolSettings(moduleId)
-    const defaults: Record<string, boolean> = {}
-    mod.tools.forEach((t) => {
-      defaults[t.id] = isDefaultEnabled(t)
-    })
-
-    // Optimistic update
-    setLocalToolSettings((prev) => ({
-      ...prev,
-      [moduleId]: defaults,
-    }))
-
-    try {
-      await saveModuleToolSettings(moduleId, defaults)
-      setToolSettings((prev) => ({
-        ...prev,
-        [moduleId]: defaults,
       }))
     } catch (error) {
       // Revert on failure
@@ -558,9 +525,6 @@ export default function ToolsPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-sm text-foreground">ツール</h3>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleSelectDefault(selectedModule.name)}>
-                  デフォルト
-                </Button>
                 <Button variant="outline" size="sm" onClick={() => handleSelectAll(selectedModule.name)}>
                   全選択
                 </Button>

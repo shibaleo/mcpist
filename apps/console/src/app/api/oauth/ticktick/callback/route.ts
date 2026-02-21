@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const TICKTICK_TOKEN_URL = "https://ticktick.com/oauth/token"
 
@@ -111,9 +110,6 @@ export async function GET(request: Request) {
       params: { path: { module: "ticktick" } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, "ticktick")
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)

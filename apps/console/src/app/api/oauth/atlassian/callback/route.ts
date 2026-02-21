@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
 const ATLASSIAN_RESOURCES_URL = "https://api.atlassian.com/oauth/token/accessible-resources"
@@ -146,9 +145,6 @@ export async function GET(request: Request) {
         params: { path: { module: mod } },
         body: { credentials: tokenCredentials },
       })
-
-      // デフォルトツール設定を保存
-      await saveDefaultToolSettings(null, mod)
     }
 
     // モジュール名を表示用に変換

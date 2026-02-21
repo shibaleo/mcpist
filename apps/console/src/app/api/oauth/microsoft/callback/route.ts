@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
@@ -100,9 +99,6 @@ export async function GET(request: Request) {
       params: { path: { module: "microsoft_todo" } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, "microsoft_todo")
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)

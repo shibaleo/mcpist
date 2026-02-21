@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const AIRTABLE_TOKEN_URL = "https://airtable.com/oauth2/v1/token"
 
@@ -130,9 +129,6 @@ export async function GET(request: Request) {
       params: { path: { module: "airtable" } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, "airtable")
 
     // code_verifier Cookie を削除して成功リダイレクト
     const redirectUrl = new URL(returnTo, request.url)

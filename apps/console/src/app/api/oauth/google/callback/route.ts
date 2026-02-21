@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
@@ -103,9 +102,6 @@ export async function GET(request: Request) {
       params: { path: { module: moduleName } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, moduleName)
 
     // モジュール名を表示用に変換
     const moduleDisplayNames: Record<string, string> = {

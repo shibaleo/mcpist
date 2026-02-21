@@ -23,11 +23,6 @@ export interface ToolDef {
   annotations: ToolAnnotations
 }
 
-/** readOnlyHint: true のツールはデフォルト有効 */
-export function isDefaultEnabled(tool: ToolDef): boolean {
-  return tool.annotations?.readOnlyHint === true
-}
-
 /** destructiveHint が true かつ readOnly でないツールは危険表示 */
 export function isDangerous(tool: ToolDef): boolean {
   return tool.annotations?.readOnlyHint !== true

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const DROPBOX_TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
 
@@ -109,9 +108,6 @@ export async function GET(request: Request) {
       params: { path: { module: "dropbox" } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, "dropbox")
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)

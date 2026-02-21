@@ -1,7 +1,6 @@
 "use server"
 
 import { createWorkerClient } from "@/lib/worker"
-import { getModule, isDefaultEnabled } from "@/lib/modules/module-data"
 import type { ToolSetting, ModuleDescription } from "./tool-settings-types"
 
 export type { ToolSetting, ModuleDescription } from "./tool-settings-types"
@@ -66,37 +65,6 @@ export async function saveModuleToolSettings(
       enabledTools.push(toolId)
     } else {
       disabledTools.push(toolId)
-    }
-  }
-
-  await upsertMyToolSettings(moduleName, enabledTools, disabledTools)
-}
-
-/**
- * モジュールのデフォルトツール設定を保存
- * サービス接続時に呼び出す（トークン保存後）
- * @deprecated Use saveDefaultToolSettingsAction from token-vault-actions.ts instead
- */
-export async function saveDefaultToolSettings(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _supabase: any,
-  moduleName: string
-): Promise<void> {
-  const mod = await getModule(moduleName)
-  if (!mod) return
-
-  const existing = await getModuleConfig(moduleName)
-
-  if (existing && existing.length > 0) return
-
-  const enabledTools: string[] = []
-  const disabledTools: string[] = []
-
-  for (const tool of mod.tools) {
-    if (isDefaultEnabled(tool)) {
-      enabledTools.push(tool.id)
-    } else {
-      disabledTools.push(tool.id)
     }
   }
 

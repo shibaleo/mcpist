@@ -74,7 +74,7 @@ func UpsertCredential(db *gorm.DB, userID, module, credentials string) error {
 		}
 
 		type toolAnnotations struct {
-			DestructiveHint *bool `json:"destructiveHint,omitempty"`
+			ReadOnlyHint *bool `json:"readOnlyHint,omitempty"`
 		}
 		type toolDef struct {
 			ID          string          `json:"id"`
@@ -85,17 +85,14 @@ func UpsertCredential(db *gorm.DB, userID, module, credentials string) error {
 			return nil // Can't parse — skip
 		}
 
-		// Use raw SQL to avoid GORM's zero-value problem with bool fields.
+		// Create records for ALL tools; readOnly tools are enabled by default.
 		const upsertSQL = `INSERT INTO mcpist.tool_settings (user_id, module_id, tool_id, enabled)
 			VALUES (?, ?, ?, ?)
 			ON CONFLICT (user_id, module_id, tool_id)
 			DO UPDATE SET enabled = EXCLUDED.enabled`
 		for _, t := range tools {
-			// Skip destructive tools — user must explicitly enable them
-			if t.Annotations.DestructiveHint != nil && *t.Annotations.DestructiveHint {
-				continue
-			}
-			if err := tx.Exec(upsertSQL, userID, mod.ID, t.ID, true).Error; err != nil {
+			enabled := t.Annotations.ReadOnlyHint != nil && *t.Annotations.ReadOnlyHint
+			if err := tx.Exec(upsertSQL, userID, mod.ID, t.ID, enabled).Error; err != nil {
 				return err
 			}
 		}

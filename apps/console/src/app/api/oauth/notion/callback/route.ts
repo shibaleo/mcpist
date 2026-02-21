@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
-import { saveDefaultToolSettings } from "@/lib/mcp/tool-settings"
 
 const NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 
@@ -111,9 +110,6 @@ export async function GET(request: Request) {
       params: { path: { module: "notion" } },
       body: { credentials: tokenCredentials },
     })
-
-    // デフォルトツール設定を保存
-    await saveDefaultToolSettings(null, "notion")
 
     // 成功時はreturnToにリダイレクト
     const redirectUrl = new URL(returnTo, request.url)
