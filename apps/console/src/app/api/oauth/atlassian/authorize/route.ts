@@ -5,7 +5,6 @@ import { createWorkerClient } from "@/lib/worker"
 const ATLASSIAN_AUTH_URL = "https://auth.atlassian.com/authorize"
 
 // モジュールごとのスコープ定義
-// Jira と Confluence で共通のスコープを使用
 const MODULE_SCOPES: Record<string, string[]> = {
   jira: [
     "read:jira-work",
@@ -16,23 +15,6 @@ const MODULE_SCOPES: Record<string, string[]> = {
   ],
   confluence: [
     // Granular scopes (required for Confluence Cloud API v2)
-    "read:space:confluence",
-    "read:page:confluence",
-    "write:page:confluence",
-    "read:content-details:confluence",
-    "write:comment:confluence",
-    "read:comment:confluence",
-    "read:label:confluence",
-    "write:label:confluence",
-    "search:confluence",
-    "offline_access",
-  ],
-  // Jira + Confluence の両方を使う場合
-  atlassian: [
-    "read:jira-work",
-    "write:jira-work",
-    "read:jira-user",
-    "manage:jira-project",
     "read:space:confluence",
     "read:page:confluence",
     "write:page:confluence",
@@ -56,16 +38,15 @@ export async function GET(request: Request) {
   // パラメータを取得
   const url = new URL(request.url)
   const returnTo = url.searchParams.get("returnTo") || "/tools"
-  const moduleName = url.searchParams.get("module") || "atlassian"
-
-  // スコープの取得（未知のモジュールはエラー）
-  const scopes = MODULE_SCOPES[moduleName]
-  if (!scopes) {
+  const moduleName = url.searchParams.get("module")
+  if (!moduleName || !(moduleName in MODULE_SCOPES)) {
     return NextResponse.json(
-      { error: `Unknown module: ${moduleName}` },
+      { error: `Unknown or missing module: ${moduleName}` },
       { status: 400 }
     )
   }
+
+  const scopes = MODULE_SCOPES[moduleName]
 
   try {
     // OAuth App の認証情報を取得（service role 権限で）

@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
   // state から returnTo と module を取り出す
   let returnTo = "/tools"
-  let moduleName: string = "atlassian"
+  let moduleName: string = ""
   if (stateParam) {
     try {
       const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
@@ -41,6 +41,13 @@ export async function GET(request: Request) {
     } catch {
       // state のパースに失敗した場合はデフォルト値を使用
     }
+  }
+
+  // module チェック
+  if (!moduleName) {
+    const errorUrl = new URL(returnTo, request.url)
+    errorUrl.searchParams.set("error", "Missing module in state")
+    return NextResponse.redirect(errorUrl)
   }
 
   // エラーチェック
@@ -137,21 +144,16 @@ export async function GET(request: Request) {
       },
     }
 
-    // モジュールに応じて保存先を決定
-    const modulesToSave = moduleName === "atlassian" ? ["jira", "confluence"] : [moduleName]
-
-    for (const mod of modulesToSave) {
-      await client.PUT("/v1/me/credentials/{module}", {
-        params: { path: { module: mod } },
-        body: { credentials: tokenCredentials },
-      })
-    }
+    // モジュールにクレデンシャルを保存
+    await client.PUT("/v1/me/credentials/{module}", {
+      params: { path: { module: moduleName } },
+      body: { credentials: tokenCredentials },
+    })
 
     // モジュール名を表示用に変換
     const moduleDisplayNames: Record<string, string> = {
       jira: "Jira",
       confluence: "Confluence",
-      atlassian: "Atlassian (Jira & Confluence)",
     }
     const displayName = moduleDisplayNames[moduleName] || moduleName
 

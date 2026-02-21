@@ -241,26 +241,6 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     ],
     serviceId: "todoist",
   },
-  atlassian: {
-    authUrl: "https://auth.atlassian.com/authorize",
-    scopes: [
-      "read:jira-work",
-      "write:jira-work",
-      "read:jira-user",
-      "manage:jira-project",
-      "read:space:confluence",
-      "read:page:confluence",
-      "write:page:confluence",
-      "read:content-details:confluence",
-      "write:comment:confluence",
-      "read:comment:confluence",
-      "read:label:confluence",
-      "write:label:confluence",
-      "search:confluence",
-      "offline_access",
-    ],
-    serviceId: "jira",  // Jira をプライマリとして使用
-  },
   "atlassian-jira": {
     authUrl: "https://auth.atlassian.com/authorize",
     scopes: [
@@ -384,8 +364,6 @@ export async function getOAuthAuthorizationUrl(
   } else if (provider === "atlassian-confluence") {
     apiPath = "atlassian"
     params.set("module", "confluence")
-  } else if (provider === "atlassian") {
-    params.set("module", "atlassian")
   }
 
   const url = `/api/oauth/${apiPath}/authorize${params.toString() ? `?${params.toString()}` : ""}`
