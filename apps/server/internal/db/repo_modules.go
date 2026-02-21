@@ -113,25 +113,22 @@ func UpsertToolSettings(db *gorm.DB, userID, moduleName string, enabled, disable
 		return fmt.Errorf("module not found: %s", moduleName)
 	}
 
+	// Use raw SQL to avoid GORM's zero-value problem:
+	// GORM treats bool false as "unset" and omits it from INSERT,
+	// causing DB DEFAULT (true) to always be applied.
+	const upsertSQL = `INSERT INTO mcpist.tool_settings (user_id, module_id, tool_id, enabled)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT (user_id, module_id, tool_id)
+		DO UPDATE SET enabled = EXCLUDED.enabled`
+
 	return db.Transaction(func(tx *gorm.DB) error {
-		// NOTE: Select() is required to force GORM to include the "enabled" column
-		// in the INSERT. Without it, GORM treats bool zero-value (false) as "unset"
-		// and omits the column, causing the DB DEFAULT (true) to be applied.
 		for _, toolID := range enabled {
-			ts := ToolSetting{UserID: userID, ModuleID: mod.ID, ToolID: toolID, Enabled: true}
-			if err := tx.Select("user_id", "module_id", "tool_id", "enabled").Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "user_id"}, {Name: "module_id"}, {Name: "tool_id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"enabled"}),
-			}).Create(&ts).Error; err != nil {
+			if err := tx.Exec(upsertSQL, userID, mod.ID, toolID, true).Error; err != nil {
 				return err
 			}
 		}
 		for _, toolID := range disabled {
-			ts := ToolSetting{UserID: userID, ModuleID: mod.ID, ToolID: toolID, Enabled: false}
-			if err := tx.Select("user_id", "module_id", "tool_id", "enabled").Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "user_id"}, {Name: "module_id"}, {Name: "tool_id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"enabled"}),
-			}).Create(&ts).Error; err != nil {
+			if err := tx.Exec(upsertSQL, userID, mod.ID, toolID, false).Error; err != nil {
 				return err
 			}
 		}

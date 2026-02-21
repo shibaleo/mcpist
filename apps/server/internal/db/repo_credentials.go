@@ -85,16 +85,17 @@ func UpsertCredential(db *gorm.DB, userID, module, credentials string) error {
 			return nil // Can't parse — skip
 		}
 
+		// Use raw SQL to avoid GORM's zero-value problem with bool fields.
+		const upsertSQL = `INSERT INTO mcpist.tool_settings (user_id, module_id, tool_id, enabled)
+			VALUES (?, ?, ?, ?)
+			ON CONFLICT (user_id, module_id, tool_id)
+			DO UPDATE SET enabled = EXCLUDED.enabled`
 		for _, t := range tools {
 			// Skip destructive tools — user must explicitly enable them
 			if t.Annotations.DestructiveHint != nil && *t.Annotations.DestructiveHint {
 				continue
 			}
-			ts := ToolSetting{UserID: userID, ModuleID: mod.ID, ToolID: t.ID, Enabled: true}
-			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "user_id"}, {Name: "module_id"}, {Name: "tool_id"}},
-				DoUpdates: clause.AssignmentColumns([]string{"enabled"}),
-			}).Create(&ts).Error; err != nil {
+			if err := tx.Exec(upsertSQL, userID, mod.ID, t.ID, true).Error; err != nil {
 				return err
 			}
 		}
