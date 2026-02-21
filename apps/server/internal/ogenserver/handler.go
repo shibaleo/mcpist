@@ -51,12 +51,16 @@ func (h *handler) ListModules(ctx context.Context) ([]gen.ModuleWithTools, error
 			Name:   m.Name,
 			Status: m.Status,
 		}
-		// Tools is []jx.Raw; wrap the JSONB array items
-		var items []jx.Raw
-		if err := json.Unmarshal(m.Tools, &items); err == nil && len(items) > 0 {
+		// Tools is []jx.Raw; unmarshal via json.RawMessage (jx.Raw lacks json.Unmarshaler)
+		var raw []json.RawMessage
+		if err := json.Unmarshal(m.Tools, &raw); err == nil && len(raw) > 0 {
+			items := make([]jx.Raw, len(raw))
+			for j, r := range raw {
+				items[j] = jx.Raw(r)
+			}
 			out[i].Tools = items
 		} else {
-			out[i].Tools = []jx.Raw{} // ensure non-nil for required field
+			out[i].Tools = []jx.Raw{}
 		}
 	}
 	return out, nil
