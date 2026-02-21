@@ -274,4 +274,4 @@ spec とコードの不整合はコンパイル時に検出される。
 
 - [day032-plan-stripe-webhook-to-worker.md](day032-plan-stripe-webhook-to-worker.md) - Stripe Webhook 移行計画
 - [sprint010-backlog.md](../sprint/sprint010-backlog.md) - Sprint 010 バックログ
-- [sprint010-plan.md](../workdir/sprint010-plan.md) - Sprint 010 計画
+- [sprint010-plan.md](sprint010-plan.md) - Sprint 010 計画

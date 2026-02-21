@@ -131,5 +131,5 @@ goroutine 無制限生成の制御。プール + バックプレッシャー。
 
 ## 参考
 
-- [sprint010-plan.md](../workdir/sprint010-plan.md) - Sprint 010 計画
+- [sprint010-plan.md](sprint010-plan.md) - Sprint 010 計画
 - [sprint009-backlog.md](./sprint009-backlog.md) - Sprint 009 バックログ
