@@ -20,10 +20,8 @@ crons = ["*/5 * * * *"]
 # 環境変数
 # ローカル開発: .dev.vars から読み込み（pnpm env:sync で生成）
 # クラウド: wrangler secret で設定
-
-# 開発環境 (mcp.dev.mcpist.app)
-[env.dev]
-vars = { APP_ENV = "mcpist-dev" }
+[vars]
+APP_ENV = "mcpist"
 
 # シークレット（wrangler secret で設定）
 # - SERVER_URL: Go Server URL
