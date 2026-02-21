@@ -1540,16 +1540,14 @@ func (s *ModuleWithTools) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		if s.Tools != nil {
-			e.FieldStart("tools")
-			e.ArrStart()
-			for _, elem := range s.Tools {
-				if len(elem) != 0 {
-					e.Raw(elem)
-				}
+		e.FieldStart("tools")
+		e.ArrStart()
+		for _, elem := range s.Tools {
+			if len(elem) != 0 {
+				e.Raw(elem)
 			}
-			e.ArrEnd()
 		}
+		e.ArrEnd()
 	}
 }
 
@@ -1617,6 +1615,7 @@ func (s *ModuleWithTools) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"descriptions\"")
 			}
 		case "tools":
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				s.Tools = make([]jx.Raw, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -1645,7 +1644,7 @@ func (s *ModuleWithTools) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000111,
+		0b00010111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

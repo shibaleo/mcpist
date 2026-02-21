@@ -642,7 +642,7 @@ components:
     # ── Modules ──
     ModuleWithTools:
       type: object
-      required: [id, name, status]
+      required: [id, name, status, tools]
       properties:
         id:
           type: string
