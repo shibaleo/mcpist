@@ -27,7 +27,19 @@ func ListOAuthApps(db *gorm.DB) ([]OAuthApp, error) {
 
 // UpsertOAuthApp creates or updates an OAuth app.
 func UpsertOAuthApp(db *gorm.DB, app *OAuthApp) error {
-	return db.Save(app).Error
+	var existing OAuthApp
+	err := db.Where("provider = ?", app.Provider).First(&existing).Error
+	if err == nil {
+		// Update existing record
+		return db.Model(&existing).Updates(map[string]interface{}{
+			"client_id":     app.ClientID,
+			"client_secret": app.ClientSecret,
+			"redirect_uri":  app.RedirectURI,
+			"enabled":       app.Enabled,
+		}).Error
+	}
+	// Create new record
+	return db.Create(app).Error
 }
 
 // DeleteOAuthApp deletes an OAuth app by provider.
