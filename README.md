@@ -1,6 +1,6 @@
 # MCPist
 
-MCP (Model Context Protocol) gateway service — Connect AI assistants to 20+ external tools through a single endpoint.
+MCP (Model Context Protocol) gateway service — Connect AI assistants to external tools through a single endpoint.
 
 ## Usage
 

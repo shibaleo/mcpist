@@ -103,10 +103,10 @@ func newOgenClient(ctx context.Context) (*gen.Client, error) {
 	if creds == nil {
 		return nil, fmt.Errorf("no credentials available")
 	}
-	if creds.APIKey == "" || creds.AccessToken == "" {
+	if creds.ConsumerKey == "" || creds.AccessToken == "" {
 		return nil, fmt.Errorf("missing API key or token")
 	}
-	return trelloapi.NewClient(creds.APIKey, creds.AccessToken)
+	return trelloapi.NewClient(creds.ConsumerKey, creds.AccessToken)
 }
 
 // =============================================================================

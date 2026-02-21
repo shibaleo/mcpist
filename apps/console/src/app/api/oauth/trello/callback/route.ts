@@ -163,21 +163,13 @@ export async function GET(request: Request) {
       return response
     }
 
-    // Save token to vault
-    // For Trello OAuth 1.0a:
-    // - access_token: OAuth token
-    // - username: API Key (consumer key) - needed for API calls
-    // - metadata.token_secret: OAuth token secret - needed for signing requests
+    // Save token to vault (OAuth 1.0a standard fields)
     const tokenCredentials = {
       auth_type: "oauth1",
+      consumer_key: consumerKey,
+      consumer_secret: consumerSecret,
       access_token: accessToken,
-      username: consumerKey, // API Key stored in username for module.go compatibility
-      refresh_token: null,
-      token_type: "OAuth",
-      expires_at: null, // Trello tokens don't expire (expiration: never)
-      metadata: {
-        token_secret: accessTokenSecret,
-      },
+      access_token_secret: accessTokenSecret,
     }
 
     await client.PUT("/v1/me/credentials/{module}", {
