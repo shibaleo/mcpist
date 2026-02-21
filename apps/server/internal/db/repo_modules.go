@@ -54,49 +54,53 @@ func SyncModules(db *gorm.DB, entries []SyncModuleEntry) (int, error) {
 	return upserted, nil
 }
 
-// ModuleConfig is the response for GET /v1/me/modules/config.
+// ModuleConfig is a flat per-tool row for GET /v1/me/modules/config.
 type ModuleConfig struct {
-	ModuleName  string   `json:"module_name"`
-	Enabled     bool     `json:"enabled"`
-	Description string   `json:"description"`
-	Tools       []string `json:"enabled_tools"`
+	ModuleName  string `json:"module_name"`
+	Description *string `json:"description"`
+	ToolID      string `json:"tool_id"`
+	Enabled     bool   `json:"enabled"`
 }
 
-// GetModuleConfig returns all module configs for a user.
+// GetModuleConfig returns per-tool settings for a user (one row per tool_setting).
 func GetModuleConfig(db *gorm.DB, userID string) ([]ModuleConfig, error) {
+	// Build module ID → name map and ID → description map
 	var modules []Module
 	if err := db.Where("status IN ('active', 'beta')").Find(&modules).Error; err != nil {
 		return nil, err
 	}
+	moduleNames := map[string]string{}
+	for _, m := range modules {
+		moduleNames[m.ID] = m.Name
+	}
 
+	// Module descriptions from module_settings
 	var msRows []ModuleSetting
 	db.Where("user_id = ?", userID).Find(&msRows)
-	msMap := map[string]ModuleSetting{}
+	msDescMap := map[string]string{}
 	for _, ms := range msRows {
-		msMap[ms.ModuleID] = ms
+		msDescMap[ms.ModuleID] = ms.Description
 	}
 
+	// All tool_settings for this user (both enabled and disabled)
 	var tsRows []ToolSetting
-	db.Where("user_id = ? AND enabled = true", userID).Find(&tsRows)
-	tsMap := map[string][]string{}
+	db.Where("user_id = ?", userID).Find(&tsRows)
+
+	configs := make([]ModuleConfig, 0, len(tsRows))
 	for _, ts := range tsRows {
-		tsMap[ts.ModuleID] = append(tsMap[ts.ModuleID], ts.ToolID)
-	}
-
-	configs := make([]ModuleConfig, 0, len(modules))
-	for _, m := range modules {
-		ms, hasSetting := msMap[m.ID]
-		enabled := !hasSetting || ms.Enabled
-		desc := ""
-		if hasSetting {
-			desc = ms.Description
+		name, ok := moduleNames[ts.ModuleID]
+		if !ok {
+			continue // skip orphaned settings for inactive modules
 		}
-
+		var desc *string
+		if d, has := msDescMap[ts.ModuleID]; has {
+			desc = &d
+		}
 		configs = append(configs, ModuleConfig{
-			ModuleName:  m.Name,
-			Enabled:     enabled,
+			ModuleName:  name,
 			Description: desc,
-			Tools:       tsMap[m.ID],
+			ToolID:      ts.ToolID,
+			Enabled:     ts.Enabled,
 		})
 	}
 	return configs, nil

@@ -380,14 +380,12 @@ func (h *handler) GetModuleConfig(ctx context.Context) ([]gen.ModuleConfig, erro
 	out := make([]gen.ModuleConfig, len(configs))
 	for i, c := range configs {
 		out[i] = gen.ModuleConfig{
-			ModuleName:  c.ModuleName,
-			Enabled:     c.Enabled,
-			Description: c.Description,
+			ModuleName: c.ModuleName,
+			ToolID:     c.ToolID,
+			Enabled:    c.Enabled,
 		}
-		if c.Tools != nil {
-			out[i].EnabledTools = gen.NewOptNilStringArray(c.Tools)
-		} else {
-			out[i].EnabledTools.SetToNull()
+		if c.Description != nil {
+			out[i].Description = gen.NewOptNilString(*c.Description)
 		}
 	}
 	return out, nil

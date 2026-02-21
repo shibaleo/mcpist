@@ -390,10 +390,10 @@ func (s *LinkStripeCustomerBody) SetStripeCustomerID(val string) {
 
 // Ref: #/components/schemas/ModuleConfig
 type ModuleConfig struct {
-	ModuleName   string            `json:"module_name"`
-	Enabled      bool              `json:"enabled"`
-	Description  string            `json:"description"`
-	EnabledTools OptNilStringArray `json:"enabled_tools"`
+	ModuleName  string       `json:"module_name"`
+	Description OptNilString `json:"description"`
+	ToolID      string       `json:"tool_id"`
+	Enabled     bool         `json:"enabled"`
 }
 
 // GetModuleName returns the value of ModuleName.
@@ -401,19 +401,19 @@ func (s *ModuleConfig) GetModuleName() string {
 	return s.ModuleName
 }
 
-// GetEnabled returns the value of Enabled.
-func (s *ModuleConfig) GetEnabled() bool {
-	return s.Enabled
-}
-
 // GetDescription returns the value of Description.
-func (s *ModuleConfig) GetDescription() string {
+func (s *ModuleConfig) GetDescription() OptNilString {
 	return s.Description
 }
 
-// GetEnabledTools returns the value of EnabledTools.
-func (s *ModuleConfig) GetEnabledTools() OptNilStringArray {
-	return s.EnabledTools
+// GetToolID returns the value of ToolID.
+func (s *ModuleConfig) GetToolID() string {
+	return s.ToolID
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *ModuleConfig) GetEnabled() bool {
+	return s.Enabled
 }
 
 // SetModuleName sets the value of ModuleName.
@@ -421,19 +421,19 @@ func (s *ModuleConfig) SetModuleName(val string) {
 	s.ModuleName = val
 }
 
-// SetEnabled sets the value of Enabled.
-func (s *ModuleConfig) SetEnabled(val bool) {
-	s.Enabled = val
-}
-
 // SetDescription sets the value of Description.
-func (s *ModuleConfig) SetDescription(val string) {
+func (s *ModuleConfig) SetDescription(val OptNilString) {
 	s.Description = val
 }
 
-// SetEnabledTools sets the value of EnabledTools.
-func (s *ModuleConfig) SetEnabledTools(val OptNilStringArray) {
-	s.EnabledTools = val
+// SetToolID sets the value of ToolID.
+func (s *ModuleConfig) SetToolID(val string) {
+	s.ToolID = val
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *ModuleConfig) SetEnabled(val bool) {
+	s.Enabled = val
 }
 
 // Ref: #/components/schemas/ModuleWithTools
@@ -978,69 +978,6 @@ func (o OptNilString) Get() (v string, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptNilString) Or(d string) string {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptNilStringArray returns new OptNilStringArray with value set to v.
-func NewOptNilStringArray(v []string) OptNilStringArray {
-	return OptNilStringArray{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptNilStringArray is optional nullable []string.
-type OptNilStringArray struct {
-	Value []string
-	Set   bool
-	Null  bool
-}
-
-// IsSet returns true if OptNilStringArray was set.
-func (o OptNilStringArray) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptNilStringArray) Reset() {
-	var v []string
-	o.Value = v
-	o.Set = false
-	o.Null = false
-}
-
-// SetTo sets value to v.
-func (o *OptNilStringArray) SetTo(v []string) {
-	o.Set = true
-	o.Null = false
-	o.Value = v
-}
-
-// IsNull returns true if value is Null.
-func (o OptNilStringArray) IsNull() bool { return o.Null }
-
-// SetToNull sets value to null.
-func (o *OptNilStringArray) SetToNull() {
-	o.Set = true
-	o.Null = true
-	var v []string
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptNilStringArray) Get() (v []string, ok bool) {
-	if o.Null {
-		return v, false
-	}
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptNilStringArray) Or(d []string) []string {
 	if v, ok := o.Get(); ok {
 		return v
 	}
