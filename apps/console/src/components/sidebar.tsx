@@ -117,7 +117,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
   const ICON_AREA_WIDTH = COLLAPSED_WIDTH - 24 // px-3 (12px) * 2 = 24px
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+    const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href + "/"))
     const link = (
       <Link
         key={item.href}

@@ -402,7 +402,7 @@ export interface components {
             descriptions?: {
                 [key: string]: string;
             };
-            tools?: unknown[];
+            tools: unknown[];
         };
         ModuleConfig: {
             module_name: string;

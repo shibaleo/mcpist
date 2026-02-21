@@ -165,6 +165,8 @@ var oauthRefreshConfigs = map[string]OAuthRefreshConfig{
 	"microsoft_todo":     {Provider: "microsoft", TokenURL: "https://login.microsoftonline.com/common/oauth2/v2.0/token", AuthMethod: "form", ContentType: "urlencoded", ExtraParams: map[string]string{"scope": "offline_access Tasks.ReadWrite"}, RotatesRefreshToken: true},
 	"notion":             {Provider: "notion", TokenURL: "https://api.notion.com/v1/oauth/token", AuthMethod: "basic", ContentType: "json", RotatesRefreshToken: true},
 	"airtable":           {Provider: "airtable", TokenURL: "https://airtable.com/oauth2/v1/token", AuthMethod: "basic", ContentType: "urlencoded", RotatesRefreshToken: true},
+	"jira":               {Provider: "atlassian", TokenURL: "https://auth.atlassian.com/oauth/token", AuthMethod: "form", ContentType: "urlencoded", RotatesRefreshToken: true},
+	"confluence":         {Provider: "atlassian", TokenURL: "https://auth.atlassian.com/oauth/token", AuthMethod: "form", ContentType: "urlencoded", RotatesRefreshToken: true},
 }
 
 // =============================================================================

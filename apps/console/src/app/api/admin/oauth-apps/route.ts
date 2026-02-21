@@ -6,7 +6,11 @@ export async function GET(): Promise<NextResponse> {
   try {
     const client = await createWorkerClient()
     const { data } = await client.GET("/v1/admin/oauth/apps")
-    return NextResponse.json(data || [])
+    const apps = (data || []).map((app: Record<string, unknown>) => ({
+      ...app,
+      has_credentials: !!app.client_id,
+    }))
+    return NextResponse.json(apps)
   } catch (err) {
     console.error("[admin/oauth-apps] error:", err)
     const status = err instanceof WorkerAPIError && err.status === 403 ? 403 : 500

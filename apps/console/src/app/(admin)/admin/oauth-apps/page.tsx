@@ -3,15 +3,20 @@
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ModuleIcon } from "@/components/module-icon"
 import {
   Loader2,
-  Settings,
   ExternalLink,
   Eye,
   EyeOff,
@@ -19,6 +24,8 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
+  Settings,
+  Cable,
 } from "lucide-react"
 import {
   listOAuthApps,
@@ -29,6 +36,21 @@ import {
   type OAuthApp,
   OAuthAppError,
 } from "@/lib/oauth/apps"
+
+// Map provider ID to a representative module name for icon display
+const providerIconMap: Record<string, string> = {
+  google: "google_calendar",
+  microsoft: "microsoft_todo",
+  todoist: "todoist",
+  atlassian: "jira",
+  notion: "notion",
+  trello: "trello",
+  github: "github",
+  asana: "asana",
+  airtable: "airtable",
+  ticktick: "ticktick",
+  dropbox: "dropbox",
+}
 
 type FormState = {
   clientId: string
@@ -52,7 +74,7 @@ export default function OAuthAppsPage() {
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({})
   const [deleting, setDeleting] = useState<{ [key: string]: boolean }>({})
   const [messages, setMessages] = useState<{ [key: string]: { type: "success" | "error"; text: string } }>({})
-
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
 
   // Initialize form states for all providers
   const initFormStates = useCallback((existingApps: OAuthApp[]) => {
@@ -164,6 +186,7 @@ export default function OAuthAppsPage() {
       const result = await deleteOAuthApp(provider)
       if (result.success) {
         setMessages({ ...messages, [provider]: { type: "success", text: "Deleted successfully" } })
+        setSelectedProvider(null)
         await loadApps()
       } else {
         setMessages({ ...messages, [provider]: { type: "error", text: result.message || "Failed to delete" } })
@@ -188,187 +211,270 @@ export default function OAuthAppsPage() {
     return null
   }
 
+  // Separate configured and not-configured providers
+  const configuredProviders = OAUTH_PROVIDERS.filter((p) => {
+    const app = apps.find((a) => a.provider === p.id)
+    return app?.has_credentials
+  })
+  const unconfiguredProviders = OAUTH_PROVIDERS.filter((p) => {
+    const app = apps.find((a) => a.provider === p.id)
+    return !app?.has_credentials
+  })
+
+  const dialogProvider = selectedProvider
+    ? OAUTH_PROVIDERS.find((p) => p.id === selectedProvider)
+    : null
+  const dialogApp = selectedProvider
+    ? apps.find((a) => a.provider === selectedProvider)
+    : null
+  const dialogForm = selectedProvider
+    ? formStates[selectedProvider] || {
+        clientId: "",
+        clientSecret: "",
+        redirectUri: getDefaultRedirectUri(selectedProvider),
+        enabled: true,
+      }
+    : null
+
   return (
     <div className="p-6 space-y-6">
-      <div>
+      <div className="pl-8 md:pl-0">
         <h1 className="text-2xl font-bold text-foreground">OAuth App Settings</h1>
         <p className="text-muted-foreground mt-1">
           Configure OAuth client credentials for external service integrations
         </p>
       </div>
 
-      <div className="grid gap-6">
-        {OAUTH_PROVIDERS.map((provider) => {
-          const existingApp = apps.find((app) => app.provider === provider.id)
-          const form = formStates[provider.id] || {
-            clientId: "",
-            clientSecret: "",
-            redirectUri: getDefaultRedirectUri(provider.id),
-            enabled: true,
-          }
-          const isShowingSecret = showSecrets[provider.id] || false
-          const isSaving = saving[provider.id] || false
-          const isDeleting = deleting[provider.id] || false
-          const message = messages[provider.id]
-
-          return (
-            <Card key={provider.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                      <Settings className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        {provider.name}
-                        {existingApp?.has_credentials ? (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
-                            Configured
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
-                            Not Configured
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription>{provider.description}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`${provider.id}-enabled`}
-                      checked={form.enabled}
-                      onCheckedChange={(checked) => updateFormState(provider.id, "enabled", checked === true)}
-                    />
-                    <Label htmlFor={`${provider.id}-enabled`} className="text-sm text-muted-foreground cursor-pointer">
-                      Enabled
-                    </Label>
-                  </div>
+      {/* Configured Providers */}
+      {configuredProviders.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            Configured
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {configuredProviders.map((provider) => (
+              <div
+                key={provider.id}
+                onClick={() => setSelectedProvider(provider.id)}
+                className="relative flex items-center gap-3 p-3 rounded-xl border bg-card/70 hover:bg-muted/50 transition-colors cursor-pointer group"
+              >
+                <div className="relative w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
+                  <ModuleIcon
+                    moduleName={providerIconMap[provider.id] || provider.id}
+                    className="h-5 w-5 text-foreground"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Message */}
-                {message && (
-                  <div
-                    className={`flex items-center gap-2 p-3 rounded-lg ${
-                      message.type === "success"
-                        ? "bg-green-500/10 text-green-600"
-                        : "bg-destructive/10 text-destructive"
-                    }`}
-                  >
-                    {message.type === "success" ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4" />
-                    )}
-                    <span className="text-sm">{message.text}</span>
-                  </div>
-                )}
+                <div className="min-w-0">
+                  <span className="font-medium text-sm truncate block">{provider.name}</span>
+                  <span className="text-[10px] text-muted-foreground truncate block">
+                    {provider.description}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-                {/* Client ID */}
-                <div className="space-y-2">
-                  <Label htmlFor={`${provider.id}-client-id`}>Client ID</Label>
-                  <Input
-                    id={`${provider.id}-client-id`}
-                    value={form.clientId}
-                    onChange={(e) => updateFormState(provider.id, "clientId", e.target.value)}
-                    placeholder="Enter client ID"
-                    className="font-mono text-sm"
+      {/* Unconfigured Providers */}
+      {unconfiguredProviders.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Cable className="h-5 w-5 text-primary" />
+            Not Configured
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {unconfiguredProviders.map((provider) => (
+              <div
+                key={provider.id}
+                onClick={() => setSelectedProvider(provider.id)}
+                className="flex items-center gap-3 p-3 rounded-xl border bg-card/70 hover:bg-muted/50 transition-colors cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
+                  <ModuleIcon
+                    moduleName={providerIconMap[provider.id] || provider.id}
+                    className="h-5 w-5 text-foreground"
                   />
                 </div>
-
-                {/* Client Secret */}
-                <div className="space-y-2">
-                  <Label htmlFor={`${provider.id}-client-secret`}>
-                    Client Secret
-                    {existingApp?.has_credentials && (
-                      <span className="text-xs text-muted-foreground ml-2">(leave empty to keep existing)</span>
-                    )}
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id={`${provider.id}-client-secret`}
-                      type={isShowingSecret ? "text" : "password"}
-                      value={form.clientSecret}
-                      onChange={(e) => updateFormState(provider.id, "clientSecret", e.target.value)}
-                      placeholder={existingApp?.has_credentials ? "••••••••••••" : "Enter client secret"}
-                      className="font-mono text-sm pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                      onClick={() => setShowSecrets({ ...showSecrets, [provider.id]: !isShowingSecret })}
-                    >
-                      {isShowingSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                <div className="min-w-0">
+                  <span className="font-medium text-sm truncate block">{provider.name}</span>
+                  <span className="text-[10px] text-muted-foreground truncate block">
+                    {provider.description}
+                  </span>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-                {/* Redirect URI */}
-                <div className="space-y-2">
-                  <Label htmlFor={`${provider.id}-redirect-uri`}>Redirect URI</Label>
-                  <Input
-                    id={`${provider.id}-redirect-uri`}
-                    value={form.redirectUri}
-                    onChange={(e) => updateFormState(provider.id, "redirectUri", e.target.value)}
-                    placeholder="OAuth callback URL"
-                    className="font-mono text-sm"
+      {/* Edit Dialog */}
+      <Dialog open={!!selectedProvider} onOpenChange={(open) => !open && setSelectedProvider(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              {dialogProvider && (
+                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
+                  <ModuleIcon
+                    moduleName={providerIconMap[dialogProvider.id] || dialogProvider.id}
+                    className="h-5 w-5 text-foreground"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Copy this URL to your OAuth app configuration
-                  </p>
                 </div>
+              )}
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  {dialogProvider?.name}
+                  {dialogApp?.has_credentials && (
+                    <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+                      Configured
+                    </span>
+                  )}
+                </DialogTitle>
+                <DialogDescription>{dialogProvider?.description}</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <a
-                    href={provider.docsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex items-center gap-1"
-                  >
-                    Open Developer Console
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                  <div className="flex items-center gap-2">
-                    {existingApp?.has_credentials && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(provider.id)}
-                        disabled={isDeleting || isSaving}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    <Button size="sm" onClick={() => handleSave(provider.id)} disabled={isSaving || isDeleting}>
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-1" />
-                          Save
-                        </>
-                      )}
-                    </Button>
-                  </div>
+          {selectedProvider && dialogForm && (
+            <div className="space-y-4 py-2">
+              {/* Message */}
+              {messages[selectedProvider] && (
+                <div
+                  className={`flex items-center gap-2 p-3 rounded-lg ${
+                    messages[selectedProvider].type === "success"
+                      ? "bg-green-500/10 text-green-600"
+                      : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {messages[selectedProvider].type === "success" ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">{messages[selectedProvider].text}</span>
                 </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+              )}
+
+              {/* Client ID */}
+              <div className="space-y-2">
+                <Label htmlFor="dialog-client-id">Client ID</Label>
+                <Input
+                  id="dialog-client-id"
+                  value={dialogForm.clientId}
+                  onChange={(e) => updateFormState(selectedProvider, "clientId", e.target.value)}
+                  placeholder="Enter client ID"
+                  className="font-mono text-sm"
+                />
+              </div>
+
+              {/* Client Secret */}
+              <div className="space-y-2">
+                <Label htmlFor="dialog-client-secret">
+                  Client Secret
+                  {dialogApp?.has_credentials && (
+                    <span className="text-xs text-muted-foreground ml-2">(leave empty to keep existing)</span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="dialog-client-secret"
+                    type={showSecrets[selectedProvider] ? "text" : "password"}
+                    value={dialogForm.clientSecret}
+                    onChange={(e) => updateFormState(selectedProvider, "clientSecret", e.target.value)}
+                    placeholder={dialogApp?.has_credentials ? "••••••••••••" : "Enter client secret"}
+                    className="font-mono text-sm pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                    onClick={() =>
+                      setShowSecrets({ ...showSecrets, [selectedProvider]: !showSecrets[selectedProvider] })
+                    }
+                  >
+                    {showSecrets[selectedProvider] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Redirect URI */}
+              <div className="space-y-2">
+                <Label htmlFor="dialog-redirect-uri">Redirect URI</Label>
+                <Input
+                  id="dialog-redirect-uri"
+                  value={dialogForm.redirectUri}
+                  onChange={(e) => updateFormState(selectedProvider, "redirectUri", e.target.value)}
+                  placeholder="OAuth callback URL"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Copy this URL to your OAuth app configuration
+                </p>
+              </div>
+
+              {/* Developer Console Link */}
+              {dialogProvider?.docsUrl && (
+                <a
+                  href={dialogProvider.docsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  Open Developer Console
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex-row justify-between sm:justify-between">
+            <div>
+              {dialogApp?.has_credentials && selectedProvider && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(selectedProvider)}
+                  disabled={deleting[selectedProvider] || saving[selectedProvider]}
+                  className="text-destructive hover:text-destructive"
+                >
+                  {deleting[selectedProvider] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={() => setSelectedProvider(null)}>
+                Cancel
+              </Button>
+              {selectedProvider && (
+                <Button
+                  size="sm"
+                  onClick={() => handleSave(selectedProvider)}
+                  disabled={saving[selectedProvider] || deleting[selectedProvider]}
+                >
+                  {saving[selectedProvider] ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-1" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

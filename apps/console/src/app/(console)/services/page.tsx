@@ -129,25 +129,34 @@ const authConfig: Record<string, AuthConfig> = {
     },
   },
   jira: {
-    authLabel: "APIトークン",
-    helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください",
-    helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
-    authType: "basic",
-    extraFields: [
-      { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
-      { name: "domain", label: "ドメイン", type: "text", placeholder: "yourcompany.atlassian.net" },
-    ],
+    authLabel: "Atlassian OAuth",
+    helpText: "Atlassianアカウントでログインして、Jiraへのアクセスを許可します",
+    authType: "oauth",
+    alternativeAuth: {
+      authLabel: "APIトークン",
+      helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください",
+      helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
+      authType: "basic",
+      extraFields: [
+        { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
+        { name: "domain", label: "ドメイン", type: "text", placeholder: "yourcompany.atlassian.net" },
+      ],
+    },
   },
   confluence: {
-    authLabel: "APIトークン",
-    helpText:
-      "Atlassian管理画面 > セキュリティ > APIトークンから発行してください（Jiraと共通のトークンを使用できます）",
-    helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
-    authType: "basic",
-    extraFields: [
-      { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
-      { name: "domain", label: "ドメイン", type: "text", placeholder: "yourcompany.atlassian.net" },
-    ],
+    authLabel: "Atlassian OAuth",
+    helpText: "Atlassianアカウントでログインして、Confluenceへのアクセスを許可します",
+    authType: "oauth",
+    alternativeAuth: {
+      authLabel: "APIトークン",
+      helpText: "Atlassian管理画面 > セキュリティ > APIトークンから発行してください（Jiraと共通のトークンを使用できます）",
+      helpUrl: "https://id.atlassian.com/manage-profile/security/api-tokens",
+      authType: "basic",
+      extraFields: [
+        { name: "email", label: "メールアドレス", type: "email", placeholder: "user@example.com" },
+        { name: "domain", label: "ドメイン", type: "text", placeholder: "yourcompany.atlassian.net" },
+      ],
+    },
   },
   supabase: {
     authLabel: "Personal Access Token",
@@ -366,9 +375,10 @@ export default function ServicesPage() {
 
     const config = authConfig[connectDialog]
 
-    // 追加フィールドが必須かチェック
-    if (config?.extraFields) {
-      const missingFields = config.extraFields.filter((f) => !extraFields[f.name])
+    // alternativeAuth がある場合はそちらの extraFields をチェック
+    const effectiveAuth = config?.alternativeAuth ?? config
+    if (effectiveAuth?.extraFields) {
+      const missingFields = effectiveAuth.extraFields.filter((f) => !extraFields[f.name])
       if (missingFields.length > 0) {
         toast.error(`${missingFields.map((f) => f.label).join("、")}を入力してください`)
         return
@@ -379,14 +389,14 @@ export default function ServicesPage() {
     setConnectionProgress({ step: "validating", message: "トークンを検証中..." })
 
     try {
-      // Trello: api_key を username に、token を accessToken に
       // Basic認証: email を username に、domain を metadata に
       const upsertParams: Parameters<typeof upsertTokenWithVerification>[0] = {
         service: connectDialog,
         accessToken: tokenInput,
       }
 
-      if (config?.authType === "basic") {
+      const authType = effectiveAuth?.authType ?? config?.authType
+      if (authType === "basic") {
         upsertParams.username = extraFields.email
         upsertParams.metadata = { domain: extraFields.domain }
       } else if (connectDialog === "trello") {
@@ -662,8 +672,23 @@ export default function ServicesPage() {
                       </div>
                     </div>
 
-                    {/* API Key 入力 */}
-                    <div className="space-y-2">
+                    {/* Alternative auth 入力 */}
+                    <div className="space-y-3">
+                      {dialogAuthConfig.alternativeAuth.extraFields?.map((field) => (
+                        <div key={field.name} className="space-y-2">
+                          <Label htmlFor={`field-${field.name}`} className="text-sm font-medium">
+                            {field.label}
+                          </Label>
+                          <Input
+                            id={`field-${field.name}`}
+                            type={field.type}
+                            value={extraFields[field.name] || ""}
+                            onChange={(e) => setExtraFields((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                            placeholder={field.placeholder}
+                            disabled={submitting}
+                          />
+                        </div>
+                      ))}
                       <Label htmlFor="token-input" className="text-sm font-medium">
                         {dialogAuthConfig.alternativeAuth.authLabel}
                       </Label>
