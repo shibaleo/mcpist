@@ -3384,17 +3384,17 @@ func (s *UpsertToolSettingsBody) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *UpsertToolSettingsBody) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("enabled")
+		e.FieldStart("enabled_tools")
 		e.ArrStart()
-		for _, elem := range s.Enabled {
+		for _, elem := range s.EnabledTools {
 			e.Str(elem)
 		}
 		e.ArrEnd()
 	}
 	{
-		e.FieldStart("disabled")
+		e.FieldStart("disabled_tools")
 		e.ArrStart()
-		for _, elem := range s.Disabled {
+		for _, elem := range s.DisabledTools {
 			e.Str(elem)
 		}
 		e.ArrEnd()
@@ -3402,8 +3402,8 @@ func (s *UpsertToolSettingsBody) encodeFields(e *jx.Encoder) {
 }
 
 var jsonFieldsNameOfUpsertToolSettingsBody = [2]string{
-	0: "enabled",
-	1: "disabled",
+	0: "enabled_tools",
+	1: "disabled_tools",
 }
 
 // Decode decodes UpsertToolSettingsBody from json.
@@ -3415,10 +3415,10 @@ func (s *UpsertToolSettingsBody) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "enabled":
+		case "enabled_tools":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				s.Enabled = make([]string, 0)
+				s.EnabledTools = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
 					var elem string
 					v, err := d.Str()
@@ -3426,19 +3426,19 @@ func (s *UpsertToolSettingsBody) Decode(d *jx.Decoder) error {
 					if err != nil {
 						return err
 					}
-					s.Enabled = append(s.Enabled, elem)
+					s.EnabledTools = append(s.EnabledTools, elem)
 					return nil
 				}); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"enabled\"")
+				return errors.Wrap(err, "decode field \"enabled_tools\"")
 			}
-		case "disabled":
+		case "disabled_tools":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				s.Disabled = make([]string, 0)
+				s.DisabledTools = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
 					var elem string
 					v, err := d.Str()
@@ -3446,14 +3446,14 @@ func (s *UpsertToolSettingsBody) Decode(d *jx.Decoder) error {
 					if err != nil {
 						return err
 					}
-					s.Disabled = append(s.Disabled, elem)
+					s.DisabledTools = append(s.DisabledTools, elem)
 					return nil
 				}); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"disabled\"")
+				return errors.Wrap(err, "decode field \"disabled_tools\"")
 			}
 		default:
 			return d.Skip()

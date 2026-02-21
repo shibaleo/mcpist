@@ -392,7 +392,7 @@ func (h *handler) GetModuleConfig(ctx context.Context) ([]gen.ModuleConfig, erro
 }
 
 func (h *handler) UpsertToolSettings(ctx context.Context, req *gen.UpsertToolSettingsBody, params gen.UpsertToolSettingsParams) (*gen.SuccessResult, error) {
-	if err := db.UpsertToolSettings(h.db, getUserID(ctx), params.Name, req.Enabled, req.Disabled); err != nil {
+	if err := db.UpsertToolSettings(h.db, getUserID(ctx), params.Name, req.EnabledTools, req.DisabledTools); err != nil {
 		return nil, fmt.Errorf("module not found")
 	}
 	return &gen.SuccessResult{Success: true}, nil

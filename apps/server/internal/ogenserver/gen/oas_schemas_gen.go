@@ -1345,28 +1345,28 @@ func (s *UpsertOAuthAppBody) SetEnabled(val OptBool) {
 
 // Ref: #/components/schemas/UpsertToolSettingsBody
 type UpsertToolSettingsBody struct {
-	Enabled  []string `json:"enabled"`
-	Disabled []string `json:"disabled"`
+	EnabledTools  []string `json:"enabled_tools"`
+	DisabledTools []string `json:"disabled_tools"`
 }
 
-// GetEnabled returns the value of Enabled.
-func (s *UpsertToolSettingsBody) GetEnabled() []string {
-	return s.Enabled
+// GetEnabledTools returns the value of EnabledTools.
+func (s *UpsertToolSettingsBody) GetEnabledTools() []string {
+	return s.EnabledTools
 }
 
-// GetDisabled returns the value of Disabled.
-func (s *UpsertToolSettingsBody) GetDisabled() []string {
-	return s.Disabled
+// GetDisabledTools returns the value of DisabledTools.
+func (s *UpsertToolSettingsBody) GetDisabledTools() []string {
+	return s.DisabledTools
 }
 
-// SetEnabled sets the value of Enabled.
-func (s *UpsertToolSettingsBody) SetEnabled(val []string) {
-	s.Enabled = val
+// SetEnabledTools sets the value of EnabledTools.
+func (s *UpsertToolSettingsBody) SetEnabledTools(val []string) {
+	s.EnabledTools = val
 }
 
-// SetDisabled sets the value of Disabled.
-func (s *UpsertToolSettingsBody) SetDisabled(val []string) {
-	s.Disabled = val
+// SetDisabledTools sets the value of DisabledTools.
+func (s *UpsertToolSettingsBody) SetDisabledTools(val []string) {
+	s.DisabledTools = val
 }
 
 // Ref: #/components/schemas/UsageData

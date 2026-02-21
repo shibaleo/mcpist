@@ -14,24 +14,24 @@ func (s *UpsertToolSettingsBody) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if s.Enabled == nil {
+		if s.EnabledTools == nil {
 			return errors.New("nil is invalid value")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "enabled",
+			Name:  "enabled_tools",
 			Error: err,
 		})
 	}
 	if err := func() error {
-		if s.Disabled == nil {
+		if s.DisabledTools == nil {
 			return errors.New("nil is invalid value")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "disabled",
+			Name:  "disabled_tools",
 			Error: err,
 		})
 	}

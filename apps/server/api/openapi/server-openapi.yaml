@@ -669,13 +669,13 @@ components:
 
     UpsertToolSettingsBody:
       type: object
-      required: [enabled, disabled]
+      required: [enabled_tools, disabled_tools]
       properties:
-        enabled:
+        enabled_tools:
           type: array
           items:
             type: string
-        disabled:
+        disabled_tools:
           type: array
           items:
             type: string
