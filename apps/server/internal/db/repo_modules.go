@@ -114,9 +114,12 @@ func UpsertToolSettings(db *gorm.DB, userID, moduleName string, enabled, disable
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
+		// NOTE: Select() is required to force GORM to include the "enabled" column
+		// in the INSERT. Without it, GORM treats bool zero-value (false) as "unset"
+		// and omits the column, causing the DB DEFAULT (true) to be applied.
 		for _, toolID := range enabled {
 			ts := ToolSetting{UserID: userID, ModuleID: mod.ID, ToolID: toolID, Enabled: true}
-			if err := tx.Clauses(clause.OnConflict{
+			if err := tx.Select("user_id", "module_id", "tool_id", "enabled").Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "user_id"}, {Name: "module_id"}, {Name: "tool_id"}},
 				DoUpdates: clause.AssignmentColumns([]string{"enabled"}),
 			}).Create(&ts).Error; err != nil {
@@ -125,7 +128,7 @@ func UpsertToolSettings(db *gorm.DB, userID, moduleName string, enabled, disable
 		}
 		for _, toolID := range disabled {
 			ts := ToolSetting{UserID: userID, ModuleID: mod.ID, ToolID: toolID, Enabled: false}
-			if err := tx.Clauses(clause.OnConflict{
+			if err := tx.Select("user_id", "module_id", "tool_id", "enabled").Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "user_id"}, {Name: "module_id"}, {Name: "tool_id"}},
 				DoUpdates: clause.AssignmentColumns([]string{"enabled"}),
 			}).Create(&ts).Error; err != nil {
