@@ -35,8 +35,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *GoogleAppsScriptModule) Name() string                        { return "google_apps_script" }
 func (m *GoogleAppsScriptModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *GoogleAppsScriptModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *GoogleAppsScriptModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *GoogleAppsScriptModule) APIVersion() string           { return appsScriptVersion }
 func (m *GoogleAppsScriptModule) Tools() []modules.Tool        { return toolDefinitions }

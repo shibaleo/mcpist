@@ -3,23 +3,12 @@ package modules
 import "context"
 
 // =============================================================================
-// Localization
+// Localization (used by Console UI for multilingual tool descriptions)
 // =============================================================================
 
 // LocalizedText holds multilingual text.
 // key: BCP47 language code (en-US, ja-JP)
 type LocalizedText map[string]string
-
-// GetLocalizedText returns text for the specified language, falling back to en-US.
-func GetLocalizedText(texts LocalizedText, lang string) string {
-	if text, ok := texts[lang]; ok && text != "" {
-		return text
-	}
-	if text, ok := texts["en-US"]; ok {
-		return text
-	}
-	return ""
-}
 
 // =============================================================================
 // Module Interface
@@ -31,8 +20,8 @@ func GetLocalizedText(texts LocalizedText, lang string) string {
 type Module interface {
 	// Metadata
 	Name() string
-	Descriptions() LocalizedText         // Multilingual descriptions
-	Description(lang string) string      // Get description for specific language
+	Description() string                 // English description (for MCP schema)
+	Descriptions() LocalizedText         // Multilingual descriptions (synced to DB for Console UI)
 	APIVersion() string
 
 	// Tools - LLM executes, has side effects

@@ -31,8 +31,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *GoogleCalendarModule) Name() string                        { return "google_calendar" }
 func (m *GoogleCalendarModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *GoogleCalendarModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *GoogleCalendarModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *GoogleCalendarModule) APIVersion() string                                        { return googleCalendarVersion }
 func (m *GoogleCalendarModule) Tools() []modules.Tool                                     { return toolDefinitions }

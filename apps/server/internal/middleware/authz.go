@@ -38,7 +38,6 @@ type AuthContext struct {
 	DailyLimit         int
 	EnabledModules     []string            // Modules with at least one enabled tool (derived by RPC)
 	EnabledTools       map[string][]string // module -> []tool_id (whitelist)
-	Language           string              // BCP47 language code (e.g., "en-US", "ja-JP")
 	ModuleDescriptions broker.ModuleDescriptions
 }
 
@@ -172,7 +171,6 @@ func (a *Authorizer) ValidateRequest(r *http.Request) (*AuthContext, error) {
 		DailyLimit:         userContext.DailyLimit,
 		EnabledModules:     userContext.EnabledModules,
 		EnabledTools:       userContext.EnabledTools,
-		Language:           userContext.Language,
 		ModuleDescriptions: userContext.ModuleDescriptions,
 	}
 

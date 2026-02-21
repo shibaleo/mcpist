@@ -36,8 +36,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *GoogleSheetsModule) Name() string                        { return "google_sheets" }
 func (m *GoogleSheetsModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *GoogleSheetsModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *GoogleSheetsModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *GoogleSheetsModule) APIVersion() string            { return googleSheetsVersion }
 func (m *GoogleSheetsModule) Tools() []modules.Tool         { return toolDefinitions }

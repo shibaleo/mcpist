@@ -29,8 +29,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *AirtableModule) Name() string                        { return "airtable" }
 func (m *AirtableModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *AirtableModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *AirtableModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *AirtableModule) APIVersion() string           { return airtableAPIVersion }
 func (m *AirtableModule) Tools() []modules.Tool        { return toolDefinitions }

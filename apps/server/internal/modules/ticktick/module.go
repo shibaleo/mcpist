@@ -22,7 +22,7 @@ func New() *TickTickModule {
 	return &TickTickModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "TickTick API - Task and project management with creation, updates, and completion tracking",
 	"ja-JP": "TickTick API - タスクとプロジェクトの管理（作成、更新、完了追跡）",
@@ -38,9 +38,9 @@ func (m *TickTickModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *TickTickModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *TickTickModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the TickTick API version

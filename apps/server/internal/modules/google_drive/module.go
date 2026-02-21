@@ -34,8 +34,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *GoogleDriveModule) Name() string                        { return "google_drive" }
 func (m *GoogleDriveModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *GoogleDriveModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *GoogleDriveModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *GoogleDriveModule) APIVersion() string            { return googleDriveVersion }
 func (m *GoogleDriveModule) Tools() []modules.Tool         { return toolDefinitions }

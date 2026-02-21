@@ -67,7 +67,7 @@ func (m *PostgreSQLModule) Name() string {
 	return "postgresql"
 }
 
-// moduleDescriptions holds multilingual module descriptions
+// moduleDescriptions holds module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "PostgreSQL Database - Direct connection for query execution and schema inspection",
 	"ja-JP": "PostgreSQL データベース - クエリ実行とスキーマ確認のための直接接続",
@@ -78,9 +78,9 @@ func (m *PostgreSQLModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *PostgreSQLModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *PostgreSQLModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the PostgreSQL module version

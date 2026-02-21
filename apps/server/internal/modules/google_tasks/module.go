@@ -32,8 +32,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *GoogleTasksModule) Name() string                        { return "google_tasks" }
 func (m *GoogleTasksModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *GoogleTasksModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *GoogleTasksModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *GoogleTasksModule) APIVersion() string            { return googleTasksVersion }
 func (m *GoogleTasksModule) Tools() []modules.Tool         { return toolDefinitions }

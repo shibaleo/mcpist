@@ -19,7 +19,6 @@ type MCPContext struct {
 	DailyLimit         int                 `json:"daily_limit"`
 	EnabledModules     []string            `json:"enabled_modules"`
 	EnabledTools       map[string][]string `json:"enabled_tools"`
-	Language           string              `json:"language"`
 	ModuleDescriptions map[string]string   `json:"module_descriptions"`
 }
 
@@ -147,17 +146,6 @@ func GetMCPContext(db *gorm.DB, userID string) (*MCPContext, error) {
 		moduleDescriptions[d.ModuleName] = d.Description
 	}
 
-	// Extract language from settings
-	language := "en-US"
-	if len(user.Settings) > 0 {
-		var settings map[string]interface{}
-		if json.Unmarshal(user.Settings, &settings) == nil {
-			if lang, ok := settings["language"].(string); ok && lang != "" {
-				language = lang
-			}
-		}
-	}
-
 	return &MCPContext{
 		AccountStatus:      user.AccountStatus,
 		PlanID:             user.PlanID,
@@ -165,7 +153,6 @@ func GetMCPContext(db *gorm.DB, userID string) (*MCPContext, error) {
 		DailyLimit:         plan.DailyLimit,
 		EnabledModules:     enabledModules,
 		EnabledTools:       enabledTools,
-		Language:           language,
 		ModuleDescriptions: moduleDescriptions,
 	}, nil
 }

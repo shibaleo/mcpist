@@ -24,7 +24,7 @@ func New() *AsanaModule {
 	return &AsanaModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Asana API - Workspaces, projects, tasks, sections, and tags management",
 	"ja-JP": "Asana API - ワークスペース、プロジェクト、タスク、セクション、タグの管理",
@@ -40,9 +40,9 @@ func (m *AsanaModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *AsanaModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *AsanaModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Asana API version

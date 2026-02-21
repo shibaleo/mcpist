@@ -24,7 +24,7 @@ func New() *TrelloModule {
 	return &TrelloModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Trello API - Manage boards, lists, cards, and checklists",
 	"ja-JP": "Trello API - ボード、リスト、カード、チェックリストの管理",
@@ -40,9 +40,9 @@ func (m *TrelloModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *TrelloModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *TrelloModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Trello API version

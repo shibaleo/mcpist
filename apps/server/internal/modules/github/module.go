@@ -25,7 +25,7 @@ func New() *GitHubModule {
 	return &GitHubModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "GitHub API - Repository, Issue, PR, Actions, and Search operations",
 	"ja-JP": "GitHub API - リポジトリ、Issue、PR、Actions、検索操作",
@@ -41,9 +41,9 @@ func (m *GitHubModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *GitHubModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *GitHubModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the GitHub API version

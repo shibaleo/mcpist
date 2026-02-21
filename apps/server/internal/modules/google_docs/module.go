@@ -36,8 +36,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *GoogleDocsModule) Name() string                        { return "google_docs" }
 func (m *GoogleDocsModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *GoogleDocsModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *GoogleDocsModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *GoogleDocsModule) APIVersion() string            { return googleDocsVersion }
 func (m *GoogleDocsModule) Tools() []modules.Tool         { return toolDefinitions }

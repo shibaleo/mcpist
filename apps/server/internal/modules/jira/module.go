@@ -33,7 +33,7 @@ func (m *JiraModule) Name() string {
 	return "jira"
 }
 
-// moduleDescriptions holds multilingual module descriptions
+// moduleDescriptions holds module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Jira API - Issue/Project operations (search, create, update, comment, transition)",
 	"ja-JP": "Jira API - Issue/Project操作（検索、作成、更新、コメント、遷移）",
@@ -44,9 +44,9 @@ func (m *JiraModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *JiraModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *JiraModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Jira API version

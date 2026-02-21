@@ -24,7 +24,6 @@ type UserContext struct {
 	DailyLimit         int                 `json:"daily_limit"`
 	EnabledModules     []string            `json:"enabled_modules"`
 	EnabledTools       map[string][]string `json:"enabled_tools"`
-	Language           string              `json:"language"`
 	ModuleDescriptions ModuleDescriptions  `json:"module_descriptions"`
 }
 
@@ -123,7 +122,6 @@ func (s *UserBroker) fetchUserContext(userID string) (*UserContext, error) {
 		DailyLimit:         mcpCtx.DailyLimit,
 		EnabledModules:     mcpCtx.EnabledModules,
 		EnabledTools:       mcpCtx.EnabledTools,
-		Language:           mcpCtx.Language,
 		ModuleDescriptions: ModuleDescriptions(mcpCtx.ModuleDescriptions),
 	}, nil
 }

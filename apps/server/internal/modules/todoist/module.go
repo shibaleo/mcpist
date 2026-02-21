@@ -29,7 +29,7 @@ func New() *TodoistModule {
 	return &TodoistModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Todoist API - List, create, update, and delete tasks and projects",
 	"ja-JP": "Todoist API - タスクとプロジェクトの一覧表示、作成、更新、削除",
@@ -45,9 +45,9 @@ func (m *TodoistModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *TodoistModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *TodoistModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Todoist API version

@@ -31,8 +31,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *MicrosoftTodoModule) Name() string                        { return "microsoft_todo" }
 func (m *MicrosoftTodoModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *MicrosoftTodoModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *MicrosoftTodoModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *MicrosoftTodoModule) APIVersion() string          { return apiVersion }
 func (m *MicrosoftTodoModule) Tools() []modules.Tool       { return toolDefinitions }

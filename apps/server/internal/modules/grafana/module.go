@@ -23,7 +23,7 @@ func New() *GrafanaModule {
 	return &GrafanaModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Grafana API - Dashboard, data source, alert, annotation, and folder operations",
 	"ja-JP": "Grafana API - ダッシュボード、データソース、アラート、アノテーション、フォルダ操作",
@@ -39,9 +39,9 @@ func (m *GrafanaModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *GrafanaModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *GrafanaModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Grafana API version

@@ -24,7 +24,7 @@ func New() *ConfluenceModule {
 	return &ConfluenceModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Confluence API - Wiki operations (Space, Page, Search, Comment, Label)",
 	"ja-JP": "Confluence API - Wiki操作（スペース、ページ、検索、コメント、ラベル）",
@@ -40,9 +40,9 @@ func (m *ConfluenceModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *ConfluenceModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *ConfluenceModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Confluence API version

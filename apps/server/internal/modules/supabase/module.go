@@ -27,7 +27,7 @@ func (m *SupabaseModule) Name() string {
 	return "supabase"
 }
 
-// moduleDescriptions holds multilingual module descriptions
+// moduleDescriptions holds module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Supabase Management API - Project management, DB operations, Migrations, Logs, and Storage",
 	"ja-JP": "Supabase Management API - プロジェクト管理、DB操作、マイグレーション、ログ、ストレージ",
@@ -38,9 +38,9 @@ func (m *SupabaseModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *SupabaseModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *SupabaseModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Supabase API version

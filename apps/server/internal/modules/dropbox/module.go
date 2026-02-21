@@ -30,8 +30,8 @@ var moduleDescriptions = modules.LocalizedText{
 
 func (m *DropboxModule) Name() string                        { return "dropbox" }
 func (m *DropboxModule) Descriptions() modules.LocalizedText { return moduleDescriptions }
-func (m *DropboxModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+func (m *DropboxModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 func (m *DropboxModule) APIVersion() string { return dropboxVersion }
 func (m *DropboxModule) Tools() []modules.Tool {

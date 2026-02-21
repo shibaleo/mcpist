@@ -24,7 +24,7 @@ func New() *NotionModule {
 	return &NotionModule{}
 }
 
-// Module descriptions in multiple languages
+// Module descriptions
 var moduleDescriptions = modules.LocalizedText{
 	"en-US": "Notion API - Page, Database, Block, Comment, and User operations",
 	"ja-JP": "Notion API - ページ、データベース、ブロック、コメント、ユーザー操作",
@@ -40,9 +40,9 @@ func (m *NotionModule) Descriptions() modules.LocalizedText {
 	return moduleDescriptions
 }
 
-// Description returns the module description for a specific language
-func (m *NotionModule) Description(lang string) string {
-	return modules.GetLocalizedText(moduleDescriptions, lang)
+// Description returns the module description (English)
+func (m *NotionModule) Description() string {
+	return moduleDescriptions["en-US"]
 }
 
 // APIVersion returns the Notion API version

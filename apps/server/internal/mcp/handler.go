@@ -143,7 +143,7 @@ func (h *Handler) handleToolsList(ctx context.Context) (*ToolsListResult, *jsonr
 	if authCtx == nil {
 		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
-	return &ToolsListResult{Tools: modules.DynamicMetaTools(authCtx.EnabledModules, authCtx.Language)}, nil
+	return &ToolsListResult{Tools: modules.DynamicMetaTools(authCtx.EnabledModules)}, nil
 }
 
 func (h *Handler) handleToolCall(ctx context.Context, req *jsonrpc.Request) (*ToolCallResult, *jsonrpc.Error) {
@@ -198,7 +198,7 @@ func (h *Handler) handleGetModuleSchema(ctx context.Context, args map[string]int
 		return nil, &jsonrpc.Error{Code: InternalError, Message: "auth context missing"}
 	}
 
-	result, err := modules.GetModuleSchemas(moduleNames, authCtx.EnabledModules, authCtx.EnabledTools, authCtx.Language, authCtx.ModuleDescriptions)
+	result, err := modules.GetModuleSchemas(moduleNames, authCtx.EnabledModules, authCtx.EnabledTools, authCtx.ModuleDescriptions)
 	if err != nil {
 		return nil, &jsonrpc.Error{Code: InternalError, Message: err.Error()}
 	}
