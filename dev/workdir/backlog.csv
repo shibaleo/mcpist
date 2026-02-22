@@ -1,15 +1,18 @@
 id,source,source_id,type,priority,status,title,labels,created,updated
-MCPIST-1,jira,MCPIST-1,task,critical,todo,[S11-003] Worker 側にも DB 照合を追加,,2026-02-21,2026-02-21
-MCPIST-2,jira,MCPIST-2,task,critical,todo,[S11-002] API キー認証時に DB 照合を追加,,2026-02-21,2026-02-21
-MCPIST-3,jira,MCPIST-3,task,critical,todo,[S11-001] JWT に key_id クレームを追加,,2026-02-21,2026-02-21
-MCPIST-4,jira,MCPIST-4,task,critical,todo,[S11-004] JWT exp クレームをデフォルト設定,,2026-02-21,2026-02-21
-MCPIST-5,jira,MCPIST-5,task,high,todo,[S11-005] Console API キー生成 UI に有効期限表示,,2026-02-21,2026-02-21
-MCPIST-6,jira,MCPIST-6,task,high,todo,[S11-010] OAuth state 共通ユーティリティ作成,,2026-02-21,2026-02-21
-MCPIST-7,jira,MCPIST-7,task,high,todo,[S11-012] OAuth callback で state の HMAC を検証,,2026-02-21,2026-02-21
-MCPIST-8,jira,MCPIST-8,task,high,todo,[S11-021] user_credentials の暗号化,,2026-02-21,2026-02-21
-MCPIST-9,jira,MCPIST-9,task,high,todo,[S11-023] 環境変数 CREDENTIAL_ENCRYPTION_KEY 追加,,2026-02-21,2026-02-21
-MCPIST-10,jira,MCPIST-10,task,high,todo,[S11-022] oauth_apps の暗号化,,2026-02-21,2026-02-21
-MCPIST-11,jira,MCPIST-11,task,high,todo,[S11-011] OAuth state を HMAC-SHA256 署名付きに変更,,2026-02-21,2026-02-21
-MCPIST-12,jira,MCPIST-12,task,high,todo,[S11-024] 既存データの暗号化マイグレーションスクリプト,,2026-02-21,2026-02-21
+MCPIST-1,jira,MCPIST-1,task,critical,done,[S11-003] Worker 側にも DB 照合を追加,,2026-02-21,2026-02-22
+MCPIST-2,jira,MCPIST-2,task,critical,done,[S11-002] API キー認証時に DB 照合を追加,,2026-02-21,2026-02-22
+MCPIST-3,jira,MCPIST-3,task,critical,done,[S11-001] JWT に key_id クレームを追加,,2026-02-21,2026-02-22
+MCPIST-4,jira,MCPIST-4,task,critical,done,[S11-004] JWT exp クレームをデフォルト設定,,2026-02-21,2026-02-22
+MCPIST-5,jira,MCPIST-5,task,high,done,[S11-005] Console API キー生成 UI に有効期限表示,,2026-02-21,2026-02-22
+MCPIST-6,jira,MCPIST-6,task,high,done,[S11-010] OAuth state 共通ユーティリティ作成,,2026-02-21,2026-02-22
+MCPIST-7,jira,MCPIST-7,task,high,done,[S11-012] OAuth callback で state の HMAC を検証,,2026-02-21,2026-02-22
+MCPIST-8,jira,MCPIST-8,task,high,done,[S11-021] user_credentials の暗号化,,2026-02-21,2026-02-22
+MCPIST-9,jira,MCPIST-9,task,high,done,[S11-023] 環境変数 CREDENTIAL_ENCRYPTION_KEY 追加,,2026-02-21,2026-02-22
+MCPIST-10,jira,MCPIST-10,task,high,done,[S11-022] oauth_apps の暗号化,,2026-02-21,2026-02-22
+MCPIST-11,jira,MCPIST-11,task,high,done,[S11-011] OAuth state を HMAC-SHA256 署名付きに変更,,2026-02-21,2026-02-22
+MCPIST-12,jira,MCPIST-12,task,high,done,[S11-024] 既存データの暗号化マイグレーションスクリプト,,2026-02-21,2026-02-22
 MCPIST-13,jira,MCPIST-13,task,medium,todo,[S11-025] キーバージョニング対応,,2026-02-21,2026-02-21
-MCPIST-14,jira,MCPIST-14,task,high,todo,[S11-020] 暗号化パッケージ作成 (AES-256-GCM),,2026-02-21,2026-02-21
+MCPIST-14,jira,MCPIST-14,task,high,done,[S11-020] 暗号化パッケージ作成 (AES-256-GCM),,2026-02-21,2026-02-22
+MCPIST-15,jira,MCPIST-15,task,medium,todo,Privacy Policy ページを Console に追加,,2026-02-22,2026-02-22
+MCPIST-16,jira,MCPIST-16,task,medium,todo,Terms of Service ページを Console に追加,,2026-02-22,2026-02-22
+MCPIST-17,jira,MCPIST-17,task,medium,todo,Security Policy ページを Console に追加,,2026-02-22,2026-02-22
