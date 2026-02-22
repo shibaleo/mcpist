@@ -136,7 +136,7 @@ type UserCredential struct {
 	ID                   string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
 	UserID               string    `gorm:"type:uuid;not null" json:"user_id"`
 	Module               string    `gorm:"type:text;not null" json:"module"`
-	Credentials          string    `gorm:"type:text;not null" json:"credentials"`
+	Credentials          string    `gorm:"-" json:"-"`
 	EncryptedCredentials *string   `gorm:"type:text" json:"encrypted_credentials,omitempty"`
 	KeyVersion           int       `gorm:"not null;default:1" json:"key_version"`
 	CreatedAt            time.Time `json:"created_at"`
@@ -149,7 +149,7 @@ type OAuthApp struct {
 	ID                    string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
 	Provider              string    `gorm:"type:text;not null;uniqueIndex" json:"provider"`
 	ClientID              string    `gorm:"type:text;not null" json:"client_id"`
-	ClientSecret          string    `gorm:"type:text;not null" json:"client_secret"`
+	ClientSecret          string    `gorm:"-" json:"-"`
 	EncryptedClientSecret *string   `gorm:"type:text" json:"encrypted_client_secret,omitempty"`
 	RedirectURI           string    `gorm:"type:text;not null" json:"redirect_uri"`
 	Enabled               bool      `gorm:"default:true" json:"enabled"`

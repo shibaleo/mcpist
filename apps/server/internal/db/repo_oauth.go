@@ -7,20 +7,21 @@ import (
 )
 
 // GetOAuthAppCredentials returns the OAuth app config for a provider.
-// If encrypted_client_secret is set, it decrypts; otherwise falls back to plaintext.
+// Decrypts encrypted_client_secret into the in-memory ClientSecret field.
 // Used by TokenBroker for token refresh.
 func GetOAuthAppCredentials(db *gorm.DB, provider string) (*OAuthApp, error) {
 	var app OAuthApp
 	if err := db.Where("provider = ? AND enabled = true", provider).First(&app).Error; err != nil {
 		return nil, fmt.Errorf("oauth app not found for provider %s: %w", provider, err)
 	}
-	if app.EncryptedClientSecret != nil && *app.EncryptedClientSecret != "" {
-		plain, err := decrypt(*app.EncryptedClientSecret)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt client_secret for provider %s: %w", provider, err)
-		}
-		app.ClientSecret = string(plain)
+	if app.EncryptedClientSecret == nil || *app.EncryptedClientSecret == "" {
+		return nil, fmt.Errorf("no encrypted client_secret for provider %s", provider)
 	}
+	plain, err := decrypt(*app.EncryptedClientSecret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt client_secret for provider %s: %w", provider, err)
+	}
+	app.ClientSecret = string(plain)
 	return &app, nil
 }
 
@@ -34,32 +35,24 @@ func ListOAuthApps(db *gorm.DB) ([]OAuthApp, error) {
 }
 
 // UpsertOAuthApp creates or updates an OAuth app.
-// If encryption is enabled, stores client_secret encrypted and clears plaintext.
+// Stores client_secret encrypted.
 func UpsertOAuthApp(db *gorm.DB, app *OAuthApp) error {
-	if EncryptionEnabled() {
-		enc, err := encrypt([]byte(app.ClientSecret))
-		if err != nil {
-			return fmt.Errorf("failed to encrypt client_secret: %w", err)
-		}
-		app.EncryptedClientSecret = &enc
-		app.ClientSecret = ""
+	enc, err := encrypt([]byte(app.ClientSecret))
+	if err != nil {
+		return fmt.Errorf("failed to encrypt client_secret: %w", err)
 	}
+	app.EncryptedClientSecret = &enc
+	app.ClientSecret = ""
 
 	var existing OAuthApp
-	err := db.Where("provider = ?", app.Provider).First(&existing).Error
+	err = db.Where("provider = ?", app.Provider).First(&existing).Error
 	if err == nil {
-		updates := map[string]interface{}{
-			"client_id":   app.ClientID,
-			"redirect_uri": app.RedirectURI,
-			"enabled":     app.Enabled,
-		}
-		if EncryptionEnabled() {
-			updates["encrypted_client_secret"] = *app.EncryptedClientSecret
-			updates["client_secret"] = ""
-		} else {
-			updates["client_secret"] = app.ClientSecret
-		}
-		return db.Model(&existing).Updates(updates).Error
+		return db.Model(&existing).Updates(map[string]interface{}{
+			"client_id":              app.ClientID,
+			"redirect_uri":           app.RedirectURI,
+			"enabled":                app.Enabled,
+			"encrypted_client_secret": *app.EncryptedClientSecret,
+		}).Error
 	}
 	return db.Create(app).Error
 }
