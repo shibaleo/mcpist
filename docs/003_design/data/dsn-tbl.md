@@ -14,7 +14,7 @@
 
 本ドキュメントは、MCPistのデータベーステーブル設計を定義する。
 
-- テーブル仕様: [spc-tbl.md](../../002_specification/spc-tbl.md)
+- テーブル仕様: [spc-tbl.md](spec-tables.md)
 - 詳細設計（列定義・制約・インデックス）: [dtl-dsn-tbl.md](./dtl-dsn-tbl.md)
 
 ---
@@ -346,7 +346,7 @@ INSERT INTO mcpist.modules (id, name, status) VALUES
 
 | ドキュメント | 内容 |
 |-------------|------|
-| [spc-tbl.md](../../002_specification/spc-tbl.md) | テーブル仕様書 |
+| [spc-tbl.md](spec-tables.md) | テーブル仕様書 |
 | [spc-itr.md](../../002_specification/interaction/spc-itr.md) | インタラクション仕様書 |
 | [dtl-spc-credit-model.md](../../002_specification/dtl-spc/dtl-spc-credit-model.md) | クレジットモデル詳細仕様 |
 | [dtl-dsn-tbl.md](./dtl-dsn-tbl.md) | テーブル詳細設計書 |

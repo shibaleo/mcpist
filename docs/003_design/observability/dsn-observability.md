@@ -140,4 +140,4 @@ Grafana Cloud Synthetic Monitoring で Worker (`mcp.mcpist.com/health`) と Cons
 | 文書 | 内容 |
 |------|------|
 | [dsn-security.md](../security/dsn-security.md) | セキュリティ設計書 |
-| [spc-ops.md](../../002_specification/spc-ops.md) | 運用仕様書 |
+| [spc-ops.md](spec-operation.md) | 運用仕様書 |

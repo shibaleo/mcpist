@@ -241,4 +241,4 @@ initial_credits + SUM(purchases) - SUM(usage) = credit_balance
 |-------------|------|
 | [itr-mod.md](itr-MOD.md) | Modules詳細仕様（消費リクエスト形式） |
 | [itr-dst.md](itr-DST.md) | Data Store詳細仕様 |
-| [spc-tbl.md](spc-tbl.md) | テーブル仕様書 |
+| [spc-tbl.md](spec-tables.md) | テーブル仕様書 |
