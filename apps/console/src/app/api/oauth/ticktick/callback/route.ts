@@ -93,7 +93,7 @@ export async function GET(request: Request) {
 
     // トークン情報を保存
     const expiresAt = tokenData.expires_in
-      ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+      ? Math.floor(Date.now() / 1000) + tokenData.expires_in
       : null
 
     const tokenCredentials = {
