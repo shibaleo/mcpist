@@ -10,6 +10,8 @@ export async function validateSupabaseToken(params: ValidationParams): Promise<V
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'error',
     })
 
     if (response.ok) {

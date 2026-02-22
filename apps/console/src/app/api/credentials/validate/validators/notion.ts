@@ -10,6 +10,8 @@ export async function validateNotionToken(params: ValidationParams): Promise<Val
         'Authorization': `Bearer ${token}`,
         'Notion-Version': '2022-06-28',
       },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'error',
     })
 
     if (response.ok) {

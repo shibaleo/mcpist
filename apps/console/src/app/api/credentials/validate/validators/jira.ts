@@ -10,6 +10,13 @@ export async function validateJiraToken(params: ValidationParams): Promise<Valid
     }
   }
 
+  if (!/^[a-z0-9-]+\.atlassian\.net$/i.test(domain)) {
+    return {
+      valid: false,
+      error: 'ドメインは *.atlassian.net の形式で入力してください。',
+    }
+  }
+
   try {
     const auth = Buffer.from(`${email}:${token}`).toString('base64')
     const response = await fetch(`https://${domain}/rest/api/3/myself`, {
@@ -18,6 +25,8 @@ export async function validateJiraToken(params: ValidationParams): Promise<Valid
         'Authorization': `Basic ${auth}`,
         'Accept': 'application/json',
       },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'error',
     })
 
     if (response.ok) {

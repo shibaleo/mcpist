@@ -16,6 +16,8 @@ export async function validateTrelloToken(params: ValidationParams): Promise<Val
       headers: {
         'Accept': 'application/json',
       },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'error',
     })
 
     if (response.ok) {

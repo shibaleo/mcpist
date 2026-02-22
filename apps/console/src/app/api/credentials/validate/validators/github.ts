@@ -11,6 +11,8 @@ export async function validateGitHubToken(params: ValidationParams): Promise<Val
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'error',
     })
 
     if (response.ok) {
