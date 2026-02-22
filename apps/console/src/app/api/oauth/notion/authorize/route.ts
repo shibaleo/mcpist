@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
+import { generateState } from "@/lib/oauth/state"
 
 const NOTION_AUTH_URL = "https://api.notion.com/v1/oauth/authorize"
 
@@ -30,12 +31,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // state パラメータを生成（CSRF対策 + returnTo情報）
-    const stateData = {
-      nonce: crypto.randomUUID(),
-      returnTo,
-    }
-    const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
+    // state パラメータ（HMAC-SHA256 署名付き）
+    const state = generateState({ returnTo })
 
     // 認可URLを構築
     // Notion OAuth の仕様に従う

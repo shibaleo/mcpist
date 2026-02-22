@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
+import { verifyState } from "@/lib/oauth/state"
 
 const NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 
@@ -9,17 +10,15 @@ export async function GET(request: Request) {
   const error = url.searchParams.get("error")
   const stateParam = url.searchParams.get("state")
 
-  // state から returnTo を取り出す
+  // state の署名検証 + デコード
   let returnTo = "/tools"
-  if (stateParam) {
-    try {
-      const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
-      if (stateData.returnTo) {
-        returnTo = stateData.returnTo
-      }
-    } catch {
-      // state のパースに失敗した場合はデフォルト値を使用
-    }
+  try {
+    const stateData = verifyState(stateParam || "")
+    if (typeof stateData.returnTo === "string") returnTo = stateData.returnTo
+  } catch {
+    const errorUrl = new URL("/tools", request.url)
+    errorUrl.searchParams.set("error", "Invalid or expired OAuth state")
+    return NextResponse.redirect(errorUrl)
   }
 
   // エラーチェック

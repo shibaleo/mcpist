@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
 import crypto from "crypto"
+import { generateState } from "@/lib/oauth/state"
 
 const AIRTABLE_AUTHORIZE_URL = "https://airtable.com/oauth2/v1/authorize"
 
@@ -48,9 +49,8 @@ export async function GET(request: Request) {
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = generateCodeChallenge(codeVerifier)
 
-    // state パラメータ（CSRF対策 + returnTo保存）
-    const stateData = { nonce: crypto.randomUUID(), returnTo }
-    const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
+    // state パラメータ（HMAC-SHA256 署名付き）
+    const state = generateState({ returnTo })
 
     // Airtable OAuth 認可URL構築
     // https://airtable.com/developers/web/api/oauth-reference#authorize

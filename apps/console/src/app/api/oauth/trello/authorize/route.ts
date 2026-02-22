@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
 import crypto from "crypto"
+import { generateState } from "@/lib/oauth/state"
 
 // Trello OAuth 1.0a endpoints
 const TRELLO_REQUEST_TOKEN_URL = "https://trello.com/1/OAuthGetRequestToken"
@@ -126,11 +127,7 @@ export async function GET(request: Request) {
 
     // Store oauth_token_secret temporarily (needed for access token exchange)
     // We'll store it in a cookie since it's needed in the callback
-    const stateData = {
-      oauthTokenSecret,
-      returnTo,
-    }
-    const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
+    const state = generateState({ oauthTokenSecret, returnTo })
 
     // Step 2: Build authorization URL
     const authParams = new URLSearchParams({

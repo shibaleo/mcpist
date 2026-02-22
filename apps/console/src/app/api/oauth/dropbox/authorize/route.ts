@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createWorkerClient } from "@/lib/worker"
+import { generateState } from "@/lib/oauth/state"
 
 const DROPBOX_AUTHORIZE_URL = "https://www.dropbox.com/oauth2/authorize"
 
@@ -26,9 +27,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "OAuth credentials not configured for Dropbox" }, { status: 400 })
     }
 
-    // state パラメータ（CSRF対策 + returnTo保存）
-    const stateData = { returnTo }
-    const state = Buffer.from(JSON.stringify(stateData)).toString("base64url")
+    // state パラメータ（HMAC-SHA256 署名付き）
+    const state = generateState({ returnTo })
 
     // Dropbox OAuth 認可URL構築
     // https://www.dropbox.com/developers/documentation/http/documentation#oauth2-authorize

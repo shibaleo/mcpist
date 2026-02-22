@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
+import { verifyState } from "@/lib/oauth/state"
 import crypto from "crypto"
 import { cookies } from "next/headers"
 
@@ -53,21 +54,23 @@ export async function GET(request: Request) {
   const oauthToken = url.searchParams.get("oauth_token")
   const oauthVerifier = url.searchParams.get("oauth_verifier")
 
-  // Get state from cookie
+  // Get state from cookie and verify signature
   const cookieStore = await cookies()
   const stateCookie = cookieStore.get("trello_oauth_state")
 
   let returnTo = "/tools"
   let oauthTokenSecret = ""
 
-  if (stateCookie?.value) {
-    try {
-      const stateData = JSON.parse(Buffer.from(stateCookie.value, "base64url").toString())
-      returnTo = stateData.returnTo || "/tools"
-      oauthTokenSecret = stateData.oauthTokenSecret || ""
-    } catch {
-      // Parse error - use defaults
-    }
+  try {
+    const stateData = verifyState(stateCookie?.value || "")
+    if (typeof stateData.returnTo === "string") returnTo = stateData.returnTo
+    if (typeof stateData.oauthTokenSecret === "string") oauthTokenSecret = stateData.oauthTokenSecret
+  } catch {
+    const errorUrl = new URL("/tools", request.url)
+    errorUrl.searchParams.set("error", "Invalid or expired OAuth state")
+    const response = NextResponse.redirect(errorUrl)
+    response.cookies.delete("trello_oauth_state")
+    return response
   }
 
   // Error handling

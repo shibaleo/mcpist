@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createWorkerClient } from "@/lib/worker"
+import { verifyState } from "@/lib/oauth/state"
 
 const ATLASSIAN_TOKEN_URL = "https://auth.atlassian.com/oauth/token"
 const ATLASSIAN_RESOURCES_URL = "https://api.atlassian.com/oauth/token/accessible-resources"
@@ -26,21 +27,17 @@ export async function GET(request: Request) {
   const error = url.searchParams.get("error")
   const stateParam = url.searchParams.get("state")
 
-  // state から returnTo と module を取り出す
+  // state の署名検証 + デコード
   let returnTo = "/tools"
   let moduleName: string = ""
-  if (stateParam) {
-    try {
-      const stateData = JSON.parse(Buffer.from(stateParam, "base64url").toString())
-      if (stateData.returnTo) {
-        returnTo = stateData.returnTo
-      }
-      if (stateData.module) {
-        moduleName = stateData.module as string
-      }
-    } catch {
-      // state のパースに失敗した場合はデフォルト値を使用
-    }
+  try {
+    const stateData = verifyState(stateParam || "")
+    if (typeof stateData.returnTo === "string") returnTo = stateData.returnTo
+    if (typeof stateData.module === "string") moduleName = stateData.module
+  } catch {
+    const errorUrl = new URL("/tools", request.url)
+    errorUrl.searchParams.set("error", "Invalid or expired OAuth state")
+    return NextResponse.redirect(errorUrl)
   }
 
   // module チェック
