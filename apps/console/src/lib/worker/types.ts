@@ -368,6 +368,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/internal/apikeys/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check if an API key is active (internal, called by Worker) */
+        get: operations["getApiKeyStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/oauth/consents": {
         parameters: {
             query?: never;
@@ -496,9 +513,11 @@ export interface components {
             display_name: string;
             /**
              * Format: date-time
-             * @description Expiration timestamp (optional)
+             * @description Expiration timestamp. If omitted, defaults to 90 days.
              */
             expires_at?: string;
+            /** @description Set to true to create a key with no expiration. Overrides expires_at. */
+            no_expiry?: boolean;
         };
         GenerateApiKeyResult: {
             /** @description Full API key (only returned at creation time) */
@@ -591,6 +610,14 @@ export interface components {
             enabled?: boolean;
             /** Format: date-time */
             created_at?: string;
+        };
+        ApiKeyStatus: {
+            /** @description Whether the API key is currently active */
+            active: boolean;
+            key_id: string;
+            user_id: string;
+            /** Format: date-time */
+            expires_at?: string | null;
         };
         UpsertOAuthAppBody: {
             client_id: string;
@@ -1244,6 +1271,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuccessResult"];
+                };
+            };
+        };
+    };
+    getApiKeyStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description API key UUID (kid claim from JWT) */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description API key status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyStatus"];
+                };
+            };
+            /** @description API key not found or revoked */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

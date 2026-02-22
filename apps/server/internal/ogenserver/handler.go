@@ -272,10 +272,19 @@ func (h *handler) GenerateApiKey(ctx context.Context, req *gen.GenerateApiKeyBod
 
 	userID := getUserID(ctx)
 
-	// Compute expiration
+	// Compute expiration:
+	//   no_expiry=true  → nil (no expiration)
+	//   expires_at set  → use that value
+	//   neither         → default 90 days
+	const defaultExpiryDays = 90
 	var expiresAt *time.Time
-	if ea, ok := req.ExpiresAt.Get(); ok {
+	if noExp, ok := req.NoExpiry.Get(); ok && noExp {
+		// explicit no expiry
+	} else if ea, ok := req.ExpiresAt.Get(); ok {
 		expiresAt = &ea
+	} else {
+		t := time.Now().AddDate(0, 0, defaultExpiryDays)
+		expiresAt = &t
 	}
 
 	key, err := db.CreateAPIKey(h.db, userID, "", "mpt_", name, expiresAt)
@@ -298,6 +307,34 @@ func (h *handler) GenerateApiKey(ctx context.Context, req *gen.GenerateApiKeyBod
 		APIKey:    token,
 		KeyPrefix: prefix,
 	}, nil
+}
+
+func (h *handler) GetApiKeyStatus(ctx context.Context, params gen.GetApiKeyStatusParams) (gen.GetApiKeyStatusRes, error) {
+	key, err := db.GetAPIKeyByID(h.db, params.ID)
+	if err != nil {
+		return &gen.ErrorResponse{Error: "api key not found"}, nil
+	}
+
+	// Check expiration
+	if key.ExpiresAt != nil && key.ExpiresAt.Before(time.Now()) {
+		return &gen.ErrorResponse{Error: "api key expired"}, nil
+	}
+
+	result := &gen.ApiKeyStatus{
+		Active: true,
+		KeyID:  key.ID,
+		UserID: key.UserID,
+	}
+	if key.ExpiresAt != nil {
+		result.ExpiresAt = gen.NewOptNilDateTime(*key.ExpiresAt)
+	} else {
+		result.ExpiresAt.SetToNull()
+	}
+
+	// Update last_used_at
+	go db.UpdateAPIKeyLastUsed(h.db, key.ID)
+
+	return result, nil
 }
 
 func (h *handler) RevokeApiKey(ctx context.Context, params gen.RevokeApiKeyParams) (*gen.SuccessResult, error) {

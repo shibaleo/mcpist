@@ -12,6 +12,7 @@ const (
 	DeleteOAuthAppOperation          OperationName = "DeleteOAuthApp"
 	DeletePromptOperation            OperationName = "DeletePrompt"
 	GenerateApiKeyOperation          OperationName = "GenerateApiKey"
+	GetApiKeyStatusOperation         OperationName = "GetApiKeyStatus"
 	GetModuleConfigOperation         OperationName = "GetModuleConfig"
 	GetMyProfileOperation            OperationName = "GetMyProfile"
 	GetOAuthAppCredentialsOperation  OperationName = "GetOAuthAppCredentials"

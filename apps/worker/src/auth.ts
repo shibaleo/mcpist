@@ -1,5 +1,6 @@
 import * as jose from "jose";
 import type { Env, AuthResult } from "./types";
+import { callGoServer } from "./v1/go-server";
 
 
 export async function authenticate(
@@ -43,7 +44,37 @@ async function verifyClerkJWT(token: string, env: Env): Promise<AuthResult | nul
   }
 }
 
-// === JWT API Key 検証 (Go Server JWKS) ===
+// === JWT API Key 検証 (Go Server JWKS + DB 照合 + キャッシュ) ===
+
+interface ApiKeyStatusResponse {
+  active: boolean;
+  key_id: string;
+  user_id: string;
+  expires_at?: string | null;
+}
+
+// API Key ステータスのインメモリキャッシュ (TTL 5分)
+const API_KEY_CACHE_TTL_MS = 5 * 60 * 1000;
+const apiKeyStatusCache = new Map<string, { active: boolean; cachedAt: number }>();
+
+function getCachedKeyStatus(keyId: string): boolean | null {
+  const entry = apiKeyStatusCache.get(keyId);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAt > API_KEY_CACHE_TTL_MS) {
+    apiKeyStatusCache.delete(keyId);
+    return null;
+  }
+  return entry.active;
+}
+
+function setCachedKeyStatus(keyId: string, active: boolean): void {
+  apiKeyStatusCache.set(keyId, { active, cachedAt: Date.now() });
+}
+
+/** Invalidate cached key status (called on revoke via cache bust API) */
+export function invalidateApiKeyCache(keyId: string): void {
+  apiKeyStatusCache.delete(keyId);
+}
 
 async function verifyApiKey(apiKey: string, env: Env): Promise<AuthResult | null> {
   try {
@@ -55,7 +86,39 @@ async function verifyApiKey(apiKey: string, env: Env): Promise<AuthResult | null
 
     if (!payload.sub) return null;
 
-    console.log("[Auth] API Key JWT verified");
+    // Extract key_id from JWT claims (kid = api_keys.id)
+    const keyId = typeof payload.kid === "string" ? payload.kid : undefined;
+    if (!keyId) {
+      console.error("[Auth] API Key JWT missing kid claim");
+      return null;
+    }
+
+    // Check cache first
+    const cached = getCachedKeyStatus(keyId);
+    if (cached !== null) {
+      if (!cached) {
+        console.warn("[Auth] API Key revoked (cached):", keyId);
+        return null;
+      }
+      console.log("[Auth] API Key JWT verified (cache hit)");
+      return { userId: payload.sub, type: "api_key" };
+    }
+
+    // Cache miss — verify via Go Server internal API
+    const status = await callGoServer<ApiKeyStatusResponse>(
+      env,
+      "GET",
+      `/v1/internal/apikeys/${keyId}/status`
+    );
+
+    setCachedKeyStatus(keyId, status.active);
+
+    if (!status.active) {
+      console.warn("[Auth] API Key revoked or inactive:", keyId);
+      return null;
+    }
+
+    console.log("[Auth] API Key JWT verified + DB check passed");
     return { userId: payload.sub, type: "api_key" };
   } catch (error) {
     console.error("[Auth] API Key verification failed:", error);

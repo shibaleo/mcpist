@@ -78,6 +78,57 @@ func (s *ApiKey) SetRevokedAt(val OptNilDateTime) {
 	s.RevokedAt = val
 }
 
+// Ref: #/components/schemas/ApiKeyStatus
+type ApiKeyStatus struct {
+	// Whether the API key is currently active.
+	Active    bool           `json:"active"`
+	KeyID     string         `json:"key_id"`
+	UserID    string         `json:"user_id"`
+	ExpiresAt OptNilDateTime `json:"expires_at"`
+}
+
+// GetActive returns the value of Active.
+func (s *ApiKeyStatus) GetActive() bool {
+	return s.Active
+}
+
+// GetKeyID returns the value of KeyID.
+func (s *ApiKeyStatus) GetKeyID() string {
+	return s.KeyID
+}
+
+// GetUserID returns the value of UserID.
+func (s *ApiKeyStatus) GetUserID() string {
+	return s.UserID
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *ApiKeyStatus) GetExpiresAt() OptNilDateTime {
+	return s.ExpiresAt
+}
+
+// SetActive sets the value of Active.
+func (s *ApiKeyStatus) SetActive(val bool) {
+	s.Active = val
+}
+
+// SetKeyID sets the value of KeyID.
+func (s *ApiKeyStatus) SetKeyID(val string) {
+	s.KeyID = val
+}
+
+// SetUserID sets the value of UserID.
+func (s *ApiKeyStatus) SetUserID(val string) {
+	s.UserID = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *ApiKeyStatus) SetExpiresAt(val OptNilDateTime) {
+	s.ExpiresAt = val
+}
+
+func (*ApiKeyStatus) getApiKeyStatusRes() {}
+
 // Ref: #/components/schemas/CompleteOnboardingBody
 type CompleteOnboardingBody struct {
 	EventID string `json:"event_id"`
@@ -230,7 +281,8 @@ func (s *ErrorResponse) SetError(val string) {
 	s.Error = val
 }
 
-func (*ErrorResponse) registerUserRes() {}
+func (*ErrorResponse) getApiKeyStatusRes() {}
+func (*ErrorResponse) registerUserRes()    {}
 
 type GatewayToken struct {
 	APIKey string
@@ -260,8 +312,10 @@ func (s *GatewayToken) SetRoles(val []string) {
 // Ref: #/components/schemas/GenerateApiKeyBody
 type GenerateApiKeyBody struct {
 	DisplayName string `json:"display_name"`
-	// Expiration timestamp (optional).
+	// Expiration timestamp. If omitted, defaults to 90 days.
 	ExpiresAt OptDateTime `json:"expires_at"`
+	// Set to true to create a key with no expiration. Overrides expires_at.
+	NoExpiry OptBool `json:"no_expiry"`
 }
 
 // GetDisplayName returns the value of DisplayName.
@@ -274,6 +328,11 @@ func (s *GenerateApiKeyBody) GetExpiresAt() OptDateTime {
 	return s.ExpiresAt
 }
 
+// GetNoExpiry returns the value of NoExpiry.
+func (s *GenerateApiKeyBody) GetNoExpiry() OptBool {
+	return s.NoExpiry
+}
+
 // SetDisplayName sets the value of DisplayName.
 func (s *GenerateApiKeyBody) SetDisplayName(val string) {
 	s.DisplayName = val
@@ -282,6 +341,11 @@ func (s *GenerateApiKeyBody) SetDisplayName(val string) {
 // SetExpiresAt sets the value of ExpiresAt.
 func (s *GenerateApiKeyBody) SetExpiresAt(val OptDateTime) {
 	s.ExpiresAt = val
+}
+
+// SetNoExpiry sets the value of NoExpiry.
+func (s *GenerateApiKeyBody) SetNoExpiry(val OptBool) {
+	s.NoExpiry = val
 }
 
 // Ref: #/components/schemas/GenerateApiKeyResult

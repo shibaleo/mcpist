@@ -51,6 +51,11 @@ func (s *securityHandler) HandleGatewayToken(ctx context.Context, operationName 
 		return ctx, fmt.Errorf("invalid gateway token")
 	}
 
+	// Internal operations: JWT validation only (no user context needed)
+	if isInternalOperation(operationName) {
+		return ctx, nil
+	}
+
 	// Registration: user may not exist yet — just validate JWT and store claims
 	if operationName == gen.RegisterUserOperation {
 		if claims.ClerkID == "" {
@@ -102,6 +107,14 @@ func (s *securityHandler) HandleGatewayToken(ctx context.Context, operationName 
 	}
 
 	return ctx, nil
+}
+
+func isInternalOperation(op gen.OperationName) bool {
+	switch op {
+	case gen.GetApiKeyStatusOperation:
+		return true
+	}
+	return false
 }
 
 func isAdminOperation(op gen.OperationName) bool {

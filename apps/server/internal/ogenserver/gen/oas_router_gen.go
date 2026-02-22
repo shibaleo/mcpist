@@ -151,6 +151,51 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
+			case 'i': // Prefix: "internal/apikeys/"
+
+				if l := len("internal/apikeys/"); len(elem) >= l && elem[0:l] == "internal/apikeys/" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				// Param: "id"
+				// Match until "/"
+				idx := strings.IndexByte(elem, '/')
+				if idx < 0 {
+					idx = len(elem)
+				}
+				args[0] = elem[:idx]
+				elem = elem[idx:]
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/status"
+
+					if l := len("/status"); len(elem) >= l && elem[0:l] == "/status" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleGetApiKeyStatusRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "GET")
+						}
+
+						return
+					}
+
+				}
+
 			case 'm': // Prefix: "m"
 
 				if l := len("m"); len(elem) >= l && elem[0:l] == "m" {
@@ -939,6 +984,54 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.pathPattern = "/v1/admin/oauth/consents"
 							r.args = args
 							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+				}
+
+			case 'i': // Prefix: "internal/apikeys/"
+
+				if l := len("internal/apikeys/"); len(elem) >= l && elem[0:l] == "internal/apikeys/" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				// Param: "id"
+				// Match until "/"
+				idx := strings.IndexByte(elem, '/')
+				if idx < 0 {
+					idx = len(elem)
+				}
+				args[0] = elem[:idx]
+				elem = elem[idx:]
+
+				if len(elem) == 0 {
+					break
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/status"
+
+					if l := len("/status"); len(elem) >= l && elem[0:l] == "/status" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = GetApiKeyStatusOperation
+							r.summary = "Check if an API key is active (internal, called by Worker)"
+							r.operationID = "getApiKeyStatus"
+							r.operationGroup = ""
+							r.pathPattern = "/v1/internal/apikeys/{id}/status"
+							r.args = args
+							r.count = 1
 							return r, true
 						default:
 							return

@@ -65,6 +65,15 @@ func RevokeAPIKey(db *gorm.DB, userID, keyID string) error {
 	return result.Error
 }
 
+// GetAPIKeyByID returns an API key by its ID, or an error if not found.
+func GetAPIKeyByID(db *gorm.DB, keyID string) (*APIKey, error) {
+	var key APIKey
+	if err := db.Where("id = ?", keyID).First(&key).Error; err != nil {
+		return nil, err
+	}
+	return &key, nil
+}
+
 // UpdateAPIKeyLastUsed updates the last_used_at timestamp.
 func UpdateAPIKeyLastUsed(db *gorm.DB, keyID string) {
 	db.Model(&APIKey{}).Where("id = ?", keyID).Update("last_used_at", time.Now())

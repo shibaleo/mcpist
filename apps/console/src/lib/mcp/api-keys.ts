@@ -18,12 +18,9 @@ export async function generateApiKey(
 ) {
   const client = await createWorkerClient()
   const { data } = await client.POST("/v1/me/apikeys", {
-    body: {
-      display_name: name,
-      expires_at: expiresInDays
-        ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-        : undefined,
-    },
+    body: expiresInDays === null
+      ? { display_name: name, no_expiry: true }
+      : { display_name: name, expires_at: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString() },
   })
   return data!
 }

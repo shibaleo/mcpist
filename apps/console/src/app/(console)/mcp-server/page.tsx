@@ -93,7 +93,7 @@ export default function McpConnectionPage() {
 
   // Create form state
   const [keyName, setKeyName] = useState("")
-  const [expiration, setExpiration] = useState<string>("never")
+  const [expiration, setExpiration] = useState<string>("90")
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -163,7 +163,7 @@ export default function McpConnectionPage() {
       await loadApiKeys()
       setCreateDialogOpen(false)
       setKeyName("")
-      setExpiration("never")
+      setExpiration("90")
     } catch (error) {
       if (error instanceof Error) {
         toast.error(`キーの作成に失敗しました: ${error.message}`)
@@ -465,12 +465,16 @@ export default function McpConnectionPage() {
               {apiKeys.map((apiKey) => {
                 const isExpired = apiKey.expires_at && new Date(apiKey.expires_at) < new Date()
                 const isRevoked = !!apiKey.revoked_at
+                const daysUntilExpiry = apiKey.expires_at
+                  ? Math.ceil((new Date(apiKey.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  : null
+                const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry > 0 && daysUntilExpiry <= 14
                 return (
                 <div
                   key={apiKey.id}
                   className={cn(
                     "p-3 rounded-lg border overflow-hidden",
-                    (isExpired || isRevoked) && "border-warning/50 bg-warning/5"
+                    (isExpired || isRevoked || isExpiringSoon) && "border-warning/50 bg-warning/5"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -494,6 +498,15 @@ export default function McpConnectionPage() {
                           className="bg-destructive/20 text-destructive border-destructive/30 text-xs shrink-0"
                         >
                           無効化済み
+                        </Badge>
+                      )}
+                      {isExpiringSoon && (
+                        <Badge
+                          variant="outline"
+                          className="bg-warning/20 text-warning border-warning/30 text-xs shrink-0"
+                        >
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          {daysUntilExpiry}日で期限切れ
                         </Badge>
                       )}
                     </div>

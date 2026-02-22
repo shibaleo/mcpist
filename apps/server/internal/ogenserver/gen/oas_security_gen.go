@@ -40,6 +40,7 @@ var operationRolesGatewayToken = map[string][]string{
 	DeleteOAuthAppOperation:          []string{},
 	DeletePromptOperation:            []string{},
 	GenerateApiKeyOperation:          []string{},
+	GetApiKeyStatusOperation:         []string{},
 	GetModuleConfigOperation:         []string{},
 	GetMyProfileOperation:            []string{},
 	GetOAuthAppCredentialsOperation:  []string{},

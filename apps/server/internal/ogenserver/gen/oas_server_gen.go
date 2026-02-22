@@ -44,6 +44,12 @@ type Handler interface {
 	//
 	// POST /v1/me/apikeys
 	GenerateApiKey(ctx context.Context, req *GenerateApiKeyBody) (*GenerateApiKeyResult, error)
+	// GetApiKeyStatus implements getApiKeyStatus operation.
+	//
+	// Check if an API key is active (internal, called by Worker).
+	//
+	// GET /v1/internal/apikeys/{id}/status
+	GetApiKeyStatus(ctx context.Context, params GetApiKeyStatusParams) (GetApiKeyStatusRes, error)
 	// GetModuleConfig implements getModuleConfig operation.
 	//
 	// Get module configuration.

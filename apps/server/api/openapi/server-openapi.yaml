@@ -598,6 +598,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResult"
 
+  # ── Internal (Worker → Server) ──────────────────────────────
+  /v1/internal/apikeys/{id}/status:
+    get:
+      operationId: getApiKeyStatus
+      summary: Check if an API key is active (internal, called by Worker)
+      tags: [internal]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: API key UUID (kid claim from JWT)
+      responses:
+        "200":
+          description: API key status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyStatus"
+        "404":
+          description: API key not found or revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /v1/admin/oauth/consents:
     get:
       operationId: listAllOAuthConsents
@@ -864,7 +893,10 @@ components:
         expires_at:
           type: string
           format: date-time
-          description: Expiration timestamp (optional)
+          description: Expiration timestamp. If omitted, defaults to 90 days.
+        no_expiry:
+          type: boolean
+          description: Set to true to create a key with no expiration. Overrides expires_at.
 
     GenerateApiKeyResult:
       type: object
@@ -1061,6 +1093,23 @@ components:
         created_at:
           type: string
           format: date-time
+
+    # ── Internal ──
+    ApiKeyStatus:
+      type: object
+      required: [active, key_id, user_id]
+      properties:
+        active:
+          type: boolean
+          description: Whether the API key is currently active
+        key_id:
+          type: string
+        user_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
 
     UpsertOAuthAppBody:
       type: object

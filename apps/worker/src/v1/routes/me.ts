@@ -7,7 +7,7 @@
 
 import { Hono } from "hono";
 import type { Env } from "../../types";
-import { authenticate } from "../../auth";
+import { authenticate, invalidateApiKeyCache } from "../../auth";
 import { jsonResponse } from "../../http";
 import { forwardToGoServer } from "../go-server";
 import type { GatewayTokenClaims } from "../../gateway-token";
@@ -143,6 +143,8 @@ me.delete("/apikeys/:id", async (c) => {
   const r = await requireAuth(c.req.raw, c.env);
   if (r instanceof Response) return r;
   const id = c.req.param("id");
+  // Bust cache immediately so subsequent requests reject this key
+  invalidateApiKeyCache(id);
   return proxy(c.env, r, "DELETE", `/apikeys/${id}`);
 });
 

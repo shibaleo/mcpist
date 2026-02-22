@@ -67,6 +67,15 @@ func (UnimplementedHandler) GenerateApiKey(ctx context.Context, req *GenerateApi
 	return r, ht.ErrNotImplemented
 }
 
+// GetApiKeyStatus implements getApiKeyStatus operation.
+//
+// Check if an API key is active (internal, called by Worker).
+//
+// GET /v1/internal/apikeys/{id}/status
+func (UnimplementedHandler) GetApiKeyStatus(ctx context.Context, params GetApiKeyStatusParams) (r GetApiKeyStatusRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetModuleConfig implements getModuleConfig operation.
 //
 // Get module configuration.
