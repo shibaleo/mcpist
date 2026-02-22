@@ -37,26 +37,53 @@ func ListCredentials(db *gorm.DB, userID string) ([]CredentialMeta, error) {
 }
 
 // GetCredential returns the full credential for a user/module.
+// If encrypted_credentials is set, it decrypts; otherwise falls back to plaintext.
 func GetCredential(db *gorm.DB, userID, module string) (*UserCredential, error) {
 	var cred UserCredential
 	if err := db.Where("user_id = ? AND module = ?", userID, module).First(&cred).Error; err != nil {
 		return nil, fmt.Errorf("credential not found for module %s: %w", module, err)
 	}
+	if cred.EncryptedCredentials != nil && *cred.EncryptedCredentials != "" {
+		plain, err := decrypt(*cred.EncryptedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt credentials for module %s: %w", module, err)
+		}
+		cred.Credentials = string(plain)
+	}
 	return &cred, nil
 }
 
 // UpsertCredential creates or updates a credential.
+// If encryption is enabled, stores in encrypted_credentials and clears plaintext.
 // Also auto-enables all tools for the module if no tool_settings exist yet.
 func UpsertCredential(db *gorm.DB, userID, module, credentials string) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		cred := UserCredential{
-			UserID:      userID,
-			Module:      module,
-			Credentials: credentials,
+			UserID: userID,
+			Module: module,
 		}
+
+		if EncryptionEnabled() {
+			enc, err := encrypt([]byte(credentials))
+			if err != nil {
+				return fmt.Errorf("failed to encrypt credentials: %w", err)
+			}
+			cred.EncryptedCredentials = &enc
+			cred.Credentials = "" // clear plaintext
+		} else {
+			cred.Credentials = credentials
+		}
+
+		updateCols := []string{"updated_at"}
+		if EncryptionEnabled() {
+			updateCols = append(updateCols, "encrypted_credentials", "credentials")
+		} else {
+			updateCols = append(updateCols, "credentials")
+		}
+
 		if err := tx.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "user_id"}, {Name: "module"}},
-			DoUpdates: clause.AssignmentColumns([]string{"credentials", "updated_at"}),
+			DoUpdates: clause.AssignmentColumns(updateCols),
 		}).Create(&cred).Error; err != nil {
 			return err
 		}

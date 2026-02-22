@@ -95,6 +95,14 @@ func main() {
 	database := db.Open()
 	log.Printf("Database connected")
 
+	// Initialize credential encryption (noop if CREDENTIAL_ENCRYPTION_KEY not set)
+	db.InitEncryptionKey()
+	if db.EncryptionEnabled() {
+		log.Printf("Credential encryption enabled")
+	} else {
+		log.Printf("WARNING: CREDENTIAL_ENCRYPTION_KEY not set — credentials stored in plaintext")
+	}
+
 	// Initialize Ed25519 signing keys for JWT API keys
 	if err := auth.Init(); err != nil {
 		log.Fatalf("Failed to initialize auth keys: %v", err)

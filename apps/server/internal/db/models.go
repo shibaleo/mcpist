@@ -146,14 +146,15 @@ type UserCredential struct {
 func (UserCredential) TableName() string { return "mcpist.user_credentials" }
 
 type OAuthApp struct {
-	ID           string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	Provider     string    `gorm:"type:text;not null;uniqueIndex" json:"provider"`
-	ClientID     string    `gorm:"type:text;not null" json:"client_id"`
-	ClientSecret string    `gorm:"type:text;not null" json:"client_secret"`
-	RedirectURI  string    `gorm:"type:text;not null" json:"redirect_uri"`
-	Enabled      bool      `gorm:"default:true" json:"enabled"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                    string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	Provider              string    `gorm:"type:text;not null;uniqueIndex" json:"provider"`
+	ClientID              string    `gorm:"type:text;not null" json:"client_id"`
+	ClientSecret          string    `gorm:"type:text;not null" json:"client_secret"`
+	EncryptedClientSecret *string   `gorm:"type:text" json:"encrypted_client_secret,omitempty"`
+	RedirectURI           string    `gorm:"type:text;not null" json:"redirect_uri"`
+	Enabled               bool      `gorm:"default:true" json:"enabled"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 func (OAuthApp) TableName() string { return "mcpist.oauth_apps" }
