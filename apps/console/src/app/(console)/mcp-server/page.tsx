@@ -43,7 +43,6 @@ import {
   ChevronDown,
   ChevronRight,
   LogIn,
-  ExternalLink,
   Image as ImageIcon,
   BookOpen,
 } from "lucide-react"

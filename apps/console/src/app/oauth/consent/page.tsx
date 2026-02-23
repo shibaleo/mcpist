@@ -6,22 +6,21 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { fetchAuthUserContext } from "@/lib/auth/auth-context-actions"
 import { CheckCircle2, Shield, AlertCircle, Loader2 } from "lucide-react"
 
 function ConsentContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user: clerkUser, isLoaded } = useUser()
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
 
   const scopes = searchParams.get("scope")?.split(" ") || ["openid", "profile", "email"]
   const redirectUri = searchParams.get("redirect_uri") || ""
   const clientId = searchParams.get("client_id") || "MCPist"
   const state = searchParams.get("state") || null
+
+  const loading = !isLoaded
 
   useEffect(() => {
     if (!isLoaded) return
@@ -29,15 +28,7 @@ function ConsentContent() {
     if (!clerkUser) {
       const currentUrl = window.location.href
       router.push(`/login?returnTo=${encodeURIComponent(currentUrl)}`)
-      return
     }
-
-    // Check if user is admin
-    fetchAuthUserContext().then((ctx) => {
-      setIsAdmin(ctx?.role === "admin")
-    }).catch(() => {})
-
-    setLoading(false)
   }, [clerkUser, isLoaded, router])
 
   const handleApprove = async () => {

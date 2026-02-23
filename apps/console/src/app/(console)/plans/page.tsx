@@ -45,16 +45,6 @@ export default function PlanPage() {
     }
   }
 
-  // Webhook処理完了を待ってからデータを再取得（リトライ付き）
-  const waitForPlanUpdate = async (expectedPlan: string, maxRetries = 5) => {
-    for (let i = 0; i < maxRetries; i++) {
-      await new Promise((r) => setTimeout(r, 2000))
-      const data = await fetchContext()
-      if (data?.plan_id === expectedPlan) return true
-    }
-    return false
-  }
-
   // Handle success/cancel from Stripe Checkout
   useEffect(() => {
     const success = searchParams.get("success")
@@ -63,6 +53,17 @@ export default function PlanPage() {
     if (success === "true") {
       window.history.replaceState({}, "", "/plans")
       cachedContext = null
+
+      // Webhook処理完了を待ってからデータを再取得（リトライ付き）
+      const waitForPlanUpdate = async (expectedPlan: string, maxRetries = 5) => {
+        for (let i = 0; i < maxRetries; i++) {
+          await new Promise((r) => setTimeout(r, 2000))
+          const data = await fetchContext()
+          if (data?.plan_id === expectedPlan) return true
+        }
+        return false
+      }
+
       toast.promise(waitForPlanUpdate("plus"), {
         loading: "プランを更新中...",
         success: "Plusプランが適用されました！",
