@@ -68,7 +68,7 @@ export default function ToolsPage() {
 
   // Tool settings state (loaded from DB)
   const hasCached = cachedToolSettings !== null
-  const [toolSettings, setToolSettings] = useState<ToolSettingsMap>(cachedToolSettings ?? {})
+  const [, setToolSettings] = useState<ToolSettingsMap>(cachedToolSettings ?? {})
   const [localToolSettings, setLocalToolSettings] = useState<ToolSettingsMap>(cachedToolSettings ?? {})
   const [connections, setConnections] = useState<ServiceConnection[]>(cachedConnections ?? [])
   const [loading, setLoading] = useState(!hasCached)
@@ -150,7 +150,7 @@ export default function ToolsPage() {
       })
       return defaults
     },
-    [localToolSettings]
+    [localToolSettings, modules]
   )
 
   // 接続済みモジュールのIDセット
@@ -230,7 +230,7 @@ export default function ToolsPage() {
         ...prev,
         [moduleId]: allEnabled,
       }))
-    } catch (error) {
+    } catch {
       // Revert on failure
       setLocalToolSettings((prev) => ({
         ...prev,
@@ -262,7 +262,7 @@ export default function ToolsPage() {
         ...prev,
         [moduleId]: allDisabled,
       }))
-    } catch (error) {
+    } catch {
       // Revert on failure
       setLocalToolSettings((prev) => ({
         ...prev,

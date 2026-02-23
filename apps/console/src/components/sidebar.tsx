@@ -95,7 +95,7 @@ export function Sidebar({ collapsed = false, onCollapsedChange, onClose }: Sideb
     if (user) {
       fetchConnectionCount()
     }
-  }, [user?.id])
+  }, [user?.id, user])
 
   const handleSignOut = async () => {
     await signOut()

@@ -17,7 +17,6 @@ import { ModuleIcon } from "@/components/module-icon"
 import { useAuth } from "@/lib/auth/auth-context"
 import {
   getModules,
-  getModuleDescription,
   type ModuleDef,
 } from "@/lib/modules/module-data"
 import {
@@ -26,7 +25,6 @@ import {
   Loader2,
   CircleCheckBig,
   XCircle,
-  Unlink,
   Info,
   ExternalLink,
   Search,
@@ -276,7 +274,7 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(!hasCached)
   const [modules, setModules] = useState<ModuleDef[]>([])
   // Language setting
-  const [language, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
+  const [, setLanguage] = useState<Language>(cachedLanguage ?? "ja-JP")
 
   // User preferences (preferred modules from onboarding)
   const [preferredModules, setPreferredModules] = useState<string[]>(cachedPreferredModules ?? [])

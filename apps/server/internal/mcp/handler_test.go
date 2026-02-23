@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -207,7 +208,7 @@ func TestProcessRequestMethodNotFound(t *testing.T) {
 		Method:  "nonexistent/method",
 	}
 
-	_, rpcErr := h.ProcessRequest(nil, req)
+	_, rpcErr := h.ProcessRequest(context.TODO(), req)
 	if rpcErr == nil {
 		t.Fatal("expected error for unknown method")
 	}
@@ -224,7 +225,7 @@ func TestProcessRequestInitialized(t *testing.T) {
 		Method:  "initialized",
 	}
 
-	result, rpcErr := h.ProcessRequest(nil, req)
+	result, rpcErr := h.ProcessRequest(context.TODO(), req)
 	if rpcErr != nil {
 		t.Errorf("unexpected error: %v", rpcErr.Message)
 	}
