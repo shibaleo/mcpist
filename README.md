@@ -10,7 +10,7 @@ Add to your MCP client configuration (Claude Code, Cursor, etc.):
 {
   "mcpServers": {
     "mcpist": {
-      "url": "https://mcp.dev.mcpist.app/v1/mcp",
+      "url": "https://mcp.mcpist.app/v1/mcp",
       "headers": {
         "Authorization": "Bearer <your-api-key>"
       }
@@ -129,8 +129,8 @@ mcpist/
 
 | App | Platform | Domain |
 |-----|----------|--------|
-| Console | Vercel | dev.mcpist.app |
-| Worker | Cloudflare Workers | mcp.dev.mcpist.app |
+| Console | Vercel | mcpist.app |
+| Worker | Cloudflare Workers | mcp.mcpist.app |
 | Server | Render | mcpist.onrender.com |
 | Database | Neon | — |
 
