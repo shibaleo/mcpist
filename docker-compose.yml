@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:17
+    ports:
+      - "57432:5432"
+    environment:
+      POSTGRES_DB: mcpist
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  pgdata:

@@ -1,0 +1,356 @@
+openapi: 3.0.3
+info:
+  title: Microsoft Graph To Do API (mcpist subset)
+  description: Subset of Microsoft Graph To Do API v1.0 used by mcpist microsoft_todo module
+  version: "v1.0"
+servers:
+  - url: https://graph.microsoft.com/v1.0
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ DateTimeTimeZone ============
+    DateTimeTimeZone:
+      type: object
+      properties:
+        dateTime:
+          type: string
+        timeZone:
+          type: string
+
+    # ============ ItemBody ============
+    ItemBody:
+      type: object
+      properties:
+        content:
+          type: string
+        contentType:
+          type: string
+
+    # ============ TodoTaskList ============
+    TodoTaskList:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        isOwner:
+          type: boolean
+          nullable: true
+        isShared:
+          type: boolean
+          nullable: true
+        wellknownListName:
+          type: string
+          nullable: true
+
+    # ============ TodoTask ============
+    TodoTask:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        body:
+          $ref: '#/components/schemas/ItemBody'
+          nullable: true
+        importance:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        isReminderOn:
+          type: boolean
+          nullable: true
+        dueDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+          nullable: true
+        reminderDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+          nullable: true
+        completedDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+          nullable: true
+        createdDateTime:
+          type: string
+          nullable: true
+        lastModifiedDateTime:
+          type: string
+          nullable: true
+
+    # ============ Collection Responses (OData) ============
+    TodoTaskListCollectionResponse:
+      type: object
+      properties:
+        value:
+          type: array
+          items:
+            $ref: '#/components/schemas/TodoTaskList'
+
+    TodoTaskCollectionResponse:
+      type: object
+      properties:
+        value:
+          type: array
+          items:
+            $ref: '#/components/schemas/TodoTask'
+
+    # ============ Request Bodies ============
+    CreateTaskListReq:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+
+    UpdateTaskListReq:
+      type: object
+      properties:
+        displayName:
+          type: string
+
+    CreateTaskReq:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        body:
+          $ref: '#/components/schemas/ItemBody'
+        importance:
+          type: string
+        dueDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+        reminderDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+        isReminderOn:
+          type: boolean
+
+    UpdateTaskReq:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          $ref: '#/components/schemas/ItemBody'
+        importance:
+          type: string
+        status:
+          type: string
+        dueDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+        reminderDateTime:
+          $ref: '#/components/schemas/DateTimeTimeZone'
+        isReminderOn:
+          type: boolean
+
+paths:
+  # =====================================================================
+  # Task Lists
+  # =====================================================================
+  /me/todo/lists:
+    get:
+      operationId: listLists
+      summary: Get all task lists
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTaskListCollectionResponse'
+    post:
+      operationId: createList
+      summary: Create a task list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskListReq'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTaskList'
+
+  /me/todo/lists/{listId}:
+    get:
+      operationId: getList
+      summary: Get a task list
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTaskList'
+    patch:
+      operationId: updateList
+      summary: Update a task list
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskListReq'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTaskList'
+    delete:
+      operationId: deleteList
+      summary: Delete a task list
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+
+  # =====================================================================
+  # Tasks
+  # =====================================================================
+  /me/todo/lists/{listId}/tasks:
+    get:
+      operationId: listTasks
+      summary: Get all tasks in a list
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: $filter
+          in: query
+          schema:
+            type: string
+        - name: $top
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTaskCollectionResponse'
+    post:
+      operationId: createTask
+      summary: Create a task
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskReq'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTask'
+
+  /me/todo/lists/{listId}/tasks/{taskId}:
+    get:
+      operationId: getTask
+      summary: Get a task
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTask'
+    patch:
+      operationId: updateTask
+      summary: Update a task
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskReq'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoTask'
+    delete:
+      operationId: deleteTask
+      summary: Delete a task
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content

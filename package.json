@@ -1,0 +1,33 @@
+{
+  "name": "mcpist",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm db:up && pnpm env:sync && concurrently -n console,server,worker -c blue,green,yellow \"pnpm dev:console\" \"pnpm dev:server\" \"pnpm dev:worker\"",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "dev:console": "dotenv -e .env.local -- pnpm --filter @mcpist/console dev",
+    "dev:server": "dotenv -e .env.local -- go run github.com/air-verse/air@latest -c apps/server/.air.toml",
+    "dev:worker": "pnpm --filter @mcpist/worker dev",
+    "docs:dev": "pnpm --filter @mcpist/docs dev",
+    "docs:build": "pnpm --filter @mcpist/docs build",
+    "docs:preview": "pnpm --filter @mcpist/docs preview",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "clean": "turbo clean && rm -rf node_modules",
+    "env:sync": "node scripts/sync-env.js",
+    "erd:build": "liam erd build --format postgres --input database/migrations/00000000000001_baseline.sql",
+    "erd:serve": "serve dist"
+  },
+  "devDependencies": {
+    "@liam-hq/cli": "^0.7.24",
+    "@stoplight/prism-cli": "^5.14.2",
+    "concurrently": "^9.2.1",
+    "dotenv-cli": "^8.0.0",
+    "serve": "^14.2.5",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3"
+  }
+}

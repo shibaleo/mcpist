@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: Jira REST API (mcpist subset)
+  description: Subset of Atlassian Jira REST API v3 used by mcpist Jira module
+  version: "3"
+servers:
+  - url: https://your-domain.atlassian.net/rest/api/3
+security:
+  - bearerAuth: []
+  - basicAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    # ============ User ============
+    User:
+      type: object
+      properties:
+        accountId:
+          type: string
+        emailAddress:
+          type: string
+        displayName:
+          type: string
+        active:
+          type: boolean
+        timeZone:
+          type: string
+        locale:
+          type: string
+        avatarUrls: {}
+
+    # ============ Project ============
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        projectTypeKey:
+          type: string
+        simplified:
+          type: boolean
+        style:
+          type: string
+        isPrivate:
+          type: boolean
+        description:
+          type: string
+        lead: {}
+        avatarUrls: {}
+
+    ProjectSearchResult:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        maxResults:
+          type: integer
+        startAt:
+          type: integer
+        total:
+          type: integer
+        isLast:
+          type: boolean
+
+    # ============ Issue ============
+    Issue:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        self:
+          type: string
+        fields: {}
+
+    IssueSearchResult:
+      type: object
+      properties:
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        maxResults:
+          type: integer
+        startAt:
+          type: integer
+        total:
+          type: integer
+
+    CreatedIssue:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        self:
+          type: string
+
+    CreateIssueRequest:
+      type: object
+      required:
+        - fields
+      properties:
+        fields:
+          $ref: '#/components/schemas/IssueFields'
+
+    IssueFields:
+      type: object
+      properties:
+        project: {}
+        issuetype: {}
+        summary:
+          type: string
+        description: {}
+        assignee: {}
+        priority: {}
+        labels:
+          type: array
+          items:
+            type: string
+        parent: {}
+
+    UpdateIssueRequest:
+      type: object
+      properties:
+        fields:
+          $ref: '#/components/schemas/IssueFields'
+
+    # ============ Transition ============
+    TransitionsResponse:
+      type: object
+      properties:
+        transitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transition'
+
+    Transition:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        to: {}
+        hasScreen:
+          type: boolean
+        isGlobal:
+          type: boolean
+        isInitial:
+          type: boolean
+        isAvailable:
+          type: boolean
+        isConditional:
+          type: boolean
+        isLooped:
+          type: boolean
+
+    DoTransitionRequest:
+      type: object
+      required:
+        - transition
+      properties:
+        transition:
+          $ref: '#/components/schemas/TransitionRef'
+        update: {}
+
+    TransitionRef:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+
+    # ============ Comment ============
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        self:
+          type: string
+        author: {}
+        body: {}
+        created:
+          type: string
+        updated:
+          type: string
+
+    CommentSearchResult:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        maxResults:
+          type: integer
+        startAt:
+          type: integer
+        total:
+          type: integer
+
+    AddCommentRequest:
+      type: object
+      required:
+        - body
+      properties:
+        body: {}
+
+paths:
+  # ============ User ============
+  /myself:
+    get:
+      operationId: getMyself
+      summary: Get current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ============ Projects ============
+  /project/search:
+    get:
+      operationId: searchProjects
+      summary: Search projects
+      parameters:
+        - name: startAt
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: maxResults
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSearchResult'
+
+  /project/{projectIdOrKey}:
+    get:
+      operationId: getProject
+      summary: Get project
+      parameters:
+        - name: projectIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  # ============ Issues ============
+  /search/jql:
+    get:
+      operationId: searchIssuesUsingJql
+      summary: Search issues using JQL
+      parameters:
+        - name: jql
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: startAt
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: maxResults
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueSearchResult'
+
+  /issue:
+    post:
+      operationId: createIssue
+      summary: Create issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIssueRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedIssue'
+
+  /issue/{issueIdOrKey}:
+    get:
+      operationId: getIssue
+      summary: Get issue
+      parameters:
+        - name: issueIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+    put:
+      operationId: updateIssue
+      summary: Update issue
+      parameters:
+        - name: issueIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIssueRequest'
+      responses:
+        "204":
+          description: No Content
+
+  # ============ Transitions ============
+  /issue/{issueIdOrKey}/transitions:
+    get:
+      operationId: getTransitions
+      summary: Get transitions
+      parameters:
+        - name: issueIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransitionsResponse'
+    post:
+      operationId: doTransition
+      summary: Transition issue
+      parameters:
+        - name: issueIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoTransitionRequest'
+      responses:
+        "204":
+          description: No Content
+
+  # ============ Comments ============
+  /issue/{issueIdOrKey}/comment:
+    get:
+      operationId: getComments
+      summary: Get comments
+      parameters:
+        - name: issueIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startAt
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: maxResults
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentSearchResult'
+    post:
+      operationId: addComment
+      summary: Add comment
+      parameters:
+        - name: issueIdOrKey
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommentRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'

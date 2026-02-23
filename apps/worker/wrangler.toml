@@ -1,0 +1,34 @@
+name = "mcpist-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+# Pre-build: generate openapi.generated.json from Go Server spec
+[build]
+command = "npm run generate:openapi"
+
+# Observability (Workers Logs)
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = true
+
+# Cron trigger for health checks (every 5 minutes)
+[triggers]
+crons = ["*/5 * * * *"]
+
+# 環境変数
+# ローカル開発: .dev.vars から読み込み（pnpm env:sync で生成）
+# クラウド: wrangler secret で設定
+[vars]
+APP_ENV = "mcpist"
+
+# シークレット（wrangler secret で設定）
+# - SERVER_URL: Go Server URL
+# - GATEWAY_SIGNING_KEY: Ed25519 seed (Worker → Go Server JWT 署名用)
+# - CLERK_JWKS_URL: Clerk JWT 検証用 JWKS URL
+# - SERVER_JWKS_URL: Go Server JWT API key 検証用 JWKS URL
+# - STRIPE_WEBHOOK_SECRET: Stripe Webhook署名検証用
+# - GRAFANA_LOKI_URL: Loki Push API URL
+# - GRAFANA_LOKI_USER: Loki Basic Auth ユーザー名
+# - GRAFANA_LOKI_API_KEY: Loki Basic Auth APIキー

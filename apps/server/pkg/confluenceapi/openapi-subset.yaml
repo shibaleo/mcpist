@@ -1,0 +1,530 @@
+openapi: 3.0.3
+info:
+  title: Confluence REST API (mcpist subset)
+  description: |
+    Subset of Atlassian Confluence REST API used by mcpist Confluence module.
+    Covers both V2 (/wiki/api/v2) and V1 (/wiki/rest/api) endpoints.
+    Base server URL should be set to the domain root (e.g. https://your-domain.atlassian.net).
+  version: "v2"
+servers:
+  - url: https://your-domain.atlassian.net
+security:
+  - bearerAuth: []
+  - basicAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    # ============ Space ============
+    Space:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        description: {}
+        homepageId:
+          type: string
+        icon: {}
+
+    SpaceListResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Space'
+        _links: {}
+
+    # V1 space response (different shape)
+    SpaceV1:
+      type: object
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        description: {}
+        homepage: {}
+        _links: {}
+
+    # ============ Page ============
+    Page:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        spaceId:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        parentType:
+          type: string
+          nullable: true
+        position:
+          type: integer
+        authorId:
+          type: string
+        ownerId:
+          type: string
+        createdAt:
+          type: string
+        version: {}
+        body: {}
+        _links: {}
+
+    PageListResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Page'
+        _links: {}
+
+    CreatePageRequest:
+      type: object
+      required:
+        - spaceId
+        - title
+        - status
+        - body
+      properties:
+        spaceId:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        parentId:
+          type: string
+        body:
+          $ref: '#/components/schemas/PageBody'
+
+    UpdatePageRequest:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - body
+        - version
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        body:
+          $ref: '#/components/schemas/PageBody'
+        version:
+          $ref: '#/components/schemas/VersionInput'
+
+    PageBody:
+      type: object
+      properties:
+        representation:
+          type: string
+        value:
+          type: string
+
+    VersionInput:
+      type: object
+      properties:
+        number:
+          type: integer
+
+    # ============ Comment ============
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        title:
+          type: string
+        pageId:
+          type: string
+        version: {}
+        body: {}
+        _links: {}
+
+    CommentListResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        _links: {}
+
+    CreateCommentRequest:
+      type: object
+      required:
+        - pageId
+        - body
+      properties:
+        pageId:
+          type: string
+        body:
+          $ref: '#/components/schemas/PageBody'
+
+    # ============ Label ============
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+
+    LabelListResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+
+    AddLabelRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+
+    # V1 label endpoint expects an array of label objects
+    AddLabelRequestArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/AddLabelRequest'
+
+    # ============ Search (V1) ============
+    SearchResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items: {}
+        start:
+          type: integer
+        limit:
+          type: integer
+        size:
+          type: integer
+        totalSize:
+          type: integer
+        _links: {}
+
+paths:
+  # ============ Spaces (V2) ============
+  /wiki/api/v2/spaces:
+    get:
+      operationId: listSpaces
+      summary: List spaces
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceListResult'
+
+  /wiki/api/v2/spaces/{spaceId}:
+    get:
+      operationId: getSpaceById
+      summary: Get space by ID
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+
+  # ============ Spaces (V1 - by key) ============
+  /wiki/rest/api/space/{spaceKey}:
+    get:
+      operationId: getSpaceByKey
+      summary: Get space by key (V1 API)
+      parameters:
+        - name: spaceKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceV1'
+
+  # ============ Pages (V2) ============
+  /wiki/api/v2/spaces/{spaceId}/pages:
+    get:
+      operationId: getPages
+      summary: List pages in a space
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageListResult'
+
+  /wiki/api/v2/pages/{pageId}:
+    get:
+      operationId: getPage
+      summary: Get page by ID
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: body-format
+          in: query
+          schema:
+            type: string
+            default: storage
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+    put:
+      operationId: updatePage
+      summary: Update page
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePageRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+    delete:
+      operationId: deletePage
+      summary: Delete page
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+
+  /wiki/api/v2/pages:
+    post:
+      operationId: createPage
+      summary: Create page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePageRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+
+  # ============ Comments (V2) ============
+  /wiki/api/v2/pages/{pageId}/footer-comments:
+    get:
+      operationId: getPageComments
+      summary: Get page comments
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResult'
+
+  # Create footer comment (V2) — top-level path, pageId goes in body
+  /wiki/api/v2/footer-comments:
+    post:
+      operationId: addPageComment
+      summary: Add page comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  # ============ Labels ============
+  # GET labels (V2)
+  /wiki/api/v2/pages/{pageId}/labels:
+    get:
+      operationId: getPageLabels
+      summary: Get page labels
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelListResult'
+
+  # Add label (V1) — V2 has no POST for labels
+  /wiki/rest/api/content/{pageId}/label:
+    post:
+      operationId: addPageLabel
+      summary: Add page label (V1 API)
+      parameters:
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddLabelRequestArray'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelListResult'
+
+  # ============ Search (V1) ============
+  /wiki/rest/api/search:
+    get:
+      operationId: searchContent
+      summary: Search content using CQL
+      parameters:
+        - name: cql
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 25
+        - name: start
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'

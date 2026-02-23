@@ -1,0 +1,133 @@
+openapi: "3.1.0"
+info:
+  title: MCPist Worker
+  version: "1.0.0"
+  description: >-
+    MCPist Worker — Cloudflare Workers gateway that handles authentication
+    and proxies requests to the Go Server.
+
+servers:
+  - url: https://mcp.mcpist.app
+    description: Production
+  - url: https://mcp.dev.mcpist.app
+    description: Development
+
+paths:
+  # ── System ───────────────────────────────────────────────────
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      tags: [system]
+      responses:
+        "200":
+          description: Service is healthy
+
+  /openapi.json:
+    get:
+      operationId: getOpenApiSpec
+      summary: OpenAPI specification
+      tags: [system]
+      responses:
+        "200":
+          description: OpenAPI 3.1 JSON document
+
+  # ── OAuth Discovery ──────────────────────────────────────────
+  /.well-known/oauth-protected-resource:
+    get:
+      operationId: getOAuthProtectedResource
+      summary: OAuth Protected Resource Metadata (RFC 9728)
+      tags: [oauth-discovery]
+      responses:
+        "200":
+          description: Protected resource metadata JSON
+
+  /.well-known/oauth-authorization-server:
+    get:
+      operationId: getOAuthAuthorizationServer
+      summary: OAuth Authorization Server Metadata (RFC 8414)
+      tags: [oauth-discovery]
+      responses:
+        "200":
+          description: Authorization server metadata JSON
+
+  /v1/mcp/.well-known/oauth-protected-resource:
+    get:
+      operationId: getV1McpOAuthProtectedResource
+      summary: MCP-scoped OAuth Protected Resource Metadata
+      tags: [oauth-discovery]
+      responses:
+        "200":
+          description: Protected resource metadata JSON
+
+  /v1/mcp/.well-known/oauth-authorization-server:
+    get:
+      operationId: getV1McpOAuthAuthorizationServer
+      summary: MCP-scoped OAuth Authorization Server Metadata
+      tags: [oauth-discovery]
+      responses:
+        "200":
+          description: Authorization server metadata JSON
+
+  # ── MCP Transport ──────────────────────────────────────────
+  /v1/mcp/{path}:
+    post:
+      operationId: mcpTransport
+      summary: MCP transport endpoint (Streamable HTTP)
+      description: >-
+        Accepts MCP protocol messages (JSON-RPC 2.0) and returns responses.
+        Supports initialize, tools/list, tools/call, prompts/list, prompts/get,
+        and other standard MCP methods.
+      tags: [mcp]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: MCP transport sub-path
+      responses:
+        "200":
+          description: MCP JSON-RPC response
+        "401":
+          description: Unauthorized
+        "503":
+          description: Service unavailable
+
+  # ── Stripe ────────────────────────────────────────────────────
+  /v1/stripe/webhook:
+    post:
+      operationId: handleStripeWebhook
+      summary: Handle Stripe webhook events
+      description: >-
+        Receives Stripe webhook events (invoice.paid, customer.subscription.deleted).
+        Authenticated via Stripe signature verification, not JWT.
+      tags: [stripe]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+        "400":
+          description: Invalid signature or payload
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Clerk JWT or MCPist API key (mpt_xxx)

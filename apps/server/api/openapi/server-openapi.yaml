@@ -1,0 +1,1161 @@
+openapi: "3.0.3"
+info:
+  title: MCPist Server API
+  version: "1.0.0"
+  description: >-
+    Internal REST API for the MCPist Go Server.
+    Authenticated via X-Gateway-Token (Ed25519 JWT signed by Worker).
+    This spec is the single source of truth for shared schemas
+    (Console type generation via openapi-typescript).
+
+paths:
+  # ── Modules (public) ─────────────────────────────────────────
+  /v1/modules:
+    get:
+      operationId: listModules
+      summary: List available modules with their tools
+      tags: [modules]
+      responses:
+        "200":
+          description: Module list with tool definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleWithTools"
+
+  # ── Plans (public) ──────────────────────────────────────────
+  /v1/plans:
+    get:
+      operationId: listPlans
+      summary: List available plans
+      tags: [plans]
+      responses:
+        "200":
+          description: Plan list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanInfo"
+
+  # ── Registration (gateway-only, user may not exist yet) ──────
+  /v1/me/register:
+    post:
+      operationId: registerUser
+      summary: Register or find existing user from Clerk ID
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: User registered or already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResult"
+        "400":
+          description: Missing clerk_id or email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Profile ──────────────────────────────────────────────────
+  /v1/me/profile:
+    get:
+      operationId: getMyProfile
+      summary: Get current user profile
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /v1/me/settings:
+    put:
+      operationId: updateSettings
+      summary: Update user settings
+      tags: [me]
+      security:
+        - gatewayToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  /v1/me/onboarding:
+    post:
+      operationId: completeUserOnboarding
+      summary: Complete a user onboarding step
+      tags: [me]
+      security:
+        - gatewayToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteOnboardingBody"
+      responses:
+        "200":
+          description: Onboarding step completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingResult"
+
+  # ── Usage ────────────────────────────────────────────────────
+  /v1/me/usage:
+    get:
+      operationId: getUsage
+      summary: Get usage statistics
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+      responses:
+        "200":
+          description: Usage data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageData"
+
+  # ── Stripe ───────────────────────────────────────────────────
+  /v1/me/stripe:
+    get:
+      operationId: getStripeCustomerId
+      summary: Get linked Stripe customer ID
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: Stripe customer info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StripeCustomer"
+    put:
+      operationId: linkStripeCustomer
+      summary: Link a Stripe customer ID
+      tags: [me]
+      security:
+        - gatewayToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkStripeCustomerBody"
+      responses:
+        "200":
+          description: Stripe customer linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  # ── Credentials ──────────────────────────────────────────────
+  /v1/me/credentials:
+    get:
+      operationId: listCredentials
+      summary: List stored credentials
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: Credential list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Credential"
+
+  /v1/me/credentials/{module}:
+    put:
+      operationId: upsertCredential
+      summary: Create or update credentials for a module
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertCredentialBody"
+      responses:
+        "200":
+          description: Credential saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertCredentialResult"
+    delete:
+      operationId: deleteCredential
+      summary: Delete credentials for a module
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Credential deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  # ── API Keys ─────────────────────────────────────────────────
+  /v1/me/apikeys:
+    get:
+      operationId: listApiKeys
+      summary: List API keys
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: API key list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+    post:
+      operationId: generateApiKey
+      summary: Generate a new API key
+      tags: [me]
+      security:
+        - gatewayToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateApiKeyBody"
+      responses:
+        "201":
+          description: Generated API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateApiKeyResult"
+
+  /v1/me/apikeys/{id}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoke an API key
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: API key revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  # ── Prompts ──────────────────────────────────────────────────
+  /v1/me/prompts:
+    get:
+      operationId: listPrompts
+      summary: List prompts
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: string
+          description: Filter by module name
+      responses:
+        "200":
+          description: Prompt list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prompt"
+    post:
+      operationId: createPrompt
+      summary: Create a prompt
+      tags: [me]
+      security:
+        - gatewayToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePromptBody"
+      responses:
+        "201":
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertPromptResult"
+
+  /v1/me/prompts/{id}:
+    get:
+      operationId: getPrompt
+      summary: Get a prompt by ID
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Prompt detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetPromptResult"
+    put:
+      operationId: updatePrompt
+      summary: Update a prompt
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePromptBody"
+      responses:
+        "200":
+          description: Prompt updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertPromptResult"
+    delete:
+      operationId: deletePrompt
+      summary: Delete a prompt
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Prompt deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePromptResult"
+
+  # ── Module Config ────────────────────────────────────────────
+  /v1/me/modules/config:
+    get:
+      operationId: getModuleConfig
+      summary: Get module configuration
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: Module configuration
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleConfig"
+
+  /v1/me/modules/{name}/tools:
+    put:
+      operationId: upsertToolSettings
+      summary: Update tool enable/disable settings for a module
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertToolSettingsBody"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpsertToolSettingsResult"
+
+  /v1/me/modules/{name}/description:
+    put:
+      operationId: upsertModuleDescription
+      summary: Update module description
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertModuleDescriptionBody"
+      responses:
+        "200":
+          description: Description updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  # ── OAuth Consents ───────────────────────────────────────────
+  /v1/me/oauth/consents:
+    get:
+      operationId: listOAuthConsents
+      summary: List OAuth consents
+      tags: [me]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: OAuth consent list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OAuthConsent"
+
+  /v1/me/oauth/consents/{id}:
+    delete:
+      operationId: revokeOAuthConsent
+      summary: Revoke an OAuth consent
+      tags: [me]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Consent revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeConsentResult"
+
+  # ── OAuth App Credentials ────────────────────────────────────
+  /v1/oauth/apps/{provider}/credentials:
+    get:
+      operationId: getOAuthAppCredentials
+      summary: Get OAuth app credentials for a provider
+      tags: [oauth]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OAuth app credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthAppCredentials"
+
+  # ── Admin ────────────────────────────────────────────────────
+  /v1/admin/oauth/apps:
+    get:
+      operationId: listOAuthApps
+      summary: List all OAuth apps (admin only)
+      tags: [admin]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: OAuth app list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OAuthApp"
+
+  /v1/admin/oauth/apps/{provider}:
+    put:
+      operationId: upsertOAuthApp
+      summary: Create or update an OAuth app (admin only)
+      tags: [admin]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertOAuthAppBody"
+      responses:
+        "200":
+          description: OAuth app saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+    delete:
+      operationId: deleteOAuthApp
+      summary: Delete an OAuth app (admin only)
+      tags: [admin]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OAuth app deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  # ── Internal (Worker → Server) ──────────────────────────────
+  /v1/internal/apikeys/{id}/status:
+    get:
+      operationId: getApiKeyStatus
+      summary: Check if an API key is active (internal, called by Worker)
+      tags: [internal]
+      security:
+        - gatewayToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: API key UUID (kid claim from JWT)
+      responses:
+        "200":
+          description: API key status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyStatus"
+        "404":
+          description: API key not found or revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/admin/oauth/consents:
+    get:
+      operationId: listAllOAuthConsents
+      summary: List all OAuth consents across users (admin only)
+      tags: [admin]
+      security:
+        - gatewayToken: []
+      responses:
+        "200":
+          description: All OAuth consents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OAuthConsentAdmin"
+
+components:
+  securitySchemes:
+    gatewayToken:
+      type: apiKey
+      in: header
+      name: X-Gateway-Token
+      description: Ed25519 JWT signed by Worker gateway
+
+  schemas:
+    # ── Common ──
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    SuccessResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    # ── Plans ──
+    PlanInfo:
+      type: object
+      required: [id, name, daily_limit, price_monthly]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        daily_limit:
+          type: integer
+        price_monthly:
+          type: integer
+        stripe_price_id:
+          type: string
+          nullable: true
+        features:
+          type: object
+          additionalProperties: true
+
+    # ── Modules ──
+    ModuleWithTools:
+      type: object
+      required: [id, name, status, tools]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        descriptions:
+          type: object
+          additionalProperties:
+            type: string
+        tools:
+          type: array
+          items: {}
+
+    ModuleConfig:
+      type: object
+      required: [module_name, tool_id, enabled]
+      properties:
+        module_name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        tool_id:
+          type: string
+        enabled:
+          type: boolean
+
+    UpsertToolSettingsBody:
+      type: object
+      required: [enabled_tools, disabled_tools]
+      properties:
+        enabled_tools:
+          type: array
+          items:
+            type: string
+        disabled_tools:
+          type: array
+          items:
+            type: string
+
+    UpsertToolSettingsResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        enabled_count:
+          type: integer
+        disabled_count:
+          type: integer
+
+    UpsertModuleDescriptionBody:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+
+    # ── Registration ──
+    RegisterResult:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+
+    # ── User ──
+    UserProfile:
+      type: object
+      required: [user_id, email, account_status, plan_id, daily_used, daily_limit, role, connected_count]
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+        account_status:
+          type: string
+        plan_id:
+          type: string
+        daily_used:
+          type: integer
+        daily_limit:
+          type: integer
+        role:
+          type: string
+        settings: {}
+        display_name:
+          type: string
+          nullable: true
+        connected_count:
+          type: integer
+
+    UsageData:
+      type: object
+      required: [total_used, by_module, period]
+      properties:
+        total_used:
+          type: integer
+        by_module:
+          type: object
+          additionalProperties:
+            type: integer
+        period:
+          $ref: "#/components/schemas/UsagePeriod"
+
+    UsagePeriod:
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+
+    UpdateSettingsBody:
+      type: object
+      required: [settings]
+      properties:
+        settings: {}
+
+    CompleteOnboardingBody:
+      type: object
+      required: [event_id]
+      properties:
+        event_id:
+          type: string
+
+    OnboardingResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        already_completed:
+          type: boolean
+        plan_id:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+
+    # ── Stripe ──
+    StripeCustomer:
+      type: object
+      properties:
+        stripe_customer_id:
+          type: string
+          nullable: true
+
+    LinkStripeCustomerBody:
+      type: object
+      required: [stripe_customer_id]
+      properties:
+        stripe_customer_id:
+          type: string
+
+    # ── Credentials ──
+    Credential:
+      type: object
+      required: [module, created_at, updated_at]
+      properties:
+        module:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpsertCredentialBody:
+      type: object
+      required: [credentials]
+      properties:
+        credentials: {}
+
+    UpsertCredentialResult:
+      type: object
+      required: [success, module]
+      properties:
+        success:
+          type: boolean
+        module:
+          type: string
+
+    # ── API Keys ──
+    ApiKey:
+      type: object
+      required: [id, key_prefix, display_name]
+      properties:
+        id:
+          type: string
+        key_prefix:
+          type: string
+        display_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    GenerateApiKeyBody:
+      type: object
+      required: [display_name]
+      properties:
+        display_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          description: Expiration timestamp. If omitted, defaults to 90 days.
+        no_expiry:
+          type: boolean
+          description: Set to true to create a key with no expiration. Overrides expires_at.
+
+    GenerateApiKeyResult:
+      type: object
+      required: [api_key, key_prefix]
+      properties:
+        api_key:
+          type: string
+          description: Full API key (only returned at creation time)
+        key_prefix:
+          type: string
+
+    # ── Prompts ──
+    Prompt:
+      type: object
+      required: [id, name, content, enabled, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        module_name:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    GetPromptResult:
+      type: object
+      required: [found]
+      properties:
+        found:
+          type: boolean
+        id:
+          type: string
+        module_name:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        content:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        error:
+          type: string
+
+    CreatePromptBody:
+      type: object
+      required: [name, content, enabled]
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        module_name:
+          type: string
+        enabled:
+          type: boolean
+        description:
+          type: string
+
+    UpdatePromptBody:
+      type: object
+      required: [name, content, enabled]
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        module_name:
+          type: string
+        enabled:
+          type: boolean
+        description:
+          type: string
+
+    UpsertPromptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        id:
+          type: string
+        action:
+          type: string
+        error:
+          type: string
+
+    DeletePromptResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+
+    # ── OAuth ──
+    OAuthAppCredentials:
+      type: object
+      required: [client_id, client_secret, redirect_uri]
+      properties:
+        provider:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+        redirect_uri:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+
+    OAuthConsent:
+      type: object
+      required: [id, client_id, scopes, granted_at]
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        client_name:
+          type: string
+          nullable: true
+        scopes:
+          type: string
+        granted_at:
+          type: string
+          format: date-time
+
+    OAuthConsentAdmin:
+      type: object
+      required: [id, client_id, scopes, granted_at, user_id]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        user_email:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+        client_name:
+          type: string
+          nullable: true
+        scopes:
+          type: string
+        granted_at:
+          type: string
+          format: date-time
+
+    RevokeConsentResult:
+      type: object
+      properties:
+        revoked:
+          type: boolean
+
+    # ── Admin ──
+    OAuthApp:
+      type: object
+      properties:
+        provider:
+          type: string
+        client_id:
+          type: string
+        redirect_uri:
+          type: string
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    # ── Internal ──
+    ApiKeyStatus:
+      type: object
+      required: [active, key_id, user_id]
+      properties:
+        active:
+          type: boolean
+          description: Whether the API key is currently active
+        key_id:
+          type: string
+        user_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    UpsertOAuthAppBody:
+      type: object
+      required: [client_id, client_secret, redirect_uri, enabled]
+      properties:
+        client_id:
+          type: string
+        client_secret:
+          type: string
+        redirect_uri:
+          type: string
+        enabled:
+          type: boolean

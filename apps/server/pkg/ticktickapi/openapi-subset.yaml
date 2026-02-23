@@ -1,0 +1,492 @@
+openapi: 3.0.3
+info:
+  title: TickTick API (mcpist subset)
+  description: Subset of TickTick Open API v1 used by mcpist TickTick module
+  version: "1"
+servers:
+  - url: https://api.ticktick.com/open/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Project ============
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+          format: int64
+          nullable: true
+        sortType:
+          type: string
+          nullable: true
+        viewMode:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          nullable: true
+        isOwner:
+          type: boolean
+          nullable: true
+        closed:
+          type: boolean
+          nullable: true
+        modifiedTime:
+          type: string
+          nullable: true
+
+    # ============ ChecklistItem ============
+    ChecklistItem:
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        title:
+          type: string
+        status:
+          type: integer
+        sortOrder:
+          type: integer
+          format: int64
+          nullable: true
+        startDate:
+          type: string
+          nullable: true
+        isAllDay:
+          type: boolean
+          nullable: true
+        timeZone:
+          type: string
+          nullable: true
+        completedTime:
+          type: string
+          nullable: true
+
+    # ============ Task ============
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+          nullable: true
+        desc:
+          type: string
+          nullable: true
+        isAllDay:
+          type: boolean
+          nullable: true
+        startDate:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          nullable: true
+        timeZone:
+          type: string
+          nullable: true
+        reminders:
+          type: array
+          items:
+            type: string
+          nullable: true
+        repeatFlag:
+          type: string
+          nullable: true
+        priority:
+          type: integer
+        status:
+          type: integer
+        sortOrder:
+          type: integer
+          format: int64
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+        completedTime:
+          type: string
+          nullable: true
+        modifiedTime:
+          type: string
+          nullable: true
+        createdTime:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          nullable: true
+
+    # ============ Column ============
+    Column:
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        projectId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        sortOrder:
+          type: integer
+          format: int64
+          nullable: true
+
+    # ============ ProjectData ============
+    ProjectData:
+      type: object
+      properties:
+        project:
+          $ref: '#/components/schemas/Project'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          nullable: true
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/Column'
+          nullable: true
+
+    # ============ Request bodies ============
+    CreateProjectReq:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        viewMode:
+          type: string
+        kind:
+          type: string
+
+    UpdateProjectReq:
+      type: object
+      properties:
+        name:
+          type: string
+        color:
+          type: string
+        viewMode:
+          type: string
+        kind:
+          type: string
+
+    CreateTaskReq:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        projectId:
+          type: string
+        content:
+          type: string
+        desc:
+          type: string
+        isAllDay:
+          type: boolean
+        startDate:
+          type: string
+        dueDate:
+          type: string
+        timeZone:
+          type: string
+        reminders:
+          type: array
+          items:
+            type: string
+        repeatFlag:
+          type: string
+        priority:
+          type: integer
+        sortOrder:
+          type: integer
+          format: int64
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+
+    UpdateTaskReq:
+      type: object
+      required:
+        - id
+        - projectId
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        desc:
+          type: string
+        isAllDay:
+          type: boolean
+        startDate:
+          type: string
+        dueDate:
+          type: string
+        timeZone:
+          type: string
+        reminders:
+          type: array
+          items:
+            type: string
+        repeatFlag:
+          type: string
+        priority:
+          type: integer
+        sortOrder:
+          type: integer
+          format: int64
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+
+paths:
+  # =====================================================================
+  # Projects
+  # =====================================================================
+  /project:
+    get:
+      operationId: listProjects
+      summary: List all projects
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      operationId: createProject
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectReq'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /project/{projectId}:
+    get:
+      operationId: getProject
+      summary: Get a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    post:
+      operationId: updateProject
+      summary: Update a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectReq'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    delete:
+      operationId: deleteProject
+      summary: Delete a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  /project/{projectId}/data:
+    get:
+      operationId: getProjectData
+      summary: Get project data with tasks and columns
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectData'
+
+  # =====================================================================
+  # Tasks
+  # =====================================================================
+  /task:
+    post:
+      operationId: createTask
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskReq'
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /task/{taskId}:
+    post:
+      operationId: updateTask
+      summary: Update a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskReq'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /project/{projectId}/task/{taskId}:
+    get:
+      operationId: getTask
+      summary: Get a task
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      operationId: deleteTask
+      summary: Delete a task
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+
+  /project/{projectId}/task/{taskId}/complete:
+    post:
+      operationId: completeTask
+      summary: Complete a task
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Completed

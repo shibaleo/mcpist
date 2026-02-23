@@ -1,0 +1,460 @@
+openapi: 3.0.3
+info:
+  title: Notion REST API (mcpist subset)
+  description: |
+    Subset of Notion REST API used by mcpist Notion module.
+    All endpoints require Notion-Version header (injected by client middleware).
+  version: "2022-06-28"
+servers:
+  - url: https://api.notion.com/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    # ============ Pagination ============
+    PaginatedList:
+      type: object
+      properties:
+        object:
+          type: string
+        results:
+          type: array
+          items: {}
+        has_more:
+          type: boolean
+        next_cursor:
+          type: string
+          nullable: true
+        type:
+          type: string
+
+    # ============ Page ============
+    Page:
+      type: object
+      properties:
+        object:
+          type: string
+        id:
+          type: string
+        created_time:
+          type: string
+        last_edited_time:
+          type: string
+        archived:
+          type: boolean
+        url:
+          type: string
+        parent: {}
+        properties: {}
+        icon: {}
+        cover: {}
+
+    CreatePageRequest:
+      type: object
+      required:
+        - parent
+        - properties
+      properties:
+        parent: {}
+        properties: {}
+
+    UpdatePageRequest:
+      type: object
+      required:
+        - properties
+      properties:
+        properties: {}
+
+    # ============ Database ============
+    Database:
+      type: object
+      properties:
+        object:
+          type: string
+        id:
+          type: string
+        title:
+          type: array
+          items: {}
+        description:
+          type: array
+          items: {}
+        properties: {}
+        parent: {}
+        url:
+          type: string
+        archived:
+          type: boolean
+
+    QueryDatabaseRequest:
+      type: object
+      properties:
+        filter: {}
+        sorts: {}
+        page_size:
+          type: integer
+
+    # ============ Block ============
+    Block:
+      type: object
+      properties:
+        object:
+          type: string
+        id:
+          type: string
+        type:
+          type: string
+        archived:
+          type: boolean
+        has_children:
+          type: boolean
+        parent: {}
+
+    AppendBlockChildrenRequest:
+      type: object
+      required:
+        - children
+      properties:
+        children:
+          type: array
+          items: {}
+
+    # ============ Comment ============
+    Comment:
+      type: object
+      properties:
+        object:
+          type: string
+        id:
+          type: string
+        parent: {}
+        discussion_id:
+          type: string
+        rich_text:
+          type: array
+          items: {}
+        created_time:
+          type: string
+        created_by: {}
+
+    AddCommentRequest:
+      type: object
+      required:
+        - parent
+        - rich_text
+      properties:
+        parent: {}
+        rich_text:
+          type: array
+          items: {}
+
+    # ============ User ============
+    User:
+      type: object
+      properties:
+        object:
+          type: string
+        id:
+          type: string
+        type:
+          type: string
+        name:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+        person: {}
+        bot: {}
+
+    # ============ Search ============
+    SearchRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        filter: {}
+        sort: {}
+        page_size:
+          type: integer
+
+paths:
+  # ============ Search ============
+  /search:
+    post:
+      operationId: search
+      summary: Search pages and databases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedList'
+
+  # ============ Pages ============
+  /pages/{page_id}:
+    get:
+      operationId: getPage
+      summary: Retrieve a page
+      parameters:
+        - name: page_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+    patch:
+      operationId: updatePage
+      summary: Update page properties
+      parameters:
+        - name: page_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePageRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+
+  /pages:
+    post:
+      operationId: createPage
+      summary: Create a page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePageRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page'
+
+  # ============ Databases ============
+  /databases/{database_id}:
+    get:
+      operationId: getDatabase
+      summary: Retrieve a database
+      parameters:
+        - name: database_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Database'
+
+  /databases/{database_id}/query:
+    post:
+      operationId: queryDatabase
+      summary: Query a database
+      parameters:
+        - name: database_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryDatabaseRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedList'
+
+  # ============ Blocks ============
+  /blocks/{block_id}/children:
+    get:
+      operationId: getBlockChildren
+      summary: Retrieve block children
+      parameters:
+        - name: block_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+        - name: start_cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedList'
+    patch:
+      operationId: appendBlockChildren
+      summary: Append block children
+      parameters:
+        - name: block_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppendBlockChildrenRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedList'
+
+  /blocks/{block_id}:
+    delete:
+      operationId: deleteBlock
+      summary: Delete a block
+      parameters:
+        - name: block_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
+
+  # ============ Comments ============
+  /comments:
+    get:
+      operationId: listComments
+      summary: List comments
+      parameters:
+        - name: block_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedList'
+    post:
+      operationId: addComment
+      summary: Add a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommentRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  # ============ Users ============
+  /users:
+    get:
+      operationId: listUsers
+      summary: List all users
+      parameters:
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedList'
+
+  /users/{user_id}:
+    get:
+      operationId: getUser
+      summary: Retrieve a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/me:
+    get:
+      operationId: getBotUser
+      summary: Retrieve the bot user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'

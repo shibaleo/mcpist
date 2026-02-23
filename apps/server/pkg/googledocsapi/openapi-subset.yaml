@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: Google Docs API (mcpist subset)
+  description: Subset of Google Docs API v1 used by mcpist google_docs module
+  version: "v1"
+servers:
+  - url: https://docs.googleapis.com/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Document ============
+    Document:
+      type: object
+      properties:
+        documentId:
+          type: string
+        title:
+          type: string
+        body:
+          type: object
+          additionalProperties: true
+        tabs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        revisionId:
+          type: string
+        suggestionsViewMode:
+          type: string
+    CreateDocumentRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+    # ============ BatchUpdate ============
+    BatchUpdateRequest:
+      type: object
+      required: [requests]
+      properties:
+        requests:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    BatchUpdateResponse:
+      type: object
+      properties:
+        documentId:
+          type: string
+        replies:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        writeControl:
+          type: object
+          additionalProperties: true
+
+paths:
+  /documents/{documentId}:
+    get:
+      operationId: getDocument
+      summary: Get a document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+  /documents:
+    post:
+      operationId: createDocument
+      summary: Create a new document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentRequest'
+      responses:
+        '200':
+          description: Created document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+  /documents/{documentId}:batchUpdate:
+    post:
+      operationId: batchUpdateDocument
+      summary: Apply batch updates to a document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchUpdateRequest'
+      responses:
+        '200':
+          description: Batch update response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchUpdateResponse'

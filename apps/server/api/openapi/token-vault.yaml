@@ -1,0 +1,174 @@
+openapi: 3.0.3
+info:
+  title: Token Vault API
+  version: 1.0.0
+  description: |
+    Token storage and retrieval service for MCPist.
+    Implementation: Supabase Edge Functions + PostgreSQL + Vault
+
+servers:
+  - url: http://localhost:8089
+    description: Development mock server (Prism)
+  - url: https://<project>.supabase.co/functions/v1
+    description: Production (Supabase Edge Functions)
+
+# Development publishable key for mock testing:
+# SUPABASE_PUBLISHABLE_KEY=dev_publishable_key_for_testing
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+
+  /token-vault:
+    post:
+      summary: Get tokens for user and service
+      operationId: getTokens
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+            examples:
+              notion:
+                summary: Request Notion tokens
+                value:
+                  user_id: "user-123"
+                  service: "notion"
+              github:
+                summary: Request GitHub tokens
+                value:
+                  user_id: "user-123"
+                  service: "github"
+      responses:
+        '200':
+          description: Token(s) found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              examples:
+                long_term_only:
+                  summary: Long-term token only
+                  value:
+                    user_id: "user-123"
+                    service: "notion"
+                    long_term_token: "ntn_EXAMPLE_REPLACE_WITH_REAL_TOKEN"
+                    oauth_token: null
+                oauth_only:
+                  summary: OAuth token only
+                  value:
+                    user_id: "user-123"
+                    service: "notion"
+                    long_term_token: null
+                    oauth_token: "ya29.a0ARrdaM..."
+                both_tokens:
+                  summary: Both tokens available
+                  value:
+                    user_id: "user-123"
+                    service: "notion"
+                    long_term_token: "ntn_xxx..."
+                    oauth_token: "ya29.xxx..."
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "invalid service: invalid"
+        '401':
+          description: Unauthorized (missing or invalid anon key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "no token configured for user: user-123, service: notion"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Supabase anon key
+
+  schemas:
+    TokenRequest:
+      type: object
+      required:
+        - user_id
+        - service
+      properties:
+        user_id:
+          type: string
+          description: User identifier
+          example: "user-123"
+        service:
+          type: string
+          enum: [notion, github, jira, confluence, google_calendar, microsoft_todo]
+          description: Service name
+          example: "notion"
+
+    TokenResponse:
+      type: object
+      required:
+        - user_id
+        - service
+      properties:
+        user_id:
+          type: string
+          description: User identifier from request
+        service:
+          type: string
+          description: Service name from request
+        long_term_token:
+          type: string
+          nullable: true
+          description: |
+            Long-term/API key token.
+            - Notion: Internal Integration Token (ntn_xxx)
+            - GitHub: Personal Access Token (ghp_xxx)
+            - Jira/Confluence: API Token
+        oauth_token:
+          type: string
+          nullable: true
+          description: |
+            OAuth access token obtained via OAuth flow.
+            May expire and require refresh.
+      example:
+        user_id: "user-123"
+        service: "notion"
+        long_term_token: "ntn_EXAMPLE_REPLACE_WITH_REAL_TOKEN"
+        oauth_token: null
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+      example:
+        error: "no token configured for user: user-123, service: notion"

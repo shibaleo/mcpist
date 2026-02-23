@@ -1,0 +1,889 @@
+openapi: 3.0.3
+info:
+  title: Grafana HTTP API (mcpist subset)
+  description: Subset of Grafana HTTP API used by mcpist Grafana module
+  version: "v1"
+servers:
+  - url: https://grafana.example.com
+security:
+  - bearerAuth: []
+  - basicAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    basicAuth:
+      type: http
+      scheme: basic
+  schemas:
+    # ============ Search ============
+    SearchResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        uid:
+          type: string
+        title:
+          type: string
+        uri:
+          type: string
+        url:
+          type: string
+        slug:
+          type: string
+        type:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isStarred:
+          type: boolean
+        folderUid:
+          type: string
+        folderTitle:
+          type: string
+        folderUrl:
+          type: string
+
+    # ============ Dashboard ============
+    DashboardFullWithMeta:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/DashboardMeta'
+        dashboard: {}
+
+    DashboardMeta:
+      type: object
+      properties:
+        type:
+          type: string
+        canSave:
+          type: boolean
+        canEdit:
+          type: boolean
+        canAdmin:
+          type: boolean
+        canStar:
+          type: boolean
+        canDelete:
+          type: boolean
+        slug:
+          type: string
+        url:
+          type: string
+        expires:
+          type: string
+        created:
+          type: string
+        updated:
+          type: string
+        updatedBy:
+          type: string
+        createdBy:
+          type: string
+        version:
+          type: integer
+        hasAcl:
+          type: boolean
+        isFolder:
+          type: boolean
+        folderId:
+          type: integer
+        folderUid:
+          type: string
+        folderTitle:
+          type: string
+        folderUrl:
+          type: string
+        provisioned:
+          type: boolean
+        provisionedExternalId:
+          type: string
+
+    SaveDashboardRequest:
+      type: object
+      required: [dashboard]
+      properties:
+        dashboard: {}
+        folderId:
+          type: integer
+        folderUid:
+          type: string
+        message:
+          type: string
+        overwrite:
+          type: boolean
+
+    SaveDashboardResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        uid:
+          type: string
+        url:
+          type: string
+        status:
+          type: string
+        version:
+          type: integer
+        slug:
+          type: string
+
+    DeleteDashboardResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        message:
+          type: string
+        id:
+          type: integer
+
+    # ============ Datasource ============
+    Datasource:
+      type: object
+      properties:
+        id:
+          type: integer
+        uid:
+          type: string
+        orgId:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        typeName:
+          type: string
+        typeLogoUrl:
+          type: string
+        access:
+          type: string
+        url:
+          type: string
+        user:
+          type: string
+        database:
+          type: string
+        basicAuth:
+          type: boolean
+        isDefault:
+          type: boolean
+        readOnly:
+          type: boolean
+
+    # ============ Data Source Query ============
+    DsQueryRequest:
+      type: object
+      required: [queries]
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        queries:
+          type: array
+          items: {}
+
+    # ============ Alert Rules ============
+    AlertRule:
+      type: object
+      properties:
+        id:
+          type: integer
+        uid:
+          type: string
+        orgID:
+          type: integer
+        folderUID:
+          type: string
+        ruleGroup:
+          type: string
+        title:
+          type: string
+        condition:
+          type: string
+        data:
+          type: array
+          items: {}
+        noDataState:
+          type: string
+        execErrState:
+          type: string
+        for:
+          type: string
+        annotations: {}
+        labels: {}
+        updated:
+          type: string
+        provenance:
+          type: string
+
+    CreateAlertRuleRequest:
+      type: object
+      required: [title, ruleGroup, folderUID, condition, data]
+      properties:
+        title:
+          type: string
+        ruleGroup:
+          type: string
+        folderUID:
+          type: string
+        condition:
+          type: string
+        data:
+          type: array
+          items: {}
+        noDataState:
+          type: string
+        execErrState:
+          type: string
+        for:
+          type: string
+        annotations: {}
+        labels: {}
+
+    # ============ Contact Points ============
+    ContactPoint:
+      type: object
+      properties:
+        uid:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        settings: {}
+        disableResolveMessage:
+          type: boolean
+        provenance:
+          type: string
+
+    CreateContactPointRequest:
+      type: object
+      required: [name, type, settings]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        settings: {}
+        disableResolveMessage:
+          type: boolean
+
+    UpdateContactPointRequest:
+      type: object
+      required: [name, type, settings]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        settings: {}
+        disableResolveMessage:
+          type: boolean
+
+    DeleteContactPointResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    # ============ Notification Policies ============
+    NotificationPolicy:
+      type: object
+      properties:
+        receiver:
+          type: string
+        group_by:
+          type: array
+          items:
+            type: string
+        routes:
+          type: array
+          items: {}
+        group_wait:
+          type: string
+        group_interval:
+          type: string
+        repeat_interval:
+          type: string
+        provenance:
+          type: string
+
+    # ============ Annotations ============
+    Annotation:
+      type: object
+      properties:
+        id:
+          type: integer
+        alertId:
+          type: integer
+        alertName:
+          type: string
+        dashboardId:
+          type: integer
+        dashboardUID:
+          type: string
+        panelId:
+          type: integer
+        userId:
+          type: integer
+        newState:
+          type: string
+        prevState:
+          type: string
+        created:
+          type: integer
+          format: int64
+        updated:
+          type: integer
+          format: int64
+        time:
+          type: integer
+          format: int64
+        timeEnd:
+          type: integer
+          format: int64
+        text:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    CreateAnnotationRequest:
+      type: object
+      required: [text]
+      properties:
+        dashboardUID:
+          type: string
+        panelId:
+          type: integer
+        time:
+          type: integer
+          format: int64
+        timeEnd:
+          type: integer
+          format: int64
+        text:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    CreateAnnotationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+
+    DeleteAnnotationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    # ============ Folders ============
+    Folder:
+      type: object
+      properties:
+        id:
+          type: integer
+        uid:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        hasAcl:
+          type: boolean
+        canSave:
+          type: boolean
+        canEdit:
+          type: boolean
+        canAdmin:
+          type: boolean
+        canDelete:
+          type: boolean
+        createdBy:
+          type: string
+        created:
+          type: string
+        updatedBy:
+          type: string
+        updated:
+          type: string
+        version:
+          type: integer
+        parentUid:
+          type: string
+
+    CreateFolderRequest:
+      type: object
+      required: [title]
+      properties:
+        uid:
+          type: string
+        title:
+          type: string
+        parentUid:
+          type: string
+
+    DeleteFolderResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        message:
+          type: string
+        id:
+          type: integer
+
+paths:
+  # ============ Search ============
+  /api/search:
+    get:
+      operationId: search
+      summary: Search dashboards and folders
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: folderUIDs
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResult'
+
+  # ============ Dashboards ============
+  /api/dashboards/uid/{uid}:
+    get:
+      operationId: getDashboardByUid
+      summary: Get dashboard by UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardFullWithMeta'
+    delete:
+      operationId: deleteDashboardByUid
+      summary: Delete dashboard by UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteDashboardResponse'
+
+  /api/dashboards/db:
+    post:
+      operationId: createOrUpdateDashboard
+      summary: Create or update a dashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDashboardRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveDashboardResponse'
+
+  # ============ Datasources ============
+  /api/datasources:
+    get:
+      operationId: listDatasources
+      summary: List all data sources
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Datasource'
+
+  /api/datasources/uid/{uid}:
+    get:
+      operationId: getDatasourceByUid
+      summary: Get data source by UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Datasource'
+
+  # ============ Data Source Query ============
+  /api/ds/query:
+    post:
+      operationId: queryDatasource
+      summary: Query a data source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DsQueryRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+
+  # ============ Alert Rules ============
+  /api/v1/provisioning/alert-rules:
+    get:
+      operationId: listAlertRules
+      summary: List all alert rules
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertRule'
+    post:
+      operationId: createAlertRule
+      summary: Create an alert rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRuleRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+
+  /api/v1/provisioning/alert-rules/{uid}:
+    get:
+      operationId: getAlertRule
+      summary: Get alert rule by UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertRule'
+
+  # ============ Contact Points ============
+  /api/v1/provisioning/contact-points:
+    get:
+      operationId: listContactPoints
+      summary: List all contact points
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContactPoint'
+    post:
+      operationId: createContactPoint
+      summary: Create a contact point
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContactPointRequest'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPoint'
+
+  /api/v1/provisioning/contact-points/{uid}:
+    put:
+      operationId: updateContactPoint
+      summary: Update a contact point
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContactPointRequest'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactPoint'
+    delete:
+      operationId: deleteContactPoint
+      summary: Delete a contact point
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  # ============ Notification Policies ============
+  /api/v1/provisioning/policies:
+    get:
+      operationId: getNotificationPolicy
+      summary: Get the notification policy tree
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPolicy'
+    put:
+      operationId: updateNotificationPolicy
+      summary: Update the notification policy tree
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPolicy'
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPolicy'
+
+  # ============ Annotations ============
+  /api/annotations:
+    get:
+      operationId: queryAnnotations
+      summary: Query annotations
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: to
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: dashboardUID
+          in: query
+          schema:
+            type: string
+        - name: panelId
+          in: query
+          schema:
+            type: integer
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Annotation'
+    post:
+      operationId: createAnnotation
+      summary: Create an annotation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAnnotationRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAnnotationResponse'
+
+  /api/annotations/{id}:
+    delete:
+      operationId: deleteAnnotation
+      summary: Delete an annotation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteAnnotationResponse'
+
+  # ============ Folders ============
+  /api/folders:
+    get:
+      operationId: listFolders
+      summary: List all folders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Folder'
+    post:
+      operationId: createFolder
+      summary: Create a folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFolderRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Folder'
+
+  /api/folders/{uid}:
+    delete:
+      operationId: deleteFolderByUid
+      summary: Delete a folder by UID
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteFolderResponse'

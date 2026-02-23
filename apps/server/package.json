@@ -1,0 +1,12 @@
+{
+  "name": "@mcpist/server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "dotenv -e ../../.env.example -- air",
+    "build": "go build -o bin/server ./cmd/server",
+    "start": "dotenv -e ../../.env.example -- go run ./cmd/server",
+    "test": "dotenv -e ../../.env.example -- go test -v ./...",
+    "lint": "golangci-lint run"
+  }
+}

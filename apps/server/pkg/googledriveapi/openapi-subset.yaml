@@ -1,0 +1,729 @@
+openapi: 3.0.3
+info:
+  title: Google Drive API (mcpist subset)
+  description: Subset of Google Drive API v3 used by mcpist google_drive, google_docs, google_sheets, and google_apps_script modules
+  version: "v3"
+servers:
+  - url: https://www.googleapis.com/drive/v3
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ File ============
+    File:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        mimeType:
+          type: string
+          nullable: true
+        size:
+          type: string
+          nullable: true
+        createdTime:
+          type: string
+          nullable: true
+        modifiedTime:
+          type: string
+          nullable: true
+        parents:
+          type: array
+          nullable: true
+          items:
+            type: string
+        webViewLink:
+          type: string
+          nullable: true
+        iconLink:
+          type: string
+          nullable: true
+        trashed:
+          type: boolean
+          nullable: true
+
+    # ============ File Metadata (for create/update) ============
+    FileMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        mimeType:
+          type: string
+          nullable: true
+        parents:
+          type: array
+          nullable: true
+          items:
+            type: string
+        trashed:
+          type: boolean
+          nullable: true
+
+    # ============ FileList ============
+    FileList:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/File'
+        nextPageToken:
+          type: string
+          nullable: true
+
+    # ============ CopyRequest ============
+    CopyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        parents:
+          type: array
+          nullable: true
+          items:
+            type: string
+
+    # ============ About ============
+    About:
+      type: object
+      properties:
+        user:
+          type: object
+          nullable: true
+          properties:
+            displayName:
+              type: string
+              nullable: true
+            emailAddress:
+              type: string
+              nullable: true
+            photoLink:
+              type: string
+              nullable: true
+        storageQuota:
+          type: object
+          nullable: true
+          properties:
+            limit:
+              type: string
+              nullable: true
+            usage:
+              type: string
+              nullable: true
+            usageInDrive:
+              type: string
+              nullable: true
+            usageInDriveTrash:
+              type: string
+              nullable: true
+
+    # ============ Permission ============
+    Permission:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        emailAddress:
+          type: string
+          nullable: true
+        domain:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+
+    PermissionList:
+      type: object
+      properties:
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+
+    PermissionRequest:
+      type: object
+      properties:
+        type:
+          type: string
+        role:
+          type: string
+        emailAddress:
+          type: string
+          nullable: true
+        domain:
+          type: string
+          nullable: true
+
+    # ============ Comment ============
+    CommentAuthor:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
+        emailAddress:
+          type: string
+          nullable: true
+        photoLink:
+          type: string
+          nullable: true
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+          nullable: true
+        author:
+          $ref: '#/components/schemas/CommentAuthor'
+          nullable: true
+        createdTime:
+          type: string
+          nullable: true
+        modifiedTime:
+          type: string
+          nullable: true
+        resolved:
+          type: boolean
+          nullable: true
+        replies:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/Reply'
+
+    CommentList:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        nextPageToken:
+          type: string
+          nullable: true
+
+    CommentRequest:
+      type: object
+      properties:
+        content:
+          type: string
+        quotedFileContent:
+          type: object
+          properties:
+            value:
+              type: string
+
+    # ============ Reply ============
+    Reply:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+          nullable: true
+        author:
+          $ref: '#/components/schemas/CommentAuthor'
+          nullable: true
+        createdTime:
+          type: string
+          nullable: true
+        action:
+          type: string
+          nullable: true
+          description: "'resolve' or 'reopen'"
+
+    ReplyRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          nullable: true
+        action:
+          type: string
+          nullable: true
+          description: "'resolve' or 'reopen'"
+
+    # ============ Revision ============
+    Revision:
+      type: object
+      properties:
+        id:
+          type: string
+        mimeType:
+          type: string
+          nullable: true
+        modifiedTime:
+          type: string
+          nullable: true
+        keepForever:
+          type: boolean
+          nullable: true
+        size:
+          type: string
+          nullable: true
+
+    RevisionList:
+      type: object
+      properties:
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Revision'
+        nextPageToken:
+          type: string
+          nullable: true
+
+    # ============ SharedDrive ============
+    SharedDrive:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+
+    SharedDriveList:
+      type: object
+      properties:
+        drives:
+          type: array
+          items:
+            $ref: '#/components/schemas/SharedDrive'
+        nextPageToken:
+          type: string
+          nullable: true
+
+paths:
+  # ============ Files ============
+  /files:
+    get:
+      operationId: listFiles
+      summary: List files
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileList'
+    post:
+      operationId: createFile
+      summary: Create a file (metadata only, no content)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileMetadata'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+
+  /files/{fileId}:
+    get:
+      operationId: getFile
+      summary: Get file metadata
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+    patch:
+      operationId: updateFile
+      summary: Update file metadata
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: addParents
+          in: query
+          schema:
+            type: string
+        - name: removeParents
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileMetadata'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+
+  /files/{fileId}/copy:
+    post:
+      operationId: copyFile
+      summary: Copy a file
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CopyRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+
+  # ============ About ============
+  /about:
+    get:
+      operationId: getAbout
+      summary: Get user and storage info
+      parameters:
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/About'
+
+  # ============ Permissions ============
+  /files/{fileId}/permissions:
+    get:
+      operationId: listPermissions
+      summary: List permissions
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionList'
+    post:
+      operationId: createPermission
+      summary: Create a permission (share)
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sendNotificationEmail
+          in: query
+          schema:
+            type: boolean
+        - name: fields
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permission'
+
+  /files/{fileId}/permissions/{permissionId}:
+    delete:
+      operationId: deletePermission
+      summary: Delete a permission
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: permissionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Permission deleted
+
+  # ============ Comments ============
+  /files/{fileId}/comments:
+    get:
+      operationId: listComments
+      summary: List comments
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentList'
+    post:
+      operationId: createComment
+      summary: Create a comment
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  /files/{fileId}/comments/{commentId}:
+    get:
+      operationId: getComment
+      summary: Get a comment
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+        - name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+    delete:
+      operationId: deleteComment
+      summary: Delete a comment
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Comment deleted
+
+  # ============ Replies ============
+  /files/{fileId}/comments/{commentId}/replies:
+    post:
+      operationId: createReply
+      summary: Create a reply to a comment
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reply'
+
+  # ============ Revisions ============
+  /files/{fileId}/revisions:
+    get:
+      operationId: listRevisions
+      summary: List revisions
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+        - name: fields
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionList'
+
+  # ============ Shared Drives ============
+  /drives:
+    get:
+      operationId: listDrives
+      summary: List shared drives
+      parameters:
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - name: pageToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedDriveList'

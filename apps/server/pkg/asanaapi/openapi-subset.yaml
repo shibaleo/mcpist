@@ -1,0 +1,1042 @@
+openapi: 3.0.3
+info:
+  title: Asana API (mcpist subset)
+  description: Subset of Asana API used by mcpist Asana module
+  version: "1.0"
+servers:
+  - url: https://app.asana.com/api/1.0
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Core Schemas ============
+    User:
+      type: object
+      properties:
+        gid:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        resource_type:
+          type: string
+
+    Workspace:
+      type: object
+      properties:
+        gid:
+          type: string
+        name:
+          type: string
+        resource_type:
+          type: string
+        is_organization:
+          type: boolean
+
+    Project:
+      type: object
+      properties:
+        gid:
+          type: string
+        name:
+          type: string
+        resource_type:
+          type: string
+        archived:
+          type: boolean
+        color:
+          type: string
+          nullable: true
+        notes:
+          type: string
+        default_view:
+          type: string
+        due_on:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+        modified_at:
+          type: string
+        workspace:
+          type: object
+          properties:
+            gid:
+              type: string
+            name:
+              type: string
+        team:
+          type: object
+          properties:
+            gid:
+              type: string
+            name:
+              type: string
+
+    Section:
+      type: object
+      properties:
+        gid:
+          type: string
+        name:
+          type: string
+        resource_type:
+          type: string
+
+    Task:
+      type: object
+      properties:
+        gid:
+          type: string
+        name:
+          type: string
+        resource_type:
+          type: string
+        completed:
+          type: boolean
+        notes:
+          type: string
+        html_notes:
+          type: string
+        due_on:
+          type: string
+          nullable: true
+        due_at:
+          type: string
+          nullable: true
+        start_on:
+          type: string
+          nullable: true
+        completed_at:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+        modified_at:
+          type: string
+        assignee:
+          type: object
+          nullable: true
+          properties:
+            gid:
+              type: string
+            name:
+              type: string
+        projects:
+          type: array
+          items:
+            type: object
+            properties:
+              gid:
+                type: string
+              name:
+                type: string
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              gid:
+                type: string
+              name:
+                type: string
+        parent:
+          type: object
+          nullable: true
+          properties:
+            gid:
+              type: string
+            name:
+              type: string
+
+    Story:
+      type: object
+      properties:
+        gid:
+          type: string
+        resource_type:
+          type: string
+        type:
+          type: string
+        text:
+          type: string
+        created_at:
+          type: string
+        created_by:
+          type: object
+          properties:
+            gid:
+              type: string
+            name:
+              type: string
+
+    Tag:
+      type: object
+      properties:
+        gid:
+          type: string
+        name:
+          type: string
+        resource_type:
+          type: string
+        color:
+          type: string
+          nullable: true
+
+    # ============ Response Wrappers ============
+    UserResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+
+    WorkspaceResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Workspace'
+
+    WorkspaceListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workspace'
+
+    ProjectResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Project'
+
+    ProjectListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+
+    SectionResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Section'
+
+    SectionListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+
+    TaskResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Task'
+
+    TaskListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+
+    StoryResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Story'
+
+    StoryListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Story'
+
+    TagResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Tag'
+
+    TagListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+
+    EmptyDataResponse:
+      type: object
+      properties:
+        data: {}
+
+    # ============ Request Data Schemas ============
+    CreateProjectRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+        workspace:
+          type: string
+        team:
+          type: string
+        notes:
+          type: string
+        color:
+          type: string
+        default_view:
+          type: string
+        due_on:
+          type: string
+
+    UpdateProjectRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+        notes:
+          type: string
+        color:
+          type: string
+        default_view:
+          type: string
+        due_on:
+          type: string
+        archived:
+          type: boolean
+
+    CreateSectionRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+
+    CreateTaskRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+        workspace:
+          type: string
+        projects:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        html_notes:
+          type: string
+        due_on:
+          type: string
+        due_at:
+          type: string
+        start_on:
+          type: string
+        assignee:
+          type: string
+        parent:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    UpdateTaskRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+        notes:
+          type: string
+        html_notes:
+          type: string
+        due_on:
+          type: string
+        due_at:
+          type: string
+        start_on:
+          type: string
+        completed:
+          type: boolean
+        assignee:
+          type: string
+
+    CreateSubtaskRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+        notes:
+          type: string
+        due_on:
+          type: string
+        assignee:
+          type: string
+
+    CreateStoryRequestData:
+      type: object
+      properties:
+        text:
+          type: string
+
+    CreateTagRequestData:
+      type: object
+      properties:
+        name:
+          type: string
+        workspace:
+          type: string
+        color:
+          type: string
+
+    AddTaskToSectionRequestData:
+      type: object
+      properties:
+        task:
+          type: string
+
+    # ============ Request Wrappers ============
+    CreateProjectRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateProjectRequestData'
+
+    UpdateProjectRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/UpdateProjectRequestData'
+
+    CreateSectionRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateSectionRequestData'
+
+    CreateTaskRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateTaskRequestData'
+
+    UpdateTaskRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/UpdateTaskRequestData'
+
+    CreateSubtaskRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateSubtaskRequestData'
+
+    CreateStoryRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateStoryRequestData'
+
+    CreateTagRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreateTagRequestData'
+
+    AddTaskToSectionRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/AddTaskToSectionRequestData'
+
+paths:
+  # ============ Users ============
+  /users/me:
+    get:
+      operationId: getMe
+      summary: Get the current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  # ============ Workspaces ============
+  /workspaces:
+    get:
+      operationId: listWorkspaces
+      summary: List all workspaces
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceListResponse'
+
+  /workspaces/{workspace_gid}:
+    get:
+      operationId: getWorkspace
+      summary: Get a workspace
+      parameters:
+        - name: workspace_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+
+  # ============ Projects ============
+  /workspaces/{workspace_gid}/projects:
+    get:
+      operationId: listProjectsByWorkspace
+      summary: List projects in a workspace
+      parameters:
+        - name: workspace_gid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: archived
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+
+  /teams/{team_gid}/projects:
+    get:
+      operationId: listProjectsByTeam
+      summary: List projects in a team
+      parameters:
+        - name: team_gid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: archived
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+
+  /projects:
+    post:
+      operationId: createProject
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+
+  /projects/{project_gid}:
+    get:
+      operationId: getProject
+      summary: Get a project
+      parameters:
+        - name: project_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+    put:
+      operationId: updateProject
+      summary: Update a project
+      parameters:
+        - name: project_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+    delete:
+      operationId: deleteProject
+      summary: Delete a project
+      parameters:
+        - name: project_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'
+
+  # ============ Sections ============
+  /projects/{project_gid}/sections:
+    get:
+      operationId: listSections
+      summary: List sections in a project
+      parameters:
+        - name: project_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SectionListResponse'
+    post:
+      operationId: createSection
+      summary: Create a section in a project
+      parameters:
+        - name: project_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSectionRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SectionResponse'
+
+  # ============ Tasks ============
+  /projects/{project_gid}/tasks:
+    get:
+      operationId: listTasksByProject
+      summary: List tasks in a project
+      parameters:
+        - name: project_gid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: completed_since
+          in: query
+          schema:
+            type: string
+        - name: opt_fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  /sections/{section_gid}/tasks:
+    get:
+      operationId: listTasksBySection
+      summary: List tasks in a section
+      parameters:
+        - name: section_gid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: completed_since
+          in: query
+          schema:
+            type: string
+        - name: opt_fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  /tasks:
+    get:
+      operationId: listTasksByAssignee
+      summary: List tasks by assignee
+      parameters:
+        - name: assignee
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: workspace
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: completed_since
+          in: query
+          schema:
+            type: string
+        - name: opt_fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+    post:
+      operationId: createTask
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+
+  /tasks/{task_gid}:
+    get:
+      operationId: getTask
+      summary: Get a task
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+    put:
+      operationId: updateTask
+      summary: Update a task
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+    delete:
+      operationId: deleteTask
+      summary: Delete a task
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'
+
+  # ============ Subtasks ============
+  /tasks/{task_gid}/subtasks:
+    get:
+      operationId: listSubtasks
+      summary: List subtasks of a task
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: opt_fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+    post:
+      operationId: createSubtask
+      summary: Create a subtask
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubtaskRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+
+  # ============ Stories ============
+  /tasks/{task_gid}/stories:
+    get:
+      operationId: listStories
+      summary: List stories on a task
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryListResponse'
+    post:
+      operationId: createStory
+      summary: Add a comment to a task
+      parameters:
+        - name: task_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStoryRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryResponse'
+
+  # ============ Tags ============
+  /workspaces/{workspace_gid}/tags:
+    get:
+      operationId: listTags
+      summary: List tags in a workspace
+      parameters:
+        - name: workspace_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagListResponse'
+
+  /tags:
+    post:
+      operationId: createTag
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+
+  # ============ Search ============
+  /workspaces/{workspace_gid}/tasks/search:
+    get:
+      operationId: searchTasks
+      summary: Search tasks in a workspace
+      parameters:
+        - name: workspace_gid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: text
+          in: query
+          schema:
+            type: string
+        - name: completed
+          in: query
+          schema:
+            type: boolean
+        - name: is_subtask
+          in: query
+          schema:
+            type: boolean
+        - name: "assignee.any"
+          in: query
+          schema:
+            type: string
+        - name: "projects.any"
+          in: query
+          schema:
+            type: string
+        - name: "due_on.before"
+          in: query
+          schema:
+            type: string
+        - name: "due_on.after"
+          in: query
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+        - name: sort_ascending
+          in: query
+          schema:
+            type: boolean
+        - name: opt_fields
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+
+  # ============ Section Task Assignment ============
+  /sections/{section_gid}/addTask:
+    post:
+      operationId: addTaskToSection
+      summary: Add a task to a section
+      parameters:
+        - name: section_gid
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTaskToSectionRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyDataResponse'

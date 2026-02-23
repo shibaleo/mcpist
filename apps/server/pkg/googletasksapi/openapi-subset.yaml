@@ -1,0 +1,279 @@
+openapi: 3.0.3
+info:
+  title: Google Tasks API (mcpist subset)
+  description: Subset of Google Tasks API v1 used by mcpist google_tasks module
+  version: "v1"
+servers:
+  - url: https://tasks.googleapis.com/tasks/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    # ============ Task ============
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+          description: "'needsAction' or 'completed'"
+        due:
+          type: string
+          nullable: true
+          description: "Due date (RFC3339)"
+        completed:
+          type: string
+          nullable: true
+          description: "Completion date (RFC3339)"
+        parent:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        updated:
+          type: string
+          nullable: true
+        selfLink:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          nullable: true
+
+    # ============ TaskList ============
+    TaskList:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        updated:
+          type: string
+          nullable: true
+        selfLink:
+          type: string
+          nullable: true
+        kind:
+          type: string
+          nullable: true
+
+    # ============ List Responses ============
+    TaskListsResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskList'
+
+    TasksResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        nextPageToken:
+          type: string
+          nullable: true
+
+    # ============ Create/Update Task Request ============
+    TaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        due:
+          type: string
+          nullable: true
+        completed:
+          type: string
+          nullable: true
+
+paths:
+  /users/@me/lists:
+    get:
+      operationId: listTaskLists
+      summary: List all task lists
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListsResponse'
+
+  /users/@me/lists/{taskListId}:
+    get:
+      operationId: getTaskList
+      summary: Get a task list
+      parameters:
+        - name: taskListId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+
+  /lists/{taskListId}/tasks:
+    get:
+      operationId: listTasks
+      summary: List tasks in a task list
+      parameters:
+        - name: taskListId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: maxResults
+          in: query
+          schema:
+            type: integer
+        - name: showCompleted
+          in: query
+          schema:
+            type: boolean
+        - name: showHidden
+          in: query
+          schema:
+            type: boolean
+        - name: dueMin
+          in: query
+          schema:
+            type: string
+        - name: dueMax
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TasksResponse'
+    post:
+      operationId: createTask
+      summary: Create a task
+      parameters:
+        - name: taskListId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: parent
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /lists/{taskListId}/tasks/{taskId}:
+    get:
+      operationId: getTask
+      summary: Get a task
+      parameters:
+        - name: taskListId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    patch:
+      operationId: updateTask
+      summary: Update a task (partial update)
+      parameters:
+        - name: taskListId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      operationId: deleteTask
+      summary: Delete a task
+      parameters:
+        - name: taskListId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Task deleted

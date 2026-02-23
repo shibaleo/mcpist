@@ -1,0 +1,23 @@
+{
+  "name": "@mcpist/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCPist API Gateway (Cloudflare Worker). The generate:openapi script converts src/openapi.yaml to src/openapi.generated.json before dev/deploy/type-check. Wrangler then bundles the JSON into the worker via esbuild.",
+  "scripts": {
+    "generate:openapi": "node scripts/generate-openapi-json.mjs",
+    "dev": "npm run generate:openapi && wrangler dev",
+    "deploy": "npm run generate:openapi && wrangler deploy",
+    "type-check": "npm run generate:openapi && tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.8",
+    "wrangler": "^4.59.2",
+    "yaml": "^2.8.2"
+  },
+  "dependencies": {
+    "hono": "^4.11.9",
+    "jose": "^5.9.6"
+  }
+}

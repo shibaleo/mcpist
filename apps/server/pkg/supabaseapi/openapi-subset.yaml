@@ -1,0 +1,490 @@
+openapi: 3.0.3
+info:
+  title: Supabase Management API (mcpist subset)
+  description: Subset of Supabase Management API used by mcpist Supabase module
+  version: "v1"
+servers:
+  - url: https://api.supabase.com/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    # ============ Organizations ============
+    Organization:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+
+    # ============ Projects ============
+    Project:
+      type: object
+      required: [id, ref, organization_id, organization_slug, name, region, created_at, status, database]
+      properties:
+        id:
+          type: string
+        ref:
+          type: string
+        organization_id:
+          type: string
+        organization_slug:
+          type: string
+        name:
+          type: string
+        region:
+          type: string
+        created_at:
+          type: string
+        status:
+          type: string
+          enum:
+            - INACTIVE
+            - ACTIVE_HEALTHY
+            - ACTIVE_UNHEALTHY
+            - COMING_UP
+            - UNKNOWN
+            - GOING_DOWN
+            - INIT_FAILED
+            - REMOVED
+            - RESTORING
+            - UPGRADING
+            - PAUSING
+            - RESTORE_FAILED
+            - RESTARTING
+            - PAUSE_FAILED
+            - RESIZING
+        database:
+          $ref: '#/components/schemas/ProjectDatabase'
+
+    ProjectDatabase:
+      type: object
+      required: [host, version, postgres_engine, release_channel]
+      properties:
+        host:
+          type: string
+        version:
+          type: string
+        postgres_engine:
+          type: string
+        release_channel:
+          type: string
+
+    # ============ Database ============
+    RunQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+
+    # ============ Analytics ============
+    AnalyticsResponse:
+      type: object
+      properties:
+        result:
+          type: array
+          nullable: true
+          items: {}
+        error:
+          type: string
+          nullable: true
+
+    # ============ Advisors ============
+    AdvisorsResponse:
+      type: object
+      required: [lints]
+      properties:
+        lints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lint'
+
+    Lint:
+      type: object
+      required: [name, title, level, facing, categories, description, detail, remediation, cache_key]
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        level:
+          type: string
+          enum: [ERROR, WARN, INFO]
+        facing:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        detail:
+          type: string
+        remediation:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/LintMetadata'
+        cache_key:
+          type: string
+
+    LintMetadata:
+      type: object
+      properties:
+        schema:
+          type: string
+        name:
+          type: string
+        entity:
+          type: string
+        type:
+          type: string
+
+    # ============ API Keys ============
+    ApiKey:
+      type: object
+      required: [name]
+      properties:
+        api_key:
+          type: string
+          nullable: true
+        name:
+          type: string
+        type:
+          type: string
+          nullable: true
+
+    # ============ Edge Functions ============
+    EdgeFunction:
+      type: object
+      required: [id, slug, name, status, version, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, REMOVED, THROTTLED]
+        version:
+          type: integer
+        created_at:
+          type: integer
+          format: int64
+        updated_at:
+          type: integer
+          format: int64
+        verify_jwt:
+          type: boolean
+        import_map:
+          type: boolean
+        entrypoint_path:
+          type: string
+        import_map_path:
+          type: string
+
+    # ============ Storage ============
+    StorageBucket:
+      type: object
+      required: [id, name, owner, created_at, updated_at, public]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        owner:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+        public:
+          type: boolean
+
+    StorageConfig:
+      type: object
+      required: [fileSizeLimit]
+      properties:
+        fileSizeLimit:
+          type: integer
+          format: int64
+        features:
+          $ref: '#/components/schemas/StorageFeatures'
+        migrationVersion:
+          type: string
+        databasePoolMode:
+          type: string
+
+    StorageFeatures:
+      type: object
+      properties:
+        imageTransformation:
+          $ref: '#/components/schemas/FeatureToggle'
+        s3Protocol:
+          $ref: '#/components/schemas/FeatureToggle'
+
+    FeatureToggle:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+paths:
+  # ============ Organizations ============
+  /organizations:
+    get:
+      operationId: listOrganizations
+      summary: List all organizations
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+
+  # ============ Projects ============
+  /projects:
+    get:
+      operationId: listProjects
+      summary: List all projects
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+
+  /projects/{ref}:
+    get:
+      operationId: getProject
+      summary: Get project details
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  # ============ Database ============
+  /projects/{ref}/database/query:
+    post:
+      operationId: runDatabaseQuery
+      summary: Run a SQL query
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunQueryRequest'
+      responses:
+        "201":
+          description: Query result
+          content:
+            application/json:
+              schema: {}
+
+  # ============ Analytics ============
+  /projects/{ref}/analytics/endpoints/logs.all:
+    get:
+      operationId: getLogs
+      summary: Get project logs
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sql
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iso_timestamp_start
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iso_timestamp_end
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsResponse'
+
+  # ============ Advisors ============
+  /projects/{ref}/advisors/security:
+    get:
+      operationId: getSecurityAdvisors
+      summary: Get security recommendations
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvisorsResponse'
+
+  /projects/{ref}/advisors/performance:
+    get:
+      operationId: getPerformanceAdvisors
+      summary: Get performance recommendations
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvisorsResponse'
+
+  # ============ API Keys ============
+  /projects/{ref}/api-keys:
+    get:
+      operationId: getApiKeys
+      summary: Get project API keys
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+
+  # ============ Edge Functions ============
+  /projects/{ref}/functions:
+    get:
+      operationId: listEdgeFunctions
+      summary: List all Edge Functions
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EdgeFunction'
+
+  /projects/{ref}/functions/{slug}:
+    get:
+      operationId: getEdgeFunction
+      summary: Get Edge Function details
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeFunction'
+
+  # ============ Storage ============
+  /projects/{ref}/storage/buckets:
+    get:
+      operationId: listStorageBuckets
+      summary: List storage buckets
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageBucket'
+
+  /projects/{ref}/config/storage:
+    get:
+      operationId: getStorageConfig
+      summary: Get storage configuration
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageConfig'
